@@ -1,0 +1,23 @@
+{
+  "name": "@dungeon-manager/renderer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PixiJS scene graph: map, grid, fog, tokens, effects.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dungeon-manager/core": "workspace:*",
+    "@dungeon-manager/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@dungeon-manager/tsconfig": "workspace:*"
+  }
+}
