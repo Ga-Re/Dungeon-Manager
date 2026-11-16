@@ -87,6 +87,29 @@ The workflow only uses official `actions/*` pinned by commit SHA, has a read-onl
    - Fork pull request workflows from outside collaborators → choose the **strictest** option (approval for all outside collaborators / external contributors; the exact label varies).
    - Workflow permissions → **Read repository contents and packages permissions**; leave "Allow GitHub Actions to create and approve pull requests" unticked.
 
+## Claude on pull requests (`@claude`)
+
+Mention `@claude` in a pull request comment, review comment or review, e.g. `@claude please address the review comments`. `.github/workflows/claude.yml` then runs Claude Code, which pushes commits to the PR branch and replies on the PR. CI runs again on those commits.
+
+Locked down because the repository is public:
+
+- Only comments by the **repository owner** trigger it; everyone else is ignored (no runner even starts).
+- Only pull requests from branches **in this repository**: a separate job without secrets rejects fork PRs, so the API key never runs next to fork code.
+- Claude only reads the owner's comments, so text from other people cannot smuggle in instructions.
+- Issues are not handled, only pull requests.
+- One Claude run per pull request at a time; a new `@claude` request waits for the running one. Put `@claude` in one place per review (summary or one inline comment), otherwise several runs queue up.
+
+### Setup (one-time, for the DM)
+
+Use the manual setup below, not `/install-github-app`: the quick setup pushes its own, unrestricted workflow file.
+
+1. **Install the Claude GitHub App:** open <https://github.com/apps/claude> → Install → choose **Only select repositories** → `Dungeon-Manager`. (The app requests a broad permission set shared by all Claude GitHub features; the workflow uses Contents, Issues and Pull requests.)
+2. **Add the secret:** Settings → Secrets and variables → Actions → New repository secret, name `ANTHROPIC_API_KEY`, value: an API key from <https://platform.claude.com>. Consider a dedicated key with a spending limit.
+   - Alternative with a Claude subscription: run `claude setup-token` locally, store the token as `CLAUDE_CODE_OAUTH_TOKEN`, and in `claude.yml` replace the `anthropic_api_key` line with `claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}`.
+3. **Test:** comment `@claude say hello` on an open pull request. The Actions tab shows a `Claude` run; a comment from Claude follows.
+
+To switch it off, delete the secret or disable the `Claude` workflow (Actions → Claude → ⋯ → Disable workflow).
+
 ## Repository layout
 
 See [ARCHITECTURE.md §3](docs/ARCHITECTURE.md). Workspace packages are named `@dungeon-manager/<folder>`; the shared TypeScript config lives in `tooling/tsconfig`.

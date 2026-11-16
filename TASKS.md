@@ -42,7 +42,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-004 CI on GitHub Actions
 
-- **Status:** review · **Depends on:** T-003
+- **Status:** done · **Depends on:** T-003
 - Workflow on every PR: install, `pnpm check`, Rust fmt/clippy/test, E2E, visual tests. Cache pnpm and cargo.
 - Public repo: use `pull_request` (not `pull_request_target`) so fork PRs never get secrets; minimal `permissions:` per workflow.
 - **Acceptance criteria**
@@ -51,12 +51,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-005 Claude Code GitHub integration
 
-- **Status:** todo · **Depends on:** T-004
+- **Status:** review · **Depends on:** T-004
 - Set up the Claude GitHub app/workflow so `@claude` in PR comments triggers the agent to address review feedback.
 - **Acceptance criteria**
-  - [ ] Workflow file committed; setup steps for the DM (installing the app, adding the API key secret) documented in README
-  - [ ] The workflow only runs for comments by the repository owner (check `author_association` / actor), never for other users or forks – the repo is public
-  - [ ] The API key secret is never available to workflows triggered from forks
+  - [x] Workflow file committed; setup steps for the DM (installing the app, adding the API key secret) documented in README
+  - [x] The workflow only runs for comments by the repository owner (check `author_association` / actor), never for other users or forks – the repo is public
+  - [x] The API key secret is never available to workflows triggered from forks
 - **Notes:** Verify current setup steps and the action's access-control options in the official Claude Code docs before implementing.
 
 ### T-006 Desktop app skeleton with two windows
