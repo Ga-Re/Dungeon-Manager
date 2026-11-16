@@ -32,13 +32,13 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-003 Test infrastructure
 
-- **Status:** todo · **Depends on:** T-002 · **Refs:** ARCHITECTURE §12, ADR-0009
+- **Status:** review · **Depends on:** T-002 · **Refs:** ARCHITECTURE §12, ADR-0009
 - Vitest workspace with coverage thresholds (≥ 80 % for `core`, `schema`, `storage`, `protocol`), React Testing Library, Playwright config, screenshot test setup in a pinned Docker image.
 - **Acceptance criteria**
-  - [ ] `pnpm check` includes unit/component tests with coverage gates
-  - [ ] `pnpm test:e2e` and `pnpm test:visual` run a sample test each
-  - [ ] Coverage below threshold fails the check
-  - [ ] `packages/test-fixtures/SOURCES.md` lists the origin and license of every fixture (self-made or CC0 only – public repo)
+  - [x] `pnpm check` includes unit/component tests with coverage gates
+  - [x] `pnpm test:e2e` and `pnpm test:visual` run a sample test each
+  - [x] Coverage below threshold fails the check
+  - [x] `packages/test-fixtures/SOURCES.md` lists the origin and license of every fixture (self-made or CC0 only – public repo)
 
 ### T-004 CI on GitHub Actions
 
@@ -47,6 +47,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - Public repo: use `pull_request` (not `pull_request_target`) so fork PRs never get secrets; minimal `permissions:` per workflow.
 - **Acceptance criteria**
   - [ ] PRs show required status checks; failing checks block merge (document the branch-protection settings the DM must enable)
+- **Notes:** From T-003: `pnpm test:visual` needs Docker on the runner (ubuntu runners have it). E2E needs `pnpm exec playwright install --with-deps chromium`. DM decision: document enabling GitHub auto-merge so PRs merge once required checks pass.
 
 ### T-005 Claude Code GitHub integration
 
@@ -66,7 +67,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] `pnpm dev:desktop` opens the DM window; a button opens the player window on a selectable display in fullscreen
   - [ ] i18next set up (`de` default, `en`), no hard-coded strings
   - [ ] Tauri-driver smoke test starts the app and finds both windows
-- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`.
+- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`. From T-003 (DM decision): add React Testing Library, jsdom and React here, with the first component; configure a jsdom Vitest environment for `*.test.tsx`.
 
 ### T-007 Performance spike: video map + fog in the player window
 

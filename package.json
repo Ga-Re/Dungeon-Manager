@@ -10,21 +10,27 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run boundaries && pnpm run check:boundary-rules",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run boundaries && pnpm run check:boundary-rules && pnpm run test",
     "typecheck": "turbo run typecheck",
     "lint": "eslint --max-warnings 0 .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "boundaries": "depcruise --config tooling/dependency-cruiser/config.js packages/*/src apps/*/src",
-    "check:boundary-rules": "node tooling/dependency-cruiser/verify-rules.js"
+    "check:boundary-rules": "node tooling/dependency-cruiser/verify-rules.js",
+    "test": "vitest run --coverage",
+    "test:e2e": "playwright test --config tooling/playwright/e2e.config.js",
+    "test:visual": "tooling/playwright/run-visual.sh"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.1",
+    "@vitest/coverage-v8": "5.1.0",
     "dependency-cruiser": "18.7.2",
     "eslint": "10.15.0",
     "prettier": "3.10.1",
     "turbo": "2.11.11",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.72.2"
+    "typescript-eslint": "8.72.2",
+    "vitest": "5.1.0"
   }
 }

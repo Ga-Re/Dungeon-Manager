@@ -14,8 +14,10 @@ export function createConfig(rootDir) {
       "**/coverage/",
       "**/.turbo/",
       "**/target/",
-      // Deliberate boundary violations, checked by verify-rules.js instead.
-      "tooling/dependency-cruiser/fixtures/",
+      // Deliberately broken projects used by tooling self-tests.
+      "tooling/*/fixtures/",
+      "test-results/",
+      "playwright-report/",
     ]),
     js.configs.recommended,
     tseslint.configs.strictTypeChecked,

@@ -5,8 +5,8 @@
   "description": "Tauri desktop app: DM window and player window.",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@dungeon-manager/core": "workspace:*",

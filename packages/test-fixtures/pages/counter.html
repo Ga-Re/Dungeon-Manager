@@ -1,0 +1,19 @@
+<!doctype html>
+<!-- Self-made sample page for the E2E smoke test (see SOURCES.md). -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Counter fixture</title>
+  </head>
+  <body>
+    <h1>Counter fixture</h1>
+    <output id="count" aria-label="count">0</output>
+    <button type="button" id="increment">Increment</button>
+    <script>
+      const output = document.getElementById("count");
+      document.getElementById("increment").addEventListener("click", () => {
+        output.value = String(Number(output.value) + 1);
+      });
+    </script>
+  </body>
+</html>

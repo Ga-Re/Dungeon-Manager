@@ -5,8 +5,8 @@
   "description": "React web app served by the desktop app over the LAN.",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@dungeon-manager/core": "workspace:*",
