@@ -1,0 +1,4 @@
+pnpm-lock.yaml
+
+# Accepted ADRs are immutable (ADR-0001); formatting them would edit them.
+docs/adr/0*.md

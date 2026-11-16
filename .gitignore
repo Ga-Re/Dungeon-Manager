@@ -9,3 +9,5 @@ coverage/
 *.log
 .DS_Store
 *.tsbuildinfo
+# Boundary-rule fixture: a built package as an import target (see verify-rules.js).
+!tooling/dependency-cruiser/fixtures/packages/i18n/dist/
