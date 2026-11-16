@@ -66,6 +66,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] `pnpm dev:desktop` opens the DM window; a button opens the player window on a selectable display in fullscreen
   - [ ] i18next set up (`de` default, `en`), no hard-coded strings
   - [ ] Tauri-driver smoke test starts the app and finds both windows
+- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`.
 
 ### T-007 Performance spike: video map + fog in the player window
 
@@ -90,6 +91,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - React web app in `apps/companion`, built as static files.
 - **Acceptance criteria**
   - [ ] `pnpm dev:companion` serves a placeholder page; production build outputs static files consumable by the desktop backend later
+- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`.
 
 ### T-010 Upgrade to TypeScript 7
 

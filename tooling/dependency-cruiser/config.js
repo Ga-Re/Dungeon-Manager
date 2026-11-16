@@ -14,12 +14,6 @@ const npm = (...patterns) => {
   return `(^|/)node_modules/${group}(/|$)|^${group}(/|$)`;
 };
 
-const REACT = npm(
-  "react",
-  "react-dom",
-  "react-native",
-  "@testing-library/react",
-);
 const PIXI = npm("pixi\\.js", "@pixi/[^/]+");
 const TAURI = npm("@tauri-apps/[^/]+");
 const EXPO = npm("expo", "expo-[^/]+", "@expo/[^/]+");
@@ -51,7 +45,7 @@ const forbid = (name, comment, from, to) => ({
 /** @type {import("dependency-cruiser").IConfiguration} */
 export default {
   forbidden: [
-    // core and schema are allow-listed: anything not listed is a violation,
+    // core, schema, renderer, protocol and storage are allow-listed: anything not listed is a violation,
     // including Node built-ins, browser libraries and unresolvable modules.
     forbid(
       "core-only-schema",
@@ -72,35 +66,21 @@ export default {
       { pathNot: `${pkg("renderer", "core", "schema")}|${PIXI}` },
     ),
 
-    // The other packages are deny-listed per the "must NOT depend on" column.
     forbid(
-      "protocol-boundaries",
-      "protocol may depend on core and schema only; no UI, renderer or I/O.",
+      "protocol-only-core-schema",
+      "protocol may only depend on core and schema (no UI, renderer or I/O). Approved libraries are added here explicitly.",
       { path: "^packages/protocol/" },
-      {
-        path: [
-          otherPackages("protocol", "core", "schema"),
-          REACT,
-          PIXI,
-          TAURI,
-          EXPO,
-        ],
-      },
+      { pathNot: pkg("protocol", "core", "schema") },
     ),
     forbid(
-      "storage-boundaries",
-      "storage may depend on core and schema only; no UI, renderer, and no real FS (use the injected adapter).",
+      "storage-only-core-schema",
+      "storage may only depend on core and schema (no UI, renderer or real FS; use the injected adapter). Approved libraries are added here explicitly.",
       { path: "^packages/storage/" },
-      {
-        path: [
-          otherPackages("storage", "core", "schema"),
-          REACT,
-          PIXI,
-          TAURI,
-          EXPO,
-        ],
-      },
+      { pathNot: pkg("storage", "core", "schema") },
     ),
+
+    // ui uses many web libraries, so it is deny-listed per the "must NOT depend on" column.
+    // Its public renderer entry point is allowed; anything deeper is an internal.
     forbid(
       "ui-boundaries",
       "ui may depend on core, schema, i18n and React; not on Tauri, Expo or renderer internals.",
@@ -108,17 +88,12 @@ export default {
       {
         path: [
           otherPackages("ui", "core", "schema", "i18n", "renderer"),
-          "^packages/renderer/src/|^@dungeon-manager/renderer/",
+          "^packages/renderer/|^@dungeon-manager/renderer/",
           TAURI,
           EXPO,
         ],
+        pathNot: "^packages/renderer/dist/index\\.(js|d\\.ts)$",
       },
-    ),
-    forbid(
-      "no-io-in-pure-packages",
-      "protocol and storage must not use Node built-ins (I/O goes through injected adapters).",
-      { path: "^packages/(protocol|storage)/" },
-      { dependencyTypes: ["core"] },
     ),
     forbid(
       "packages-not-to-apps",

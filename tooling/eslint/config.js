@@ -26,7 +26,7 @@ export function createConfig(rootDir) {
     },
     {
       // Plain JS is only used for tooling scripts and configs running on Node.
-      files: ["**/*.js"],
+      files: ["**/*.{js,mjs,cjs}"],
       extends: [tseslint.configs.disableTypeChecked],
       languageOptions: {
         globals: { console: "readonly", process: "readonly" },
