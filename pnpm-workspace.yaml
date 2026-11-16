@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+  - tooling/*
+
+# Fail fast when the Node version does not match `engines` in package.json.
+engineStrict: true

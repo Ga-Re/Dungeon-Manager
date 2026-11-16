@@ -12,12 +12,12 @@ New tasks discovered during work are appended to the right stage with status `to
 ## Stage 0 – Foundation
 
 ### T-001 Monorepo scaffold
-- **Status:** todo · **Depends on:** – · **Refs:** ARCHITECTURE §3, ADR-0004
+- **Status:** review · **Depends on:** – · **Refs:** ARCHITECTURE §3, ADR-0004
 - Create pnpm workspace + Turborepo with the layout from ARCHITECTURE §3 (empty packages with `package.json`, `tsconfig`, `src/index.ts`).
 - **Acceptance criteria**
-  - [ ] `pnpm install` and `pnpm build` succeed on a clean clone
-  - [ ] Shared `tsconfig` base with `strict: true` in `tooling/`
-  - [ ] README with setup steps (Node, pnpm, Rust versions pinned via `.nvmrc`/`rust-toolchain.toml`)
+  - [x] `pnpm install` and `pnpm build` succeed on a clean clone
+  - [x] Shared `tsconfig` base with `strict: true` in `tooling/`
+  - [x] README with setup steps (Node, pnpm, Rust versions pinned via `.nvmrc`/`rust-toolchain.toml`)
 - **Notes:** Asks before adding Turborepo/pnpm only if versions deviate from current stable.
 
 ### T-002 Lint, format and boundary checks
@@ -26,6 +26,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] `pnpm check` runs typecheck, lint, format check, dependency-cruiser
   - [ ] A deliberate boundary violation (e.g. `core` importing `react`) fails `pnpm check` (proven by a test fixture or documented manual check)
+- **Notes:** From T-001 review: package `exports` point at `dist/`, so typecheck of dependents needs `dependsOn: ["^build"]` in Turbo (or a source export condition). `moduleResolution: Bundler` allows extensionless imports – fine for Vite/Vitest/Metro, not for running `dist/` directly with Node.
 
 ### T-003 Test infrastructure
 - **Status:** todo · **Depends on:** T-002 · **Refs:** ARCHITECTURE §12, ADR-0009
@@ -80,6 +81,13 @@ New tasks discovered during work are appended to the right stage with status `to
 - React web app in `apps/companion`, built as static files.
 - **Acceptance criteria**
   - [ ] `pnpm dev:companion` serves a placeholder page; production build outputs static files consumable by the desktop backend later
+
+### T-010 Upgrade to TypeScript 7
+- **Status:** todo · **Depends on:** T-002
+- T-001 pinned TypeScript 6.0.3 because typescript-eslint did not support TypeScript 7 yet (peer range `<6.1.0` as of 2026-11-16). Upgrade once typescript-eslint supports TS 7.
+- **Acceptance criteria**
+  - [ ] `typescript` bumped to the current 7.x; `pnpm check` green
+- **Notes:** Discovered during T-001.
 
 ---
 

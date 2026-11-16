@@ -1,0 +1,22 @@
+{
+  "name": "@dungeon-manager/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure domain logic: commands, state, events, projection. No I/O.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dungeon-manager/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@dungeon-manager/tsconfig": "workspace:*"
+  }
+}

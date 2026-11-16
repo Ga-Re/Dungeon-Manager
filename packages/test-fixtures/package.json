@@ -1,0 +1,19 @@
+{
+  "name": "@dungeon-manager/test-fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Self-made or CC0 sample campaigns, maps and golden screenshots.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@dungeon-manager/tsconfig": "workspace:*"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@dungeon-manager/ui",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared React (web) components for desktop and companion.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dungeon-manager/core": "workspace:*",
+    "@dungeon-manager/schema": "workspace:*",
+    "@dungeon-manager/i18n": "workspace:*"
+  },
+  "devDependencies": {
+    "@dungeon-manager/tsconfig": "workspace:*"
+  }
+}

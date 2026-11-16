@@ -1,0 +1,20 @@
+{
+  "name": "@dungeon-manager/companion",
+  "version": "0.0.0",
+  "private": true,
+  "description": "React web app served by the desktop app over the LAN.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dungeon-manager/core": "workspace:*",
+    "@dungeon-manager/schema": "workspace:*",
+    "@dungeon-manager/protocol": "workspace:*",
+    "@dungeon-manager/ui": "workspace:*",
+    "@dungeon-manager/i18n": "workspace:*"
+  },
+  "devDependencies": {
+    "@dungeon-manager/tsconfig": "workspace:*"
+  }
+}

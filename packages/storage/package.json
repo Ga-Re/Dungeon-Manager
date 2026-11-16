@@ -1,0 +1,23 @@
+{
+  "name": "@dungeon-manager/storage",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Library folder layout, read/write via an injected FS adapter, conflict detection.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dungeon-manager/core": "workspace:*",
+    "@dungeon-manager/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@dungeon-manager/tsconfig": "workspace:*"
+  }
+}
