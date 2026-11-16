@@ -97,6 +97,7 @@ Locked down because the repository is public:
 - Only pull requests from branches **in this repository**: a separate job without secrets rejects fork PRs, so the API key never runs next to fork code.
 - Claude only reads the owner's comments, so text from other people cannot smuggle in instructions.
 - Issues are not handled, only pull requests.
+- One Claude run per pull request at a time; a new `@claude` request waits for the running one. Put `@claude` in one place per review (summary or one inline comment), otherwise several runs queue up.
 
 ### Setup (one-time, for the DM)
 

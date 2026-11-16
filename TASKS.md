@@ -51,7 +51,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-005 Claude Code GitHub integration
 
-- **Status:** in-progress · **Depends on:** T-004
+- **Status:** review · **Depends on:** T-004
 - Set up the Claude GitHub app/workflow so `@claude` in PR comments triggers the agent to address review feedback.
 - **Acceptance criteria**
   - [x] Workflow file committed; setup steps for the DM (installing the app, adding the API key secret) documented in README
