@@ -17,3 +17,7 @@ Plan campaigns on the go, present them at the table: maps, fog of war, spells, s
 5. Review each pull request; comment with `@claude` once T-005 is done, merge when satisfied, then run `/next-task` again.
 
 Setup instructions for Node, pnpm, Rust and the mobile toolchain are added by task T-001.
+
+## License
+
+No license is granted. All rights reserved. The source is public for reference only.

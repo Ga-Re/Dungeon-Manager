@@ -57,6 +57,13 @@ If you see a **better solution** than the one specified, say so – even unasked
 - **Accessibility and i18n:** no hard-coded UI strings (use i18next, German first), keyboard support on desktop, sensible touch targets on mobile.
 - **Performance budgets** in ARCHITECTURE.md §11 are requirements. Renderer changes must not regress the benchmark scene.
 
+## Public repository
+This repository is **public**. Everything committed is visible to anyone, forever (history included).
+- **No licensed third-party content:** never commit purchased or licensed assets (maps, tokens, sounds, music – e.g. Forgotten Adventures, Beneos, Tabletop Audio files), not even as test fixtures. Fixtures must be self-made or CC0, with the source noted in `packages/test-fixtures/SOURCES.md`.
+- **No personal or device data:** no campaigns, notes, player names, IP addresses, light-device tokens or API keys. The user's library folder lives outside the repo.
+- **No license is granted** (all rights reserved). Do not add a LICENSE file or license headers unless the DM decides so.
+- Secrets used by CI live only in GitHub Actions secrets and must never be exposed to workflows triggered by forks or by people other than the owner.
+
 ## Code standards
 - English for code, comments, commits, PRs and docs. UI strings in i18n files.
 - TypeScript `strict`; no `any`, no `@ts-ignore` without a linked task explaining why.
@@ -117,3 +124,4 @@ These exist after task T-001/T-002 (see TASKS.md); until then, create them as pa
 - Add a dependency, change a file format or deviate from an ADR without asking
 - Send hidden game data to the player view or companions
 - Call cloud provider APIs (see ADR-0005)
+- Commit licensed third-party assets, personal data or secrets (public repository)

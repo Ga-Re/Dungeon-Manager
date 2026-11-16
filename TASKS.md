@@ -34,10 +34,12 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] `pnpm check` includes unit/component tests with coverage gates
   - [ ] `pnpm test:e2e` and `pnpm test:visual` run a sample test each
   - [ ] Coverage below threshold fails the check
+  - [ ] `packages/test-fixtures/SOURCES.md` lists the origin and license of every fixture (self-made or CC0 only – public repo)
 
 ### T-004 CI on GitHub Actions
 - **Status:** todo · **Depends on:** T-003
 - Workflow on every PR: install, `pnpm check`, Rust fmt/clippy/test, E2E, visual tests. Cache pnpm and cargo.
+- Public repo: use `pull_request` (not `pull_request_target`) so fork PRs never get secrets; minimal `permissions:` per workflow.
 - **Acceptance criteria**
   - [ ] PRs show required status checks; failing checks block merge (document the branch-protection settings the DM must enable)
 
@@ -46,7 +48,9 @@ New tasks discovered during work are appended to the right stage with status `to
 - Set up the Claude GitHub app/workflow so `@claude` in PR comments triggers the agent to address review feedback.
 - **Acceptance criteria**
   - [ ] Workflow file committed; setup steps for the DM (installing the app, adding the API key secret) documented in README
-- **Notes:** Verify current setup steps in the official Claude Code docs before implementing.
+  - [ ] The workflow only runs for comments by the repository owner (check `author_association` / actor), never for other users or forks – the repo is public
+  - [ ] The API key secret is never available to workflows triggered from forks
+- **Notes:** Verify current setup steps and the action's access-control options in the official Claude Code docs before implementing.
 
 ### T-006 Desktop app skeleton with two windows
 - **Status:** todo · **Depends on:** T-001 · **Refs:** ADR-0002, SPEC 2.1–2.2
