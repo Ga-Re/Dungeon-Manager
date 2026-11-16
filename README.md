@@ -59,7 +59,7 @@ E2E tests (Playwright) in `<package>/playwright/e2e/`. The first command downloa
 pnpm test:visual
 ```
 
-Screenshot tests in `<package>/playwright/visual/`, compared pixel-exactly with the golden images in `packages/test-fixtures/golden/`. They run inside a pinned Playwright Docker image (needs Docker and a bash shell) so rendering is identical on every machine. After an intended visual change, run `pnpm test:visual --update-snapshots` and review the new images in the diff. When upgrading `@playwright/test`, update the image in `tooling/playwright/run-visual.sh` to the same version.
+Screenshot tests in `<package>/playwright/visual/`, compared pixel-exactly with the golden images in `packages/test-fixtures/golden/`. They run inside a pinned Playwright Docker image (needs Docker and a bash shell) so rendering is identical on every machine. The image always runs as `linux/amd64`; on Apple Silicon Macs enable _Use Rosetta for x86_64/amd64 emulation_ in Docker Desktop for speed. After an intended visual change, run `pnpm test:visual --update-snapshots` and review the new images in the diff. When upgrading `@playwright/test`, update the image in `tooling/playwright/run-visual.sh` to the same version.
 
 ## Continuous integration
 
@@ -80,11 +80,11 @@ The workflow only uses official `actions/*` pinned by commit SHA, has a read-onl
    - Name `main`, Enforcement status **Active**, Target branches → Add target → **Include default branch**.
    - Enable **Restrict deletions** and **Block force pushes**.
    - Enable **Require a pull request before merging** (required approvals: 0 – you merge, nobody else reviews).
-   - Enable **Require status checks to pass** → Add checks → `check`, `e2e`, `visual`, `rust` (they appear in the list after the first CI run). Also tick **Require branches to be up to date before merging**.
+   - Enable **Require status checks to pass** → Add checks → `check`, `e2e`, `visual`, `rust` (they appear in the list after the first CI run); choose **GitHub Actions** as the source of each. Also tick **Require branches to be up to date before merging** – after every merge, open PRs then need **Update branch** before they can merge (auto-merge waits for that).
    - Leave the bypass list empty so the rules apply to everyone, including admins.
 2. **Allow auto-merge:** Settings → General → Pull Requests → tick **Allow auto-merge**. On a pull request, click **Enable auto-merge**; GitHub merges it as soon as all required checks pass.
 3. **Fork safety:** Settings → Actions → General.
-   - Fork pull request workflows from outside collaborators → **Require approval for all external contributors**.
+   - Fork pull request workflows from outside collaborators → choose the **strictest** option (approval for all outside collaborators / external contributors; the exact label varies).
    - Workflow permissions → **Read repository contents and packages permissions**; leave "Allow GitHub Actions to create and approve pull requests" unticked.
 
 ## Repository layout

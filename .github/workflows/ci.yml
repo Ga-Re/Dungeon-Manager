@@ -1,4 +1,5 @@
-# Quality gates from ADR-0009. Job names are the required status checks (see README).
+# Quality gates from ADR-0009. Job names are the required status checks (see README),
+# so keep them unique across all workflows.
 name: CI
 
 on:
@@ -13,7 +14,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Superseded PR runs are cancelled; every commit on main keeps its own status.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   TURBO_TELEMETRY_DISABLED: "1"
@@ -87,11 +89,17 @@ jobs:
           persist-credentials: false
       # The Rust crate arrives with T-006; until then this job passes so it can already
       # be a required check. rustup reads the toolchain from rust-toolchain.toml.
-      - name: Skip when there is no crate yet
-        if: hashFiles('apps/desktop/src-tauri/Cargo.toml') == ''
-        run: echo "No Rust crate yet (apps/desktop/src-tauri) – nothing to check."
+      - name: Detect crate
+        id: crate
+        run: |
+          if [ -f "$MANIFEST" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No Rust crate yet ($MANIFEST) – nothing to check."
+          fi
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: hashFiles('apps/desktop/src-tauri/Cargo.toml') != ''
+        if: steps.crate.outputs.exists == 'true'
         with:
           path: |
             ~/.cargo/registry
@@ -100,11 +108,11 @@ jobs:
           key: cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
           restore-keys: cargo-${{ runner.os }}-
       - name: rustfmt
-        if: hashFiles('apps/desktop/src-tauri/Cargo.toml') != ''
+        if: steps.crate.outputs.exists == 'true'
         run: cargo fmt --manifest-path "$MANIFEST" --check
       - name: clippy
-        if: hashFiles('apps/desktop/src-tauri/Cargo.toml') != ''
+        if: steps.crate.outputs.exists == 'true'
         run: cargo clippy --manifest-path "$MANIFEST" --all-targets -- -D warnings
       - name: test
-        if: hashFiles('apps/desktop/src-tauri/Cargo.toml') != ''
+        if: steps.crate.outputs.exists == 'true'
         run: cargo test --manifest-path "$MANIFEST"

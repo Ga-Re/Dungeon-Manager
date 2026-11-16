@@ -9,10 +9,10 @@ runs:
       with:
         node-version-file: .nvmrc
 
-    # Node 26 no longer bundles Corepack; pnpm then switches to the exact `packageManager` version.
+    # Node 26 no longer bundles Corepack, so install the exact `packageManager` version.
     - name: Install pnpm
       shell: bash
-      run: npm install --global pnpm@12.21.0
+      run: npm install --global "$(node -p "require('./package.json').packageManager")"
 
     - name: Locate pnpm store
       id: pnpm-store
