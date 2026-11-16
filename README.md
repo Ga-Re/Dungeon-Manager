@@ -61,6 +61,32 @@ pnpm test:visual
 
 Screenshot tests in `<package>/playwright/visual/`, compared pixel-exactly with the golden images in `packages/test-fixtures/golden/`. They run inside a pinned Playwright Docker image (needs Docker and a bash shell) so rendering is identical on every machine. After an intended visual change, run `pnpm test:visual --update-snapshots` and review the new images in the diff. When upgrading `@playwright/test`, update the image in `tooling/playwright/run-visual.sh` to the same version.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`. Each job is one status check:
+
+| Check    | What it runs                                                                                                      |
+| -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `check`  | `pnpm check` (typecheck, lint, format, boundaries, unit tests with coverage)                                      |
+| `e2e`    | `pnpm test:e2e`                                                                                                   |
+| `visual` | `pnpm test:visual` (pinned Docker image)                                                                          |
+| `rust`   | `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test` (passes without work until the crate exists, T-006) |
+
+The workflow only uses official `actions/*` pinned by commit SHA, has a read-only token and no secrets. It is triggered by `pull_request` (not `pull_request_target`), so pull requests from forks never see secrets.
+
+### Repository settings (one-time, for the DM)
+
+1. **Protect `main`:** Settings → Rules → Rulesets → New ruleset → New branch ruleset.
+   - Name `main`, Enforcement status **Active**, Target branches → Add target → **Include default branch**.
+   - Enable **Restrict deletions** and **Block force pushes**.
+   - Enable **Require a pull request before merging** (required approvals: 0 – you merge, nobody else reviews).
+   - Enable **Require status checks to pass** → Add checks → `check`, `e2e`, `visual`, `rust` (they appear in the list after the first CI run). Also tick **Require branches to be up to date before merging**.
+   - Leave the bypass list empty so the rules apply to everyone, including admins.
+2. **Allow auto-merge:** Settings → General → Pull Requests → tick **Allow auto-merge**. On a pull request, click **Enable auto-merge**; GitHub merges it as soon as all required checks pass.
+3. **Fork safety:** Settings → Actions → General.
+   - Fork pull request workflows from outside collaborators → **Require approval for all external contributors**.
+   - Workflow permissions → **Read repository contents and packages permissions**; leave "Allow GitHub Actions to create and approve pull requests" unticked.
+
 ## Repository layout
 
 See [ARCHITECTURE.md §3](docs/ARCHITECTURE.md). Workspace packages are named `@dungeon-manager/<folder>`; the shared TypeScript config lives in `tooling/tsconfig`.
