@@ -80,7 +80,7 @@ export default {
     ),
 
     // ui uses many web libraries, so it is deny-listed per the "must NOT depend on" column.
-    // Its public renderer entry point is allowed; anything deeper is an internal.
+    // Its public renderer entry point is allowed (ARCHITECTURE §4); anything deeper is an internal.
     forbid(
       "ui-boundaries",
       "ui may depend on core, schema, i18n and React; not on Tauri, Expo or renderer internals.",

@@ -91,15 +91,15 @@ New dependencies require approval (see CLAUDE.md).
 
 ## 4. Module boundaries (enforced by dependency-cruiser)
 
-| Package    | May depend on                   | Must NOT depend on                                     |
-| ---------- | ------------------------------- | ------------------------------------------------------ |
-| `core`     | `schema`                        | React, PixiJS, Tauri, Expo, Node/Browser APIs, any I/O |
-| `schema`   | zod                             | everything else                                        |
-| `protocol` | `core`, `schema`                | UI, renderer, I/O                                      |
-| `storage`  | `core`, `schema`                | UI, renderer; real FS (uses an injected adapter)       |
-| `renderer` | `core`, `schema`, PixiJS        | React, Tauri, storage                                  |
-| `ui`       | `core`, `schema`, `i18n`, React | Tauri, Expo, renderer internals                        |
-| `apps/*`   | any package                     | other apps                                             |
+| Package    | May depend on                                                         | Must NOT depend on                                     |
+| ---------- | --------------------------------------------------------------------- | ------------------------------------------------------ |
+| `core`     | `schema`                                                              | React, PixiJS, Tauri, Expo, Node/Browser APIs, any I/O |
+| `schema`   | zod                                                                   | everything else                                        |
+| `protocol` | `core`, `schema`                                                      | UI, renderer, I/O                                      |
+| `storage`  | `core`, `schema`                                                      | UI, renderer; real FS (uses an injected adapter)       |
+| `renderer` | `core`, `schema`, PixiJS                                              | React, Tauri, storage                                  |
+| `ui`       | `core`, `schema`, `i18n`, React, `renderer` (public entry point only) | Tauri, Expo, renderer internals                        |
+| `apps/*`   | any package                                                           | other apps                                             |
 
 Rules:
 
