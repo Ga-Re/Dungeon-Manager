@@ -251,6 +251,7 @@ A benchmark scene in `test-fixtures` plus a script that records frame times is p
 - One-time pairing tokens; DM can kick/revoke any client.
 - Companions only receive projected state – never hidden data.
 - No telemetry without explicit opt-in.
+- The repository is public: test fixtures are self-made or CC0 only (sources in `packages/test-fixtures/SOURCES.md`); no personal or device data in the repo.
 - Secrets (e.g. Hue/HA tokens) stored in the OS keychain, never in the sync folder or repo.
 
 ---
