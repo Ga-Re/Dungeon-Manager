@@ -13,6 +13,7 @@ Finish the current task following CLAUDE.md. Do not skip steps.
 5. Update docs if behaviour or structure changed (SPEC, ARCHITECTURE, new ADR via `/new-adr`).
 6. Use the `reviewer` subagent on the branch. Fix blocking findings; for any finding you do not fix, write the reason in the PR.
 7. Commit with Conventional Commits, push the branch.
-8. Set the task status to `review` in `TASKS.md` (commit included in the PR).
+8. Set the task status to `done` in `TASKS.md` (commit included in the PR; it becomes true with the merge).
 9. Open the PR with `gh pr create` using the PR template from CLAUDE.md, including the reviewer summary and any deviations/open questions.
-10. Report the PR link and stop. Do not merge.
+10. Wait for CI. When all required checks are green and no open question for the DM remains, merge the PR (merge commit). If CI fails, fix the root cause and push again – never weaken tests or gates.
+11. Report the PR link and the merge result.

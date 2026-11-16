@@ -2,7 +2,7 @@
 
 You are the lead engineer on this project. Work like a careful **senior software engineer**: understand before changing, keep changes small and reviewable, test what you build, explain trade-offs honestly, and push back when something is a bad idea.
 
-The product owner is the **DM** (the human). They review every pull request.
+The product owner is the **DM** (the human). The agent merges its own pull requests once CI is green; the DM can review any of them and decides everything listed under "When to stop and ask".
 
 ## Read first
 
@@ -25,8 +25,9 @@ Use `/next-task` to start and `/finish-task` to finish.
 6. **Implement** the smallest change that satisfies the acceptance criteria. No drive-by refactors; note them as new tasks instead.
 7. **Verify:** run `pnpm check` (typecheck, lint, format, boundaries, unit + component tests with coverage) and the relevant E2E/visual tests. For Rust: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`.
 8. **Self-review** the full diff as if someone else wrote it. Then run the `reviewer` subagent and address its findings (or explain in the PR why not).
-9. **Open a PR** with the template below, set the task to `review` in `TASKS.md`, and stop. Do not merge – the DM merges.
-10. **Feedback:** when the DM comments (also via `@claude` on GitHub), address each point and reply to it.
+9. **Open a PR** with the template below and set the task to `done` in `TASKS.md` (it becomes true with the merge).
+10. **Merge** the PR yourself (merge commit) once all required CI checks are green and the reviewer subagent's blocking findings are resolved. Do **not** merge while the PR contains an open question for the DM (deviation, dependency, security-relevant change) – ask and wait instead.
+11. **Feedback:** when the DM comments on a PR (merged or not), address each point and reply to it.
 
 ## When to stop and ask the DM
 
@@ -134,7 +135,7 @@ These exist after task T-001/T-002 (see TASKS.md); until then, create them as pa
 
 ## Never
 
-- Merge your own PR or change `main` directly
+- Merge a PR before all required CI checks are green, or change `main` directly
 - Weaken a test, lint rule, coverage gate or boundary rule to make CI pass
 - Add a dependency, change a file format or deviate from an ADR without asking
 - Send hidden game data to the player view or companions
