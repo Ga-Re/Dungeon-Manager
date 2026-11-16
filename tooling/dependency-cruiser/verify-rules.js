@@ -6,6 +6,16 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const here = import.meta.dirname;
+// Run the CLI through the current Node binary: works on Windows too (no .cmd shim, no PATH).
+const depcruiseBin = join(
+  here,
+  "..",
+  "..",
+  "node_modules",
+  "dependency-cruiser",
+  "bin",
+  "dependency-cruiser.mjs",
+);
 const fixtureRoot = join(here, "fixtures");
 
 // Fixtures import packages that do not exist there, so `not-to-unresolvable` fires
@@ -21,6 +31,11 @@ const EXPECTED = {
   "packages/core/src/imports-storage.ts": ["core-only-schema"],
   // Workspace imports resolve to dist/; such targets must not be dropped.
   "packages/core/src/imports-built-package.ts": ["core-only-schema"],
+  // Tests get the same allow-list plus Vitest; production code never gets Vitest.
+  "packages/core/src/uses-vitest.test.ts": [],
+  "packages/core/src/imports-node-fs.test.ts": ["core-only-schema-in-tests"],
+  "packages/core/src/imports-vitest.ts": ["core-only-schema"],
+  "packages/schema/src/imports-pixi.test.ts": ["schema-only-zod-in-tests"],
   "packages/core/src/cycle-a.ts": ["no-circular"],
   // depcruise reports a cycle once, at the module where it first enters it.
   "packages/core/src/cycle-b.ts": [],
@@ -58,8 +73,9 @@ function sourceDirs() {
 function cruiseFixtures() {
   try {
     return execFileSync(
-      "depcruise",
+      process.execPath,
       [
+        depcruiseBin,
         "--config",
         join(here, "config.js"),
         "--output-type",

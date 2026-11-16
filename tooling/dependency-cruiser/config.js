@@ -42,41 +42,64 @@ const forbid = (name, comment, from, to) => ({
   to,
 });
 
+// Co-located unit tests (src/.../name.test.ts), see ARCHITECTURE §12.
+const TEST_FILE = "\\.test\\.tsx?$";
+const VITEST = npm("vitest");
+
+/**
+ * Allow-list rule for a package's production code, plus a twin rule for its tests:
+ * tests get exactly the same allow-list and may additionally import Vitest.
+ */
+const allowOnly = (name, comment, packageName, allowed) => [
+  forbid(
+    name,
+    comment,
+    { path: `^packages/${packageName}/`, pathNot: TEST_FILE },
+    { pathNot: allowed },
+  ),
+  forbid(
+    `${name}-in-tests`,
+    `${comment} Tests may additionally import Vitest.`,
+    { path: `^packages/${packageName}/.*${TEST_FILE}` },
+    { pathNot: `${allowed}|${VITEST}` },
+  ),
+];
+
 /** @type {import("dependency-cruiser").IConfiguration} */
 export default {
   forbidden: [
     // core, schema, renderer, protocol and storage are allow-listed: anything not listed is a violation,
     // including Node built-ins, browser libraries and unresolvable modules.
-    forbid(
+    ...allowOnly(
       "core-only-schema",
       "core is pure: it may only depend on schema (no I/O, no UI, no platform APIs).",
-      { path: "^packages/core/" },
-      { pathNot: pkg("core", "schema") },
+      "core",
+      pkg("core", "schema"),
     ),
-    forbid(
+    ...allowOnly(
       "schema-only-zod",
       "schema may only depend on zod.",
-      { path: "^packages/schema/" },
-      { pathNot: `${pkg("schema")}|${ZOD}` },
+      "schema",
+      `${pkg("schema")}|${ZOD}`,
     ),
-    forbid(
+    ...allowOnly(
       "renderer-only-core-schema-pixi",
       "renderer may only depend on core, schema and PixiJS.",
-      { path: "^packages/renderer/" },
-      { pathNot: `${pkg("renderer", "core", "schema")}|${PIXI}` },
+      "renderer",
+      `${pkg("renderer", "core", "schema")}|${PIXI}`,
     ),
 
-    forbid(
+    ...allowOnly(
       "protocol-only-core-schema",
       "protocol may only depend on core and schema (no UI, renderer or I/O). Approved libraries are added here explicitly.",
-      { path: "^packages/protocol/" },
-      { pathNot: pkg("protocol", "core", "schema") },
+      "protocol",
+      pkg("protocol", "core", "schema"),
     ),
-    forbid(
+    ...allowOnly(
       "storage-only-core-schema",
       "storage may only depend on core and schema (no UI, renderer or real FS; use the injected adapter). Approved libraries are added here explicitly.",
-      { path: "^packages/storage/" },
-      { pathNot: pkg("storage", "core", "schema") },
+      "storage",
+      pkg("storage", "core", "schema"),
     ),
 
     // ui uses many web libraries, so it is deny-listed per the "must NOT depend on" column.

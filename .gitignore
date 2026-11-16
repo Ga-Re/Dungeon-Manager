@@ -11,3 +11,5 @@ coverage/
 *.tsbuildinfo
 # Boundary-rule fixtures: built packages as import targets (see verify-rules.js).
 !tooling/dependency-cruiser/fixtures/packages/*/dist/
+test-results/
+playwright-report/

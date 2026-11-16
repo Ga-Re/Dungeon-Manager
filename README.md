@@ -40,6 +40,27 @@ pnpm check
 
 Runs typecheck, ESLint, the Prettier format check and the module-boundary rules from [ARCHITECTURE.md §4](docs/ARCHITECTURE.md) (dependency-cruiser), plus a self-test proving those rules catch deliberate violations (`tooling/dependency-cruiser/fixtures/`). `pnpm format` fixes formatting. Accepted ADRs are excluded from formatting because they are immutable (ADR-0001).
 
+## Tests
+
+```bash
+pnpm test
+```
+
+Unit and component tests (Vitest) with coverage gates: ≥ 80 % lines and branches per package for `core`, `schema`, `storage` and `protocol`. Part of `pnpm check`. Tests live next to the code as `src/**/*.test.ts`.
+
+```bash
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
+
+E2E tests (Playwright) in `<package>/playwright/e2e/`. The first command downloads the browser once.
+
+```bash
+pnpm test:visual
+```
+
+Screenshot tests in `<package>/playwright/visual/`, compared pixel-exactly with the golden images in `packages/test-fixtures/golden/`. They run inside a pinned Playwright Docker image (needs Docker and a bash shell) so rendering is identical on every machine. After an intended visual change, run `pnpm test:visual --update-snapshots` and review the new images in the diff. When upgrading `@playwright/test`, update the image in `tooling/playwright/run-visual.sh` to the same version.
+
 ## Repository layout
 
 See [ARCHITECTURE.md §3](docs/ARCHITECTURE.md). Workspace packages are named `@dungeon-manager/<folder>`; the shared TypeScript config lives in `tooling/tsconfig`.
