@@ -23,7 +23,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-002 Lint, format and boundary checks
 
-- **Status:** review · **Depends on:** T-001 · **Refs:** ARCHITECTURE §4, ADR-0009
+- **Status:** done · **Depends on:** T-001 · **Refs:** ARCHITECTURE §4, ADR-0009
 - ESLint (TS strict rules, no `any`), Prettier, dependency-cruiser with the boundary table from ARCHITECTURE §4; `pnpm check` script.
 - **Acceptance criteria**
   - [x] `pnpm check` runs typecheck, lint, format check, dependency-cruiser
@@ -32,7 +32,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-003 Test infrastructure
 
-- **Status:** review · **Depends on:** T-002 · **Refs:** ARCHITECTURE §12, ADR-0009
+- **Status:** done · **Depends on:** T-002 · **Refs:** ARCHITECTURE §12, ADR-0009
 - Vitest workspace with coverage thresholds (≥ 80 % for `core`, `schema`, `storage`, `protocol`), React Testing Library, Playwright config, screenshot test setup in a pinned Docker image.
 - **Acceptance criteria**
   - [x] `pnpm check` includes unit/component tests with coverage gates
@@ -42,7 +42,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-004 CI on GitHub Actions
 
-- **Status:** todo · **Depends on:** T-003
+- **Status:** review · **Depends on:** T-003
 - Workflow on every PR: install, `pnpm check`, Rust fmt/clippy/test, E2E, visual tests. Cache pnpm and cargo.
 - Public repo: use `pull_request` (not `pull_request_target`) so fork PRs never get secrets; minimal `permissions:` per workflow.
 - **Acceptance criteria**
@@ -67,7 +67,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] `pnpm dev:desktop` opens the DM window; a button opens the player window on a selectable display in fullscreen
   - [ ] i18next set up (`de` default, `en`), no hard-coded strings
   - [ ] Tauri-driver smoke test starts the app and finds both windows
-- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`. From T-003 (DM decision): add React Testing Library, jsdom and React here, with the first component; configure a jsdom Vitest environment for `*.test.tsx`.
+- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`. From T-003 (DM decision): add React Testing Library, jsdom and React here, with the first component; configure a jsdom Vitest environment for `*.test.tsx`. From T-004: the CI `rust` job starts running fmt/clippy/test once `apps/desktop/src-tauri/Cargo.toml` exists; on Linux it then needs the Tauri system libraries (`libwebkit2gtk-4.1-dev` etc.) installed via apt in that job.
 
 ### T-007 Performance spike: video map + fog in the player window
 
