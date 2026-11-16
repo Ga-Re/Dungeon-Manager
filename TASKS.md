@@ -12,7 +12,7 @@ New tasks discovered during work are appended to the right stage with status `to
 ## Stage 0 – Foundation
 
 ### T-001 Monorepo scaffold
-- **Status:** todo · **Depends on:** – · **Refs:** ARCHITECTURE §3, ADR-0004
+- **Status:** in-progress · **Depends on:** – · **Refs:** ARCHITECTURE §3, ADR-0004
 - Create pnpm workspace + Turborepo with the layout from ARCHITECTURE §3 (empty packages with `package.json`, `tsconfig`, `src/index.ts`).
 - **Acceptance criteria**
   - [ ] `pnpm install` and `pnpm build` succeed on a clean clone
