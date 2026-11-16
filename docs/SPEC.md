@@ -8,31 +8,33 @@ A tool for a Dungeon Master (DM) to plan campaigns and present them live at the 
 
 ## 1. Core decisions
 
-| Area | Decision |
-|---|---|
-| Play setting | In person, at the table |
-| Player output | Table-top TV lying flat (player view fullscreen on a second display) |
-| Desktop app | Tauri 2 + React + TypeScript + PixiJS (Windows, macOS, Linux) |
-| DM phone app | React Native / Expo + TypeScript (Android and iOS); works on the go and offline |
-| Players | No phone required; paper character sheets are the norm. Optional player companion in the phone browser, local Wi-Fi, no app install |
-| Data sync | A user-chosen folder that any cloud client syncs. The tool uses **no cloud APIs** |
-| Live link at the table | Local Wi-Fi; the notebook is the host; pairing via QR code |
-| Miniatures | Physical minis on the TV; the DM mirrors them with digital tokens. Optional camera detection |
-| Rules depth | Presentation plus combat aids (no full rules automation) |
-| Visibility | Configurable per element: what players see |
-| Language | UI German first (i18n-ready); code and docs in English |
+| Area                   | Decision                                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Play setting           | In person, at the table                                                                                                             |
+| Player output          | Table-top TV lying flat (player view fullscreen on a second display)                                                                |
+| Desktop app            | Tauri 2 + React + TypeScript + PixiJS (Windows, macOS, Linux)                                                                       |
+| DM phone app           | React Native / Expo + TypeScript (Android and iOS); works on the go and offline                                                     |
+| Players                | No phone required; paper character sheets are the norm. Optional player companion in the phone browser, local Wi-Fi, no app install |
+| Data sync              | A user-chosen folder that any cloud client syncs. The tool uses **no cloud APIs**                                                   |
+| Live link at the table | Local Wi-Fi; the notebook is the host; pairing via QR code                                                                          |
+| Miniatures             | Physical minis on the TV; the DM mirrors them with digital tokens. Optional camera detection                                        |
+| Rules depth            | Presentation plus combat aids (no full rules automation)                                                                            |
+| Visibility             | Configurable per element: what players see                                                                                          |
+| Language               | UI German first (i18n-ready); code and docs in English                                                                              |
 
 ---
 
 ## 2. Views & devices
 
 ### 2.1 DM view (notebook)
+
 - Full map including hidden areas, traps, secret doors and DM notes
 - **Live preview of the player view** in a small window, so the DM always sees what the TV shows
 - **Preview of the next scene** to prepare it before it goes live
 - All control panels: fog, tokens, initiative, sound, light, scenes, camera
 
 ### 2.2 Player view (table TV)
+
 - Fullscreen on the second display, no controls visible
 - **Grid calibration:** enter the screen size so one cell is exactly 1 inch (2.54 cm) and physical minis fit
 - Rotatable view (0°/90°/180°/270°) because the TV lies flat and players sit on all sides
@@ -40,6 +42,7 @@ A tool for a Dungeon Master (DM) to plan campaigns and present them live at the 
 - **Blackout / panic button:** switch the player view instantly to black or a pause image
 
 ### 2.3 DM phone app (on the go)
+
 Primarily the **DM's planning tool on the go**. The UI is leaner than the desktop: same data, fewer tools, larger controls.
 
 1. **Planning on the go (main purpose), fully offline**
@@ -53,18 +56,20 @@ Primarily the **DM's planning tool on the go**. The UI is leaner than the deskto
 3. **DM screen at the table (secondary):** initiative, HP, stat blocks, dice and notes in hand while the notebook drives the TV
 
 ### 2.4 Players
+
 - **No phone required.** The tool works fully with paper character sheets and physical dice.
 - The DM enters only the essentials: player name, token, initiative; optionally HP and AC for display
 - **Optional: player companion in the browser.** Players scan a QR code and open a web page served by the notebook on the local Wi-Fi. No app, no account, no internet.
 
-| Feature | Description |
-|---|---|
-| Handouts | View released letters, images and maps; re-read later |
-| Own status | Own HP, conditions and the initiative order |
-| Notes & dice | Private notes and a digital die for those without physical dice |
-| Move own token | See movement rules below |
+| Feature        | Description                                                     |
+| -------------- | --------------------------------------------------------------- |
+| Handouts       | View released letters, images and maps; re-read later           |
+| Own status     | Own HP, conditions and the initiative order                     |
+| Notes & dice   | Private notes and a digital die for those without physical dice |
+| Move own token | See movement rules below                                        |
 
 **Movement rules for player tokens**
+
 - Movement **snaps to the grid**
 - **Free, DM can lock:** moves apply immediately; the DM locks individual players or everyone with one button
 - **Measurement rule configurable per campaign:**
@@ -80,12 +85,14 @@ Primarily the **DM's planning tool on the go**. The UI is leaner than the deskto
 ## 3. Maps
 
 ### 3.1 Formats
+
 - Static images: PNG, JPG, WebP
 - Animated maps: MP4, WebM
 - **Universal VTT import** (`.dd2vtt`, `.uvtt`) from Dungeondraft or Dungeon Alchemist, including walls, doors and light sources
 - **Multiple levels:** floors, cellar, roof, switchable per level
 
 ### 3.2 Presentation
+
 - Zoom and pan in the DM view; locked scale in the player view
 - Preload the next scene so large video maps switch without stutter
 - Crossfade on map change
@@ -117,37 +124,42 @@ Primarily the **DM's planning tool on the go**. The UI is leaner than the deskto
 ### 5.1 Optional: camera detection of players and enemies
 
 **Hardware & markers**
+
 - **1 to 4 USB webcams** on the notebook, on arms above the table; the first version uses one camera straight from above
 - **ArUco stickers on top** of the base or on a clip; one unique code per figure, mapped to a token in the tool
 - The tool generates a printable marker sheet
 
 **Calibration**
+
 - The tool shows reference markers on the TV; each camera is calibrated individually (camera image → grid cell)
 - **Height compensation:** the sticker sits a few centimetres above the TV. For angled cameras the known height is factored out; grid snapping absorbs the rest
 - Recalibrate with one button if a camera moves
 
 **Multiple cameras**
+
 - Detections from all cameras are merged; the most confident wins
 - Helps against hands over the table and reflections that differ per angle
 - Note USB bandwidth: several Full HD cameras on one controller saturate it; spread cameras across ports or lower resolution
 
 **Interplay with manual moves: the camera suggests**
+
 - Confident detections are applied; uncertain ones are flagged in the DM view
 - Manually moved tokens stay locked until the camera sees them unambiguously again
 - Occluded minis keep their last known position
 - Detection can be paused at any time
 
 **Configurable display**
+
 - Per output (TV, DM view, companion): nothing, subtle rings around detected minis, warnings for uncertain detections
 
 ---
 
 ## 6. Player visibility (per element)
 
-| State | Meaning |
-|---|---|
-| Visible | Players see it fully |
-| Hidden | Only the DM sees it |
+| State       | Meaning                                                                          |
+| ----------- | -------------------------------------------------------------------------------- |
+| Visible     | Players see it fully                                                             |
+| Hidden      | Only the DM sees it                                                              |
 | Approximate | Filtered info, e.g. HP as "unhurt / wounded / badly wounded" instead of a number |
 
 Applies to: tokens, names, HP bars, conditions, assets, traps, doors, light sources, spell areas and initiative entries – on the TV and in the companion.
@@ -168,6 +180,7 @@ A default per element type avoids configuring every single element.
 ## 8. Map editor & assets
 
 ### 8.1 Editor
+
 - **Place assets:** furniture, chests, traps, decor via drag & drop; scale, rotate, mirror, z-order
 - **Walls, doors, light:** draw sight lines, doors (open/closed/locked/secret), windows, light sources with radius and colour
 - **Draw new maps:** rooms, tiles, terrain brush (floor, water, grass)
@@ -175,6 +188,7 @@ A default per element type avoids configuring every single element.
 - Grid alignment: overlay and fit the grid to the imported map's grid
 
 ### 8.2 Asset library
+
 - **One global library** for all campaigns
 - Import own files, tag and search them
 - Bundled base pack of free assets (CC0)
@@ -198,21 +212,24 @@ A default per element type avoids configuring every single element.
 ## 10. Lighting / Ambilight
 
 ### 10.1 Hardware
+
 - **Home Assistant** as the central bridge (almost any lamp)
 - **Philips Hue** incl. Entertainment API for fast effects
 - **WLED / ESP32 LED strips** (e.g. behind or under the table TV)
 - **Govee / Nanoleaf** via their local APIs
 
 ### 10.2 Zones with roles
+
 Lamps are assigned to zones; scenes and effects address roles, not individual lamps. Adding a lamp only changes its zone.
 
-| Role | Example | Purpose |
-|---|---|---|
-| TV edge | LED strip on the table TV | Ambilight from the map |
-| Room | Ceiling light, floor lamps | Base mood of the scene |
-| Accent | Shelf, spot | Short effects (spells, lightning) |
+| Role    | Example                    | Purpose                           |
+| ------- | -------------------------- | --------------------------------- |
+| TV edge | LED strip on the table TV  | Ambilight from the map            |
+| Room    | Ceiling light, floor lamps | Base mood of the scene            |
+| Accent  | Shelf, spot                | Short effects (spells, lightning) |
 
 ### 10.3 Behaviour
+
 - **Scene light** changes with the scene
 - **Ambilight:** colours from the map edge are sent live to the LEDs
 - **Events:** flash on spells, red pulse at low HP, flicker for torches or fire
@@ -246,6 +263,7 @@ Lamps are assigned to zones; scenes and effects address roles, not individual la
 ## 13. Flow of a game night
 
 ### 13.1 Start
+
 1. **Session start assistant** (DM view only)
    - Checks table TV, light devices, sound output and cameras: green/yellow/red per device
    - **Attendance:** who is here today? Absent characters are hidden (token, initiative, companion)
@@ -258,12 +276,14 @@ Lamps are assigned to zones; scenes and effects address roles, not individual la
    - Mood music and matching light
 
 ### 13.2 During the session
+
 - **Scene bar with preview:** planned scenes as a bar; prepare the next scene in the DM window (fog, tokens, notes), then switch live with a crossfade. Map, sound and light change together
 - Start combat: initiative tracker opens; optional combat music and light
 - Handouts, pause screen and blackout always available
 - Continuous autosave
 
 ### 13.3 End
+
 1. **Close the session log:** review the automatic log, add DM notes; basis for the next recap
 2. **Snapshot & sync:** back up the campaign; the sync folder is updated so the phone has the current state on the go
 3. **Reset light & sound:** lamps to normal, fade out music
@@ -294,9 +314,11 @@ Lamps are assigned to zones; scenes and effects address roles, not individual la
 ## 16. Roadmap
 
 ### Stage 0 – Foundation
+
 Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 
 ### Stage 1 – MVP: map, fog, tokens (desktop)
+
 - Desktop app with DM view and player view on the table TV
 - Image map import, grid calibration, view rotation
 - Manual fog and memory fog
@@ -307,6 +329,7 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 - Folder structure and file format from day one
 
 ### Stage 2 – Planning on the phone & sound
+
 - DM phone app: Markdown editor, wiki basics, map preparation, scene assembly
 - Folder sync with per-OS guide, conflict detection, previews
 - Sound: scene presets, layer mixer, soundboard, Tabletop Audio import
@@ -314,18 +337,21 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 - Handouts on the TV
 
 ### Stage 3 – Networked at the table
+
 - Wi-Fi pairing via QR: DM phone as remote and DM screen
 - Player companion in the browser: handouts, own status, notes & dice, move own token
 - Movement rules (configurable), DM lock
 - Session start assistant, intro screen, session end with snapshot
 
 ### Stage 4 – Light
+
 - Home Assistant first, then WLED, Hue (Entertainment), Govee/Nanoleaf
 - Zones with roles, priorities, failure indicator
 - Scene light, event light, ambilight from the map
 - Photosensitivity mode
 
 ### Stage 5 – Editor, vision & spells
+
 - Draw walls, doors, light sources
 - Dynamic vision with darkvision; fog behaviour per map
 - UVTT import, multiple levels
@@ -334,6 +360,7 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 - Trigger zones
 
 ### Stage 6 – Campaign & comfort
+
 - Session planner and scene bar with preview
 - Full wiki/lore (relationships, status), session log with recap
 - Monster stat blocks (SRD + homebrew), dice & log
@@ -342,11 +369,13 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 - Draw own maps (terrain brush, tiles)
 
 ### Stage 7 – Camera detection (optional)
+
 - One overhead webcam, ArUco markers, calibration with height compensation
 - "Camera suggests" logic, configurable display
 - Then up to 4 cameras with fusion
 
 ### Later
+
 - Touch overlay as an alternative to the camera
 - Projector support with keystone correction
 - Remote players (hybrid mode)
