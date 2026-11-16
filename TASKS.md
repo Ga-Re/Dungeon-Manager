@@ -114,6 +114,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Round-trip tests (parse → serialize → parse) for every entity
   - [ ] Migration runner tested with a fake v0 → v1 migration
   - [ ] Unknown fields are preserved on round-trip
+- **Notes:** From T-003 review: workspace packages export `dist/`, so a test importing another package runs against its last build (fine inside `pnpm check`, which builds first; stale in a standalone `pnpm test`). Consider a Vitest alias/source condition pointing workspace imports at `src/`.
 
 ### T-102 Core reducer: commands, events, permissions, projection
 
@@ -150,6 +151,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Screenshot tests for a fixture map in both views
   - [ ] Benchmark scene added to `test-fixtures`
+- **Notes:** From T-003 review: `pnpm test:visual` mounts the host `node_modules` into the Linux container. Once visual tests need a Vite dev server, native binaries (esbuild/rollup) from a macOS/Windows host will not run there – install dependencies inside the container (separate volume) instead.
 
 ### T-106 Grid overlay and 1-inch calibration
 
