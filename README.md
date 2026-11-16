@@ -12,11 +12,11 @@ Plan campaigns on the go, present them at the table: maps, fog of war, spells, s
 
 Pinned versions:
 
-| Tool | Version | Pinned in |
-|---|---|---|
+| Tool    | Version       | Pinned in                          |
+| ------- | ------------- | ---------------------------------- |
 | Node.js | 26.13.1 (LTS) | `.nvmrc`, `package.json` `engines` |
-| pnpm | 12.21.0 | `package.json` `packageManager` |
-| Rust | 1.100.0 | `rust-toolchain.toml` |
+| pnpm    | 12.21.0       | `package.json` `packageManager`    |
+| Rust    | 1.100.0       | `rust-toolchain.toml`              |
 
 1. Install Node.js 26.13.1, e.g. `nvm install && nvm use` (reads `.nvmrc`).
 2. Install pnpm: `npm install -g pnpm@12.21.0`. (Node 26 no longer bundles Corepack; pnpm itself switches to the version in `packageManager`.)
@@ -31,6 +31,14 @@ Pinned versions:
 `engineStrict` is on: `pnpm install` refuses to run with a Node version outside `engines` in `package.json`.
 
 Mobile toolchain (Android Studio / Xcode) setup is documented with task T-008.
+
+## Checks
+
+```bash
+pnpm check
+```
+
+Runs typecheck, ESLint, the Prettier format check and the module-boundary rules from [ARCHITECTURE.md §4](docs/ARCHITECTURE.md) (dependency-cruiser), plus a self-test proving those rules catch deliberate violations (`tooling/dependency-cruiser/fixtures/`). `pnpm format` fixes formatting. Accepted ADRs are excluded from formatting because they are immutable (ADR-0001).
 
 ## Repository layout
 
