@@ -303,6 +303,21 @@ async function main() {
       );
     });
 
+    // The TV shows the open scene: the DM window sends the projection, the player window
+    // validates it and draws the map under its fog.
+    await command("POST", `${sessionPath}/window`, { handle: playerHandle });
+    const tvShowsMap = async () =>
+      (await command("POST", `${sessionPath}/execute/sync`, {
+        script:
+          "return document.getElementById('player-view')?.dataset.showing;",
+        args: [],
+      })) === "map";
+    await waitFor("the map on the TV", tvShowsMap);
+    // A reloaded player window gets the current scene again ("player-ready" → resend).
+    await command("POST", `${sessionPath}/refresh`, {});
+    await waitFor("the map on the reloaded TV", tvShowsMap);
+    await command("POST", `${sessionPath}/window`, { handle: dmHandle });
+
     // The scheme serves library files only; campaign files (notes, hidden data) never.
     const schemeAccess = await command("POST", `${sessionPath}/execute/async`, {
       script: `const done = arguments[arguments.length - 1];

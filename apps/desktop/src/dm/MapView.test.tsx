@@ -1,14 +1,10 @@
-import type {
-  Camera,
-  MapImage,
-  Renderer,
-  Size,
-} from "@dungeon-manager/renderer";
+import type { MapImage, Size } from "@dungeon-manager/renderer";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { StrictMode } from "react";
-import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { createI18n } from "../i18n.js";
+import { fakeMapService } from "../fake-renderer.test-data.js";
 import type { MapViewService } from "../platform/map-images.js";
 import { MapView, MapViewContext } from "./MapView.js";
 
@@ -48,43 +44,6 @@ afterAll(() => {
     );
 });
 
-function fakeView(cameras: Camera[]) {
-  return {
-    setMap: vi.fn(),
-    setCamera: vi.fn((camera: Camera) => cameras.push(camera)),
-    resize: vi.fn(),
-    drawn: () => Promise.resolve(),
-    destroy: vi.fn(),
-  } satisfies Renderer;
-}
-
-function fakeService(load: () => Promise<MapImage>) {
-  const cameras: Camera[] = [];
-  const views: {
-    canvas: HTMLCanvasElement;
-    view: ReturnType<typeof fakeView>;
-  }[] = [];
-  const service = {
-    loadImage: vi.fn(load),
-    createRenderer: vi.fn((canvas: HTMLCanvasElement) => {
-      const view = fakeView(cameras);
-      views.push({ canvas, view });
-      return Promise.resolve(view);
-    }),
-  } satisfies MapViewService;
-  return {
-    service,
-    views,
-    /** The most recently created renderer. */
-    get view() {
-      const last = views.at(-1);
-      if (!last) throw new Error("no renderer yet");
-      return last.view;
-    },
-    camera: () => cameras.at(-1),
-  };
-}
-
 const image = { width: 1600, height: 800 } as unknown as MapImage;
 
 function tree(service: MapViewService, path = "library/maps/hoehle.png") {
@@ -108,7 +67,7 @@ const area = () =>
 
 describe("MapView", () => {
   test("loads the map and fits it into the view", async () => {
-    const fake = fakeService(() => Promise.resolve(image));
+    const fake = fakeMapService(() => Promise.resolve(image));
     renderView(fake.service);
     // The camera is set in the render after the map: wait for it, not just for the map.
     await waitFor(() => {
@@ -126,7 +85,7 @@ describe("MapView", () => {
   });
 
   test("zooms, pans, rotates and fits with keys, wheel and drag", async () => {
-    const fake = fakeService(() => Promise.resolve(image));
+    const fake = fakeMapService(() => Promise.resolve(image));
     renderView(fake.service);
     await waitFor(() => {
       expect(fake.camera()).toBeDefined();
@@ -164,7 +123,7 @@ describe("MapView", () => {
   });
 
   test("explains a map that cannot be loaded", async () => {
-    const fake = fakeService(() => Promise.reject(new Error("404")));
+    const fake = fakeMapService(() => Promise.reject(new Error("404")));
     renderView(fake.service);
     expect((await screen.findByRole("alert")).textContent).toContain(
       "Die Karte konnte nicht geladen werden",
@@ -176,7 +135,7 @@ describe("MapView", () => {
   });
 
   test("releases the renderer when it goes away", async () => {
-    const fake = fakeService(() => Promise.resolve(image));
+    const fake = fakeMapService(() => Promise.resolve(image));
     const { unmount } = renderView(fake.service);
     await waitFor(() => {
       expect(fake.view.setMap).toHaveBeenCalled();
@@ -188,7 +147,7 @@ describe("MapView", () => {
   });
 
   test("releases the renderer when the map cannot be loaded", async () => {
-    const fake = fakeService(() => Promise.reject(new Error("404")));
+    const fake = fakeMapService(() => Promise.reject(new Error("404")));
     const { unmount } = renderView(fake.service);
     await screen.findByRole("alert");
     unmount();
@@ -198,7 +157,7 @@ describe("MapView", () => {
   });
 
   test("gives every renderer its own canvas and releases the old one", async () => {
-    const fake = fakeService(() => Promise.resolve(image));
+    const fake = fakeMapService(() => Promise.resolve(image));
     const { rerender } = renderView(fake.service);
     await waitFor(() => {
       expect(fake.views[0]?.view.setMap).toHaveBeenCalledWith(image);
@@ -216,7 +175,7 @@ describe("MapView", () => {
   });
 
   test("leaves browser shortcuts and secondary buttons alone", async () => {
-    const fake = fakeService(() => Promise.resolve(image));
+    const fake = fakeMapService(() => Promise.resolve(image));
     renderView(fake.service);
     await waitFor(() => {
       expect(fake.camera()).toBeDefined();

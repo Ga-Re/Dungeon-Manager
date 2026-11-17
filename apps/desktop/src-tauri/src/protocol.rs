@@ -3,13 +3,13 @@
 //! `library/` – never `campaigns/`, where scenes, notes and hidden information live – and uses the
 //! same path confinement as every other library access (DM decision, T-105a).
 
+use crate::PLAYER_WINDOW;
 use crate::commands::{DM_WINDOW, LibraryState};
 use crate::library;
 use tauri::http::{Request, Response, StatusCode, header};
 use tauri::{Manager, Runtime, UriSchemeContext, UriSchemeResponder};
 
 pub const SCHEME: &str = "dmlib";
-const PLAYER_WINDOW: &str = "player";
 
 /// Decodes `%XX` escapes (the webview encodes the path with `encodeURIComponent`).
 fn percent_decode(text: &str) -> Option<String> {

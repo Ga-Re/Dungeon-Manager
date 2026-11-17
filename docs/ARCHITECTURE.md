@@ -95,7 +95,7 @@ New dependencies require approval (see CLAUDE.md).
 | ---------- | --------------------------------------------------------------------- | ------------------------------------------------------ |
 | `core`     | `schema`, `polyclip-ts` (pure polygon boolean ops for fog)            | React, PixiJS, Tauri, Expo, Node/Browser APIs, any I/O |
 | `schema`   | zod                                                                   | everything else                                        |
-| `protocol` | `core`, `schema`                                                      | UI, renderer, I/O                                      |
+| `protocol` | `core`, `schema`, `zod` (message validation)                          | UI, renderer, I/O                                      |
 | `storage`  | `core`, `schema`                                                      | UI, renderer; real FS (uses an injected adapter)       |
 | `renderer` | `core`, `schema`, PixiJS                                              | React, Tauri, storage                                  |
 | `ui`       | `core`, `schema`, `i18n`, React, `renderer` (public entry point only) | Tauri, Expo, renderer internals                        |
@@ -204,7 +204,7 @@ Desktop generates downscaled images (and a still frame for video maps) into `lib
 Layer order (bottom → top): map (image/video) → grid → assets → light/vision → tokens → effects → fog → DM overlays (DM window only) → UI pings.
 
 - The **same renderer** draws the DM window and the player window, with different viewer projections and overlays.
-- The player window is a separate Tauri window placed fullscreen on the chosen display.
+- The player window is a separate Tauri window placed fullscreen on the chosen display. Its only permission is listening for events – which Tauri cannot limit to certain events, so the player window can hear every global event of the app. Hence the rule: **no global event may carry library or campaign data**; data meant for the DM window only (e.g. file changes) goes through IPC channels, and drag & drop is disabled. With that permission: the DM window sends it a versioned `PlayerViewMessage` (`protocol`) with the scene as `projectForViewer` leaves it for the table, and the player window validates every message with the strict schema. When the player window (re)loads, the backend tells the DM window, which sends the current state again. The player view fails closed: opaque fog covers everything not revealed, it is set before the map, and without a valid scene the screen stays black.
 - Grid calibration: `pixelsPerInch` of the target display → cell size of 1 inch.
 - Library images reach the webviews through the read-only `dmlib` URI scheme (Rust, `protocol.rs`): it serves only files under `library/` with the usual path confinement, only to the DM and player windows, and never `campaigns/` (scenes, notes, hidden data). It replaces any file permission for displaying maps. Image maps are uploaded as WebGL textures, so responses are CORS-clean.
 - The renderer draws on demand (once per change), not every frame, so an idle DM window costs no GPU time; animation (video, effects) will run a frame loop only while needed.

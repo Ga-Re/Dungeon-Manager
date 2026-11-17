@@ -9,12 +9,18 @@ use notify::event::ModifyKind;
 use notify::{EventKind, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
+use tauri::ipc::Channel;
+use tauri::{AppHandle, Manager, State, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
 pub const DM_WINDOW: &str = "dm";
-/// Event with the library-relative paths that changed on disk.
-pub const CHANGED_EVENT: &str = "library-changed";
+
+/// Where file changes go: a channel the DM window handed over (`library_subscribe`). Not a
+/// global event, because every window that may listen to events – the player window too –
+/// would receive it (Tauri listeners match any target). Global events must never carry library
+/// or campaign data (ARCHITECTURE §8).
+#[derive(Default)]
+pub struct ChangeSubscriber(Mutex<Option<Channel<Vec<String>>>>);
 
 /// The open library: its root and the watcher that lives as long as it is open.
 #[derive(Default)]
@@ -56,9 +62,14 @@ fn start_watcher(app: &AppHandle, root: &Path) -> notify::Result<notify::Recomme
             .iter()
             .filter_map(|path| library::relative_path(&watched, path))
             .collect();
-        if !paths.is_empty() {
-            // Only the DM window learns about file changes.
-            let _ = app.emit_to(DM_WINDOW, CHANGED_EVENT, paths);
+        if paths.is_empty() {
+            return;
+        }
+        // Only the DM window learns about file changes, through its own channel.
+        if let Ok(subscriber) = app.state::<ChangeSubscriber>().0.lock()
+            && let Some(channel) = subscriber.as_ref()
+        {
+            let _ = channel.send(paths);
         }
     })?;
     watcher.watch(root, RecursiveMode::Recursive)?;
@@ -146,6 +157,22 @@ pub fn open_saved_library(app: &AppHandle) {
     if let Err(error) = app.state::<LibraryState>().open(app, &root) {
         eprintln!("Library {} could not be opened: {error:?}", root.display());
     }
+}
+
+/// Hands over the channel for file changes (one per DM window; a reloaded window replaces it).
+#[tauri::command]
+pub fn library_subscribe(
+    window: WebviewWindow,
+    subscriber: State<ChangeSubscriber>,
+    on_change: Channel<Vec<String>>,
+) -> Result<(), LibraryError> {
+    require_dm(&window)?;
+    let mut current = subscriber
+        .0
+        .lock()
+        .map_err(|_| LibraryError::Io("change subscriber poisoned".into()))?;
+    *current = Some(on_change);
+    Ok(())
 }
 
 /// The open library's folder, for display.

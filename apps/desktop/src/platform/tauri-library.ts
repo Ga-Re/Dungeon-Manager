@@ -1,7 +1,6 @@
 import { assetRefSchema } from "@dungeon-manager/schema";
 import type { DirEntry, ReadResult } from "@dungeon-manager/storage";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import {
   LibraryError,
   type LibraryErrorCode,
@@ -43,6 +42,8 @@ async function call<T>(
 
 /** Library access via the desktop backend's `library_*` commands (Rust, T-103b). */
 export function createTauriLibraryService(): LibraryService {
+  const listeners = new Set<(paths: readonly string[]) => void>();
+  let subscribed: Promise<unknown> | null = null;
   return {
     fs: {
       read: (path) => call<ReadResult>("library_read", { path }),
@@ -60,10 +61,30 @@ export function createTauriLibraryService(): LibraryService {
       return assetRefSchema.nullable().parse(result);
     },
     async onChange(listener) {
-      return listen<unknown>("library-changed", ({ payload }) => {
-        if (Array.isArray(payload))
-          listener(payload.filter((path) => typeof path === "string"));
-      });
+      // One channel per DM window, opened on first use and shared by all listeners. A channel,
+      // not a global event: the player window can hear every global event (ARCHITECTURE §8).
+      if (!subscribed) {
+        const channel = new Channel<unknown>();
+        channel.onmessage = (payload) => {
+          if (!Array.isArray(payload)) return;
+          const paths = payload.filter((path) => typeof path === "string");
+          listeners.forEach((each) => {
+            each(paths);
+          });
+        };
+        subscribed = call<unknown>("library_subscribe", {
+          onChange: channel,
+        }).catch((error: unknown) => {
+          // A later call may try again; no listener is left behind.
+          subscribed = null;
+          throw error;
+        });
+      }
+      await subscribed;
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
     },
   };
 }

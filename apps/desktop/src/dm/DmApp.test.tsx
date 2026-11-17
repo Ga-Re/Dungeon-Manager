@@ -9,6 +9,7 @@ import {
 } from "../platform/displays.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { DmApp } from "./DmApp.js";
+import { PlayerFeedContext } from "./player-feed-context.js";
 
 const laptop: Display = {
   id: "0",
@@ -175,5 +176,27 @@ describe("DmApp", () => {
       await screen.findByRole("button", { name: "Open player view" }),
     ).toBeDefined();
     expect(screen.getByRole("heading", { name: "Game master" })).toBeDefined();
+  });
+
+  test("rotates the TV view in quarter turns", () => {
+    const rotate = vi.fn();
+    render(
+      <I18nextProvider i18n={createI18n("de")}>
+        <PlayerFeedContext value={{ show: vi.fn(), rotate, rotation: 270 }}>
+          <DmApp
+            displayService={fakeService()}
+            libraryService={fakeLibraryService(null).service}
+            newId={() => "id-1"}
+          />
+        </PlayerFeedContext>
+      </I18nextProvider>,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "TV-Ansicht drehen (jetzt 270°)" }),
+    );
+    expect(rotate).toHaveBeenCalledWith(0);
+    expect(
+      screen.getByRole("button", { name: "TV-Ansicht drehen (jetzt 0°)" }),
+    ).toBeTruthy();
   });
 });
