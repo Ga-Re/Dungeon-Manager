@@ -44,7 +44,10 @@ const forbid = (name, comment, from, to) => ({
 
 // Co-located unit tests (src/.../name.test.ts), see ARCHITECTURE §12.
 const TEST_FILE = "\\.test\\.tsx?$";
-const VITEST = npm("vitest");
+// Test-only tools (dev dependencies, never shipped).
+const VITEST = npm("vitest", "fast-check");
+// Pure polygon boolean operations for fog of war (DM-approved, T-102a).
+const POLYCLIP = npm("polyclip-ts");
 
 /**
  * Allow-list rule for a package's production code, plus a twin rule for its tests:
@@ -72,9 +75,9 @@ export default {
     // including Node built-ins, browser libraries and unresolvable modules.
     ...allowOnly(
       "core-only-schema",
-      "core is pure: it may only depend on schema (no I/O, no UI, no platform APIs).",
+      "core is pure: it may only depend on schema and polyclip-ts (no I/O, no UI, no platform APIs).",
       "core",
-      pkg("core", "schema"),
+      `${pkg("core", "schema")}|${POLYCLIP}`,
     ),
     ...allowOnly(
       "schema-only-zod",

@@ -15,9 +15,11 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@dungeon-manager/schema": "workspace:*"
+    "@dungeon-manager/schema": "workspace:*",
+    "polyclip-ts": "0.16.8"
   },
   "devDependencies": {
-    "@dungeon-manager/tsconfig": "workspace:*"
+    "@dungeon-manager/tsconfig": "workspace:*",
+    "fast-check": "4.10.2"
   }
 }
