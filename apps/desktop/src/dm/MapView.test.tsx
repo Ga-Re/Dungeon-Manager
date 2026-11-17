@@ -288,4 +288,34 @@ describe("MapView", () => {
     expect([Math.min(...xs), Math.max(...xs)]).toEqual([600, 1000]);
     expect([Math.min(...ys), Math.max(...ys)]).toEqual([200, 600]);
   });
+
+  test("a video map lies under its own canvas and is released with the view", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const { unmount } = renderView(fake.service, { kind: "video", fog: [] });
+    await waitFor(() => {
+      expect(fake.view.setVideo).toHaveBeenCalled();
+    });
+    const video = fake.view.setVideo.mock.calls.at(-1)?.[0];
+    expect(fake.service.loadVideo).toHaveBeenCalledWith(
+      "library/maps/hoehle.png",
+    );
+    expect(fake.service.loadImage).not.toHaveBeenCalled();
+    // Fog first, then the video (the renderer keeps it hidden until both are drawn).
+    const fogOrder = fake.view.setFog.mock.invocationCallOrder[0] ?? Infinity;
+    expect(fogOrder).toBeLessThan(
+      fake.view.setVideo.mock.invocationCallOrder[0] ?? -1,
+    );
+    expect(video?.nextElementSibling?.tagName).toBe("CANVAS");
+    await waitFor(() => {
+      expect(fake.camera()).toEqual({
+        centerX: 160,
+        centerY: 100,
+        zoom: 2,
+        rotation: 0,
+      });
+    });
+    unmount();
+    expect(video?.isConnected).toBe(false);
+    expect(video?.hasAttribute("src")).toBe(false);
+  });
 });

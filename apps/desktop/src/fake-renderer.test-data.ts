@@ -6,6 +6,7 @@ import type { MapViewService } from "./platform/map-images.js";
 export function fakeRenderer(cameras: Camera[] = []) {
   return {
     setMap: vi.fn<Renderer["setMap"]>(),
+    setVideo: vi.fn<Renderer["setVideo"]>(),
     setFog: vi.fn<Renderer["setFog"]>(),
     setCamera: vi.fn((camera: Camera) => {
       cameras.push(camera);
@@ -25,6 +26,15 @@ export function fakeMapService(load: (path: string) => Promise<MapImage>) {
   }[] = [];
   const service = {
     loadImage: vi.fn(load),
+    loadVideo: vi.fn(() => {
+      const video = document.createElement("video");
+      // jsdom has no media: give the element the size a loaded video would report.
+      Object.defineProperty(video, "videoWidth", { value: 320 });
+      Object.defineProperty(video, "videoHeight", { value: 200 });
+      video.pause = () => undefined;
+      video.load = () => undefined;
+      return Promise.resolve(video);
+    }),
     createRenderer: vi.fn((canvas: HTMLCanvasElement) => {
       const view = fakeRenderer(cameras);
       views.push({ canvas, view });

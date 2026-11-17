@@ -18,6 +18,33 @@ export function createTauriMapViewService(): MapViewService {
       await image.decode();
       return image;
     },
+    async loadVideo(path) {
+      const video = document.createElement("video");
+      // Muted: browsers only autoplay muted video, and map videos have no sound to keep.
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = "auto";
+      video.src = libraryUrl(path);
+      await new Promise<void>((resolve, reject) => {
+        video.addEventListener(
+          "loadeddata",
+          () => {
+            resolve();
+          },
+          { once: true },
+        );
+        video.addEventListener(
+          "error",
+          () => {
+            reject(new Error(`The video map ${path} could not be loaded.`));
+          },
+          { once: true },
+        );
+      });
+      void video.play().catch(() => undefined);
+      return video;
+    },
     createRenderer: (canvas, size) =>
       createRenderer({ canvas, size, resolution: window.devicePixelRatio }),
   };

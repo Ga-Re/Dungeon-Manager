@@ -286,8 +286,9 @@ export function OpenScenePanel({
             }}
           />
           <MapView
-            key={scene.map.asset.path}
+            key={`${scene.map.kind}:${scene.map.asset.path}`}
             path={scene.map.asset.path}
+            kind={scene.map.kind}
             label={scene.name}
             fog={revealed}
             tool={busy ? "pan" : tool}

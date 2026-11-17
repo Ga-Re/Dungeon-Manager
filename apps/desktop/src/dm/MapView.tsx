@@ -19,7 +19,7 @@ import {
 } from "react";
 import type { Polygon } from "@dungeon-manager/schema";
 import { useTranslation } from "react-i18next";
-import type { MapViewService } from "../platform/map-images.js";
+import { releaseVideo, type MapViewService } from "../platform/map-images.js";
 
 /** Provided once in `main.tsx`, so panels deep in the tree can show maps. */
 export const MapViewContext = createContext<MapViewService | null>(null);
@@ -45,6 +45,7 @@ interface Selection {
 /** A map with zoom (wheel, +/−), pan (drag, arrow keys), rotation and "fit" (DM window). */
 export function MapView({
   path,
+  kind = "image",
   label,
   fog = null,
   tool = "pan",
@@ -52,6 +53,8 @@ export function MapView({
   onMapSize,
 }: {
   readonly path: string;
+  /** Video maps play in a `<video>` under the canvas (ADR-0010). */
+  readonly kind?: "image" | "video";
   readonly label: string;
   /** Revealed areas, shown see-through to the DM; `null` shows no fog. */
   readonly fog?: readonly Polygon[] | null;
@@ -109,16 +112,31 @@ export function MapView({
     const canvas = document.createElement("canvas");
     element.appendChild(canvas);
     const created = service.createRenderer(canvas, initial);
-    Promise.all([created, service.loadImage(path)]).then(
-      ([view, image]) => {
+    let video: HTMLVideoElement | null = null;
+    const media =
+      kind === "video"
+        ? service.loadVideo(path).then((loaded) => {
+            video = loaded;
+            return loaded;
+          })
+        : service.loadImage(path);
+    Promise.all([created, media]).then(
+      ([view, loaded]) => {
         if (cancelled) return;
         // The box may have changed size while the map was loading.
         const current = sizeNow.current ?? initial;
         renderer.current = view;
         view.resize(current);
         view.setFog(fogNow.current, { opacity: DM_FOG_OPACITY });
-        view.setMap(image);
-        const imageSize = { width: image.width, height: image.height };
+        let imageSize: Size;
+        if (loaded instanceof HTMLVideoElement) {
+          canvas.before(loaded);
+          view.setVideo(loaded);
+          imageSize = { width: loaded.videoWidth, height: loaded.videoHeight };
+        } else {
+          view.setMap(loaded);
+          imageSize = { width: loaded.width, height: loaded.height };
+        }
         setMapSize(imageSize);
         onMapSize?.(imageSize);
         setCamera(fitCamera(imageSize, current, 0));
@@ -138,8 +156,16 @@ export function MapView({
         () => undefined,
       );
       canvas.remove();
+      releaseVideo(video);
+      void media.then(
+        () => {
+          // A video that finished loading after the view went away is released too.
+          if (cancelled) releaseVideo(video);
+        },
+        () => undefined,
+      );
     };
-  }, [service, path, ready]);
+  }, [service, path, kind, ready]);
 
   useEffect(() => {
     if (size) renderer.current?.resize(size);

@@ -9,7 +9,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
 /// File extensions offered in the picker for maps.
-pub const MAP_EXTENSIONS: [&str; 4] = ["png", "jpg", "jpeg", "webp"];
+pub const MAP_EXTENSIONS: [&str; 6] = ["png", "jpg", "jpeg", "webp", "mp4", "webm"];
 
 /// A file now in the library; mirrors `AssetRef` in `packages/schema`.
 #[derive(Debug, PartialEq, Serialize)]
@@ -20,14 +20,19 @@ pub struct ImportedAsset {
     pub hash: String,
 }
 
-/// The image format by its leading bytes, so a renamed file of another type is refused.
-fn image_extension(header: &[u8]) -> Option<&'static str> {
+/// The map format by its leading bytes, so a renamed file of another type is refused: images
+/// (PNG, JPEG, WebP) and videos (MP4 with its `ftyp` box, WebM with its EBML header).
+fn map_extension(header: &[u8]) -> Option<&'static str> {
     if header.starts_with(b"\x89PNG\r\n\x1a\n") {
         Some("png")
     } else if header.starts_with(&[0xFF, 0xD8, 0xFF]) {
         Some("jpg")
     } else if header.len() >= 12 && &header[..4] == b"RIFF" && &header[8..12] == b"WEBP" {
         Some("webp")
+    } else if header.len() >= 8 && &header[4..8] == b"ftyp" {
+        Some("mp4")
+    } else if header.starts_with(&[0x1A, 0x45, 0xDF, 0xA3]) {
+        Some("webm")
     } else {
         None
     }
@@ -102,14 +107,10 @@ fn stage(source: &Path, staged: &Path) -> io::Result<(String, Vec<u8>)> {
     Ok((format!("sha256:{:x}", hasher.finalize()), header))
 }
 
-/// Copies the image at `source` into `<root>/<folder>/` under a portable name. An identical file
+/// Copies the map (image or video) at `source` into `<root>/<folder>/` under a portable name. An identical file
 /// already there is reused; any other existing file keeps its name and the import gets a
 /// numbered one, so nothing is overwritten.
-pub fn import_image(
-    root: &Path,
-    folder: &str,
-    source: &Path,
-) -> Result<ImportedAsset, LibraryError> {
+pub fn import_map(root: &Path, folder: &str, source: &Path) -> Result<ImportedAsset, LibraryError> {
     let staged_path = library::resolve(
         root,
         &format!("{folder}/.import-{}.tmp", std::process::id()),
@@ -119,7 +120,7 @@ pub fn import_image(
     let _ = fs::remove_file(&staged_path);
     let staged = Staged(staged_path);
     let (hash, header) = stage(source, &staged.0)?;
-    let extension = image_extension(&header)
+    let extension = map_extension(&header)
         .ok_or_else(|| LibraryError::UnsupportedFile(source.display().to_string()))?;
     let stem = portable_stem(&source.file_stem().unwrap_or_default().to_string_lossy());
     for number in 1.. {
@@ -162,11 +163,13 @@ mod tests {
 
     #[test]
     fn detects_formats_by_content() {
-        assert_eq!(image_extension(PNG), Some("png"));
-        assert_eq!(image_extension(&[0xFF, 0xD8, 0xFF, 0xE0]), Some("jpg"));
-        assert_eq!(image_extension(WEBP), Some("webp"));
-        assert_eq!(image_extension(b"GIF89a"), None);
-        assert_eq!(image_extension(b""), None);
+        assert_eq!(map_extension(PNG), Some("png"));
+        assert_eq!(map_extension(&[0xFF, 0xD8, 0xFF, 0xE0]), Some("jpg"));
+        assert_eq!(map_extension(WEBP), Some("webp"));
+        assert_eq!(map_extension(b"\0\0\0\x20ftypisom"), Some("mp4"));
+        assert_eq!(map_extension(&[0x1A, 0x45, 0xDF, 0xA3, 0x9F]), Some("webm"));
+        assert_eq!(map_extension(b"GIF89a"), None);
+        assert_eq!(map_extension(b""), None);
     }
 
     #[test]
@@ -184,25 +187,25 @@ mod tests {
         let source = outside.join("Höhle.PNG");
         fs::write(&source, PNG).unwrap();
 
-        let first = import_image(&root, "library/maps", &source).unwrap();
+        let first = import_map(&root, "library/maps", &source).unwrap();
         assert_eq!(first.path, "library/maps/hoehle.png");
         assert_eq!(first.hash, format!("sha256:{:x}", Sha256::digest(PNG)));
         assert_eq!(fs::read(root.join("library/maps/hoehle.png")).unwrap(), PNG);
 
         // Same content again: reused, no copy.
-        assert_eq!(import_image(&root, "library/maps", &source).unwrap(), first);
+        assert_eq!(import_map(&root, "library/maps", &source).unwrap(), first);
 
         // Different content, same name: a new name, the old file untouched.
         let other = outside.join("hoehle.webp");
         fs::write(&other, WEBP).unwrap();
         fs::write(root.join("library/maps/hoehle.webp"), b"RIFF0000WEBPold").unwrap();
-        let second = import_image(&root, "library/maps", &other).unwrap();
+        let second = import_map(&root, "library/maps", &other).unwrap();
         assert_eq!(second.path, "library/maps/hoehle-2.webp");
 
         // A folder in the way is skipped, not an error.
         fs::create_dir_all(root.join("library/maps/hoehle-3.webp")).unwrap();
         fs::write(&other, b"RIFF1111WEBPnewer").unwrap();
-        let third = import_image(&root, "library/maps", &other).unwrap();
+        let third = import_map(&root, "library/maps", &other).unwrap();
         assert_eq!(third.path, "library/maps/hoehle-4.webp");
 
         // No staging files are left behind.
@@ -225,7 +228,7 @@ mod tests {
         fs::write(&source, b"<html>").unwrap();
         let root = temp_dir("not-image-root");
         assert!(matches!(
-            import_image(&root, "library/maps", &source),
+            import_map(&root, "library/maps", &source),
             Err(LibraryError::UnsupportedFile(_))
         ));
         assert_eq!(fs::read_dir(root.join("library/maps")).unwrap().count(), 0);

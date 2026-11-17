@@ -25,3 +25,17 @@ for (const scenario of [
     await expect(page).toHaveScreenshot(`${scenario}.png`);
   });
 }
+
+// Video maps (T-105c, ADR-0010): the video under opaque fog, also rotated; without any fog the
+// video must stay hidden (black screen).
+for (const scenario of [
+  "player-video",
+  "player-video-rotated",
+  "video-no-fog",
+]) {
+  test(`video map: ${scenario}`, async ({ page }) => {
+    await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
+    await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
+    await expect(page).toHaveScreenshot(`${scenario}.png`);
+  });
+}

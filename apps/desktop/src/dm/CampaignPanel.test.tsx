@@ -157,7 +157,7 @@ describe("CampaignPanel", () => {
     );
     expect(
       await screen.findByText(
-        "Diese Datei ist kein PNG-, JPG- oder WebP-Bild.",
+        "Diese Datei ist kein PNG-, JPG- oder WebP-Bild und kein MP4- oder WebM-Video.",
       ),
     ).toBeTruthy();
   });

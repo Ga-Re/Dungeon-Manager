@@ -1,6 +1,7 @@
 import type { Polygon } from "@dungeon-manager/schema";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import type { Camera, Size } from "./camera.js";
+import { createVideoGate, cssTransform } from "./video-layer.js";
 
 /** An image the browser has loaded (or drawn), ready to become the map texture. */
 export type MapImage = HTMLImageElement | HTMLCanvasElement | ImageBitmap;
@@ -29,6 +30,13 @@ export interface Renderer {
   /** Replaces the map image (`null` removes it). The renderer owns the texture from now on. */
   setMap(image: MapImage | null): void;
   /**
+   * Shows a video map (ADR-0010): `video` must lie directly under the canvas in the same
+   * positioned box; the renderer sizes, transforms and shows it, the caller owns it (loading,
+   * playing, removing). It stays hidden until a frame was drawn with the fog known, and on
+   * resize, context loss and teardown. `null` removes it (and hides it).
+   */
+  setVideo(video: HTMLVideoElement | null): void;
+  /**
    * Covers everything except `revealed` with opaque fog (the player view), or removes the fog
    * layer with `null` (the DM sees the whole map). Set it before or with the map: the player
    * view must never draw a map without its fog (ARCHITECTURE §5.1, ADR-0010).
@@ -45,6 +53,7 @@ export interface Renderer {
 export async function createRenderer(
   options: RendererOptions,
 ): Promise<Renderer> {
+  const background = options.background ?? "#111111";
   const app = new Application();
   await app.init({
     canvas: options.canvas,
@@ -52,13 +61,18 @@ export async function createRenderer(
     height: options.size.height,
     resolution: options.resolution ?? 1,
     autoDensity: true,
-    background: options.background ?? "#111111",
+    background,
+    // The WebGL context only gets an alpha channel if the background starts transparent; video
+    // maps need it (they lie under the canvas). Opaque again right below for image maps.
+    backgroundAlpha: 0,
     preference: "webgl",
     antialias: false,
     // Drawing happens on demand (see `requestDraw`); no render loop, no resizeTo: the caller
     // owns the canvas and calls `resize`.
     autoStart: false,
   });
+
+  app.renderer.background.alpha = 1;
 
   const world = new Container();
   app.stage.addChild(world);
@@ -78,12 +92,36 @@ export async function createRenderer(
     world.rotation = (camera.rotation * Math.PI) / 180;
   };
 
+  let video: HTMLVideoElement | null = null;
+  const gate = createVideoGate();
+  // Hide first, decide later: the video may only show once the gate allows it again.
+  const showVideo = () => {
+    if (!video) return;
+    if (camera) video.style.transform = cssTransform(camera, size);
+    video.style.visibility = gate.visible() ? "visible" : "hidden";
+  };
+  const hideVideo = () => {
+    if (video) video.style.visibility = "hidden";
+  };
+  const onContextLost = () => {
+    gate.contextLost();
+    hideVideo();
+  };
+  const onContextRestored = () => {
+    gate.contextRestored();
+    requestDraw();
+  };
+  options.canvas.addEventListener("webglcontextlost", onContextLost);
+  options.canvas.addEventListener("webglcontextrestored", onContextRestored);
+
   const requestDraw = () => {
     if (frame !== null || destroyed) return;
     frame = requestAnimationFrame(() => {
       frame = null;
       applyCamera();
       app.render();
+      gate.drawn();
+      showVideo();
       const done = waiting;
       waiting = [];
       done.forEach((resolve) => {
@@ -94,6 +132,13 @@ export async function createRenderer(
 
   return {
     setMap(image) {
+      if (image && video) {
+        // An image map replaces a video map: hide it and make the canvas opaque again.
+        hideVideo();
+        video = null;
+        app.renderer.background.color = background;
+        app.renderer.background.alpha = 1;
+      }
       if (map) {
         world.removeChild(map);
         map.destroy({ texture: true, textureSource: true });
@@ -105,7 +150,28 @@ export async function createRenderer(
       }
       requestDraw();
     },
+    setVideo(next) {
+      hideVideo();
+      video = next;
+      gate.newVideo();
+      // A video map lies under the canvas, so the canvas must be see-through around the fog –
+      // cleared to black: with premultiplied alpha, any other colour at alpha 0 would be added
+      // onto the video.
+      app.renderer.background.color = next ? 0x000000 : background;
+      app.renderer.background.alpha = next ? 0 : 1;
+      if (next) {
+        next.style.position = "absolute";
+        next.style.left = "0";
+        next.style.top = "0";
+        next.style.width = `${String(next.videoWidth)}px`;
+        next.style.height = `${String(next.videoHeight)}px`;
+        next.style.transformOrigin = "0 0";
+        next.style.visibility = "hidden";
+      }
+      requestDraw();
+    },
     setFog(revealed, fogOptions) {
+      gate.fogSet();
       if (fog) {
         world.removeChild(fog);
         fog.destroy({ children: true });
@@ -123,6 +189,8 @@ export async function createRenderer(
     },
     resize(next) {
       size = next;
+      gate.resized();
+      hideVideo();
       app.renderer.resize(next.width, next.height);
       requestDraw();
     },
@@ -135,6 +203,13 @@ export async function createRenderer(
     },
     destroy() {
       destroyed = true;
+      gate.destroyed();
+      hideVideo();
+      options.canvas.removeEventListener("webglcontextlost", onContextLost);
+      options.canvas.removeEventListener(
+        "webglcontextrestored",
+        onContextRestored,
+      );
       if (frame !== null) cancelAnimationFrame(frame);
       waiting.forEach((resolve) => {
         resolve();

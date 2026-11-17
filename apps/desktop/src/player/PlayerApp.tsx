@@ -2,7 +2,7 @@ import type { PlayerViewMessage } from "@dungeon-manager/protocol";
 import { fitCamera, type Renderer, type Size } from "@dungeon-manager/renderer";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { MapViewService } from "../platform/map-images.js";
+import { releaseVideo, type MapViewService } from "../platform/map-images.js";
 import type { PlayerFeedReceiver } from "../platform/player-feed.js";
 
 const windowSize = (): Size => ({
@@ -32,6 +32,14 @@ export function PlayerApp({
     let renderer: Renderer | null = null;
     let message: PlayerViewMessage | null = null;
     let mapSize: Size | null = null;
+    let video: HTMLVideoElement | null = null;
+    // Removes the current map, image or video, at once.
+    const clearMap = (view: Renderer) => {
+      view.setMap(null);
+      view.setVideo(null);
+      releaseVideo(video);
+      video = null;
+    };
     let loading = 0;
     const canvas = document.createElement("canvas");
     element.appendChild(canvas);
@@ -63,7 +71,7 @@ export function PlayerApp({
         // Also cancels a map still loading for the previous scene.
         loading++;
         mapSize = null;
-        view.setMap(null);
+        clearMap(view);
         mark("none");
         return;
       }
@@ -72,15 +80,30 @@ export function PlayerApp({
         return;
       }
       // A different map: remove the old one at once, then load the new one.
-      view.setMap(null);
+      clearMap(view);
       mark("none");
       mapSize = null;
       const request = ++loading;
-      maps.loadImage(map.asset.path).then(
-        (image) => {
-          if (!active || request !== loading) return;
-          mapSize = { width: image.width, height: image.height };
-          view.setMap(image);
+      const loaded =
+        map.kind === "video"
+          ? maps.loadVideo(map.asset.path)
+          : maps.loadImage(map.asset.path);
+      loaded.then(
+        (media) => {
+          if (!active || request !== loading) {
+            if (media instanceof HTMLVideoElement) releaseVideo(media);
+            return;
+          }
+          if (media instanceof HTMLVideoElement) {
+            // Under the canvas; the renderer shows it only once the fog is drawn (ADR-0010).
+            video = media;
+            canvas.before(media);
+            mapSize = { width: media.videoWidth, height: media.videoHeight };
+            view.setVideo(media);
+          } else {
+            mapSize = { width: media.width, height: media.height };
+            view.setMap(media);
+          }
           mark("map");
           fit();
         },
@@ -129,6 +152,7 @@ export function PlayerApp({
         renderer = null;
       });
       canvas.remove();
+      releaseVideo(video);
     };
   }, [feed, maps]);
 

@@ -39,7 +39,8 @@ export const en: Messages = {
     errors: {
       noLibrary: "No library folder is open. Please choose a folder.",
       forbidden: "This window may not access the library.",
-      unsupportedFile: "This file is not a PNG, JPG or WebP image.",
+      unsupportedFile:
+        "This file is not a PNG, JPG or WebP image, nor an MP4 or WebM video.",
       invalidPath: "The app may not access this file.",
     },
   },
@@ -53,7 +54,7 @@ export const en: Messages = {
     sceneCreated: "Scene “{{name}}” created.",
     openScene: "Open scene: {{name}}",
     importMap: "Choose map …",
-    mapFilter: "Maps (PNG, JPG, WebP)",
+    mapFilter: "Maps (PNG, JPG, WebP, MP4, WebM)",
     mapForNewScene: "Map for the new scene: {{file}}",
     noMapForNewScene: "The new scene gets no map yet.",
     map: "Map: {{file}}",
