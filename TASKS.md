@@ -151,7 +151,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Screenshot tests for a fixture map in both views
   - [ ] Benchmark scene added to `test-fixtures`
-- **Notes:** From T-003 review: `pnpm test:visual` mounts the host `node_modules` into the Linux container. Once visual tests need a Vite dev server, native binaries (esbuild/rollup) from a macOS/Windows host will not run there – install dependencies inside the container (separate volume) instead.
+- **Notes:** From T-003 review: `pnpm test:visual` mounts the host `node_modules` into the Linux container. Once visual tests need a Vite dev server, native binaries (esbuild/rollup) from a macOS/Windows host will not run there – install dependencies inside the container (separate volume) instead. From T-007: remove the spike (`apps/desktop/spike.html`, `src/spike/`, `spike/`, the `VITE_SPIKE` switch and the `playerPage` parameter) once the renderer and its benchmark exist; move `pixi.js` (with `pixi.js/unsafe-eval`, required by our CSP) to `packages/renderer`.
 
 ### T-106 Grid overlay and 1-inch calibration
 

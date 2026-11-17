@@ -12,7 +12,7 @@ import { DmApp } from "./DmApp.js";
 const i18n = createI18n();
 // SPIKE (T-007): `pnpm spike:desktop` opens the performance spike instead of the player view.
 const playerPage =
-  import.meta.env["VITE_SPIKE"] === "1" ? "spike.html" : "player.html";
+  import.meta.env.VITE_SPIKE === "1" ? "spike.html" : "player.html";
 const displayService = createTauriDisplayService(
   detectPlatformFamily(navigator.userAgent),
   playerPage,

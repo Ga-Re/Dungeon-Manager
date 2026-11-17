@@ -11,15 +11,27 @@ export function spikeResults() {
     apply: "serve",
     configureServer(server) {
       server.middlewares.use("/__spike/results", (request, response) => {
+        if (request.method !== "POST") {
+          response.statusCode = 405;
+          response.end();
+          return;
+        }
         let body = "";
         request.on("data", (chunk) => (body += String(chunk)));
         request.on("end", () => {
+          let pretty;
+          try {
+            pretty = JSON.stringify(JSON.parse(body), null, 2);
+          } catch {
+            response.statusCode = 400;
+            response.end("invalid JSON");
+            return;
+          }
           mkdirSync(outDir, { recursive: true });
           const file = join(
             outDir,
             `${new Date().toISOString().replaceAll(":", "-")}.json`,
           );
-          const pretty = JSON.stringify(JSON.parse(body), null, 2);
           writeFileSync(file, pretty + "\n");
           console.log(
             `\n===== SPIKE RESULTS (copy everything up to END) =====\n${pretty}\n===== END (saved to ${file}) =====\n`,
