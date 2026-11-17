@@ -110,6 +110,14 @@ pnpm --filter @dungeon-manager/desktop smoke
 
 It needs `cargo install tauri-driver --version 2.1.0 --locked` and, on Linux, `webkit2gtk-driver` (plus `xvfb-run` without a display).
 
+## Companion (players' web app)
+
+```bash
+pnpm dev:companion
+```
+
+Builds the packages it needs and serves the companion at <http://localhost:5174> (currently a placeholder page). `pnpm --filter @dungeon-manager/companion build` writes static files with relative paths to `apps/companion/dist/`; the desktop backend will serve them on the LAN (ADR-0007). The E2E test checks that production build via `vite preview`.
+
 ## Performance spike (T-007, temporary)
 
 Measures whether a 4K video map + fog + 20 tokens reaches 60 FPS in the player window (ARCHITECTURE §11). Run it on the reference notebook with the table TV connected.

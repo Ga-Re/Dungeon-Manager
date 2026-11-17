@@ -19,6 +19,10 @@ export const de = {
         "Dieses Display ist nicht mehr verfügbar. Bitte Displays neu suchen.",
     },
   },
+  companion: {
+    heading: "Dungeon Manager für Spieler",
+    placeholder: "Hier kannst du bald dem Spieltisch beitreten.",
+  },
   player: {
     windowTitle: "Spieleransicht",
   },

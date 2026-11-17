@@ -20,6 +20,10 @@ export const en: Messages = {
         "This display is no longer available. Please search displays again.",
     },
   },
+  companion: {
+    heading: "Dungeon Manager for players",
+    placeholder: "Soon you can join the game table here.",
+  },
   player: {
     windowTitle: "Player view",
   },
