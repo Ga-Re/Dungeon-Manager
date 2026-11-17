@@ -123,7 +123,7 @@ apply(state: SessionState, command: Command, ctx: Ctx): { state: SessionState; e
 - **Permissions** are checked in `core` (`canApply(actor, command, state)`): DM, DM phone, player companion (per-player rights).
 - **Undo:** the desktop keeps a command history with inverse snapshots per scene.
 - **Session log** is derived from `DomainEvent`s.
-- **Visibility filtering** (`projectForViewer(state, viewer)`) is a pure function in `core`. The player window and every companion only ever receive the projected state – hidden data never leaves the desktop. It builds its output from an explicit allow-list with strict viewer schemas – never by parsing with the (loose, unknown-field-preserving) file schemas from `packages/schema` or by spreading state objects.
+- **Visibility filtering** (`projectForViewer(state, viewer)`) is a pure function in `core`. The player window and every companion only ever receive the projected state – hidden data never leaves the desktop. It builds its output from an explicit allow-list with strict viewer schemas – never by parsing with the (loose, unknown-field-preserving) file schemas from `packages/schema` or by spreading state objects. Asset references in a projection are capabilities: a companion must never receive a reference that lets it fetch an un-fogged map or a level that has not been revealed (companions get fog-composited images, T-118).
 
 ### 5.2 Key entities (initial)
 

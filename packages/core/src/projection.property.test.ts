@@ -1,6 +1,6 @@
 // Property-based tests: for random sessions, the projection never leaks hidden tokens, hidden HP
-// numbers or anything under unrevealed fog. Expectations come from an independent model (axis-
-// aligned revealed rectangles), not from the projection's own helpers.
+// numbers or anything under unrevealed fog. Expectations come from an independent model
+// (axis-aligned revealed rectangles per level), not from the projection's own helpers.
 import type {
   Combatant,
   Token,
@@ -18,18 +18,20 @@ import {
 import { ctx, state as base, square } from "./test-data.test-data.js";
 
 const CELL = 100;
-const SPAN: Record<TokenSize, number> = {
-  tiny: 1,
-  small: 1,
-  medium: 1,
-  large: 2,
-  huge: 3,
-  gargantuan: 4,
-};
+const LEVELS = ["ground", "cellar"] as const;
 const PLAYERS = ["player-1", "player-2"] as const;
+
+/** Grid cells per side, written out independently of the implementation (SPEC §5). */
+function cellsPerSide(size: TokenSize): number {
+  if (size === "large") return 2;
+  if (size === "huge") return 3;
+  if (size === "gargantuan") return 4;
+  return 1;
+}
 
 // Rectangles start 30 px off the grid, so token centres (multiples of 50 px) never lie on an edge.
 const rect = fc.record({
+  level: fc.constantFrom(...LEVELS),
   x: fc.integer({ min: 0, max: 8 }).map((n) => n * CELL + 30),
   y: fc.integer({ min: 0, max: 8 }).map((n) => n * CELL + 30),
   size: fc.integer({ min: 1, max: 5 }).map((n) => n * CELL),
@@ -40,9 +42,10 @@ const visibility = fc.constantFrom<Visibility>(
   "hidden",
   "approximate",
 );
-const maybeVisibility = fc.option(visibility, { nil: undefined });
+const maybe = fc.option(visibility, { nil: undefined });
 
 const tokenSpec = fc.record({
+  hasToken: fc.boolean(),
   size: fc.constantFrom<TokenSize>(
     "tiny",
     "small",
@@ -53,21 +56,32 @@ const tokenSpec = fc.record({
   ),
   col: fc.integer({ min: 0, max: 9 }),
   row: fc.integer({ min: 0, max: 9 }),
+  level: fc.constantFrom(...LEVELS),
   owner: fc.constantFrom(undefined, ...PLAYERS),
-  token: maybeVisibility,
-  name: maybeVisibility,
-  hp: maybeVisibility,
+  withImage: fc.boolean(),
+  token: maybe,
+  name: maybe,
+  hp: maybe,
+  conditions: maybe,
+  initiative: maybe,
   inCombat: fc.boolean(),
   current: fc.integer({ min: -5, max: 40 }),
 });
 
 const session = fc.record({
-  tokens: fc.array(tokenSpec, { maxLength: 8 }),
-  reveals: fc.array(rect, { maxLength: 4 }),
+  entries: fc.array(tokenSpec, { maxLength: 8 }),
+  reveals: fc.array(rect, { maxLength: 5 }),
+  // Grid offsets in whole cells keep centres off the rectangle edges.
+  offset: fc.record({
+    x: fc.integer({ min: -2, max: 2 }),
+    y: fc.integer({ min: -2, max: 2 }),
+  }),
   defaults: fc.record({
-    token: maybeVisibility,
-    name: maybeVisibility,
-    hp: maybeVisibility,
+    token: maybe,
+    name: maybe,
+    hp: maybe,
+    conditions: maybe,
+    initiative: maybe,
   }),
   viewer: fc.constantFrom<Viewer>(
     { kind: "table" },
@@ -76,32 +90,45 @@ const session = fc.record({
 });
 
 type Spec = typeof session extends fc.Arbitrary<infer T> ? T : never;
+type Entry = Spec["entries"][number];
+const OVERRIDES = ["token", "name", "hp", "conditions", "initiative"] as const;
+
+const hash = `sha256:${"c".repeat(64)}`;
 
 function build(spec: Spec): SessionState {
-  const tokens: Token[] = spec.tokens.map((t, i) => ({
-    // Distinctive ids/names, so a leak can be found by searching the serialised projection.
-    id: `secret-token-${String(i)}`,
-    name: `Secret Name ${String(i)}`,
-    size: t.size,
-    position: { col: t.col, row: t.row },
-    levelId: "ground",
-    ...(t.owner && { ownerPlayerId: t.owner }),
-    visibility: Object.fromEntries(
-      Object.entries({ token: t.token, name: t.name, hp: t.hp }).filter(
-        ([, value]) => value !== undefined,
-      ),
-    ),
-  }));
-  const combatants: Combatant[] = spec.tokens.flatMap((t, i) =>
-    t.inCombat
+  const tokens: Token[] = spec.entries.flatMap((e, i) =>
+    e.hasToken
+      ? [
+          {
+            // Distinctive ids/names, so a leak can be found by searching the serialised projection.
+            id: `secret-token-${String(i)}`,
+            name: `Secret Name ${String(i)}`,
+            size: e.size,
+            position: { col: e.col, row: e.row },
+            levelId: e.level,
+            ...(e.owner && { ownerPlayerId: e.owner }),
+            ...(e.withImage && {
+              image: { path: `tokens/secret-image-${String(i)}.webp`, hash },
+            }),
+            visibility: Object.fromEntries(
+              OVERRIDES.flatMap((key) =>
+                e[key] === undefined ? [] : [[key, e[key]]],
+              ),
+            ),
+          },
+        ]
+      : [],
+  );
+  const combatants: Combatant[] = spec.entries.flatMap((e, i) =>
+    e.inCombat || !e.hasToken
       ? [
           {
             id: `fighter-${String(i)}`,
             name: `Secret Name ${String(i)}`,
-            tokenId: `secret-token-${String(i)}`,
+            ...(e.hasToken && { tokenId: `secret-token-${String(i)}` }),
             initiative: i,
-            hp: { current: t.current, max: 40, temp: 0 },
-            conditions: [],
+            hp: { current: e.current, max: 40, temp: 0 },
+            conditions: [{ type: "poisoned", remainingRounds: 3 }],
           },
         ]
       : [],
@@ -109,6 +136,8 @@ function build(spec: Spec): SessionState {
   const defaults = Object.fromEntries(
     Object.entries(spec.defaults).filter(([, value]) => value !== undefined),
   );
+  const map = base.scene.map;
+  if (!map) throw new Error("sample scene needs a map");
   const start: SessionState = {
     campaign: {
       ...base.campaign,
@@ -117,6 +146,14 @@ function build(spec: Spec): SessionState {
     },
     scene: {
       ...base.scene,
+      map: {
+        ...map,
+        grid: {
+          cellSizePx: CELL,
+          offsetXPx: spec.offset.x * CELL,
+          offsetYPx: spec.offset.y * CELL,
+        },
+      },
       tokens,
       initiative:
         combatants.length > 0
@@ -132,7 +169,7 @@ function build(spec: Spec): SessionState {
   return spec.reveals.reduce((current, r) => {
     const result = apply(
       current,
-      { type: "fog.reveal", levelId: "ground", area: square(r.x, r.y, r.size) },
+      { type: "fog.reveal", levelId: r.level, area: square(r.x, r.y, r.size) },
       ctx,
     );
     if (!result.ok) throw new Error(result.reason);
@@ -140,88 +177,115 @@ function build(spec: Spec): SessionState {
   }, start);
 }
 
-/** Independent model of what a viewer may see. */
+/** Independent model of what a viewer may see of entry `index`. */
 function expected(spec: Spec, index: number) {
-  const t = spec.tokens[index];
-  if (!t) throw new Error("no token");
-  const own = spec.viewer.kind === "player" && t.owner === spec.viewer.playerId;
-  const resolve = (key: "token" | "name" | "hp") =>
-    t[key] ?? spec.defaults[key] ?? "visible";
-  const cx = (t.col + SPAN[t.size] / 2) * CELL;
-  const cy = (t.row + SPAN[t.size] / 2) * CELL;
+  const e: Entry | undefined = spec.entries[index];
+  if (!e) throw new Error("no entry");
+  const own =
+    e.hasToken &&
+    spec.viewer.kind === "player" &&
+    e.owner === spec.viewer.playerId;
+  // Combatants without a token only follow the campaign defaults.
+  const resolve = (key: (typeof OVERRIDES)[number]): Visibility =>
+    own
+      ? "visible"
+      : ((e.hasToken ? e[key] : undefined) ?? spec.defaults[key] ?? "visible");
+  const cx = spec.offset.x * CELL + (e.col + cellsPerSide(e.size) / 2) * CELL;
+  const cy = spec.offset.y * CELL + (e.row + cellsPerSide(e.size) / 2) * CELL;
   const revealed = spec.reveals.some(
-    (r) => cx > r.x && cx < r.x + r.size && cy > r.y && cy < r.y + r.size,
+    (r) =>
+      r.level === e.level &&
+      cx > r.x &&
+      cx < r.x + r.size &&
+      cy > r.y &&
+      cy < r.y + r.size,
   );
-  const tokenVisible = own || (resolve("token") !== "hidden" && revealed);
+  const tokenVisible =
+    e.hasToken && (own || (resolve("token") !== "hidden" && revealed));
+  const listed =
+    (e.inCombat || !e.hasToken) &&
+    resolve("initiative") !== "hidden" &&
+    (!e.hasToken || tokenVisible);
   return {
     tokenVisible,
-    nameVisible: tokenVisible && (own || resolve("name") === "visible"),
-    exactHp: tokenVisible && (own || resolve("hp") === "visible"),
+    listed,
+    nameVisible: resolve("name") === "visible",
+    hp: resolve("hp"),
+    conditions: resolve("conditions"),
   };
 }
 
-const runs = { numRuns: 300 };
+const runs = { numRuns: 400 };
+const indexOf = (id: string) =>
+  Number(id.replace(/^(secret-token|fighter)-/, ""));
 
 describe("projectForViewer (property-based)", () => {
-  test("shows exactly the tokens the viewer may see", () => {
+  test("shows exactly the tokens and initiative entries the viewer may see", () => {
     fc.assert(
       fc.property(session, (spec) => {
-        const shown = new Set(
-          projectForViewer(build(spec), spec.viewer).tokens.map(
-            (token) => token.id,
-          ),
+        const projected = projectForViewer(build(spec), spec.viewer);
+        const tokens = new Set(projected.tokens.map((token) => token.id));
+        const listed = new Set(
+          projected.initiative?.combatants.map((c) => c.id) ?? [],
         );
-        spec.tokens.forEach((_, i) => {
-          expect(shown.has(`secret-token-${String(i)}`)).toBe(
-            expected(spec, i).tokenVisible,
-          );
+        spec.entries.forEach((_, i) => {
+          const e = expected(spec, i);
+          expect(tokens.has(`secret-token-${String(i)}`)).toBe(e.tokenVisible);
+          expect(listed.has(`fighter-${String(i)}`)).toBe(e.listed);
         });
       }),
       runs,
     );
   });
 
-  test("never contains the id or name of a token the viewer may not see", () => {
+  test("never contains ids, names or images the viewer may not see", () => {
     fc.assert(
       fc.property(session, (spec) => {
         const json = JSON.stringify(projectForViewer(build(spec), spec.viewer));
-        spec.tokens.forEach((_, i) => {
+        spec.entries.forEach((_, i) => {
           const e = expected(spec, i);
-          if (!e.tokenVisible)
+          const n = String(i);
+          if (!e.tokenVisible && !e.listed)
             expect(json).not.toMatch(
-              new RegExp(`secret-token-${String(i)}"|fighter-${String(i)}"`),
+              new RegExp(`secret-token-${n}"|fighter-${n}"`),
             );
-          if (!e.nameVisible)
-            expect(json).not.toContain(`Secret Name ${String(i)}"`);
+          if (!e.listed) expect(json).not.toContain(`fighter-${n}"`);
+          if (!e.nameVisible || (!e.tokenVisible && !e.listed))
+            expect(json).not.toContain(`Secret Name ${n}"`);
+          if (!e.nameVisible || !e.tokenVisible)
+            expect(json).not.toContain(`secret-image-${n}.webp`);
         });
       }),
       runs,
     );
   });
 
-  test("exact HP numbers appear only where HP are visible to the viewer", () => {
+  test("HP and conditions follow the resolved visibility", () => {
     fc.assert(
       fc.property(session, (spec) => {
-        const combatants =
-          projectForViewer(build(spec), spec.viewer).initiative?.combatants ??
-          [];
-        for (const combatant of combatants) {
-          const index = Number(combatant.id.replace("fighter-", ""));
-          expect(combatant.hp !== undefined).toBe(
-            expected(spec, index).exactHp,
+        for (const combatant of projectForViewer(build(spec), spec.viewer)
+          .initiative?.combatants ?? []) {
+          const e = expected(spec, indexOf(combatant.id));
+          expect(combatant.hp !== undefined).toBe(e.hp === "visible");
+          expect(combatant.hpState !== undefined).toBe(e.hp === "approximate");
+          expect(combatant.conditions !== undefined).toBe(
+            e.conditions !== "hidden",
           );
+          if (e.conditions === "approximate")
+            expect(combatant.conditions).toEqual([{ type: "poisoned" }]);
         }
       }),
       runs,
     );
   });
 
-  test("sends only revealed and remembered fog, unchanged", () => {
+  test("sends exactly the revealed and remembered fog of each level", () => {
     fc.assert(
       fc.property(session, (spec) => {
         const built = build(spec);
-        const projected = projectForViewer(built, spec.viewer);
-        expect(projected.fog).toEqual(built.scene.fog.levels);
+        expect(projectForViewer(built, spec.viewer).fog).toEqual(
+          built.scene.fog.levels,
+        );
       }),
       runs,
     );

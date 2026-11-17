@@ -10,6 +10,8 @@ import { z } from "zod";
 /**
  * Stable identifier of an entity, unique within its campaign. Restricted to characters that are
  * safe in file names, because storage derives names such as `scenes/<id>.json` from it.
+ * Ids are generated and opaque (random) – never derived from names: projections send ids to
+ * players even when a name is hidden.
  */
 export const idSchema = z
   .string()

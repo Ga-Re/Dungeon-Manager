@@ -32,6 +32,11 @@ const CELLS_PER_SIDE: Record<TokenSize, number> = {
  * What `viewer` may see of `state` (ARCHITECTURE §5.1). Hidden data never leaves the host:
  * the result is built field by field from an allow-list and checked against the strict viewer
  * schema, so an accidentally added field fails loudly instead of leaking.
+ *
+ * Semantics: a token shows when it is not hidden and its centre lies in revealed fog (a large
+ * token partly revealed but centred in fog stays hidden – conservative). "approximate" means
+ * shown for tokens and initiative entries, coarse for HP, type-only for conditions, hidden for
+ * names (and token images). Runs per state change or broadcast, never per frame.
  */
 export function projectForViewer(
   state: SessionState,
@@ -140,9 +145,11 @@ function projectToken(
     size: token.size,
     position: { col: token.position.col, row: token.position.row },
     levelId: token.levelId,
-    ...(token.image && {
-      image: { path: token.image.path, hash: token.image.hash },
-    }),
+    // The image file name (e.g. "doppelganger.webp") would give away an unnamed token's identity.
+    ...(showName &&
+      token.image && {
+        image: { path: token.image.path, hash: token.image.hash },
+      }),
   };
 }
 
@@ -152,22 +159,34 @@ function projectInitiative(
   visibleTokenIds: ReadonlySet<string>,
 ): Pick<ViewerScene, "initiative"> {
   const initiative = state.scene.initiative;
-  if (!initiative || visibilityOf(state, "initiative") === "hidden") return {};
+  if (!initiative) return {};
   const byId = new Map(
     initiative.combatants.map((combatant) => [combatant.id, combatant]),
   );
   const tokensById = new Map(
     state.scene.tokens.map((token) => [token.id, token]),
   );
-  // A combatant with a token is only listed while that token is visible to this viewer.
+  const tokenOf = (combatant: Combatant) =>
+    combatant.tokenId === undefined
+      ? undefined
+      : tokensById.get(combatant.tokenId);
+  // An entry is listed when its initiative visibility (token override, else campaign default)
+  // is not hidden, and – for combatants with a token – while that token is visible.
   const visible = initiative.order
     .map((id) => byId.get(id))
     .filter((combatant): combatant is Combatant => combatant !== undefined)
-    .filter(
-      (combatant) =>
+    .filter((combatant) => {
+      const token = tokenOf(combatant);
+      const own = ownedBy(token, viewer);
+      if (!own && visibilityOf(state, "initiative", token) === "hidden")
+        return false;
+      return (
         combatant.tokenId === undefined ||
-        visibleTokenIds.has(combatant.tokenId),
-    );
+        visibleTokenIds.has(combatant.tokenId)
+      );
+    });
+  if (visible.length === 0 && visibilityOf(state, "initiative") === "hidden")
+    return {};
   const visibleIds = new Set(visible.map((combatant) => combatant.id));
   return {
     initiative: {
@@ -178,14 +197,7 @@ function projectInitiative(
           ? initiative.activeCombatantId
           : null,
       combatants: visible.map((combatant) =>
-        projectCombatant(
-          state,
-          combatant,
-          combatant.tokenId === undefined
-            ? undefined
-            : tokensById.get(combatant.tokenId),
-          viewer,
-        ),
+        projectCombatant(state, combatant, tokenOf(combatant), viewer),
       ),
     },
   };

@@ -151,6 +151,15 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] No event reveals a token, HP number or name that `projectForViewer` hides (property-based tests)
 - **Notes:** From the T-102a review; needed before events leave the host (companion, session log on the TV).
 
+### T-118 Companion-safe map delivery and released levels
+
+- **Status:** todo · **Depends on:** T-102b · **Refs:** ARCHITECTURE §5.1, SPEC §2.4, §3.1
+- The projection currently sends the map asset reference and every level (id, name, asset), whatever has been revealed. Fine for the host-rendered TV; a companion could fetch the whole un-fogged map and read level names like "Geheimgang". Add a "current/released levels" concept to the scene and send companions only fog-composited (or tiled) images of released levels.
+- **Acceptance criteria**
+  - [ ] Companion projections contain no asset reference to un-fogged map files and no unreleased level
+  - [ ] The table view shows the scene's current level
+- **Notes:** From the T-102b review; must be done before companions show maps (stage 3).
+
 ### T-103 Storage: library folder, read/write, watching, conflicts
 
 - **Status:** todo · **Depends on:** T-101 · **Refs:** ARCHITECTURE §6
