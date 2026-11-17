@@ -17,6 +17,8 @@ pub enum LibraryError {
     InvalidPath(String),
     /// The calling window may not use the library (only the DM window may).
     Forbidden,
+    /// The chosen file is not of a supported type (checked by content, not extension).
+    UnsupportedFile(String),
     Io(String),
 }
 
@@ -122,6 +124,14 @@ pub fn read(path: &Path) -> Result<ReadResult, LibraryError> {
 /// Writes `<name>.tmp` next to the target, flushes it to disk and renames it over the target,
 /// so readers and sync clients never see a half-written file (ARCHITECTURE §6.3).
 pub fn write_atomic(path: &Path, text: &str) -> Result<(), LibraryError> {
+    write_atomic_with(path, |file| file.write_all(text.as_bytes()))
+}
+
+/// Like `write_atomic`, with `fill` writing the content (e.g. streaming a large copy).
+pub fn write_atomic_with(
+    path: &Path,
+    fill: impl FnOnce(&mut fs::File) -> io::Result<()>,
+) -> Result<(), LibraryError> {
     let parent = path
         .parent()
         .ok_or_else(|| LibraryError::InvalidPath(String::new()))?;
@@ -140,7 +150,7 @@ pub fn write_atomic(path: &Path, text: &str) -> Result<(), LibraryError> {
             .write(true)
             .create_new(true)
             .open(&temp)?;
-        file.write_all(text.as_bytes())?;
+        fill(&mut file)?;
         file.sync_all()?;
         fs::rename(&temp, path)
     })();

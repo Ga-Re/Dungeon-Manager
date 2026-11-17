@@ -16,6 +16,7 @@
     "allow-library-read",
     "allow-library-write",
     "allow-library-list",
-    "allow-library-make-directory"
+    "allow-library-make-directory",
+    "allow-library-import-map"
   ]
 }

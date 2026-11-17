@@ -2,6 +2,7 @@
 //! turns each into a permission that only `capabilities/dm.json` grants, and every command
 //! checks the caller's label again. The player window never touches files.
 
+use crate::import::{self, ImportedAsset};
 use crate::library::{self, DirEntry, LibraryError, ReadResult};
 use crate::settings::{self, DeviceSettings};
 use notify::event::ModifyKind;
@@ -186,6 +187,38 @@ pub async fn library_choose(
     device_settings.library_root = Some(root.clone());
     settings::save(&directory, &device_settings)?;
     Ok(Some(display_root(&root)))
+}
+
+/// Lets the DM pick a map image in a native dialog and copies it into `library/maps/`. Files
+/// outside the library are only ever read when the DM picked them; nothing is written outside.
+#[tauri::command]
+pub async fn library_import_map(
+    app: AppHandle,
+    window: WebviewWindow,
+    filter_label: String,
+) -> Result<Option<ImportedAsset>, LibraryError> {
+    require_dm(&window)?;
+    let root = app.state::<LibraryState>().root()?;
+    let dialog = app
+        .dialog()
+        .file()
+        .set_parent(&window)
+        // Display text only (translated in the webview); capped so it cannot flood the dialog.
+        .add_filter(
+            filter_label.chars().take(100).collect::<String>(),
+            &import::MAP_EXTENSIONS,
+        );
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(picked) = dialog.blocking_pick_file() else {
+            return Ok(None);
+        };
+        let source = picked
+            .into_path()
+            .map_err(|error| LibraryError::Io(error.to_string()))?;
+        import::import_image(&root, "library/maps", &source).map(Some)
+    })
+    .await
+    .map_err(|error| LibraryError::Io(error.to_string()))?
 }
 
 #[tauri::command]

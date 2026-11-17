@@ -32,11 +32,14 @@ describe("createTauriLibraryService", () => {
     await fs.writeAtomic("x.json", "{}");
     await fs.list("campaigns");
     await fs.makeDirectory("library/maps");
+    fake.invoke.mockResolvedValueOnce(null);
+    await createTauriLibraryService().importMap("Karten");
     expect(fake.invoke.mock.calls).toEqual([
       ["library_read", { path: "campaigns/a/campaign.json" }],
       ["library_write", { path: "x.json", text: "{}" }],
       ["library_list", { path: "campaigns" }],
       ["library_make_directory", { path: "library/maps" }],
+      ["library_import_map", { filterLabel: "Karten" }],
     ]);
   });
 
@@ -53,6 +56,15 @@ describe("createTauriLibraryService", () => {
       .catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(LibraryError);
     expect(error).toMatchObject({ code, message });
+  });
+
+  test("validates the imported asset reference", async () => {
+    fake.invoke.mockResolvedValue({ path: "../outside.png", hash: "x" });
+    await expect(
+      createTauriLibraryService().importMap("Karten"),
+    ).rejects.toThrow();
+    fake.invoke.mockResolvedValue(null);
+    expect(await createTauriLibraryService().importMap("Karten")).toBeNull();
   });
 
   test("passes only string paths of change events on", async () => {

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, test } from "vitest";
 import { createI18n } from "../i18n.js";
+import { LibraryError } from "../platform/library.js";
 import { CampaignPanel } from "./CampaignPanel.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
@@ -107,5 +108,57 @@ describe("CampaignPanel", () => {
       await screen.findByText("Das hat nicht geklappt: Datenträger voll"),
     ).toBeTruthy();
     expect(field.value).toBe("Eingang");
+  });
+
+  test("creates a scene with an imported map", async () => {
+    const library = fakeLibraryService("/lib");
+    const asset = {
+      path: "library/maps/hoehle.webp",
+      hash: `sha256:${"b".repeat(64)}`,
+    };
+    library.service.importMap.mockResolvedValue(asset);
+    renderCampaign(library);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Karte wählen …" }),
+    );
+    expect(
+      await screen.findByText("Karte für die neue Szene: hoehle.webp"),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Name der neuen Szene"), {
+      target: { value: "Höhle" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Szene anlegen" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Höhle" }));
+
+    expect(screen.getByText("Karte: hoehle.webp")).toBeTruthy();
+    expect(
+      screen.getByText("Die neue Szene bekommt noch keine Karte."),
+    ).toBeTruthy();
+    const saved = JSON.parse(
+      library.fs.files().get("campaigns/mine/scenes/new-1.json") ?? "{}",
+    ) as { map: unknown };
+    expect(saved.map).toEqual({
+      kind: "image",
+      asset,
+      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+      levels: [{ id: "new-2", name: "Erdgeschoss" }],
+    });
+  });
+
+  test("explains a refused map file", async () => {
+    const library = fakeLibraryService("/lib");
+    library.service.importMap.mockRejectedValue(
+      new LibraryError("unsupportedFile", "/Users/dm/notes.txt"),
+    );
+    renderCampaign(library);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Karte wählen …" }),
+    );
+    expect(
+      await screen.findByText(
+        "Diese Datei ist kein PNG-, JPG- oder WebP-Bild.",
+      ),
+    ).toBeTruthy();
   });
 });

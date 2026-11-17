@@ -38,6 +38,7 @@ export const en: Messages = {
     errors: {
       noLibrary: "No library folder is open. Please choose a folder.",
       forbidden: "This window may not access the library.",
+      unsupportedFile: "This file is not a PNG, JPG or WebP image.",
       invalidPath: "The app may not access this file.",
     },
   },
@@ -50,6 +51,13 @@ export const en: Messages = {
     createScene: "Create scene",
     sceneCreated: "Scene “{{name}}” created.",
     openScene: "Open scene: {{name}}",
+    importMap: "Choose map …",
+    mapFilter: "Maps (PNG, JPG, WebP)",
+    mapForNewScene: "Map for the new scene: {{file}}",
+    noMapForNewScene: "The new scene gets no map yet.",
+    map: "Map: {{file}}",
+    noMap: "No map",
+    defaultLevel: "Ground floor",
     closeScene: "Close scene",
     scene: {
       notAvailable: "{{id}} (not downloaded yet)",
