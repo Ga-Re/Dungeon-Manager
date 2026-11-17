@@ -16,5 +16,8 @@
   },
   "devDependencies": {
     "@dungeon-manager/tsconfig": "workspace:*"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
   }
 }

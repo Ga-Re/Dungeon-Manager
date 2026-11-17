@@ -117,12 +117,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-101 Schema v1 and migrations framework
 
-- **Status:** todo · **Depends on:** T-003 · **Refs:** ARCHITECTURE §5–6, ADR-0005
+- **Status:** done · **Depends on:** T-003 · **Refs:** ARCHITECTURE §5–6, ADR-0005
 - zod schemas with `schemaVersion` for `Campaign`, `Scene`, `Map`, `Token`, `FogState`, `InitiativeState`, `Combatant`, `VisibilityRule`, `Player`; migration runner.
 - **Acceptance criteria**
-  - [ ] Round-trip tests (parse → serialize → parse) for every entity
-  - [ ] Migration runner tested with a fake v0 → v1 migration
-  - [ ] Unknown fields are preserved on round-trip
+  - [x] Round-trip tests (parse → serialize → parse) for every entity
+  - [x] Migration runner tested with a fake v0 → v1 migration
+  - [x] Unknown fields are preserved on round-trip
 - **Notes:** From T-003 review: workspace packages export `dist/`, so a test importing another package runs against its last build (fine inside `pnpm check`, which builds first; stale in a standalone `pnpm test`). Consider a Vitest alias/source condition pointing workspace imports at `src/`.
 
 ### T-102 Core reducer: commands, events, permissions, projection

@@ -123,13 +123,15 @@ apply(state: SessionState, command: Command, ctx: Ctx): { state: SessionState; e
 - **Permissions** are checked in `core` (`canApply(actor, command, state)`): DM, DM phone, player companion (per-player rights).
 - **Undo:** the desktop keeps a command history with inverse snapshots per scene.
 - **Session log** is derived from `DomainEvent`s.
-- **Visibility filtering** (`projectForViewer(state, viewer)`) is a pure function in `core`. The player window and every companion only ever receive the projected state – hidden data never leaves the desktop.
+- **Visibility filtering** (`projectForViewer(state, viewer)`) is a pure function in `core`. The player window and every companion only ever receive the projected state – hidden data never leaves the desktop. It builds its output from an explicit allow-list with strict viewer schemas – never by parsing with the (loose, unknown-field-preserving) file schemas from `packages/schema` or by spreading state objects.
 
 ### 5.2 Key entities (initial)
 
 `Campaign`, `Scene`, `Map` (image/video, grid, levels), `Token`, `FogState` (revealed regions per level, memory fog), `InitiativeState`, `Combatant` (HP, temp HP, conditions), `VisibilityRule`, `Player`, `Handout`, `SoundPreset`, `LightPreset`, `WikiEntry`.
 
 Coordinates: grid cells (integer `col,row`) for game logic; map pixels for rendering. Conversion lives in `core`.
+
+The entities are zod schemas in `packages/schema`. Only the files carry `schemaVersion` – `campaign.json` and one file per scene (version 1 since T-101); the other entities are embedded in them. Unknown fields are kept on round-trip, documents from a newer app version are refused instead of downgraded, and older ones are migrated step by step (`migrateDocument`).
 
 ---
 
