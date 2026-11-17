@@ -195,6 +195,7 @@ pub async fn library_choose(
 pub async fn library_import_map(
     app: AppHandle,
     window: WebviewWindow,
+    filter_label: String,
 ) -> Result<Option<ImportedAsset>, LibraryError> {
     require_dm(&window)?;
     let root = app.state::<LibraryState>().root()?;
@@ -202,7 +203,11 @@ pub async fn library_import_map(
         .dialog()
         .file()
         .set_parent(&window)
-        .add_filter("Map", &import::MAP_EXTENSIONS);
+        // Display text only (translated in the webview); capped so it cannot flood the dialog.
+        .add_filter(
+            filter_label.chars().take(100).collect::<String>(),
+            &import::MAP_EXTENSIONS,
+        );
     tauri::async_runtime::spawn_blocking(move || {
         let Some(picked) = dialog.blocking_pick_file() else {
             return Ok(None);

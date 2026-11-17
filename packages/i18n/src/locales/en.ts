@@ -52,6 +52,7 @@ export const en: Messages = {
     sceneCreated: "Scene “{{name}}” created.",
     openScene: "Open scene: {{name}}",
     importMap: "Choose map …",
+    mapFilter: "Maps (PNG, JPG, WebP)",
     mapForNewScene: "Map for the new scene: {{file}}",
     noMapForNewScene: "The new scene gets no map yet.",
     map: "Map: {{file}}",

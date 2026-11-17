@@ -1,4 +1,4 @@
-import type { AssetRef } from "@dungeon-manager/schema";
+import { assetRefSchema } from "@dungeon-manager/schema";
 import type { DirEntry, ReadResult } from "@dungeon-manager/storage";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -53,7 +53,11 @@ export function createTauriLibraryService(): LibraryService {
     },
     currentRoot: () => call<string | null>("library_root"),
     chooseRoot: () => call<string | null>("library_choose"),
-    importMap: () => call<AssetRef | null>("library_import_map"),
+    async importMap(filterLabel) {
+      const result = await call<unknown>("library_import_map", { filterLabel });
+      // Validated at the edge like any file content: only a safe relative path and a hash.
+      return assetRefSchema.nullable().parse(result);
+    },
     async onChange(listener) {
       return listen<unknown>("library-changed", ({ payload }) => {
         if (Array.isArray(payload))

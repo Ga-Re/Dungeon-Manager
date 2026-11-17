@@ -30,8 +30,9 @@ export interface LibraryService {
   /**
    * Asks the DM for a map image (native dialog) and copies it into `library/maps/`;
    * `null` if cancelled. An identical file already there is reused.
+   * @param filterLabel translated name of the file type filter shown in the dialog
    */
-  importMap(): Promise<AssetRef | null>;
+  importMap(filterLabel: string): Promise<AssetRef | null>;
   /** Calls `listener` with library-relative paths changed on disk; resolves to an unsubscribe. */
   onChange(listener: (paths: readonly string[]) => void): Promise<() => void>;
 }

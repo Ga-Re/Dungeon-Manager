@@ -112,6 +112,7 @@ export function CampaignPanel({
         id: newId(),
         name: sceneName,
         map:
+          // The level id only has to be unique within this scene.
           pendingMap &&
           imageMap(pendingMap, newId(), t("campaign.defaultLevel")),
       });
@@ -128,8 +129,11 @@ export function CampaignPanel({
   const importMap = async () => {
     setImporting(true);
     try {
-      const asset = await service.importMap();
-      if (asset) setPendingMap(asset);
+      const asset = await service.importMap(t("campaign.mapFilter"));
+      if (asset) {
+        setPendingMap(asset);
+        setNotice("");
+      }
     } catch (error) {
       setNotice(describeLibraryError(t, error));
     } finally {

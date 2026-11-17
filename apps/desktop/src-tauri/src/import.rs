@@ -5,8 +5,8 @@ use crate::library::{self, LibraryError};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::{self, Read};
-use std::path::Path;
+use std::io::{self, Read, Write};
+use std::path::{Path, PathBuf};
 
 /// File extensions offered in the picker for maps.
 pub const MAP_EXTENSIONS: [&str; 4] = ["png", "jpg", "jpeg", "webp"];
@@ -49,39 +49,90 @@ fn portable_stem(stem: &str) -> String {
     }
     let trimmed: String = result.trim_matches('-').chars().take(60).collect();
     let trimmed = trimmed.trim_end_matches('-');
-    if trimmed.is_empty() {
-        "map".to_owned()
-    } else {
-        trimmed.to_owned()
+    // Windows device names are not usable as file names, whatever the extension.
+    const DEVICES: [&str; 22] = [
+        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+    ];
+    match trimmed {
+        "" => "map".to_owned(),
+        device if DEVICES.contains(&device) => format!("{device}-map"),
+        stem => stem.to_owned(),
     }
 }
 
 fn sha256_of(path: &Path) -> io::Result<String> {
-    let mut file = fs::File::open(path)?;
     let mut hasher = Sha256::new();
-    let mut buffer = vec![0; 1 << 20];
-    loop {
-        let read = file.read(&mut buffer)?;
-        if read == 0 {
-            break;
-        }
-        hasher.update(&buffer[..read]);
-    }
+    io::copy(&mut fs::File::open(path)?, &mut hasher)?;
     Ok(format!("sha256:{:x}", hasher.finalize()))
 }
 
-/// Copies the image at `source` into `<root>/<folder>/`. An identical file already there is
-/// reused; a different file of the same name gets a numbered name, so nothing is overwritten.
+/// Removes the staging file however the import ends.
+struct Staged(PathBuf);
+
+impl Drop for Staged {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.0);
+    }
+}
+
+/// Copies `source` once into a staging file inside the library, hashing the bytes and keeping
+/// the first ones for format detection on the way, so the hash always matches the copy.
+fn stage(source: &Path, staged: &Path) -> io::Result<(String, Vec<u8>)> {
+    let mut input = fs::File::open(source)?;
+    let mut output = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(staged)?;
+    let mut hasher = Sha256::new();
+    let mut header = Vec::with_capacity(12);
+    let mut buffer = vec![0; 1 << 20];
+    loop {
+        let read = input.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        let chunk = &buffer[..read];
+        let missing = 12usize.saturating_sub(header.len()).min(read);
+        header.extend_from_slice(&chunk[..missing]);
+        hasher.update(chunk);
+        output.write_all(chunk)?;
+    }
+    output.sync_all()?;
+    Ok((format!("sha256:{:x}", hasher.finalize()), header))
+}
+
+/// Puts the staged file at `target` without ever replacing an existing file: a hard link fails
+/// if the name is taken. Where links are not supported (some cloud or FAT volumes) it falls back
+/// to rename after an existence check – a small race with sync clients, see ARCHITECTURE §6.3.
+fn place(staged: &Path, target: &Path) -> io::Result<bool> {
+    match fs::hard_link(staged, target) {
+        Ok(()) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(false),
+        Err(_) if target.symlink_metadata().is_ok() => Ok(false),
+        Err(_) => fs::rename(staged, target).map(|()| true),
+    }
+}
+
+/// Copies the image at `source` into `<root>/<folder>/` under a portable name. An identical file
+/// already there is reused; any other existing file keeps its name and the import gets a
+/// numbered one, so nothing is overwritten.
 pub fn import_image(
     root: &Path,
     folder: &str,
     source: &Path,
 ) -> Result<ImportedAsset, LibraryError> {
-    let mut header = [0; 12];
-    let read = fs::File::open(source)?.read(&mut header)?;
-    let extension = image_extension(&header[..read])
+    let staged_path = library::resolve(
+        root,
+        &format!("{folder}/.import-{}.tmp", std::process::id()),
+    )?;
+    fs::create_dir_all(staged_path.parent().unwrap_or(root))?;
+    // A leftover from a crashed import (or a planted symlink) is removed, never followed.
+    let _ = fs::remove_file(&staged_path);
+    let staged = Staged(staged_path);
+    let (hash, header) = stage(source, &staged.0)?;
+    let extension = image_extension(&header)
         .ok_or_else(|| LibraryError::UnsupportedFile(source.display().to_string()))?;
-    let hash = sha256_of(source)?;
     let stem = portable_stem(&source.file_stem().unwrap_or_default().to_string_lossy());
     for number in 1.. {
         let name = if number == 1 {
@@ -91,30 +142,20 @@ pub fn import_image(
         };
         let relative = format!("{folder}/{name}");
         let target = library::resolve(root, &relative)?;
-        if target.exists() {
-            if sha256_of(&target)? == hash {
-                return Ok(ImportedAsset {
-                    path: relative,
-                    hash,
-                });
-            }
-            continue;
+        if target.is_file() && sha256_of(&target)? == hash {
+            return Ok(ImportedAsset {
+                path: relative,
+                hash,
+            });
         }
-        copy_atomic(source, &target)?;
-        return Ok(ImportedAsset {
-            path: relative,
-            hash,
-        });
+        if !target.exists() && place(&staged.0, &target)? {
+            return Ok(ImportedAsset {
+                path: relative,
+                hash,
+            });
+        }
     }
     unreachable!("the name loop only ends by returning")
-}
-
-/// Streams `source` into `target` via the same temp-file-and-rename as `write_atomic`.
-fn copy_atomic(source: &Path, target: &Path) -> Result<(), LibraryError> {
-    library::write_atomic_with(target, |file| {
-        io::copy(&mut fs::File::open(source)?, file)?;
-        Ok(())
-    })
 }
 
 #[cfg(test)]
@@ -144,6 +185,7 @@ mod tests {
     fn names_are_portable() {
         assert_eq!(portable_stem("Goblin Höhle (Nacht)"), "goblin-hoehle-nacht");
         assert_eq!(portable_stem("..."), "map");
+        assert_eq!(portable_stem("CON"), "con-map");
         assert_eq!(portable_stem(&"x".repeat(100)).len(), 60);
     }
 
@@ -168,6 +210,20 @@ mod tests {
         fs::write(root.join("library/maps/hoehle.webp"), b"RIFF0000WEBPold").unwrap();
         let second = import_image(&root, "library/maps", &other).unwrap();
         assert_eq!(second.path, "library/maps/hoehle-2.webp");
+
+        // A folder in the way is skipped, not an error.
+        fs::create_dir_all(root.join("library/maps/hoehle-3.webp")).unwrap();
+        fs::write(&other, b"RIFF1111WEBPnewer").unwrap();
+        let third = import_image(&root, "library/maps", &other).unwrap();
+        assert_eq!(third.path, "library/maps/hoehle-4.webp");
+
+        // No staging files are left behind.
+        let leftovers: Vec<_> = fs::read_dir(root.join("library/maps"))
+            .unwrap()
+            .filter_map(|entry| entry.ok()?.file_name().into_string().ok())
+            .filter(|name| name.ends_with(".tmp"))
+            .collect();
+        assert!(leftovers.is_empty(), "{leftovers:?}");
         assert_eq!(
             fs::read(root.join("library/maps/hoehle.webp")).unwrap(),
             b"RIFF0000WEBPold"
@@ -179,9 +235,11 @@ mod tests {
         let outside = temp_dir("not-image");
         let source = outside.join("map.png");
         fs::write(&source, b"<html>").unwrap();
+        let root = temp_dir("not-image-root");
         assert!(matches!(
-            import_image(&temp_dir("not-image-root"), "library/maps", &source),
+            import_image(&root, "library/maps", &source),
             Err(LibraryError::UnsupportedFile(_))
         ));
+        assert_eq!(fs::read_dir(root.join("library/maps")).unwrap().count(), 0);
     }
 }

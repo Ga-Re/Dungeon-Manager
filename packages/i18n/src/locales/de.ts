@@ -52,6 +52,7 @@ export const de = {
     sceneCreated: "Szene „{{name}}“ angelegt.",
     openScene: "Geöffnete Szene: {{name}}",
     importMap: "Karte wählen …",
+    mapFilter: "Karten (PNG, JPG, WebP)",
     mapForNewScene: "Karte für die neue Szene: {{file}}",
     noMapForNewScene: "Die neue Szene bekommt noch keine Karte.",
     map: "Karte: {{file}}",
