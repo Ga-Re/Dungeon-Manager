@@ -12,6 +12,7 @@ export const de = {
     loadingDisplays: "Displays werden gesucht …",
     openPlayerView: "Spieleransicht öffnen",
     playerViewOpened: "Spieleransicht läuft auf {{name}}.",
+    rotateTv: "TV-Ansicht drehen (jetzt {{degrees}}°)",
     refreshDisplays: "Displays neu suchen",
     error: "Das hat nicht geklappt: {{message}}",
     errors: {
@@ -94,6 +95,8 @@ export const de = {
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",
   },
   player: {
+    notShown:
+      "Die Szene kann nicht auf dem TV gezeigt werden: die Kampagnendatei ist nicht lesbar. Der TV bleibt schwarz.",
     windowTitle: "Spieleransicht",
   },
 };

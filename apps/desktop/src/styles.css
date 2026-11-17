@@ -58,3 +58,8 @@ button {
   font-size: 0.875rem;
   opacity: 0.8;
 }
+
+.player canvas {
+  position: absolute;
+  inset: 0;
+}

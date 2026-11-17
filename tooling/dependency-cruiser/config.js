@@ -94,9 +94,9 @@ export default {
 
     ...allowOnly(
       "protocol-only-core-schema",
-      "protocol may only depend on core and schema (no UI, renderer or I/O). Approved libraries are added here explicitly.",
+      "protocol may only depend on core, schema and zod for message validation (no UI, renderer or I/O). Approved libraries are added here explicitly.",
       "protocol",
-      pkg("protocol", "core", "schema"),
+      `${pkg("protocol", "core", "schema")}|${ZOD}`,
     ),
     ...allowOnly(
       "storage-only-core-schema",

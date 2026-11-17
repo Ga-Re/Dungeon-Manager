@@ -1,4 +1,4 @@
-import { useEffect, useState, type SyntheticEvent } from "react";
+import { useContext, useEffect, useState, type SyntheticEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DisplayError,
@@ -7,6 +7,7 @@ import {
 } from "../platform/displays.js";
 import type { LibraryService } from "../platform/library.js";
 import { LibraryPanel } from "./LibraryPanel.js";
+import { PlayerFeedContext } from "./player-feed-context.js";
 
 type DisplayState =
   | { readonly status: "loading" }
@@ -29,6 +30,15 @@ export function DmApp({
   const [notice, setNotice] = useState("");
   const [opening, setOpening] = useState(false);
   const [searchCount, setSearchCount] = useState(0);
+  const playerFeed = useContext(PlayerFeedContext);
+  const [rotation, setRotation] = useState(playerFeed?.rotation ?? 0);
+
+  // Players sit around the table; the TV view turns in quarter steps (SPEC 2.2).
+  const rotateTv = () => {
+    const next = ((rotation + 90) % 360) as typeof rotation;
+    setRotation(next);
+    playerFeed?.rotate(next);
+  };
 
   useEffect(() => {
     let active = true;
@@ -115,6 +125,11 @@ export function DmApp({
             {t("dm.openPlayerView")}
           </button>
         </form>
+      )}
+      {playerFeed && (
+        <button type="button" onClick={rotateTv}>
+          {t("dm.rotateTv", { degrees: rotation })}
+        </button>
       )}
       <button
         type="button"

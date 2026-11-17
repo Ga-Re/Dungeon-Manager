@@ -1,4 +1,5 @@
-import { Application, Container, Sprite, Texture } from "pixi.js";
+import type { Polygon } from "@dungeon-manager/schema";
+import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import type { Camera, Size } from "./camera.js";
 
 /** An image the browser has loaded (or drawn), ready to become the map texture. */
@@ -22,6 +23,12 @@ export interface RendererOptions {
 export interface Renderer {
   /** Replaces the map image (`null` removes it). The renderer owns the texture from now on. */
   setMap(image: MapImage | null): void;
+  /**
+   * Covers everything except `revealed` with opaque fog (the player view), or removes the fog
+   * layer with `null` (the DM sees the whole map). Set it before or with the map: the player
+   * view must never draw a map without its fog (ARCHITECTURE §5.1, ADR-0010).
+   */
+  setFog(revealed: readonly Polygon[] | null): void;
   setCamera(camera: Camera): void;
   resize(size: Size): void;
   /** Resolves after the next draw has been submitted (for screenshots and tests). */
@@ -51,6 +58,7 @@ export async function createRenderer(
   const world = new Container();
   app.stage.addChild(world);
   let map: Sprite | null = null;
+  let fog: Graphics | null = null;
   let size = options.size;
   let camera: Camera | null = null;
   let frame: number | null = null;
@@ -92,6 +100,18 @@ export async function createRenderer(
       }
       requestDraw();
     },
+    setFog(revealed) {
+      if (fog) {
+        world.removeChild(fog);
+        fog.destroy();
+        fog = null;
+      }
+      if (revealed) {
+        fog = drawFog(revealed);
+        world.addChild(fog);
+      }
+      requestDraw();
+    },
     setCamera(next) {
       camera = next;
       requestDraw();
@@ -122,4 +142,28 @@ export async function createRenderer(
       );
     },
   };
+}
+
+/** Fog reaches far beyond any map, so panning or rotating never shows an uncovered edge. */
+const FOG_EXTENT = 1_000_000;
+const FOG_COLOUR = 0x000000;
+
+const flat = (ring: readonly (readonly [number, number])[]) =>
+  ring.flatMap(([x, y]) => [x, y]);
+
+/**
+ * Opaque fog with the revealed areas cut out. Revealed polygons come from a union (core/fog),
+ * so they never overlap; holes inside them (hidden again) are filled with fog once more.
+ */
+function drawFog(revealed: readonly Polygon[]): Graphics {
+  const graphics = new Graphics();
+  graphics
+    .rect(-FOG_EXTENT, -FOG_EXTENT, 2 * FOG_EXTENT, 2 * FOG_EXTENT)
+    .fill({ color: FOG_COLOUR });
+  for (const polygon of revealed) graphics.poly(flat(polygon.outer)).cut();
+  for (const polygon of revealed) {
+    for (const hole of polygon.holes)
+      graphics.poly(flat(hole)).fill({ color: FOG_COLOUR });
+  }
+  return graphics;
 }

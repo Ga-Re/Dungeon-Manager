@@ -13,6 +13,7 @@ import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
 import { MapChangeChoice } from "./MapChangeChoice.js";
 import { MapView } from "./MapView.js";
+import { usePlayerView } from "./usePlayerView.js";
 
 /** The open scene: change its map, delete it (to the trash, after confirming) or close it. */
 export function OpenScenePanel({
@@ -37,6 +38,7 @@ export function OpenScenePanel({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
   const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
+  const notOnTv = usePlayerView(service, slug, scene);
   const changeMapButton = useRef<HTMLButtonElement>(null);
   const choosing = useRef(false);
 
@@ -168,6 +170,7 @@ export function OpenScenePanel({
       <button type="button" disabled={busy} onClick={onClose}>
         {t("campaign.closeScene")}
       </button>
+      {notOnTv && <p role="alert">{t("player.notShown")}</p>}
       {error && <p role="alert">{error}</p>}
       {scene.map && (
         <MapView

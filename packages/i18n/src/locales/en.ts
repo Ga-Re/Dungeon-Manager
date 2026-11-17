@@ -13,6 +13,7 @@ export const en: Messages = {
     loadingDisplays: "Looking for displays …",
     openPlayerView: "Open player view",
     playerViewOpened: "Player view is running on {{name}}.",
+    rotateTv: "Rotate TV view (now {{degrees}}°)",
     refreshDisplays: "Search displays again",
     error: "That did not work: {{message}}",
     errors: {
@@ -94,6 +95,8 @@ export const en: Messages = {
     placeholder: "Soon you can join the game table here.",
   },
   player: {
+    notShown:
+      "The scene cannot be shown on the TV: the campaign file is not readable. The TV stays black.",
     windowTitle: "Player view",
   },
 };

@@ -59,6 +59,8 @@ const EXPECTED = {
   "packages/schema/src/imports-zod.ts": [],
   "packages/renderer/src/imports-pixi.ts": [],
   "packages/protocol/src/imports-core.ts": [],
+  // Messages are validated with zod in protocol (ARCHITECTURE §7).
+  "packages/protocol/src/imports-zod.ts": [],
   "packages/storage/src/imports-schema.ts": [],
   "packages/i18n/src/imports-app.ts": ["packages-not-to-apps"],
   "apps/companion/src/index.ts": [],

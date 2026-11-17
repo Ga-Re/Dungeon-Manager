@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "player",
+  "description": "Player window (table TV): it may only listen for events. It receives the projected scene from the DM window (validated with the strict player-view schema) and calls no commands; library images come through the read-only dmlib scheme (DM decision, T-105b).",
+  "windows": ["player"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}

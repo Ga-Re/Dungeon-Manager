@@ -283,12 +283,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-105b Player window shows the open scene
 
-- **Status:** todo · **Depends on:** T-105a · **Refs:** ARCHITECTURE §5.1, §8
-- The DM window sends the player window the projected scene (`projectForViewer`) via a Tauri event; the player window's only permission is listening to events, and it validates every message with the strict viewer schema. Locked scale (placeholder until T-106 calibration), camera controlled from the DM window.
+- **Status:** done · **Depends on:** T-105a · **Refs:** ARCHITECTURE §5.1, §8
+- The DM window sends the player window the projected scene (`projectForViewer`) via a Tauri event; the player window's only permission is listening to events, and it validates every message with the strict viewer schema. Locked scale: the map is fitted to the TV until T-106 brings 1-inch calibration (then the DM window also pans the TV view); the DM rotates the TV view. Fog: opaque except revealed areas (first map level until levels can be switched).
 - **Acceptance criteria**
-  - [ ] Opening a scene in the DM window shows its map on the TV; closing it clears the TV
-  - [ ] Screenshot test for the player view
-  - [ ] The player window rejects messages that fail the viewer schema
+  - [x] Opening a scene in the DM window shows its map on the TV; closing it clears the TV
+  - [x] Screenshot test for the player view
+  - [x] The player window rejects messages that fail the viewer schema
 - **Notes:** Security-relevant (player window capability): DM confirmed the approach 2026-11-17; confirms the capability before merge.
 
 ### T-105c Video maps and renderer benchmark
