@@ -1,5 +1,7 @@
-// Smoke test for the real desktop app (T-006): start it via tauri-driver, open the player
-// view from the DM window and check that both windows exist.
+// Smoke test for the real desktop app (T-006, T-103b): start it via tauri-driver, open the
+// player view from the DM window and check that both windows exist; check that the player
+// window cannot call library commands; open a temporary library and check that a campaign
+// written from outside the app shows up while it runs.
 //
 // Linux/Windows only – tauri-driver has no macOS support. Needs a debug build
 // (`pnpm --filter @dungeon-manager/desktop build:app`), `tauri-driver` on PATH and, on Linux,
@@ -7,7 +9,14 @@
 //
 // Speaks the W3C WebDriver protocol directly with fetch instead of pulling in a WebDriver client library.
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const DRIVER_URL = "http://127.0.0.1:4444";
@@ -72,8 +81,11 @@ async function main() {
     );
   }
 
+  // Debug builds open this folder instead of the saved library (see commands.rs).
+  const library = mkdtempSync(join(tmpdir(), "dm-smoke-library-"));
   const driver = spawn("tauri-driver", [], {
     stdio: ["ignore", "inherit", "inherit"],
+    env: { ...process.env, DUNGEON_MANAGER_LIBRARY: library },
   });
   driver.on("error", (error) => {
     console.error(`Could not start tauri-driver: ${error.message}`);
@@ -107,7 +119,46 @@ async function main() {
       findElement(sessionPath, "#player-view"),
     );
 
-    console.log("Smoke test passed: DM window and player window are running.");
+    // The player window has no capability: library commands must be refused there.
+    const playerAccess = await command("POST", `${sessionPath}/execute/async`, {
+      script: `const done = arguments[arguments.length - 1];
+        window.__TAURI_INTERNALS__.invoke("library_read", { path: "campaigns" })
+          .then(() => done("allowed"), (error) => done("refused: " + String(error)));`,
+      args: [],
+    });
+    if (!String(playerAccess).startsWith("refused"))
+      throw new Error(`Player window could call library_read: ${playerAccess}`);
+
+    await command("POST", `${sessionPath}/window`, { handle: dmHandle });
+    const pageText = () =>
+      command("POST", `${sessionPath}/execute/sync`, {
+        script: "return document.body.textContent;",
+        args: [],
+      });
+    await waitFor("the empty library", async () =>
+      (await pageText()).includes("Noch keine Kampagnen"),
+    );
+    if (!existsSync(join(library, "library", "maps")))
+      throw new Error("The library layout was not created.");
+
+    mkdirSync(join(library, "campaigns", "smoke"));
+    writeFileSync(
+      join(library, "campaigns", "smoke", "campaign.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "smoke",
+        name: "Smoke-Kampagne",
+        players: [],
+        visibilityDefaults: {},
+      }),
+    );
+    await waitFor("the campaign written from outside", async () =>
+      (await pageText()).includes("Smoke-Kampagne"),
+    );
+
+    console.log(
+      "Smoke test passed: both windows run, the player window has no file access, and library changes are picked up.",
+    );
   } catch (error) {
     // Show what the window displayed, so CI failures can be diagnosed from the log.
     if (sessionPath) {
@@ -122,6 +173,7 @@ async function main() {
     if (sessionPath)
       await command("DELETE", sessionPath).catch(() => undefined);
     driver.kill();
+    rmSync(library, { recursive: true, force: true });
   }
 }
 

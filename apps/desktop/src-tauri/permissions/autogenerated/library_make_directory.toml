@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-library-make-directory"
+description = "Enables the library_make_directory command without any pre-configured scope."
+commands.allow = ["library_make_directory"]
+
+[[permission]]
+identifier = "deny-library-make-directory"
+description = "Denies the library_make_directory command without any pre-configured scope."
+commands.deny = ["library_make_directory"]

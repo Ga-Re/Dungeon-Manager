@@ -5,17 +5,21 @@ import {
   type Display,
   type DisplayService,
 } from "../platform/displays.js";
+import type { LibraryService } from "../platform/library.js";
+import { LibraryPanel } from "./LibraryPanel.js";
 
 type DisplayState =
   | { readonly status: "loading" }
   | { readonly status: "ready"; readonly displays: readonly Display[] }
   | { readonly status: "error"; readonly error: unknown };
 
-/** DM window: choose a display and open the player view on it. */
+/** DM window: choose a display and open the player view on it; manage the library. */
 export function DmApp({
   displayService,
+  libraryService,
 }: {
   readonly displayService: DisplayService;
+  readonly libraryService: LibraryService;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<DisplayState>({ status: "loading" });
@@ -121,6 +125,7 @@ export function DmApp({
       </button>
       {/* Always rendered: screen readers only announce changes to an existing live region. */}
       <p role="status">{notice}</p>
+      <LibraryPanel service={libraryService} />
     </main>
   );
 }

@@ -7,6 +7,7 @@ import {
   type Display,
   type DisplayService,
 } from "../platform/displays.js";
+import { fakeLibraryService } from "./fake-library.test-data.js";
 import { DmApp } from "./DmApp.js";
 
 const laptop: Display = {
@@ -31,7 +32,10 @@ function fakeService(displays: readonly Display[] = [laptop, tv]) {
 function renderDm(service: DisplayService, language: "de" | "en" = "de") {
   return render(
     <I18nextProvider i18n={createI18n(language)}>
-      <DmApp displayService={service} />
+      <DmApp
+        displayService={service}
+        libraryService={fakeLibraryService(null).service}
+      />
     </I18nextProvider>,
   );
 }

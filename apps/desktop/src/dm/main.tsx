@@ -6,6 +6,7 @@ import {
   createTauriDisplayService,
   detectPlatformFamily,
 } from "../platform/tauri-displays.js";
+import { createTauriLibraryService } from "../platform/tauri-library.js";
 import "../styles.css";
 import { DmApp } from "./DmApp.js";
 
@@ -25,7 +26,10 @@ if (!root) throw new Error("#root is missing in dm.html");
 createRoot(root).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
-      <DmApp displayService={displayService} />
+      <DmApp
+        displayService={displayService}
+        libraryService={createTauriLibraryService()}
+      />
     </I18nextProvider>
   </StrictMode>,
 );

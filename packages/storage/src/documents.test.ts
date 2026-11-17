@@ -4,6 +4,7 @@ import {
   createMemoryFileSystem,
   ensureLibraryLayout,
   LIBRARY_DIRECTORIES,
+  listCampaigns,
   listScenes,
   loadCampaign,
   loadScene,
@@ -208,5 +209,18 @@ describe("scene files", () => {
       sceneIds: [],
       conflicts: [],
     });
+  });
+});
+
+describe("campaign folders", () => {
+  test("lists folders with a valid slug, sorted", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/zeta/campaign.json": "{}",
+      "campaigns/alpha/scenes/scene-1.json": "{}",
+      "campaigns/Not A Slug/campaign.json": "{}",
+      "campaigns/notes.txt": "x",
+    });
+    expect(await listCampaigns(fs)).toEqual(["alpha", "zeta"]);
+    expect(await listCampaigns(createMemoryFileSystem())).toEqual([]);
   });
 });
