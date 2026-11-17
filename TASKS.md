@@ -61,12 +61,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-006 Desktop app skeleton with two windows
 
-- **Status:** todo · **Depends on:** T-001 · **Refs:** ADR-0002, SPEC 2.1–2.2
+- **Status:** done · **Depends on:** T-001 · **Refs:** ADR-0002, SPEC 2.1–2.2
 - Tauri 2 + React app in `apps/desktop`; DM window and a player window that can be moved fullscreen to a chosen display.
 - **Acceptance criteria**
-  - [ ] `pnpm dev:desktop` opens the DM window; a button opens the player window on a selectable display in fullscreen
-  - [ ] i18next set up (`de` default, `en`), no hard-coded strings
-  - [ ] Tauri-driver smoke test starts the app and finds both windows
+  - [x] `pnpm dev:desktop` opens the DM window; a button opens the player window on a selectable display in fullscreen
+  - [x] i18next set up (`de` default, `en`), no hard-coded strings
+  - [x] Tauri-driver smoke test starts the app and finds both windows
 - **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`. From T-003 (DM decision): add React Testing Library, jsdom and React here, with the first component; configure a jsdom Vitest environment for `*.test.tsx`. From T-004: the CI `rust` job starts running fmt/clippy/test once `apps/desktop/src-tauri/Cargo.toml` exists; on Linux it then needs the Tauri system libraries (`libwebkit2gtk-4.1-dev` etc.) installed via apt in that job.
 
 ### T-007 Performance spike: video map + fog in the player window

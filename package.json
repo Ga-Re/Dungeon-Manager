@@ -10,6 +10,7 @@
   },
   "scripts": {
     "build": "turbo run build",
+    "dev:desktop": "turbo run build --filter=@dungeon-manager/desktop^... && pnpm --filter @dungeon-manager/desktop dev",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run boundaries && pnpm run check:boundary-rules && pnpm run test",
     "typecheck": "turbo run typecheck",
     "lint": "eslint --max-warnings 0 .",
@@ -24,10 +25,15 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.65.1",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
     "@vitest/coverage-v8": "5.1.0",
     "dependency-cruiser": "18.7.2",
     "eslint": "10.15.0",
+    "jsdom": "31.0.1",
     "prettier": "3.10.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "turbo": "2.11.11",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",

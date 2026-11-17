@@ -31,7 +31,12 @@ export function createConfig(rootDir) {
       files: ["**/*.{js,mjs,cjs}"],
       extends: [tseslint.configs.disableTypeChecked],
       languageOptions: {
-        globals: { console: "readonly", process: "readonly" },
+        globals: {
+          console: "readonly",
+          process: "readonly",
+          fetch: "readonly",
+          setTimeout: "readonly",
+        },
       },
     },
   );

@@ -98,6 +98,8 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "No Rust crate yet ($MANIFEST) – nothing to check."
           fi
+      - uses: ./.github/actions/tauri-linux
+        if: steps.crate.outputs.exists == 'true'
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.crate.outputs.exists == 'true'
         with:
@@ -116,3 +118,41 @@ jobs:
       - name: test
         if: steps.crate.outputs.exists == 'true'
         run: cargo test --manifest-path "$MANIFEST"
+
+  desktop-smoke:
+    name: desktop-smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/tauri-linux
+        with:
+          webdriver: "true"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/src-tauri/target
+          key: cargo-smoke-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
+          restore-keys: cargo-smoke-${{ runner.os }}-
+      # tauri-driver is a dev tool, not a project dependency; pinned and cached on its own.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: tauri-driver
+        with:
+          path: ~/.cargo-tools
+          key: tauri-driver-2.1.0-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}
+      - name: Install tauri-driver
+        if: steps.tauri-driver.outputs.cache-hit != 'true'
+        run: cargo install tauri-driver --version 2.1.0 --locked --root ~/.cargo-tools
+      - name: Build workspace packages
+        run: pnpm exec turbo run build --filter=@dungeon-manager/desktop^...
+      - name: Build the desktop app (debug)
+        run: pnpm --filter @dungeon-manager/desktop build:app
+      - name: Smoke test (tauri-driver)
+        run: |
+          export PATH="$HOME/.cargo-tools/bin:$PATH"
+          xvfb-run --auto-servernum pnpm --filter @dungeon-manager/desktop smoke

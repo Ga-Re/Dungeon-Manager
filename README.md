@@ -80,12 +80,35 @@ The workflow only uses official `actions/*` pinned by commit SHA, has a read-onl
    - Name `main`, Enforcement status **Active**, Target branches → Add target → **Include default branch**.
    - Enable **Restrict deletions** and **Block force pushes**.
    - Enable **Require a pull request before merging** (required approvals: 0 – the agent merges its own PRs once the checks are green).
-   - Enable **Require status checks to pass** → Add checks → `check`, `e2e`, `visual`, `rust` (they appear in the list after the first CI run); choose **GitHub Actions** as the source of each. Also tick **Require branches to be up to date before merging** – after every merge, open PRs then need **Update branch** before they can merge (auto-merge waits for that).
+   - Enable **Require status checks to pass** → Add checks → `check`, `e2e`, `visual`, `rust`, `desktop-smoke` (they appear in the list after the first CI run); choose **GitHub Actions** as the source of each. Also tick **Require branches to be up to date before merging** – after every merge, open PRs then need **Update branch** before they can merge (auto-merge waits for that).
    - Leave the bypass list empty so the rules apply to everyone, including admins.
 2. **Allow auto-merge:** Settings → General → Pull Requests → tick **Allow auto-merge**. On a pull request, click **Enable auto-merge**; GitHub merges it as soon as all required checks pass.
 3. **Fork safety:** Settings → Actions → General.
    - Fork pull request workflows from outside collaborators → choose the **strictest** option (approval for all outside collaborators / external contributors; the exact label varies).
    - Workflow permissions → **Read repository contents and packages permissions**; leave "Allow GitHub Actions to create and approve pull requests" unticked.
+
+## Desktop app
+
+```bash
+pnpm dev:desktop
+```
+
+Builds the workspace packages the app needs, then starts the Tauri app with hot reload: the DM window opens; choose a display and click **Spieleransicht öffnen** to show the player view fullscreen on it.
+
+Prerequisites besides Node/pnpm/Rust (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)):
+
+- **macOS:** Xcode Command Line Tools (`xcode-select --install`).
+- **Linux (Ubuntu):** `sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev build-essential pkg-config`.
+- **Windows:** Microsoft C++ Build Tools and WebView2 (preinstalled on Windows 11).
+
+**Smoke test** (real app via `tauri-driver`; Linux and Windows only – tauri-driver does not support macOS, so on a Mac it runs in CI):
+
+```bash
+pnpm --filter @dungeon-manager/desktop build:app
+pnpm --filter @dungeon-manager/desktop smoke
+```
+
+It needs `cargo install tauri-driver --version 2.1.0 --locked` and, on Linux, `webkit2gtk-driver` (plus `xvfb-run` without a display).
 
 ## Repository layout
 
