@@ -3,6 +3,7 @@
 //! access to the library folder (LAN server etc. follow in later tasks).
 
 mod commands;
+mod import;
 mod library;
 mod settings;
 
@@ -25,6 +26,7 @@ pub fn run() {
             commands::library_write,
             commands::library_list,
             commands::library_make_directory,
+            commands::library_import_map,
         ])
         .on_window_event(|window, event| {
             // The player window has no controls; closing the DM window must not leave it

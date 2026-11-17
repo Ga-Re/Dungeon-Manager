@@ -199,11 +199,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-104b Map import
 
-- **Status:** todo · **Depends on:** T-104a · **Refs:** SPEC 3.1, ARCHITECTURE §6.3
+- **Status:** done · **Depends on:** T-104a · **Refs:** SPEC 3.1, ARCHITECTURE §6.3
 - Import PNG/JPG/WebP into the library (native file picker, copy in Rust, SHA-256 hash); create a scene referencing it.
 - **Acceptance criteria**
-  - [ ] Imported file lands in `library/maps/`, referenced by relative path + hash
-  - [ ] A scene can be created with the imported map
+  - [x] Imported file lands in `library/maps/`, referenced by relative path + hash
+  - [x] A scene can be created with the imported map
 - **Notes:** DM approved `sha2` (already a transitive dependency) for hashing, 2026-11-17.
 
 ### T-105 Renderer: map layer and camera

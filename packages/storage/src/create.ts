@@ -1,6 +1,7 @@
 import {
   CAMPAIGN_VERSION,
   SCENE_VERSION,
+  type MapSpec,
   type Scene,
 } from "@dungeon-manager/schema";
 import { saveCampaign, saveScene } from "./documents.js";
@@ -64,18 +65,25 @@ export async function createCampaign(
   return slug;
 }
 
-/** Creates and saves an empty scene (no map yet). @returns the saved scene. @throws on an empty name */
+/**
+ * Creates and saves a scene, empty or with a map; no tokens, fog or initiative yet.
+ * @returns the saved scene. @throws on an empty name or an invalid map
+ */
 export async function createScene(
   fs: FileSystem,
   slug: string,
-  scene: { readonly id: string; readonly name: string },
+  scene: {
+    readonly id: string;
+    readonly name: string;
+    readonly map?: MapSpec | null;
+  },
 ): Promise<Scene> {
   if (scene.name.trim() === "") throw new Error("A scene needs a name");
   const created: Scene = {
     schemaVersion: SCENE_VERSION,
     id: scene.id,
     name: scene.name.trim(),
-    map: null,
+    map: scene.map ?? null,
     tokens: [],
     fog: { levels: {} },
     initiative: null,

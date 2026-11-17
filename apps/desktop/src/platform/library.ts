@@ -1,7 +1,9 @@
+import type { AssetRef } from "@dungeon-manager/schema";
 import type { FileSystem } from "@dungeon-manager/storage";
 
 /** Known failure reasons from the desktop backend; the UI translates them. */
-export type LibraryErrorCode = "noLibrary" | "invalidPath" | "forbidden" | "io";
+export type LibraryErrorCode =
+  "noLibrary" | "invalidPath" | "forbidden" | "unsupportedFile" | "io";
 
 /** A library failure with a translatable code (and the OS message for `io`). */
 export class LibraryError extends Error {
@@ -25,6 +27,11 @@ export interface LibraryService {
   currentRoot(): Promise<string | null>;
   /** Asks the DM for a folder (native dialog); `null` if cancelled. */
   chooseRoot(): Promise<string | null>;
+  /**
+   * Asks the DM for a map image (native dialog) and copies it into `library/maps/`;
+   * `null` if cancelled. An identical file already there is reused.
+   */
+  importMap(): Promise<AssetRef | null>;
   /** Calls `listener` with library-relative paths changed on disk; resolves to an unsubscribe. */
   onChange(listener: (paths: readonly string[]) => void): Promise<() => void>;
 }

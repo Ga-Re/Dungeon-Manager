@@ -1,4 +1,4 @@
-import type { Scene } from "@dungeon-manager/schema";
+import type { AssetRef, MapSpec, Scene } from "@dungeon-manager/schema";
 import { createScene, listScenes, loadScene } from "@dungeon-manager/storage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,6 +41,25 @@ async function readScenes(
   );
 }
 
+const fileName = (path: string) => path.split("/").at(-1) ?? path;
+
+/**
+ * A single-level image map. The grid is a placeholder until it is calibrated (T-106): 100 map
+ * pixels per cell, no offset.
+ */
+function imageMap(
+  asset: AssetRef,
+  levelId: string,
+  levelName: string,
+): MapSpec {
+  return {
+    kind: "image",
+    asset: { path: asset.path, hash: asset.hash },
+    grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+    levels: [{ id: levelId, name: levelName }],
+  };
+}
+
 /** One campaign: its scenes, creating a scene, opening and closing one. */
 export function CampaignPanel({
   service,
@@ -57,6 +76,8 @@ export function CampaignPanel({
   const [state, setState] = useState<ScenesState>({ status: "loading" });
   const [openScene, setOpenScene] = useState<Scene | null>(null);
   const [notice, setNotice] = useState("");
+  const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
+  const [importing, setImporting] = useState(false);
   const latest = useRef(0);
 
   const reload = useCallback(async () => {
@@ -90,7 +111,11 @@ export function CampaignPanel({
       const scene = await createScene(service.fs, slug, {
         id: newId(),
         name: sceneName,
+        map:
+          pendingMap &&
+          imageMap(pendingMap, newId(), t("campaign.defaultLevel")),
       });
+      setPendingMap(null);
       setNotice(t("campaign.sceneCreated", { name: scene.name }));
       await reload();
       return true;
@@ -100,12 +125,29 @@ export function CampaignPanel({
     }
   };
 
+  const importMap = async () => {
+    setImporting(true);
+    try {
+      const asset = await service.importMap();
+      if (asset) setPendingMap(asset);
+    } catch (error) {
+      setNotice(describeLibraryError(t, error));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <section aria-labelledby="campaign-heading">
       <h3 id="campaign-heading">{t("campaign.heading", { name })}</h3>
       {openScene && (
         <div>
           <p>{t("campaign.openScene", { name: openScene.name })}</p>
+          <p>
+            {openScene.map
+              ? t("campaign.map", { file: fileName(openScene.map.asset.path) })
+              : t("campaign.noMap")}
+          </p>
           <button
             type="button"
             onClick={() => {
@@ -146,6 +188,18 @@ export function CampaignPanel({
             ))}
           </ul>
         ))}
+      <p>
+        {pendingMap
+          ? t("campaign.mapForNewScene", { file: fileName(pendingMap.path) })
+          : t("campaign.noMapForNewScene")}
+      </p>
+      <button
+        type="button"
+        disabled={importing}
+        onClick={() => void importMap()}
+      >
+        {t("campaign.importMap")}
+      </button>
       <NameForm
         label={t("campaign.newSceneName")}
         submitLabel={t("campaign.createScene")}

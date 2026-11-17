@@ -99,4 +99,37 @@ describe("createScene", () => {
       value: scene,
     });
   });
+
+  test("can start with a map, which is validated", async () => {
+    const fs = createMemoryFileSystem();
+    const map = {
+      kind: "image" as const,
+      asset: {
+        path: "library/maps/cave.webp",
+        hash: `sha256:${"a".repeat(64)}`,
+      },
+      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+      levels: [{ id: "level-1", name: "Erdgeschoss" }],
+    };
+    const scene = await createScene(fs, "mine", {
+      id: "s-2",
+      name: "Höhle",
+      map,
+    });
+    expect(scene.map).toEqual(map);
+    await expect(
+      createScene(fs, "mine", {
+        id: "s-3",
+        name: "Kaputt",
+        map: { ...map, asset: { path: "../x.webp", hash: "nope" } },
+      }),
+    ).rejects.toThrow();
+    expect(fs.files().has("campaigns/mine/scenes/s-3.json")).toBe(false);
+  });
+
+  test("rejects an empty name", async () => {
+    await expect(
+      createScene(createMemoryFileSystem(), "mine", { id: "s-1", name: " " }),
+    ).rejects.toThrow("A scene needs a name");
+  });
 });

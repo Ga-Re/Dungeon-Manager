@@ -1,3 +1,4 @@
+import type { AssetRef } from "@dungeon-manager/schema";
 import type { DirEntry, ReadResult } from "@dungeon-manager/storage";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -11,6 +12,7 @@ const CODES: readonly string[] = [
   "noLibrary",
   "invalidPath",
   "forbidden",
+  "unsupportedFile",
   "io",
 ] satisfies LibraryErrorCode[];
 
@@ -51,6 +53,7 @@ export function createTauriLibraryService(): LibraryService {
     },
     currentRoot: () => call<string | null>("library_root"),
     chooseRoot: () => call<string | null>("library_choose"),
+    importMap: () => call<AssetRef | null>("library_import_map"),
     async onChange(listener) {
       return listen<unknown>("library-changed", ({ payload }) => {
         if (Array.isArray(payload))

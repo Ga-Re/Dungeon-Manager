@@ -19,6 +19,7 @@ export function fakeLibraryService(
     chooseRoot: vi.fn<LibraryService["chooseRoot"]>(() =>
       Promise.resolve(null),
     ),
+    importMap: vi.fn<LibraryService["importMap"]>(() => Promise.resolve(null)),
     onChange: vi.fn((listener: (paths: readonly string[]) => void) => {
       listeners.add(listener);
       return Promise.resolve(() => listeners.delete(listener));

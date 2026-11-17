@@ -38,6 +38,7 @@ export const de = {
       noLibrary:
         "Es ist kein Bibliotheksordner geöffnet. Bitte einen Ordner wählen.",
       forbidden: "Dieses Fenster darf nicht auf die Bibliothek zugreifen.",
+      unsupportedFile: "Diese Datei ist kein PNG-, JPG- oder WebP-Bild.",
       invalidPath: "Auf diese Datei darf die App nicht zugreifen.",
     },
   },
@@ -50,6 +51,12 @@ export const de = {
     createScene: "Szene anlegen",
     sceneCreated: "Szene „{{name}}“ angelegt.",
     openScene: "Geöffnete Szene: {{name}}",
+    importMap: "Karte wählen …",
+    mapForNewScene: "Karte für die neue Szene: {{file}}",
+    noMapForNewScene: "Die neue Szene bekommt noch keine Karte.",
+    map: "Karte: {{file}}",
+    noMap: "Ohne Karte",
+    defaultLevel: "Erdgeschoss",
     closeScene: "Szene schließen",
     scene: {
       notAvailable: "{{id}} (noch nicht heruntergeladen)",
