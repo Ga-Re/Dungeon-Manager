@@ -43,7 +43,7 @@ async function call<T>(
 /** Library access via the desktop backend's `library_*` commands (Rust, T-103b). */
 export function createTauriLibraryService(): LibraryService {
   const listeners = new Set<(paths: readonly string[]) => void>();
-  let subscribed: Promise<void> | null = null;
+  let subscribed: Promise<unknown> | null = null;
   return {
     fs: {
       read: (path) => call<ReadResult>("library_read", { path }),
@@ -61,7 +61,6 @@ export function createTauriLibraryService(): LibraryService {
       return assetRefSchema.nullable().parse(result);
     },
     async onChange(listener) {
-      listeners.add(listener);
       // One channel per DM window, opened on first use and shared by all listeners. A channel,
       // not a global event: the player window can hear every global event (ARCHITECTURE §8).
       if (!subscribed) {
@@ -73,9 +72,16 @@ export function createTauriLibraryService(): LibraryService {
             each(paths);
           });
         };
-        subscribed = call("library_subscribe", { onChange: channel });
+        subscribed = call<unknown>("library_subscribe", {
+          onChange: channel,
+        }).catch((error: unknown) => {
+          // A later call may try again; no listener is left behind.
+          subscribed = null;
+          throw error;
+        });
       }
       await subscribed;
+      listeners.add(listener);
       return () => {
         listeners.delete(listener);
       };

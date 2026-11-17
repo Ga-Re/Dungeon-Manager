@@ -95,4 +95,25 @@ describe("createTauriLibraryService", () => {
     expect(first).toHaveBeenCalledTimes(1);
     expect(second).toHaveBeenCalledTimes(2);
   });
+
+  test("a failed subscription can be retried and leaves no listener behind", async () => {
+    fake.invoke.mockRejectedValueOnce({ code: "forbidden" });
+    const service = createTauriLibraryService();
+    const listener = vi.fn();
+    await expect(service.onChange(listener)).rejects.toBeInstanceOf(
+      LibraryError,
+    );
+
+    fake.invoke.mockResolvedValue(undefined);
+    await service.onChange(listener);
+    const subscriptions = fake.invoke.mock.calls.filter(
+      ([command]) => command === "library_subscribe",
+    );
+    expect(subscriptions).toHaveLength(2);
+    const channel = (
+      subscriptions[1]?.[1] as { onChange: InstanceType<typeof fake.Channel> }
+    ).onChange;
+    channel.onmessage(["campaigns/a/campaign.json"]);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
 });
