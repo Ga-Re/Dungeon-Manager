@@ -43,15 +43,39 @@ const REVEALED = [
   { outer: rect(1000, 100, 500, 800), holes: [rect(1100, 500, 300, 300)] },
 ];
 
+/**
+ * Shapes the fog must handle (T-108a): a revealed island inside a hidden hole (the pool), and two
+ * areas touching at a single corner (top left), as unions and differences of fog edits produce.
+ */
+const REVEALED_NESTED = [
+  ...REVEALED.slice(1),
+  { outer: rect(1200, 600, 100, 100), holes: [] },
+  { outer: rect(100, 100, 200, 200), holes: [] },
+  { outer: rect(300, 300, 200, 200), holes: [] },
+];
+
+/** Fog per scenario: the player view sees opaque fog, the DM view a see-through version. */
+function fogFor(scenario: string) {
+  if (scenario.startsWith("player-nested"))
+    return { revealed: REVEALED_NESTED, opacity: 1 };
+  if (scenario.startsWith("player")) return { revealed: REVEALED, opacity: 1 };
+  if (scenario.startsWith("dm-fog"))
+    return { revealed: REVEALED, opacity: 0.5 };
+  return null;
+}
+
 async function main() {
   const canvas = document.querySelector("canvas");
   if (!canvas) throw new Error("canvas missing");
   const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
   const scenario = location.hash.slice(1);
   // The player view always gets its fog with (never after) the map.
-  if (scenario.startsWith("player")) renderer.setFog(REVEALED);
+  const fog = fogFor(scenario);
+  if (fog) renderer.setFog(fog.revealed, { opacity: fog.opacity });
   renderer.setMap(drawFixtureMap());
-  renderer.setCamera(cameraFor(scenario.replace(/^player-?/, "")));
+  renderer.setCamera(
+    cameraFor(scenario.replace(/^(player-nested|player|dm-fog)-?/, "")),
+  );
   await renderer.drawn();
   document.body.dataset["ready"] = "true";
 }

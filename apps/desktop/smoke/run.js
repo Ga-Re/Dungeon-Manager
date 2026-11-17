@@ -15,6 +15,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -302,6 +303,32 @@ async function main() {
         (await command("GET", `${sessionPath}/element/${fit}/enabled`)) === true
       );
     });
+
+    // Fog edits go through core, are saved to the scene file and can be undone (T-108a).
+    const sceneFile = join(
+      library,
+      "campaigns",
+      "smoke",
+      "scenes",
+      "map-scene.json",
+    );
+    const revealedAreas = () =>
+      JSON.parse(readFileSync(sceneFile, "utf8")).fog.levels.ground?.revealed
+        .length ?? 0;
+    await clickXPath(
+      sessionPath,
+      "reveal all",
+      "//button[text()='Alles aufdecken']",
+    );
+    await waitFor("the revealed fog on disk", () => revealedAreas() === 1);
+    await clickXPath(sessionPath, "undo", "//button[text()='Rückgängig']");
+    await waitFor("the undone fog on disk", () => revealedAreas() === 0);
+    await clickXPath(
+      sessionPath,
+      "redo",
+      "//button[text()='Wiederherstellen']",
+    );
+    await waitFor("the redone fog on disk", () => revealedAreas() === 1);
 
     // The TV shows the open scene: the DM window sends the projection, the player window
     // validates it and draws the map under its fog.

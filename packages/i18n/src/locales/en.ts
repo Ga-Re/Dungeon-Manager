@@ -90,6 +90,23 @@ export const en: Messages = {
     fit: "Fit",
     rotate: "Rotate",
   },
+  fog: {
+    toolbar: "Fog",
+    tool: "Dragging on the map",
+    tools: {
+      pan: "Move",
+      reveal: "Reveal (rectangle)",
+      hide: "Cover (rectangle)",
+    },
+    revealAll: "Reveal all",
+    coverAll: "Cover all",
+    undo: "Undo",
+    redo: "Redo",
+    unsavedBeforeMapChange:
+      "The latest fog changes are not saved yet. Choose “Save again” first, then change the map.",
+    retrySave: "Save again",
+    saveFailed: "The last change could not be saved. It is kept.",
+  },
   companion: {
     heading: "Dungeon Manager for players",
     placeholder: "Soon you can join the game table here.",

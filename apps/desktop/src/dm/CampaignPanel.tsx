@@ -172,6 +172,9 @@ export function CampaignPanel({
                     type="button"
                     aria-pressed={openScene?.id === entry.id}
                     onClick={() => {
+                      // The open scene is being edited: the list's copy may be older (a save
+                      // still in flight) and would replace the edits and their undo history.
+                      if (openScene?.id === entry.id) return;
                       setOpenScene(entry.scene);
                     }}
                   >

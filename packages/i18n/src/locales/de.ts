@@ -90,6 +90,24 @@ export const de = {
     fit: "Einpassen",
     rotate: "Drehen",
   },
+  fog: {
+    toolbar: "Nebel",
+    tool: "Ziehen auf der Karte",
+    tools: {
+      pan: "Verschieben",
+      reveal: "Aufdecken (Rechteck)",
+      hide: "Verdecken (Rechteck)",
+    },
+    revealAll: "Alles aufdecken",
+    coverAll: "Alles verdecken",
+    undo: "Rückgängig",
+    redo: "Wiederherstellen",
+    unsavedBeforeMapChange:
+      "Die letzten Nebeländerungen sind noch nicht gespeichert. Bitte zuerst „Erneut speichern“ wählen, dann die Karte ändern.",
+    retrySave: "Erneut speichern",
+    saveFailed:
+      "Die letzte Änderung konnte nicht gespeichert werden. Sie bleibt erhalten.",
+  },
   companion: {
     heading: "Dungeon Manager für Spieler",
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",

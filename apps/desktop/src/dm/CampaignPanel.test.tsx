@@ -283,9 +283,9 @@ describe("CampaignPanel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Eingang" }));
     fireEvent.click(screen.getByRole("button", { name: "Szene löschen …" }));
     fireEvent.click(screen.getByRole("button", { name: "Ja, löschen" }));
-    expect((await screen.findByRole("alert")).textContent).toBe(
-      "Das hat nicht geklappt: Gesperrt",
-    );
+    expect(
+      await screen.findByText("Das hat nicht geklappt: Gesperrt"),
+    ).toHaveProperty("role", "alert");
     expect(screen.getByText("Geöffnete Szene: Eingang")).toBeTruthy();
   });
 });

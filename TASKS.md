@@ -334,18 +334,35 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] All move modes covered by component/E2E tests
   - [ ] Invisible-in-player-view tokens supported
 
-### T-108 Manual fog with undo
+### T-108a Fog: rectangle reveal/hide, undo, live on the TV
 
-- **Status:** todo · **Depends on:** T-102b, T-105b · **Refs:** SPEC 4
-- Brush, rectangle, polygon; predefined rooms (polygons) revealable with one click; undo.
+- **Status:** done · **Depends on:** T-102b, T-105b · **Refs:** SPEC 4
+- Rectangle tool to reveal and hide, "reveal all" / "cover all", undo/redo (buttons and Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z). The DM sees fog semi-transparent, the TV opaque. Every change is saved to the scene file and reaches the TV without blanking it. Robust fog rendering (inverse stencil mask instead of earcut holes).
 - **Acceptance criteria**
-  - [ ] Player window shows only revealed areas (screenshot tests)
-  - [ ] Undo restores the previous fog state
-- **Notes:** From T-102a review: fog ops use exact arithmetic (polyclip-ts/BigNumber) – measured ~9 ms average, ~20 ms worst per reveal after 300 brush dabs, 34 ms for hiding a 64-gon. Combine a brush stroke into one polygon per stroke (one command), not one command per pointer move. From the T-105b review: the renderer's fog (`drawFog`, earcut holes) does not handle a revealed island inside a hidden hole, and degenerate or vertex-touching polygons could leave gaps (fail-open) – add goldens for these and switch to an even-odd/stencil approach if needed. Fog edits must not blank the TV: load the campaign once per scene and project synchronously (today `usePlayerView` sends `null` before every update).
+  - [x] Player window shows only revealed areas (screenshot tests, incl. an island inside a hidden hole and touching areas)
+  - [x] Undo restores the previous fog state
+  - [x] Fog changes are saved and shown on the TV without a black flash
+- **Notes:** Split from T-108 (agent, 2026-11-17). From T-102a review: fog ops use exact arithmetic (polyclip-ts/BigNumber) – measured ~9 ms average, ~20 ms worst per reveal after 300 brush dabs, 34 ms for hiding a 64-gon. Combine a brush stroke into one polygon per stroke (one command), not one command per pointer move. From the T-105b review: the renderer's fog (`drawFog`, earcut holes) does not handle a revealed island inside a hidden hole, and degenerate or vertex-touching polygons could leave gaps (fail-open) – add goldens for these and switch to an even-odd/stencil approach if needed. Fog edits must not blank the TV: load the campaign once per scene and project synchronously (today `usePlayerView` sends `null` before every update).
+
+### T-108b Fog: brush and polygon tools
+
+- **Status:** todo · **Depends on:** T-108a · **Refs:** SPEC 4
+- Brush (one polygon per stroke, one command) and polygon tool for revealing and hiding.
+- **Acceptance criteria**
+  - [ ] A brush stroke reveals/hides along the stroke as one undo step
+  - [ ] A clicked polygon reveals/hides its area
+
+### T-108c Fog: predefined rooms
+
+- **Status:** todo · **Depends on:** T-108b · **Refs:** SPEC 4
+- Rooms drawn once per map level (polygons) and revealed with one click.
+- **Acceptance criteria**
+  - [ ] DM defines rooms and reveals one with a click
+- **Notes:** Adds rooms to the scene file (schema v1 is unreleased, but it is a file format decision): DM approves the format first.
 
 ### T-109 Memory fog
 
-- **Status:** todo · **Depends on:** T-108
+- **Status:** todo · **Depends on:** T-108a
 - Previously revealed areas render dimmed; tokens inside are hidden for players.
 - **Acceptance criteria**
   - [ ] Screenshot tests for revealed / remembered / unrevealed
