@@ -51,6 +51,59 @@ describe("migrateDocument", () => {
     );
   });
 
+  test("rejects a migration that does not raise the version by exactly one (no endless loop)", () => {
+    const stuck: Migration = { from: 0, migrate: (doc) => doc };
+    const skipping: Migration = {
+      from: 0,
+      migrate: (doc) => ({ ...doc, schemaVersion: 2 }),
+    };
+    const twoStepType = { ...fakeDocument, latestVersion: 2 };
+
+    expect(() =>
+      migrateDocument(
+        { title: "Alt" },
+        { ...fakeDocument, migrations: [stuck] },
+      ),
+    ).toThrow(new MigrationError("invalidMigration", 0));
+    expect(() =>
+      migrateDocument(
+        { title: "Alt" },
+        { ...twoStepType, migrations: [skipping] },
+      ),
+    ).toThrow(new MigrationError("invalidMigration", 0));
+  });
+
+  test("rejects two migrations for the same version", () => {
+    expect(() =>
+      migrateDocument(
+        { title: "Alt" },
+        { ...fakeDocument, migrations: [v0ToV1, v0ToV1] },
+      ),
+    ).toThrow(new MigrationError("invalidMigration", 0));
+  });
+
+  test("does not change the caller's object", () => {
+    const original = { title: "Alt" };
+    const mutating: Migration = {
+      from: 0,
+      migrate: (doc) => {
+        doc["schemaVersion"] = 1;
+        doc["name"] = doc["title"];
+        return doc;
+      },
+    };
+
+    migrateDocument(original, { ...fakeDocument, migrations: [mutating] });
+
+    expect(original).toEqual({ title: "Alt" });
+  });
+
+  test("treats a null version as corruption, not as version 0", () => {
+    expect(() =>
+      migrateDocument({ schemaVersion: null, title: "Alt" }, fakeDocument),
+    ).toThrow(new MigrationError("invalidVersion", null));
+  });
+
   test("validates the migrated result against the latest schema", () => {
     const broken: Migration = {
       from: 0,

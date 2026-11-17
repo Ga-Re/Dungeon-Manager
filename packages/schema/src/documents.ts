@@ -6,7 +6,7 @@ import {
   mapSchema,
   playerSchema,
   tokenSchema,
-  visibilityRuleSchema,
+  visibilityRulesSchema,
 } from "./entities.js";
 import type { DocumentType } from "./migrate.js";
 
@@ -24,8 +24,8 @@ export const campaignSchema = z.looseObject({
   id: idSchema,
   name: z.string().min(1),
   players: z.array(playerSchema),
-  /** Default player visibility per element type (SPEC §6). */
-  visibilityDefaults: z.array(visibilityRuleSchema),
+  /** Default player visibility per element type (SPEC §6); missing types are visible. */
+  visibilityDefaults: visibilityRulesSchema,
 });
 
 /** `campaigns/<slug>/scenes/<id>.json`. */
