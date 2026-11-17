@@ -25,8 +25,9 @@ export interface FileSystem {
   /** Creates a directory and its parents; existing directories are fine. */
   makeDirectory(path: string): Promise<void>;
   /**
-   * Moves a file inside a campaign (`campaigns/<slug>/…`) into that campaign's `.trash/`
-   * folder under a new, unique name (ARCHITECTURE §6.6); nothing is ever deleted outright.
+   * Moves a file inside a campaign (`campaigns/<slug>/…`) into a new folder in that campaign's
+   * `.trash/`, keeping its path inside the campaign (ARCHITECTURE §6.6); nothing is ever
+   * deleted outright.
    * @returns the file's path in the trash. @throws if the file does not exist
    */
   moveToTrash(path: string): Promise<string>;

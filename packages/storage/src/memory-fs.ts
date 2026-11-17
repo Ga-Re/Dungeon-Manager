@@ -66,12 +66,18 @@ export function createMemoryFileSystem(
     moveToTrash(path) {
       const [root, slug, ...rest] = path.split("/");
       const content = files.get(path);
-      if (root !== "campaigns" || slug === undefined || rest.length === 0)
-        return Promise.reject(new Error(`Not inside a campaign: ${path}`));
+      if (
+        root !== "campaigns" ||
+        slug === undefined ||
+        rest.length === 0 ||
+        rest[0]?.toLowerCase() === ".trash"
+      )
+        return Promise.reject(new Error(`Not a campaign file: ${path}`));
       if (content === undefined)
         return Promise.reject(new Error(`No such file: ${path}`));
       trashed += 1;
-      const target = `campaigns/${slug}/.trash/${String(trashed)}-${rest.join("-")}`;
+      // Same layout as the desktop: one folder per deletion, original path inside.
+      const target = `campaigns/${slug}/.trash/${String(trashed)}/${rest.join("/")}`;
       files.delete(path);
       files.set(target, content);
       parentsOf(target).forEach((dir) => directories.add(dir));

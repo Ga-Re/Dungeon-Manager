@@ -209,7 +209,9 @@ describe("CampaignPanel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Eingang" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Szene löschen …" }));
+    expect(document.activeElement?.textContent).toBe("Ja, löschen");
     fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(document.activeElement?.textContent).toBe("Szene löschen …");
     expect(library.fs.files().has("campaigns/mine/scenes/a.json")).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "Szene löschen …" }));

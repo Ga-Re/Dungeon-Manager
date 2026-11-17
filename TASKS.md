@@ -213,7 +213,15 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [x] DM changes the map of an existing scene
   - [x] DM deletes a scene after confirming; the file lands in the campaign's `.trash/`
-- **Notes:** Requested by the DM after testing T-104 (2026-11-17). Purging the trash after 30 days is a later task. Security-relevant (new file operation for the DM window): DM confirms before merge.
+- **Notes:** Requested by the DM after testing T-104 (2026-11-17). Changing the map keeps levels, grid, fog and tokens (fog and positions are in map pixels: right for a corrected version of the same map) – DM to confirm. Purging the trash after 30 days is a later task. Security-relevant (new file operation for the DM window): DM confirms before merge.
+
+### T-121 Warn when a changed map has a different size
+
+- **Status:** todo · **Depends on:** T-120, T-105 · **Refs:** SPEC 3.1, 4
+- Fog and token positions are stored in map pixels. When the DM changes a scene's map to an image of a different pixel size, warn and offer to reset grid calibration and fog (or keep them).
+- **Acceptance criteria**
+  - [ ] Changing to an image of different dimensions shows a warning with "keep" and "reset grid and fog"
+- **Notes:** From the T-120 review; needs image dimensions, available once the renderer loads maps.
 
 ### T-105 Renderer: map layer and camera
 

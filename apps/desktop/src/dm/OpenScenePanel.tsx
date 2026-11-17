@@ -1,6 +1,11 @@
 import type { Scene } from "@dungeon-manager/schema";
-import { deleteScene, saveScene, withMap } from "@dungeon-manager/storage";
-import { useState } from "react";
+import {
+  deleteScene,
+  loadScene,
+  saveScene,
+  withMap,
+} from "@dungeon-manager/storage";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
@@ -28,6 +33,16 @@ export function OpenScenePanel({
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
+  const asked = useRef(false);
+
+  // Keyboard focus follows the confirmation step instead of falling back to the page.
+  useEffect(() => {
+    if (confirmingDelete) confirmButton.current?.focus();
+    else if (asked.current) deleteButton.current?.focus();
+    asked.current = confirmingDelete || asked.current;
+  }, [confirmingDelete]);
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -45,10 +60,17 @@ export function OpenScenePanel({
     run(async () => {
       const asset = await service.importMap(t("campaign.mapFilter"));
       if (!asset) return;
-      const changed = withMap(scene, asset, {
-        id: newId(),
-        name: t("campaign.defaultLevel"),
-      });
+      // Start from the file on disk: a newer version synced from another device must not be
+      // overwritten with the copy loaded when the scene was opened.
+      const current = await loadScene(service.fs, slug, scene.id);
+      const changed = withMap(
+        current.status === "ok" ? current.value : scene,
+        asset,
+        {
+          id: newId(),
+          name: t("campaign.defaultLevel"),
+        },
+      );
       await saveScene(service.fs, slug, changed);
       onChanged(changed);
     });
@@ -79,7 +101,12 @@ export function OpenScenePanel({
           aria-label={t("campaign.confirmDelete", { name: scene.name })}
         >
           <p>{t("campaign.confirmDelete", { name: scene.name })}</p>
-          <button type="button" disabled={busy} onClick={() => void remove()}>
+          <button
+            ref={confirmButton}
+            type="button"
+            disabled={busy}
+            onClick={() => void remove()}
+          >
             {t("campaign.deleteConfirmed")}
           </button>
           <button
@@ -93,6 +120,7 @@ export function OpenScenePanel({
         </div>
       ) : (
         <button
+          ref={deleteButton}
           type="button"
           disabled={busy}
           onClick={() => {
@@ -102,7 +130,7 @@ export function OpenScenePanel({
           {t("campaign.deleteScene")}
         </button>
       )}
-      <button type="button" onClick={onClose}>
+      <button type="button" disabled={busy} onClick={onClose}>
         {t("campaign.closeScene")}
       </button>
       {error && <p role="alert">{error}</p>}

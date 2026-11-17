@@ -104,7 +104,11 @@ export function withMap(
   newLevel: { readonly id: string; readonly name: string },
 ): Scene {
   const map: MapSpec = scene.map
-    ? { ...scene.map, asset: { path: asset.path, hash: asset.hash } }
+    ? {
+        ...scene.map,
+        kind: "image",
+        asset: { path: asset.path, hash: asset.hash },
+      }
     : imageMap(asset, newLevel);
   return { ...scene, map };
 }

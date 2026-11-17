@@ -166,13 +166,13 @@ describe("withMap", () => {
     });
   });
 
-  test("replaces only the image of an existing map", () => {
+  test("replaces only the image of an existing map, which becomes an image map", () => {
     const map = {
-      kind: "image" as const,
+      kind: "video" as const,
       asset: {
         path: "library/maps/old.webp",
         hash: `sha256:${"a".repeat(64)}`,
-        note: "kept?",
+        extra: "dropped",
       },
       grid: { cellSizePx: 72, offsetXPx: 3, offsetYPx: 4 },
       levels: [
@@ -192,6 +192,7 @@ describe("withMap", () => {
     expect(withMap(scene, asset, { id: "unused", name: "unused" }).map).toEqual(
       {
         ...map,
+        kind: "image",
         asset: { path: asset.path, hash: asset.hash },
       },
     );
@@ -203,7 +204,9 @@ describe("deleteScene", () => {
     const fs = createMemoryFileSystem();
     await createScene(fs, "mine", { id: "s-1", name: "Eingang" });
     const trashed = await deleteScene(fs, "mine", "s-1");
-    expect(trashed).toMatch(/^campaigns\/mine\/\.trash\/.+s-1\.json$/);
+    expect(trashed).toMatch(
+      /^campaigns\/mine\/\.trash\/[^/]+\/scenes\/s-1\.json$/,
+    );
     expect(fs.files().has("campaigns/mine/scenes/s-1.json")).toBe(false);
     expect(JSON.parse(fs.files().get(trashed) ?? "{}")).toMatchObject({
       name: "Eingang",

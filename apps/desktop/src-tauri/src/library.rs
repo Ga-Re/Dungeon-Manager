@@ -195,8 +195,9 @@ fn utc_stamp(seconds: u64) -> String {
     )
 }
 
-/// Moves a file inside a campaign into `campaigns/<slug>/.trash/<timestamp>-<path>` (ARCHITECTURE
-/// §6.6). Never deletes and never overwrites. @returns the library-relative trash path
+/// Moves a file inside a campaign into `campaigns/<slug>/.trash/<timestamp>[-n]/<path>`, keeping
+/// its path inside the campaign so it can be restored (ARCHITECTURE §6.6). Never deletes and
+/// never overwrites. @returns the library-relative trash path
 pub fn move_to_trash(
     root: &Path,
     relative: &str,
@@ -209,26 +210,44 @@ pub fn move_to_trash(
     else {
         return Err(invalid());
     };
-    if rest.starts_with(".trash/") || !source.is_file() {
+    // Case-insensitive: on macOS/Windows ".TRASH" is the same folder.
+    if rest.to_ascii_lowercase().starts_with(".trash/") {
         return Err(invalid());
     }
-    let flat = rest.replace('/', "-");
+    if !source.exists() {
+        return Err(io::Error::from(io::ErrorKind::NotFound).into());
+    }
+    if !source.is_file() {
+        return Err(invalid());
+    }
     let stamp = utc_stamp(now_seconds);
     for number in 1.. {
-        let name = if number == 1 {
-            format!("{stamp}-{flat}")
+        let folder = if number == 1 {
+            format!("campaigns/{slug}/.trash/{stamp}")
         } else {
-            format!("{stamp}-{number}-{flat}")
+            format!("campaigns/{slug}/.trash/{stamp}-{number}")
         };
-        let trash_path = format!("campaigns/{slug}/.trash/{name}");
-        let target = resolve(root, &trash_path)?;
-        fs::create_dir_all(target.parent().unwrap_or(root))?;
-        if place_new(&source, &target)? {
-            if source.exists() {
-                fs::remove_file(&source)?;
-            }
-            return Ok(trash_path);
+        let folder_path = resolve(root, &folder)?;
+        fs::create_dir_all(folder_path.parent().unwrap_or(root))?;
+        // Creating the folder claims the name: it fails if another deletion got there first.
+        match fs::create_dir(&folder_path) {
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            result => result?,
         }
+        let trash_path = format!("{folder}/{rest}");
+        let target = resolve(root, &trash_path)?;
+        fs::create_dir_all(target.parent().unwrap_or(&folder_path))?;
+        if !place_new(&source, &target)? {
+            continue;
+        }
+        if source.exists()
+            && let Err(error) = fs::remove_file(&source)
+        {
+            // Undo the trash link (same file), so a retry does not leave a second copy.
+            let _ = fs::remove_file(&target);
+            return Err(error.into());
+        }
+        return Ok(trash_path);
     }
     unreachable!("the name loop only ends by returning")
 }
@@ -373,14 +392,14 @@ mod tests {
         let first = move_to_trash(&root, "campaigns/mine/scenes/s-1.json", 0).unwrap();
         assert_eq!(
             first,
-            "campaigns/mine/.trash/19700101-000000-scenes-s-1.json"
+            "campaigns/mine/.trash/19700101-000000/scenes/s-1.json"
         );
         assert!(!scene.exists());
         write_atomic(&scene, "two").unwrap();
         let second = move_to_trash(&root, "campaigns/mine/scenes/s-1.json", 0).unwrap();
         assert_eq!(
             second,
-            "campaigns/mine/.trash/19700101-000000-2-scenes-s-1.json"
+            "campaigns/mine/.trash/19700101-000000-2/scenes/s-1.json"
         );
         assert_eq!(fs::read_to_string(root.join(&first)).unwrap(), "one");
         assert_eq!(fs::read_to_string(root.join(&second)).unwrap(), "two");
@@ -395,6 +414,7 @@ mod tests {
             "library/maps/a.png",
             "campaigns/mine",
             "campaigns/mine/.trash/old.json",
+            "campaigns/mine/.TRASH/old.json",
             "campaigns/mine/missing.json",
             "campaigns/../x",
         ] {
@@ -404,6 +424,10 @@ mod tests {
             );
         }
         assert!(root.join("library/maps/a.png").exists());
+        assert!(matches!(
+            move_to_trash(&root, "campaigns/mine/missing.json", 0),
+            Err(LibraryError::Io(_))
+        ));
     }
 
     #[test]

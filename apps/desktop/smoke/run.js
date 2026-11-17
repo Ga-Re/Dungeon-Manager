@@ -213,7 +213,16 @@ async function main() {
       (await pageText()).includes("Noch keine Szenen in dieser Kampagne."),
     );
     const trash = readdirSync(join(library, "campaigns", "smoke", ".trash"));
-    if (trash.length !== 1 || !trash[0].endsWith(scenes[0]))
+    const trashedScene = join(
+      library,
+      "campaigns",
+      "smoke",
+      ".trash",
+      trash[0] ?? "",
+      "scenes",
+      scenes[0],
+    );
+    if (trash.length !== 1 || !existsSync(trashedScene))
       throw new Error(`Unexpected trash content: ${trash.join(", ")}`);
 
     // Reading files must not count as a change: on Linux, inotify reports opens and reads, and
