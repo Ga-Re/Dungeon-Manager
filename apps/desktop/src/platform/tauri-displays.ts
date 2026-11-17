@@ -89,6 +89,8 @@ function createHiddenPlayerWindow(
     title,
     decorations: false,
     visible: false,
+    // No drag & drop: its file-path events would go on the global event bus (ARCHITECTURE §8).
+    dragDropEnabled: false,
   });
   return new Promise((resolve, reject) => {
     void window.once("tauri://created", () => {

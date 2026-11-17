@@ -1,4 +1,5 @@
 import {
+  PLAYER_VIEW_VERSION,
   parsePlayerViewMessage,
   type PlayerViewMessage,
 } from "@dungeon-manager/protocol";
@@ -35,7 +36,7 @@ const RESEND_DELAY_MS = 1000;
 
 /**
  * Player window: listening is its only permission. Every message is validated with the strict
- * player-view schema; anything else is dropped, so a malformed message can never show data.
+ * player-view schema; an invalid one blanks the TV, so a malformed message can never show data.
  */
 export function createTauriPlayerFeedReceiver(): PlayerFeedReceiver {
   // Subscribed at once (not when React mounts), so no message sent right after loading is
@@ -43,10 +44,16 @@ export function createTauriPlayerFeedReceiver(): PlayerFeedReceiver {
   let latest: PlayerViewMessage | null = null;
   const listeners = new Set<(message: PlayerViewMessage) => void>();
   void listen<unknown>(VIEW_EVENT, ({ payload }) => {
-    const message = parsePlayerViewMessage(payload);
+    // Fail closed: an invalid message (e.g. from a newer app version) blanks the TV instead of
+    // leaving the last picture up, which might show areas the DM has hidden since.
+    let message = parsePlayerViewMessage(payload);
     if (!message) {
-      console.warn("Ignored an invalid player-view message.");
-      return;
+      console.warn("Invalid player-view message: the TV shows nothing.");
+      message = {
+        v: PLAYER_VIEW_VERSION,
+        scene: null,
+        rotation: latest?.rotation ?? 0,
+      };
     }
     latest = message;
     listeners.forEach((listener) => {

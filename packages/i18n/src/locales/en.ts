@@ -96,7 +96,7 @@ export const en: Messages = {
   },
   player: {
     notShown:
-      "The scene cannot be shown on the TV: the campaign file is not readable. The TV stays black.",
+      "The scene cannot be shown on the TV (is the campaign file readable?). The TV stays black.",
     windowTitle: "Player view",
   },
 };

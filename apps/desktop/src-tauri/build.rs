@@ -3,6 +3,7 @@ fn main() {
     // capability grants; without this list every window could call them.
     let manifest = tauri_build::AppManifest::new().commands(&[
         "library_root",
+        "library_subscribe",
         "library_choose",
         "library_read",
         "library_write",

@@ -18,6 +18,7 @@
     "allow-library-list",
     "allow-library-make-directory",
     "allow-library-import-map",
-    "allow-library-move-to-trash"
+    "allow-library-move-to-trash",
+    "allow-library-subscribe"
   ]
 }

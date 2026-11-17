@@ -60,6 +60,8 @@ export function PlayerApp({
         level === undefined ? [] : (next.scene?.fog[level]?.revealed ?? []),
       );
       if (!map) {
+        // Also cancels a map still loading for the previous scene.
+        loading++;
         mapSize = null;
         view.setMap(null);
         mark("none");
@@ -102,6 +104,10 @@ export function PlayerApp({
           message = null;
           show(pending);
         }
+      })
+      .catch((error: unknown) => {
+        // No WebGL, for instance: the screen stays black, which is the safe state.
+        console.error("The player view could not start its renderer.", error);
       });
     const unsubscribe = feed.subscribe((next) => {
       show(next);

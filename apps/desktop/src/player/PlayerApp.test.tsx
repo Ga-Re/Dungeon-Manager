@@ -122,6 +122,28 @@ describe("PlayerApp", () => {
     expect(maps.view.setFog).toHaveBeenLastCalledWith([]);
   });
 
+  test("closing a scene cancels a map that is still loading", async () => {
+    let finish: (value: MapImage) => void = () => undefined;
+    const { maps, feed } = renderPlayer(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
+    await waitFor(() => {
+      expect(maps.service.loadImage).toHaveBeenCalled();
+    });
+    feed.send({ v: 1, scene: null, rotation: 0 });
+    finish(image);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(maps.view.setMap).not.toHaveBeenCalledWith(image);
+    expect(screen.getByRole("main").dataset["showing"]).toBe("none");
+  });
+
   test("a map that cannot be loaded leaves the screen covered", async () => {
     const { maps, feed } = renderPlayer(() => Promise.reject(new Error("404")));
     await waitFor(() => {

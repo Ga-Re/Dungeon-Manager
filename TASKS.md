@@ -341,7 +341,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Player window shows only revealed areas (screenshot tests)
   - [ ] Undo restores the previous fog state
-- **Notes:** From T-102a review: fog ops use exact arithmetic (polyclip-ts/BigNumber) – measured ~9 ms average, ~20 ms worst per reveal after 300 brush dabs, 34 ms for hiding a 64-gon. Combine a brush stroke into one polygon per stroke (one command), not one command per pointer move.
+- **Notes:** From T-102a review: fog ops use exact arithmetic (polyclip-ts/BigNumber) – measured ~9 ms average, ~20 ms worst per reveal after 300 brush dabs, 34 ms for hiding a 64-gon. Combine a brush stroke into one polygon per stroke (one command), not one command per pointer move. From the T-105b review: the renderer's fog (`drawFog`, earcut holes) does not handle a revealed island inside a hidden hole, and degenerate or vertex-touching polygons could leave gaps (fail-open) – add goldens for these and switch to an even-odd/stencil approach if needed. Fog edits must not blank the TV: load the campaign once per scene and project synchronously (today `usePlayerView` sends `null` before every update).
 
 ### T-109 Memory fog
 

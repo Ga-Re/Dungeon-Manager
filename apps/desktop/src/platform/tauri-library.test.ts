@@ -2,19 +2,20 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { LibraryError } from "./library.js";
 import { createTauriLibraryService } from "./tauri-library.js";
 
-const fake = vi.hoisted(() => ({
-  invoke: vi.fn<(command: string, args?: unknown) => Promise<unknown>>(),
-  handler: null as ((event: { payload: unknown }) => void) | null,
-  unlisten: vi.fn(),
-}));
+const fake = vi.hoisted(() => {
+  /** Stands in for Tauri's IPC channel; tests call `onmessage` like the backend would. */
+  class FakeChannel {
+    onmessage: (payload: unknown) => void = () => undefined;
+  }
+  return {
+    invoke: vi.fn<(command: string, args?: unknown) => Promise<unknown>>(),
+    Channel: FakeChannel,
+  };
+});
 
-vi.mock("@tauri-apps/api/core", () => ({ invoke: fake.invoke }));
-vi.mock("@tauri-apps/api/event", () => ({
-  listen: (event: string, handler: (event: { payload: unknown }) => void) => {
-    expect(event).toBe("library-changed");
-    fake.handler = handler;
-    return Promise.resolve(fake.unlisten);
-  },
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: fake.invoke,
+  Channel: fake.Channel,
 }));
 
 describe("createTauriLibraryService", () => {
@@ -69,12 +70,29 @@ describe("createTauriLibraryService", () => {
     expect(await createTauriLibraryService().importMap("Karten")).toBeNull();
   });
 
-  test("passes only string paths of change events on", async () => {
-    const listener = vi.fn();
-    const stop = await createTauriLibraryService().onChange(listener);
-    fake.handler?.({ payload: ["campaigns/a/campaign.json", 3] });
-    fake.handler?.({ payload: "not a list" });
-    expect(listener.mock.calls).toEqual([[["campaigns/a/campaign.json"]]]);
-    expect(stop).toBe(fake.unlisten);
+  test("file changes arrive through one private channel, shared by all listeners", async () => {
+    fake.invoke.mockResolvedValue(undefined);
+    const service = createTauriLibraryService();
+    const first = vi.fn();
+    const second = vi.fn();
+    const stopFirst = await service.onChange(first);
+    await service.onChange(second);
+
+    const subscriptions = fake.invoke.mock.calls.filter(
+      ([command]) => command === "library_subscribe",
+    );
+    expect(subscriptions).toHaveLength(1);
+    const channel = (
+      subscriptions[0]?.[1] as { onChange: InstanceType<typeof fake.Channel> }
+    ).onChange;
+    channel.onmessage(["campaigns/a/campaign.json", 3]);
+    channel.onmessage("not a list");
+    expect(first.mock.calls).toEqual([[["campaigns/a/campaign.json"]]]);
+    expect(second.mock.calls).toEqual([[["campaigns/a/campaign.json"]]]);
+
+    stopFirst();
+    channel.onmessage(["campaigns/b/campaign.json"]);
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(2);
   });
 });

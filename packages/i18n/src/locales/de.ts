@@ -96,7 +96,7 @@ export const de = {
   },
   player: {
     notShown:
-      "Die Szene kann nicht auf dem TV gezeigt werden: die Kampagnendatei ist nicht lesbar. Der TV bleibt schwarz.",
+      "Die Szene kann nicht auf dem TV gezeigt werden (ist die Kampagnendatei lesbar?). Der TV bleibt schwarz.",
     windowTitle: "Spieleransicht",
   },
 };

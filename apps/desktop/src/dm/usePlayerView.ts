@@ -34,7 +34,8 @@ export function usePlayerView(
           ),
         );
         setFailed(false);
-      } catch {
+      } catch (error) {
+        console.error("The scene cannot be shown on the TV.", error);
         feed.show(null);
         setFailed(true);
       }

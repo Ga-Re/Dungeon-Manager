@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "player",
-  "description": "Player window (table TV): it may only listen for events. It receives the projected scene from the DM window (validated with the strict player-view schema) and calls no commands; library images come through the read-only dmlib scheme (DM decision, T-105b).",
+  "description": "Player window (table TV): it may only listen for events and calls no commands. Listening cannot be limited to certain events in Tauri, so it can hear every global event of the app – which is why no global event may carry library or campaign data (DM-only data goes through channels). It receives the projected scene from the DM window and validates it with the strict player-view schema; library images come through the read-only dmlib scheme (DM decision, T-105b).",
   "windows": ["player"],
   "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
 }

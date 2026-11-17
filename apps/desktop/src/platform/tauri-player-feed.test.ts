@@ -25,11 +25,9 @@ describe("player feed over Tauri events", () => {
     fake.emitTo.mockReset();
   });
 
-  test("the receiver drops invalid messages and replays the latest valid one", async () => {
+  test("the receiver replays the latest message to new subscribers", async () => {
     const receiver = createTauriPlayerFeedReceiver();
     const deliver = fake.handlers.get("player-view");
-    vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    deliver?.({ payload: { v: 1, scene: { secret: true }, rotation: 0 } });
     deliver?.({ payload: valid });
 
     const listener = vi.fn();
@@ -38,6 +36,26 @@ describe("player feed over Tauri events", () => {
     stop();
     deliver?.({ payload: valid });
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  test("an invalid message blanks the TV instead of keeping the last picture", async () => {
+    const receiver = createTauriPlayerFeedReceiver();
+    const deliver = fake.handlers.get("player-view");
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const listener = vi.fn();
+    await receiver.subscribe(listener);
+    const shown = {
+      v: 1,
+      scene: { id: "s", name: "Höhle", map: null, fog: {}, tokens: [] },
+      rotation: 90,
+    };
+    deliver?.({ payload: shown });
+    deliver?.({ payload: { v: 2, scene: { secret: true }, rotation: 0 } });
+    expect(listener).toHaveBeenLastCalledWith({
+      v: 1,
+      scene: null,
+      rotation: 90,
+    });
   });
 
   test("the sender targets the player window and resends when it has loaded", () => {
