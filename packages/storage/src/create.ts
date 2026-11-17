@@ -1,12 +1,13 @@
 import {
   CAMPAIGN_VERSION,
   SCENE_VERSION,
+  type AssetRef,
   type MapSpec,
   type Scene,
 } from "@dungeon-manager/schema";
 import { saveCampaign, saveScene } from "./documents.js";
 import type { FileSystem } from "./fs.js";
-import { isValidSlug } from "./layout.js";
+import { isValidFileId, isValidSlug, sceneFile } from "./layout.js";
 
 const TRANSLITERATIONS: Readonly<Record<string, string>> = {
   ä: "ae",
@@ -90,4 +91,101 @@ export async function createScene(
   };
   await saveScene(fs, slug, created);
   return created;
+}
+
+/** What to reset when a scene gets a different map; everything not set is kept. */
+export interface MapReset {
+  /** Cover the whole map again (fog is stored in map pixels). */
+  readonly fog?: boolean;
+  /** Back to the placeholder grid, to be calibrated again. */
+  readonly grid?: boolean;
+  /** Remove the tokens, and initiative entries tied to them. */
+  readonly tokens?: boolean;
+}
+
+/** A fresh placeholder grid per scene (never a shared object). */
+const placeholderGrid = () => ({ cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 });
+
+/**
+ * The scene with `asset` as its map image. An existing map keeps its levels, and by default its
+ * grid, fog and tokens (right for a corrected version of the same map); `reset` clears what no
+ * longer fits. A scene without a map gets a single-level image map (`imageMap`).
+ */
+export function withMap(
+  scene: Scene,
+  asset: AssetRef,
+  newLevel: { readonly id: string; readonly name: string },
+  reset: MapReset = {},
+): Scene {
+  const map: MapSpec = scene.map
+    ? {
+        ...scene.map,
+        kind: "image",
+        asset: { path: asset.path, hash: asset.hash },
+        ...(reset.grid === true && { grid: placeholderGrid() }),
+      }
+    : imageMap(asset, newLevel);
+  const changed: Scene = { ...scene, map };
+  if (reset.fog === true) changed.fog = { ...scene.fog, levels: {} };
+  if (reset.tokens === true) {
+    changed.tokens = [];
+    changed.initiative = withoutTokenCombatants(scene.initiative);
+  }
+  return changed;
+}
+
+/** The initiative without combatants that stood for a token (their token is gone). */
+function withoutTokenCombatants(
+  initiative: Scene["initiative"],
+): Scene["initiative"] {
+  if (!initiative) return initiative;
+  const combatants = initiative.combatants.filter(
+    (combatant) => combatant.tokenId === undefined,
+  );
+  const kept = new Set(combatants.map((combatant) => combatant.id));
+  const order = initiative.order.filter((id) => kept.has(id));
+  // Like ending combat in core: with nobody left, the next fight starts at round 1 again.
+  if (order.length === 0)
+    return {
+      ...initiative,
+      round: 0,
+      activeCombatantId: null,
+      order: [],
+      combatants,
+    };
+  // Unlike core's removal, the turn does not pass on: the map changed, so the DM decides.
+  return {
+    ...initiative,
+    combatants,
+    order,
+    activeCombatantId:
+      initiative.activeCombatantId !== null &&
+      kept.has(initiative.activeCombatantId)
+        ? initiative.activeCombatantId
+        : null,
+  };
+}
+
+/** A single-level image map with a placeholder grid (100 px per cell) until it is calibrated (T-106). */
+export function imageMap(
+  asset: AssetRef,
+  level: { readonly id: string; readonly name: string },
+): MapSpec {
+  return {
+    kind: "image",
+    asset: { path: asset.path, hash: asset.hash },
+    grid: placeholderGrid(),
+    levels: [{ id: level.id, name: level.name }],
+  };
+}
+
+/** Moves a scene file into the campaign's trash. @returns its path there. @throws on unsafe input */
+export async function deleteScene(
+  fs: FileSystem,
+  slug: string,
+  sceneId: string,
+): Promise<string> {
+  if (!isValidSlug(slug)) throw new Error(`Invalid campaign slug: ${slug}`);
+  if (!isValidFileId(sceneId)) throw new Error(`Invalid scene id: ${sceneId}`);
+  return fs.moveToTrash(sceneFile(slug, sceneId));
 }

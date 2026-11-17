@@ -58,6 +58,22 @@ export const en: Messages = {
     map: "Map: {{file}}",
     noMap: "No map",
     defaultLevel: "Ground floor",
+    chooseSceneMap: "Choose a map for this scene …",
+    changeMap: "Change map …",
+    deleteScene: "Delete scene …",
+    confirmDelete:
+      "Really delete scene “{{name}}”? It will be moved to the campaign's trash.",
+    deleteConfirmed: "Yes, delete",
+    cancel: "Cancel",
+    sceneDeleted: "Scene “{{name}}” is in the campaign's trash.",
+    mapChange: {
+      question:
+        "New map: {{file}}. What should happen to the current setup? Anything not ticked is kept.",
+      fog: "Reset fog (cover everything again)",
+      grid: "Reset grid (calibrate again)",
+      tokens: "Remove tokens (and their initiative entries)",
+      apply: "Use this map",
+    },
     closeScene: "Close scene",
     scene: {
       notAvailable: "{{id}} (not downloaded yet)",

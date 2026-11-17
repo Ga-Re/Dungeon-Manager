@@ -15,6 +15,7 @@ export function createMemoryFileSystem(
 ): MemoryFileSystem {
   const files = new Map<string, MemoryFileContent>(Object.entries(initial));
   const directories = new Set<string>();
+  let trashed = 0;
   const parentsOf = (path: string) =>
     path
       .split("/")
@@ -61,6 +62,26 @@ export function createMemoryFileSystem(
     makeDirectory(path) {
       [...parentsOf(path), path].forEach((dir) => directories.add(dir));
       return Promise.resolve();
+    },
+    moveToTrash(path) {
+      const [root, slug, ...rest] = path.split("/");
+      const content = files.get(path);
+      if (
+        root !== "campaigns" ||
+        slug === undefined ||
+        rest.length === 0 ||
+        rest[0]?.toLowerCase() === ".trash"
+      )
+        return Promise.reject(new Error(`Not a campaign file: ${path}`));
+      if (content === undefined)
+        return Promise.reject(new Error(`No such file: ${path}`));
+      trashed += 1;
+      // Same layout as the desktop: one folder per deletion, original path inside.
+      const target = `campaigns/${slug}/.trash/${String(trashed)}/${rest.join("/")}`;
+      files.delete(path);
+      files.set(target, content);
+      parentsOf(target).forEach((dir) => directories.add(dir));
+      return Promise.resolve(target);
     },
     files: () =>
       new Map(

@@ -206,6 +206,71 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] A scene can be created with the imported map
 - **Notes:** DM approved `sha2` (already a transitive dependency) for hashing, 2026-11-17.
 
+### T-120 Change a scene's map, delete scenes to the trash
+
+- **Status:** done · **Depends on:** T-104b · **Refs:** ARCHITECTURE §6.6
+- The open scene can get a different map (levels, grid, fog and tokens are kept) and can be deleted after a confirmation; deleted files move to `campaigns/<slug>/.trash/`, never removed.
+- **Acceptance criteria**
+  - [x] DM changes the map of an existing scene and chooses what to reset (fog, grid, tokens)
+  - [x] DM deletes a scene after confirming; the file lands in the campaign's `.trash/`
+- **Notes:** Requested by the DM after testing T-104 (2026-11-17). DM decisions (2026-11-17): deleted things go to the trash first and can be restored (T-122); when a map changes, the DM is asked whether to reset fog, grid and tokens (nothing is reset by default). Maps stay in the global library when a scene is deleted. Security-relevant (new file operation for the DM window): DM confirms before merge.
+
+### T-121 Map change: compare image sizes
+
+- **Status:** todo · **Depends on:** T-120, T-105 · **Refs:** SPEC 3.1, 4
+- When a scene's map is changed (T-120 asks what to reset), compare the old and new image dimensions. If they differ, say so in the question and pre-tick "reset fog" and "reset grid", since fog and token positions are stored in map pixels.
+- **Acceptance criteria**
+  - [ ] Changing to an image of different dimensions shows the difference and pre-ticks fog and grid reset
+- **Notes:** From the T-120 review; needs image dimensions, available once the renderer loads maps. Pre-ticking is an exception to the DM's "nothing is reset by default" decision – DM confirms before implementing.
+
+### T-122 Restore from the trash
+
+- **Status:** todo · **Depends on:** T-120 · **Refs:** ARCHITECTURE §6.6
+- Show a campaign's trash (what, when deleted) and restore an item to its original path. If that path is taken again, restore under a new name and say so – never overwrite.
+- **Acceptance criteria**
+  - [ ] DM sees deleted scenes of a campaign with their deletion time
+  - [ ] DM restores a scene; it is back in the scene list
+  - [ ] Restoring never overwrites an existing file
+- **Notes:** DM decision (2026-11-17): things land in the trash first and can be restored. Needs a new file operation (security-relevant: DM confirms the capability).
+
+### T-123 Purge the trash after 30 days
+
+- **Status:** todo · **Depends on:** T-122 · **Refs:** ARCHITECTURE §6.6
+- Remove trash entries older than 30 days (on app start, once a day), with an option to empty the trash by hand after confirming.
+- **Acceptance criteria**
+  - [ ] Entries older than 30 days are removed; newer ones stay
+  - [ ] DM can empty a campaign's trash after confirming
+- **Notes:** First operation that really deletes files – security-relevant, DM confirms before merge.
+
+### T-124 Global map and asset catalog
+
+- **Status:** todo · **Depends on:** T-104b · **Refs:** SPEC 8.2, ARCHITECTURE §6.2
+- One catalog of everything in `library/` (maps now; tokens, assets, sounds later), shared by all campaigns. When creating a scene or changing its map, the DM picks from the catalog (with previews) or imports a new file into it. Deleting a scene never removes anything from the catalog.
+- **Acceptance criteria**
+  - [ ] Catalog lists all maps in the library with a preview, across campaigns
+  - [ ] DM picks a map from the catalog for a new scene and when changing a scene's map
+  - [ ] Deleting a scene leaves its map in the catalog
+- **Notes:** DM request (2026-11-17). Previews go to `library/.previews/` as ARCHITECTURE §6.5 already plans (shared with the phone); maps picked but not used (e.g. a cancelled map change) simply stay in the catalog.
+
+### T-125 Asset metadata: scale, name, origin
+
+- **Status:** todo · **Depends on:** T-124, T-106 · **Refs:** SPEC 8.2, 3.1
+- Metadata per catalog item so it always fits the map scale: for maps the grid calibration (pixels per cell, offset; filled from T-106 and reused by every scene with that map), for assets and tokens their footprint in grid cells. Plus display name and origin/license (SPEC 8.2).
+- **Acceptance criteria**
+  - [ ] A map's calibration is stored once and pre-fills the grid of every new scene using it
+  - [ ] Assets and tokens are placed at the size given by their metadata, matching the map scale
+  - [ ] Name and origin/license can be edited per item
+- **Notes:** DM request (2026-11-17). New file format (e.g. a sidecar `<file>.meta.json` vs. one catalog index): needs an ADR and DM approval before implementing.
+
+### T-126 Tags and search in the catalog
+
+- **Status:** todo · **Depends on:** T-125 · **Refs:** SPEC 8.2
+- Tags per catalog item (free text, suggestions from existing tags) and a search over name and tags, with type filters (map, token, asset).
+- **Acceptance criteria**
+  - [ ] DM adds and removes tags on a catalog item
+  - [ ] Searching by text or tag finds matching items quickly (budget to be set in the task, e.g. < 100 ms for 10 000 items)
+- **Notes:** DM request (2026-11-17). Stored with the T-125 metadata.
+
 ### T-105 Renderer: map layer and camera
 
 - **Status:** todo · **Depends on:** T-104b, T-007 · **Refs:** ARCHITECTURE §8

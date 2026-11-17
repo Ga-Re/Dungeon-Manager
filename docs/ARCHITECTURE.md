@@ -183,7 +183,7 @@ Desktop generates downscaled images (and a still frame for video maps) into `lib
 ### 6.6 Backups
 
 - Snapshot ZIP per session end (campaign data only; assets are referenced, not included)
-- Trash with 30-day retention
+- Trash with 30-day retention: deleting moves a file to `campaigns/<slug>/.trash/<UTC timestamp>[-n]/<path inside the campaign>`, so it can be restored to where it was (never removed, never overwritten); purging after 30 days is still to be built
 - Export: self-contained archive including used assets
 
 ---
