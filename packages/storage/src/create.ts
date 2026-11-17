@@ -103,7 +103,8 @@ export interface MapReset {
   readonly tokens?: boolean;
 }
 
-const PLACEHOLDER_GRID = { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 };
+/** A fresh placeholder grid per scene (never a shared object). */
+const placeholderGrid = () => ({ cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 });
 
 /**
  * The scene with `asset` as its map image. An existing map keeps its levels, and by default its
@@ -121,7 +122,7 @@ export function withMap(
         ...scene.map,
         kind: "image",
         asset: { path: asset.path, hash: asset.hash },
-        ...(reset.grid === true && { grid: PLACEHOLDER_GRID }),
+        ...(reset.grid === true && { grid: placeholderGrid() }),
       }
     : imageMap(asset, newLevel);
   const changed: Scene = { ...scene, map };
@@ -143,6 +144,16 @@ function withoutTokenCombatants(
   );
   const kept = new Set(combatants.map((combatant) => combatant.id));
   const order = initiative.order.filter((id) => kept.has(id));
+  // Like ending combat in core: with nobody left, the next fight starts at round 1 again.
+  if (order.length === 0)
+    return {
+      ...initiative,
+      round: 0,
+      activeCombatantId: null,
+      order: [],
+      combatants,
+    };
+  // Unlike core's removal, the turn does not pass on: the map changed, so the DM decides.
   return {
     ...initiative,
     combatants,
@@ -163,7 +174,7 @@ export function imageMap(
   return {
     kind: "image",
     asset: { path: asset.path, hash: asset.hash },
-    grid: PLACEHOLDER_GRID,
+    grid: placeholderGrid(),
     levels: [{ id: level.id, name: level.name }],
   };
 }

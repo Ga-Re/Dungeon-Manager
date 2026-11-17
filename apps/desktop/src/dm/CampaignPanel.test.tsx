@@ -207,6 +207,7 @@ describe("CampaignPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
     fireEvent.click(await screen.findByRole("button", { name: "Abbrechen" }));
     expect(saved().map.asset).not.toEqual(asset);
+    expect(document.activeElement?.textContent).toBe("Karte ändern …");
 
     fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
     const fog = await screen.findByRole<HTMLInputElement>("checkbox", {

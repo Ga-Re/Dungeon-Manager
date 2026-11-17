@@ -1,4 +1,4 @@
-import type { Scene } from "@dungeon-manager/schema";
+import { sceneSchema, type Scene } from "@dungeon-manager/schema";
 import { describe, expect, test } from "vitest";
 import {
   createCampaign,
@@ -283,6 +283,39 @@ describe("withMap with resets", () => {
     });
     expect(changed.initiative?.combatants.map((c) => c.id)).toEqual(["c-wolf"]);
     expect(changed.fog).toEqual(scene.fog);
+  });
+
+  test("results are valid scenes, also when nobody is left or there is no initiative", () => {
+    const onlyTokens: Scene = {
+      ...scene,
+      initiative: scene.initiative && {
+        ...scene.initiative,
+        order: ["c-goblin"],
+        combatants: scene.initiative.combatants.filter(
+          (c) => c.tokenId !== undefined,
+        ),
+      },
+    };
+    const emptied = withMap(onlyTokens, asset, level, {
+      tokens: true,
+      fog: true,
+      grid: true,
+    });
+    expect(emptied.initiative).toEqual({
+      round: 0,
+      activeCombatantId: null,
+      order: [],
+      combatants: [],
+    });
+    expect(() => sceneSchema.parse(emptied)).not.toThrow();
+    const noInitiative = withMap({ ...scene, initiative: null }, asset, level, {
+      tokens: true,
+    });
+    expect(noInitiative.initiative).toBeNull();
+    expect(() => sceneSchema.parse(noInitiative)).not.toThrow();
+    expect(() =>
+      sceneSchema.parse(withMap(scene, asset, level, { tokens: true })),
+    ).not.toThrow();
   });
 });
 

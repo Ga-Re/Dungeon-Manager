@@ -36,6 +36,15 @@ export function OpenScenePanel({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
   const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
+  const changeMapButton = useRef<HTMLButtonElement>(null);
+  const choosing = useRef(false);
+
+  // After the map question closes, keyboard focus returns to the button that opened it.
+  useEffect(() => {
+    if (pendingMap === null && choosing.current)
+      changeMapButton.current?.focus();
+    choosing.current = pendingMap !== null;
+  }, [pendingMap]);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const confirmButton = useRef<HTMLButtonElement>(null);
   const asked = useRef(false);
@@ -111,7 +120,12 @@ export function OpenScenePanel({
           }}
         />
       ) : (
-        <button type="button" disabled={busy} onClick={() => void changeMap()}>
+        <button
+          ref={changeMapButton}
+          type="button"
+          disabled={busy}
+          onClick={() => void changeMap()}
+        >
           {scene.map ? t("campaign.changeMap") : t("campaign.chooseSceneMap")}
         </button>
       )}

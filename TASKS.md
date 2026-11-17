@@ -221,7 +221,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - When a scene's map is changed (T-120 asks what to reset), compare the old and new image dimensions. If they differ, say so in the question and pre-tick "reset fog" and "reset grid", since fog and token positions are stored in map pixels.
 - **Acceptance criteria**
   - [ ] Changing to an image of different dimensions shows the difference and pre-ticks fog and grid reset
-- **Notes:** From the T-120 review; needs image dimensions, available once the renderer loads maps.
+- **Notes:** From the T-120 review; needs image dimensions, available once the renderer loads maps. Pre-ticking is an exception to the DM's "nothing is reset by default" decision – DM confirms before implementing.
 
 ### T-122 Restore from the trash
 
@@ -250,7 +250,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Catalog lists all maps in the library with a preview, across campaigns
   - [ ] DM picks a map from the catalog for a new scene and when changing a scene's map
   - [ ] Deleting a scene leaves its map in the catalog
-- **Notes:** DM request (2026-11-17).
+- **Notes:** DM request (2026-11-17). Previews go to `library/.previews/` as ARCHITECTURE §6.5 already plans (shared with the phone); maps picked but not used (e.g. a cancelled map change) simply stay in the catalog.
 
 ### T-125 Asset metadata: scale, name, origin
 

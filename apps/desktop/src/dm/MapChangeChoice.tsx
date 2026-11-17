@@ -29,7 +29,7 @@ export function MapChangeChoice({
   }, []);
 
   return (
-    <fieldset>
+    <fieldset disabled={busy}>
       <legend>{t("campaign.mapChange.question", { file })}</legend>
       {OPTIONS.map((option, index) => (
         <label key={option}>
