@@ -58,6 +58,13 @@ export const de = {
     map: "Karte: {{file}}",
     noMap: "Ohne Karte",
     defaultLevel: "Erdgeschoss",
+    changeMap: "Karte ändern …",
+    deleteScene: "Szene löschen …",
+    confirmDelete:
+      "Szene „{{name}}“ wirklich löschen? Sie wird in den Papierkorb der Kampagne verschoben.",
+    deleteConfirmed: "Ja, löschen",
+    cancel: "Abbrechen",
+    sceneDeleted: "Szene „{{name}}“ ist im Papierkorb der Kampagne.",
     closeScene: "Szene schließen",
     scene: {
       notAvailable: "{{id}} (noch nicht heruntergeladen)",

@@ -221,6 +221,20 @@ pub async fn library_import_map(
     .map_err(|error| LibraryError::Io(error.to_string()))?
 }
 
+/// Moves a campaign file into the campaign's trash (ARCHITECTURE §6.6); never deletes.
+#[tauri::command]
+pub fn library_move_to_trash(
+    window: WebviewWindow,
+    state: State<LibraryState>,
+    path: String,
+) -> Result<String, LibraryError> {
+    require_dm(&window)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_secs());
+    library::move_to_trash(&state.root()?, &path, now)
+}
+
 #[tauri::command]
 pub fn library_read(
     window: WebviewWindow,

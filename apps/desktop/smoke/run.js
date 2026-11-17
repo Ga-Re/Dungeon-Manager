@@ -198,6 +198,24 @@ async function main() {
     if (scenes.length !== 1 || !scenes[0].endsWith(".json"))
       throw new Error(`Unexpected scene files: ${scenes.join(", ")}`);
 
+    // Deleting goes through the real trash command: the file moves, nothing is removed.
+    await clickXPath(
+      sessionPath,
+      "the delete button",
+      "//button[text()='Szene löschen …']",
+    );
+    await clickXPath(
+      sessionPath,
+      "the delete confirmation",
+      "//button[text()='Ja, löschen']",
+    );
+    await waitFor("the deleted scene to leave the list", async () =>
+      (await pageText()).includes("Noch keine Szenen in dieser Kampagne."),
+    );
+    const trash = readdirSync(join(library, "campaigns", "smoke", ".trash"));
+    if (trash.length !== 1 || !trash[0].endsWith(scenes[0]))
+      throw new Error(`Unexpected trash content: ${trash.join(", ")}`);
+
     // Reading files must not count as a change: on Linux, inotify reports opens and reads, and
     // a reload reacting to them would read again, forever. A quiet library sends no events.
     const eventsWhileIdle = await command(

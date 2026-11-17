@@ -17,6 +17,7 @@
     "allow-library-write",
     "allow-library-list",
     "allow-library-make-directory",
-    "allow-library-import-map"
+    "allow-library-import-map",
+    "allow-library-move-to-trash"
   ]
 }

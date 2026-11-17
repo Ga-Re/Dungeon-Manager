@@ -161,6 +161,78 @@ pub fn write_atomic_with(
     Ok(result?)
 }
 
+/// Puts the file at `from` also at `to` without ever replacing an existing file: a hard link
+/// fails if the name is taken. Where links are not supported (some cloud or FAT volumes) it falls
+/// back to rename after an existence check – a small race with sync clients (ARCHITECTURE §6.3).
+/// @returns `false` if `to` is taken. After a link, `from` still exists; after a rename it does not.
+pub fn place_new(from: &Path, to: &Path) -> io::Result<bool> {
+    match fs::hard_link(from, to) {
+        Ok(()) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(false),
+        Err(_) if to.symlink_metadata().is_ok() => Ok(false),
+        Err(_) => fs::rename(from, to).map(|()| true),
+    }
+}
+
+/// `YYYYMMDD-HHMMSS` in UTC for trash names (days-to-civil algorithm by Howard Hinnant).
+fn utc_stamp(seconds: u64) -> String {
+    let days = (seconds / 86_400) as i64;
+    let time = seconds % 86_400;
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!(
+        "{year:04}{month:02}{day:02}-{:02}{:02}{:02}",
+        time / 3_600,
+        time / 60 % 60,
+        time % 60
+    )
+}
+
+/// Moves a file inside a campaign into `campaigns/<slug>/.trash/<timestamp>-<path>` (ARCHITECTURE
+/// §6.6). Never deletes and never overwrites. @returns the library-relative trash path
+pub fn move_to_trash(
+    root: &Path,
+    relative: &str,
+    now_seconds: u64,
+) -> Result<String, LibraryError> {
+    let invalid = || LibraryError::InvalidPath(relative.to_owned());
+    let source = resolve(root, relative)?;
+    let mut parts = relative.splitn(3, '/');
+    let (Some("campaigns"), Some(slug), Some(rest)) = (parts.next(), parts.next(), parts.next())
+    else {
+        return Err(invalid());
+    };
+    if rest.starts_with(".trash/") || !source.is_file() {
+        return Err(invalid());
+    }
+    let flat = rest.replace('/', "-");
+    let stamp = utc_stamp(now_seconds);
+    for number in 1.. {
+        let name = if number == 1 {
+            format!("{stamp}-{flat}")
+        } else {
+            format!("{stamp}-{number}-{flat}")
+        };
+        let trash_path = format!("campaigns/{slug}/.trash/{name}");
+        let target = resolve(root, &trash_path)?;
+        fs::create_dir_all(target.parent().unwrap_or(root))?;
+        if place_new(&source, &target)? {
+            if source.exists() {
+                fs::remove_file(&source)?;
+            }
+            return Ok(trash_path);
+        }
+    }
+    unreachable!("the name loop only ends by returning")
+}
+
 /// Lists a directory, or `None` if it does not exist. iCloud stubs are listed under their real
 /// name; symlinks and names that are not valid UTF-8 are left out.
 pub fn list(path: &Path) -> Result<Option<Vec<DirEntry>>, LibraryError> {
@@ -284,6 +356,54 @@ mod tests {
             .map(|entry| entry.name)
             .collect();
         assert_eq!(names, ["campaign.json"]);
+    }
+
+    #[test]
+    fn utc_stamps_are_calendar_dates() {
+        assert_eq!(utc_stamp(0), "19700101-000000");
+        assert_eq!(utc_stamp(951_782_400), "20000229-000000");
+        assert_eq!(utc_stamp(1_794_959_999), "20261117-235959");
+    }
+
+    #[test]
+    fn move_to_trash_keeps_every_version() {
+        let root = temp_root("trash");
+        let scene = root.join("campaigns/mine/scenes/s-1.json");
+        write_atomic(&scene, "one").unwrap();
+        let first = move_to_trash(&root, "campaigns/mine/scenes/s-1.json", 0).unwrap();
+        assert_eq!(
+            first,
+            "campaigns/mine/.trash/19700101-000000-scenes-s-1.json"
+        );
+        assert!(!scene.exists());
+        write_atomic(&scene, "two").unwrap();
+        let second = move_to_trash(&root, "campaigns/mine/scenes/s-1.json", 0).unwrap();
+        assert_eq!(
+            second,
+            "campaigns/mine/.trash/19700101-000000-2-scenes-s-1.json"
+        );
+        assert_eq!(fs::read_to_string(root.join(&first)).unwrap(), "one");
+        assert_eq!(fs::read_to_string(root.join(&second)).unwrap(), "two");
+    }
+
+    #[test]
+    fn move_to_trash_only_moves_campaign_files() {
+        let root = temp_root("trash-outside");
+        write_atomic(&root.join("library/maps/a.png"), "x").unwrap();
+        write_atomic(&root.join("campaigns/mine/.trash/old.json"), "x").unwrap();
+        for path in [
+            "library/maps/a.png",
+            "campaigns/mine",
+            "campaigns/mine/.trash/old.json",
+            "campaigns/mine/missing.json",
+            "campaigns/../x",
+        ] {
+            assert!(
+                move_to_trash(&root, path, 0).is_err(),
+                "{path} must be refused"
+            );
+        }
+        assert!(root.join("library/maps/a.png").exists());
     }
 
     #[test]

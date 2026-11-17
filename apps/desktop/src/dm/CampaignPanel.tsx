@@ -1,10 +1,17 @@
-import type { AssetRef, MapSpec, Scene } from "@dungeon-manager/schema";
-import { createScene, listScenes, loadScene } from "@dungeon-manager/storage";
+import type { AssetRef, Scene } from "@dungeon-manager/schema";
+import {
+  createScene,
+  imageMap,
+  listScenes,
+  loadScene,
+} from "@dungeon-manager/storage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
+import { fileName } from "./file-name.js";
 import { NameForm } from "./NameForm.js";
+import { OpenScenePanel } from "./OpenScenePanel.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
 
 interface SceneEntry {
@@ -39,25 +46,6 @@ async function readScenes(
   return entries.sort((a, b) =>
     (a.scene?.name ?? a.id).localeCompare(b.scene?.name ?? b.id),
   );
-}
-
-const fileName = (path: string) => path.split("/").at(-1) ?? path;
-
-/**
- * A single-level image map. The grid is a placeholder until it is calibrated (T-106): 100 map
- * pixels per cell, no offset.
- */
-function imageMap(
-  asset: AssetRef,
-  levelId: string,
-  levelName: string,
-): MapSpec {
-  return {
-    kind: "image",
-    asset: { path: asset.path, hash: asset.hash },
-    grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-    levels: [{ id: levelId, name: levelName }],
-  };
 }
 
 /** One campaign: its scenes, creating a scene, opening and closing one. */
@@ -114,7 +102,10 @@ export function CampaignPanel({
         map:
           // The level id only has to be unique within this scene.
           pendingMap &&
-          imageMap(pendingMap, newId(), t("campaign.defaultLevel")),
+          imageMap(pendingMap, {
+            id: newId(),
+            name: t("campaign.defaultLevel"),
+          }),
       });
       setPendingMap(null);
       setNotice(t("campaign.sceneCreated", { name: scene.name }));
@@ -145,22 +136,25 @@ export function CampaignPanel({
     <section aria-labelledby="campaign-heading">
       <h3 id="campaign-heading">{t("campaign.heading", { name })}</h3>
       {openScene && (
-        <div>
-          <p>{t("campaign.openScene", { name: openScene.name })}</p>
-          <p>
-            {openScene.map
-              ? t("campaign.map", { file: fileName(openScene.map.asset.path) })
-              : t("campaign.noMap")}
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setOpenScene(null);
-            }}
-          >
-            {t("campaign.closeScene")}
-          </button>
-        </div>
+        <OpenScenePanel
+          key={openScene.id}
+          service={service}
+          slug={slug}
+          scene={openScene}
+          newId={newId}
+          onChanged={(scene) => {
+            setOpenScene(scene);
+            void reload();
+          }}
+          onDeleted={(scene) => {
+            setOpenScene(null);
+            setNotice(t("campaign.sceneDeleted", { name: scene.name }));
+            void reload();
+          }}
+          onClose={() => {
+            setOpenScene(null);
+          }}
+        />
       )}
       {state.status === "loading" && <p>{t("campaign.loading")}</p>}
       {state.status === "error" && (

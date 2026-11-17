@@ -50,6 +50,7 @@ export function createTauriLibraryService(): LibraryService {
       list: (path) =>
         call<readonly DirEntry[] | null>("library_list", { path }),
       makeDirectory: (path) => call("library_make_directory", { path }),
+      moveToTrash: (path) => call<string>("library_move_to_trash", { path }),
     },
     currentRoot: () => call<string | null>("library_root"),
     chooseRoot: () => call<string | null>("library_choose"),

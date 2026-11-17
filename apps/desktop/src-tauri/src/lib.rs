@@ -27,6 +27,7 @@ pub fn run() {
             commands::library_list,
             commands::library_make_directory,
             commands::library_import_map,
+            commands::library_move_to_trash,
         ])
         .on_window_event(|window, event| {
             // The player window has no controls; closing the DM window must not leave it

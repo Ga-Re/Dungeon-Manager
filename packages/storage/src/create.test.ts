@@ -3,6 +3,9 @@ import {
   createCampaign,
   createMemoryFileSystem,
   createScene,
+  deleteScene,
+  listScenes,
+  withMap,
   isValidSlug,
   loadCampaign,
   loadScene,
@@ -131,5 +134,88 @@ describe("createScene", () => {
     await expect(
       createScene(createMemoryFileSystem(), "mine", { id: "s-1", name: " " }),
     ).rejects.toThrow("A scene needs a name");
+  });
+});
+
+describe("withMap", () => {
+  const asset = {
+    path: "library/maps/new.webp",
+    hash: `sha256:${"c".repeat(64)}`,
+  };
+
+  test("gives a scene without a map a single-level image map", () => {
+    expect(
+      withMap(
+        {
+          schemaVersion: 1,
+          id: "s",
+          name: "S",
+          map: null,
+          tokens: [],
+          fog: { levels: {} },
+          initiative: null,
+        },
+        asset,
+        { id: "level-1", name: "Erdgeschoss" },
+      ).map,
+    ).toEqual({
+      kind: "image",
+      asset,
+      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+      levels: [{ id: "level-1", name: "Erdgeschoss" }],
+    });
+  });
+
+  test("replaces only the image of an existing map", () => {
+    const map = {
+      kind: "image" as const,
+      asset: {
+        path: "library/maps/old.webp",
+        hash: `sha256:${"a".repeat(64)}`,
+        note: "kept?",
+      },
+      grid: { cellSizePx: 72, offsetXPx: 3, offsetYPx: 4 },
+      levels: [
+        { id: "ground", name: "Unten" },
+        { id: "top", name: "Oben" },
+      ],
+    };
+    const scene = {
+      schemaVersion: 1 as const,
+      id: "s",
+      name: "S",
+      map,
+      tokens: [],
+      fog: { levels: {} },
+      initiative: null,
+    };
+    expect(withMap(scene, asset, { id: "unused", name: "unused" }).map).toEqual(
+      {
+        ...map,
+        asset: { path: asset.path, hash: asset.hash },
+      },
+    );
+  });
+});
+
+describe("deleteScene", () => {
+  test("moves the scene file into the campaign's trash", async () => {
+    const fs = createMemoryFileSystem();
+    await createScene(fs, "mine", { id: "s-1", name: "Eingang" });
+    const trashed = await deleteScene(fs, "mine", "s-1");
+    expect(trashed).toMatch(/^campaigns\/mine\/\.trash\/.+s-1\.json$/);
+    expect(fs.files().has("campaigns/mine/scenes/s-1.json")).toBe(false);
+    expect(JSON.parse(fs.files().get(trashed) ?? "{}")).toMatchObject({
+      name: "Eingang",
+    });
+    expect((await listScenes(fs, "mine")).sceneIds).toEqual([]);
+  });
+
+  test("rejects unsafe ids without touching anything", async () => {
+    const fs = createMemoryFileSystem({ "campaigns/mine/campaign.json": "{}" });
+    await expect(deleteScene(fs, "mine", "../campaign")).rejects.toThrow(
+      "Invalid scene id",
+    );
+    expect(fs.files().has("campaigns/mine/campaign.json")).toBe(true);
   });
 });

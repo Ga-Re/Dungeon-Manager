@@ -206,6 +206,15 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] A scene can be created with the imported map
 - **Notes:** DM approved `sha2` (already a transitive dependency) for hashing, 2026-11-17.
 
+### T-120 Change a scene's map, delete scenes to the trash
+
+- **Status:** done · **Depends on:** T-104b · **Refs:** ARCHITECTURE §6.6
+- The open scene can get a different map (levels, grid, fog and tokens are kept) and can be deleted after a confirmation; deleted files move to `campaigns/<slug>/.trash/`, never removed.
+- **Acceptance criteria**
+  - [x] DM changes the map of an existing scene
+  - [x] DM deletes a scene after confirming; the file lands in the campaign's `.trash/`
+- **Notes:** Requested by the DM after testing T-104 (2026-11-17). Purging the trash after 30 days is a later task. Security-relevant (new file operation for the DM window): DM confirms before merge.
+
 ### T-105 Renderer: map layer and camera
 
 - **Status:** todo · **Depends on:** T-104b, T-007 · **Refs:** ARCHITECTURE §8

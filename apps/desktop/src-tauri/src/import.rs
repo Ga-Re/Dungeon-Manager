@@ -102,18 +102,6 @@ fn stage(source: &Path, staged: &Path) -> io::Result<(String, Vec<u8>)> {
     Ok((format!("sha256:{:x}", hasher.finalize()), header))
 }
 
-/// Puts the staged file at `target` without ever replacing an existing file: a hard link fails
-/// if the name is taken. Where links are not supported (some cloud or FAT volumes) it falls back
-/// to rename after an existence check – a small race with sync clients, see ARCHITECTURE §6.3.
-fn place(staged: &Path, target: &Path) -> io::Result<bool> {
-    match fs::hard_link(staged, target) {
-        Ok(()) => Ok(true),
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => Ok(false),
-        Err(_) if target.symlink_metadata().is_ok() => Ok(false),
-        Err(_) => fs::rename(staged, target).map(|()| true),
-    }
-}
-
 /// Copies the image at `source` into `<root>/<folder>/` under a portable name. An identical file
 /// already there is reused; any other existing file keeps its name and the import gets a
 /// numbered one, so nothing is overwritten.
@@ -148,7 +136,7 @@ pub fn import_image(
                 hash,
             });
         }
-        if !target.exists() && place(&staged.0, &target)? {
+        if !target.exists() && library::place_new(&staged.0, &target)? {
             return Ok(ImportedAsset {
                 path: relative,
                 hash,

@@ -1,12 +1,13 @@
 import {
   CAMPAIGN_VERSION,
   SCENE_VERSION,
+  type AssetRef,
   type MapSpec,
   type Scene,
 } from "@dungeon-manager/schema";
 import { saveCampaign, saveScene } from "./documents.js";
 import type { FileSystem } from "./fs.js";
-import { isValidSlug } from "./layout.js";
+import { isValidFileId, isValidSlug, sceneFile } from "./layout.js";
 
 const TRANSLITERATIONS: Readonly<Record<string, string>> = {
   ä: "ae",
@@ -90,4 +91,44 @@ export async function createScene(
   };
   await saveScene(fs, slug, created);
   return created;
+}
+
+/**
+ * The scene with `asset` as its map image. An existing map keeps its levels, grid, fog and
+ * tokens (the usual case is a corrected version of the same map); a scene without a map gets a
+ * single-level image map (`imageMap`).
+ */
+export function withMap(
+  scene: Scene,
+  asset: AssetRef,
+  newLevel: { readonly id: string; readonly name: string },
+): Scene {
+  const map: MapSpec = scene.map
+    ? { ...scene.map, asset: { path: asset.path, hash: asset.hash } }
+    : imageMap(asset, newLevel);
+  return { ...scene, map };
+}
+
+/** A single-level image map with a placeholder grid (100 px per cell) until it is calibrated (T-106). */
+export function imageMap(
+  asset: AssetRef,
+  level: { readonly id: string; readonly name: string },
+): MapSpec {
+  return {
+    kind: "image",
+    asset: { path: asset.path, hash: asset.hash },
+    grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+    levels: [{ id: level.id, name: level.name }],
+  };
+}
+
+/** Moves a scene file into the campaign's trash. @returns its path there. @throws on unsafe input */
+export async function deleteScene(
+  fs: FileSystem,
+  slug: string,
+  sceneId: string,
+): Promise<string> {
+  if (!isValidSlug(slug)) throw new Error(`Invalid campaign slug: ${slug}`);
+  if (!isValidFileId(sceneId)) throw new Error(`Invalid scene id: ${sceneId}`);
+  return fs.moveToTrash(sceneFile(slug, sceneId));
 }

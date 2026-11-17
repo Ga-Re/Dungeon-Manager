@@ -58,6 +58,13 @@ export const en: Messages = {
     map: "Map: {{file}}",
     noMap: "No map",
     defaultLevel: "Ground floor",
+    changeMap: "Change map …",
+    deleteScene: "Delete scene …",
+    confirmDelete:
+      "Really delete scene “{{name}}”? It will be moved to the campaign's trash.",
+    deleteConfirmed: "Yes, delete",
+    cancel: "Cancel",
+    sceneDeleted: "Scene “{{name}}” is in the campaign's trash.",
     closeScene: "Close scene",
     scene: {
       notAvailable: "{{id}} (not downloaded yet)",

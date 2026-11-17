@@ -32,6 +32,7 @@ describe("createTauriLibraryService", () => {
     await fs.writeAtomic("x.json", "{}");
     await fs.list("campaigns");
     await fs.makeDirectory("library/maps");
+    await fs.moveToTrash("campaigns/a/scenes/s.json");
     fake.invoke.mockResolvedValueOnce(null);
     await createTauriLibraryService().importMap("Karten");
     expect(fake.invoke.mock.calls).toEqual([
@@ -39,6 +40,7 @@ describe("createTauriLibraryService", () => {
       ["library_write", { path: "x.json", text: "{}" }],
       ["library_list", { path: "campaigns" }],
       ["library_make_directory", { path: "library/maps" }],
+      ["library_move_to_trash", { path: "campaigns/a/scenes/s.json" }],
       ["library_import_map", { filterLabel: "Karten" }],
     ]);
   });

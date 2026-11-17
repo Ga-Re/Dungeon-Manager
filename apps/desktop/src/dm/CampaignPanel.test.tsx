@@ -161,4 +161,86 @@ describe("CampaignPanel", () => {
       ),
     ).toBeTruthy();
   });
+
+  test("changes the map of an open scene and keeps its levels", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/scenes/a.json": JSON.stringify({
+        ...JSON.parse(sceneFile("a", "Höhle")),
+        map: {
+          kind: "image",
+          asset: {
+            path: "library/maps/alt.webp",
+            hash: `sha256:${"a".repeat(64)}`,
+          },
+          grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },
+          levels: [{ id: "ground", name: "Unten" }],
+        },
+      }),
+    });
+    const asset = {
+      path: "library/maps/neu.webp",
+      hash: `sha256:${"b".repeat(64)}`,
+    };
+    library.service.importMap.mockResolvedValue(asset);
+    renderCampaign(library);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Höhle" }));
+    expect(screen.getByText("Karte: alt.webp")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+
+    expect(await screen.findByText("Karte: neu.webp")).toBeTruthy();
+    const saved = JSON.parse(
+      library.fs.files().get("campaigns/mine/scenes/a.json") ?? "{}",
+    ) as { map: { asset: unknown; levels: unknown; grid: unknown } };
+    expect(saved.map.asset).toEqual(asset);
+    expect(saved.map.levels).toEqual([{ id: "ground", name: "Unten" }]);
+    expect(saved.map.grid).toEqual({
+      cellSizePx: 70,
+      offsetXPx: 0,
+      offsetYPx: 0,
+    });
+  });
+
+  test("deletes a scene only after confirming, into the trash", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/scenes/a.json": sceneFile("a", "Eingang"),
+    });
+    renderCampaign(library);
+    fireEvent.click(await screen.findByRole("button", { name: "Eingang" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Szene löschen …" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(library.fs.files().has("campaigns/mine/scenes/a.json")).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Szene löschen …" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ja, löschen" }));
+
+    expect(
+      await screen.findByText(
+        "Szene „Eingang“ ist im Papierkorb der Kampagne.",
+      ),
+    ).toBeTruthy();
+    expect(
+      await screen.findByText("Noch keine Szenen in dieser Kampagne."),
+    ).toBeTruthy();
+    const trashed = [...library.fs.files().keys()].filter((path) =>
+      path.startsWith("campaigns/mine/.trash/"),
+    );
+    expect(trashed).toHaveLength(1);
+  });
+
+  test("explains when deleting fails and keeps the scene open", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/scenes/a.json": sceneFile("a", "Eingang"),
+    });
+    library.fs.moveToTrash = () => Promise.reject(new Error("Gesperrt"));
+    renderCampaign(library);
+    fireEvent.click(await screen.findByRole("button", { name: "Eingang" }));
+    fireEvent.click(screen.getByRole("button", { name: "Szene löschen …" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ja, löschen" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Das hat nicht geklappt: Gesperrt",
+    );
+    expect(screen.getByText("Geöffnete Szene: Eingang")).toBeTruthy();
+  });
 });
