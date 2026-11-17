@@ -14,3 +14,9 @@ tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
 tauri = { version = "=2.12.5", features = [] }
+# Watches the library folder for changes made by sync clients or other apps (T-103b).
+notify = { version = "=8.2.1", default-features = false, features = ["macos_fsevent"] }
+# Native folder picker, used from Rust only: the webview gets no dialog permission (T-103b).
+tauri-plugin-dialog = "=2.8.4"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"

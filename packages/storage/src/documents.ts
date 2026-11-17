@@ -159,3 +159,12 @@ export async function listScenes(
     .sort();
   return { sceneIds, conflicts };
 }
+
+/** Slugs of the campaign folders in the library, sorted; folders with other names are skipped. */
+export async function listCampaigns(fs: FileSystem): Promise<string[]> {
+  const entries = (await fs.list("campaigns")) ?? [];
+  return entries
+    .filter((entry) => entry.kind === "directory" && isValidSlug(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+}

@@ -180,12 +180,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-103b Desktop file system adapter, watching, folder choice
 
-- **Status:** todo · **Depends on:** T-103a · **Refs:** ARCHITECTURE §6, ADR-0005
+- **Status:** done · **Depends on:** T-103a · **Refs:** ARCHITECTURE §6, ADR-0005
 - Rust FS adapter in `apps/desktop/src-tauri` (paths confined to the library root, atomic writes via temp file + rename, placeholder detection), file watching with `notify`, folder picker, device settings in the OS app-data directory.
 - **Acceptance criteria**
-  - [ ] DM chooses a library folder; layout is created if empty
-  - [ ] External file changes are picked up while the app runs
-  - [ ] Device settings stored in OS app-data, not in the library
+  - [x] DM chooses a library folder; layout is created if empty
+  - [x] External file changes are picked up while the app runs
+  - [x] Device settings stored in OS app-data, not in the library
 - **Notes:** Split from T-103. DM approved the needed dependencies (`notify`, folder-picker plugin) on 2026-11-17. Security-relevant (file access from the webview): the DM confirms the Tauri capabilities before merge.
 
 ### T-104 Map import and scene creation

@@ -19,6 +19,25 @@ export const de = {
         "Dieses Display ist nicht mehr verfügbar. Bitte Displays neu suchen.",
     },
   },
+  library: {
+    heading: "Bibliothek",
+    loading: "Bibliothek wird geöffnet …",
+    none: "Noch kein Bibliotheksordner gewählt. Am besten einen Ordner in deinem Cloud-Speicher (z. B. Dropbox, iCloud Drive).",
+    folder: "Ordner: {{path}}",
+    choose: "Bibliotheksordner wählen …",
+    campaigns: "Kampagnen",
+    noCampaigns: "Noch keine Kampagnen in dieser Bibliothek.",
+    campaign: {
+      notAvailable: "{{slug}} (noch nicht heruntergeladen)",
+      invalid: "{{slug}} (kann nicht gelesen werden)",
+    },
+    errors: {
+      noLibrary:
+        "Es ist kein Bibliotheksordner geöffnet. Bitte einen Ordner wählen.",
+      forbidden: "Dieses Fenster darf nicht auf die Bibliothek zugreifen.",
+      invalidPath: "Auf diese Datei darf die App nicht zugreifen.",
+    },
+  },
   companion: {
     heading: "Dungeon Manager für Spieler",
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",
