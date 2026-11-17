@@ -74,21 +74,17 @@ function splitExtension(name: string): [base: string, extension: string] {
   return dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
 }
 
-/**
- * The conflict copy `name` is, or `null`. With `existing === null` the neighbours are unknown,
- * so ambiguous patterns match on their shape alone.
- */
+/** The conflict copy `name` is, or `null`. */
 function matchCopy(
   name: string,
-  existing: ReadonlySet<string> | null,
+  existing: ReadonlySet<string>,
 ): ConflictCopy | null {
   const [base, extension] = splitExtension(name);
   if (extension === ".tmp") return null;
   for (const pattern of PATTERNS) {
     for (const originalBase of pattern.originals(base)) {
       const original = `${originalBase}${extension}`;
-      if (pattern.needsOriginal && existing !== null && !existing.has(original))
-        continue;
+      if (pattern.needsOriginal && !existing.has(original)) continue;
       return { copy: name, original, provider: pattern.provider };
     }
   }
