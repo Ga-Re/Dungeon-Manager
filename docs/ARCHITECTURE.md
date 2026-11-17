@@ -237,7 +237,7 @@ Measured on the reference notebook before each release (not in CI – CI runners
 | Light effect trigger → lamp reacts (HA/WLED/Hue Ent.)  | ≤ 150 ms                                          |
 | Desktop cold start                                     | ≤ 3 s                                             |
 
-¹ Measured at 60 Hz output as frame intervals longer than 1.5 × the refresh interval. A literal p95 ≤ 16.7 ms is unreachable even at a perfect 60 Hz (interval jitter, timers rounded to 1 ms in WebKit); see `docs/benchmarks/2026-11-17-t007-run2-run3.md`.
+¹ Measured at 60 Hz output as frame intervals longer than 1.5 × the measured refresh interval (≈ 25.5 ms at 60 Hz). A literal p95 ≤ 16.7 ms is unreachable even at a perfect 60 Hz (interval jitter, timers rounded to 1 ms in WebKit); see `docs/benchmarks/2026-11-17-t007-run2-run3.md`.
 
 A benchmark scene in `test-fixtures` plus a script that records frame times is part of stage 0.
 
