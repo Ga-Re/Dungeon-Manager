@@ -1,7 +1,7 @@
 import type { FileSystem } from "@dungeon-manager/storage";
 
 /** Known failure reasons from the desktop backend; the UI translates them. */
-export type LibraryErrorCode = "noLibrary" | "invalidPath" | "io";
+export type LibraryErrorCode = "noLibrary" | "invalidPath" | "forbidden" | "io";
 
 /** A library failure with a translatable code (and the OS message for `io`). */
 export class LibraryError extends Error {

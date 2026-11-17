@@ -156,6 +156,26 @@ async function main() {
       (await pageText()).includes("Smoke-Kampagne"),
     );
 
+    // Reading files must not count as a change: on Linux, inotify reports opens and reads, and
+    // a reload reacting to them would read again, forever. A quiet library sends no events.
+    const eventsWhileIdle = await command(
+      "POST",
+      `${sessionPath}/execute/async`,
+      {
+        script: `const done = arguments[arguments.length - 1];
+        const internals = window.__TAURI_INTERNALS__;
+        let count = 0;
+        const handler = internals.transformCallback(() => { count++; });
+        internals.invoke("plugin:event|listen", { event: "library-changed", target: { kind: "Any" }, handler })
+          .then(() => setTimeout(() => done(count), 2000), (error) => done("listen failed: " + String(error)));`,
+        args: [],
+      },
+    );
+    if (eventsWhileIdle !== 0)
+      throw new Error(
+        `Idle library sent change events: ${String(eventsWhileIdle)}`,
+      );
+
     console.log(
       "Smoke test passed: both windows run, the player window has no file access, and library changes are picked up.",
     );

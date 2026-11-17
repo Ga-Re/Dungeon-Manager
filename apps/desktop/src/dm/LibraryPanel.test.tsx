@@ -79,6 +79,27 @@ describe("LibraryPanel", () => {
     expect(library.service.currentRoot).toHaveBeenCalledTimes(2);
   });
 
+  test("a slow earlier load never overwrites a newer folder choice", async () => {
+    const library = fakeLibraryService(null);
+    let finishInitial: (root: string | null) => void = () => undefined;
+    library.service.currentRoot.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishInitial = resolve;
+      }),
+    );
+    library.service.chooseRoot.mockResolvedValue("/new");
+    renderPanel(library.service);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Bibliotheksordner wählen …" }),
+    );
+    expect(await screen.findByText("Ordner: /new")).toBeTruthy();
+    finishInitial("/old");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText("Ordner: /old")).toBeNull();
+    expect(screen.getByText("Ordner: /new")).toBeTruthy();
+  });
+
   test("shows a translated error and stops listening when unmounted", async () => {
     const library = fakeLibraryService("/lib");
     library.service.currentRoot.mockRejectedValueOnce(

@@ -15,6 +15,8 @@ pub enum LibraryError {
     NoLibrary,
     /// The path is not a plain relative path inside the library (e.g. `..`, a symlink).
     InvalidPath(String),
+    /// The calling window may not use the library (only the DM window may).
+    Forbidden,
     Io(String),
 }
 
@@ -50,14 +52,35 @@ pub enum EntryKind {
     Directory,
 }
 
+/// Windows device names, reserved with any extension (`nul.json`).
+const WINDOWS_DEVICES: [&str; 22] = [
+    "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+    "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+];
+
+/// A file or folder name that works on every OS the library may be synced to.
+fn is_portable_segment(segment: &str) -> bool {
+    let stem = segment
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    !matches!(segment, "" | "." | "..")
+        && !segment.contains(['\\', ':', '\0'])
+        && !segment.ends_with(['.', ' '])
+        && !WINDOWS_DEVICES.contains(&stem.as_str())
+}
+
 /// Maps a `/`-separated relative path to a path under `root`. Rejects anything that could
-/// leave the root: empty, `.` or `..` segments, backslashes, drive or stream colons, NUL, and
-/// symlinks below the root (the root itself may be a symlink – the DM chose it).
+/// leave the root or is not portable: empty, `.` or `..` segments, backslashes, drive or stream
+/// colons, NUL, Windows device names, trailing dots or spaces, and symlinks below the root (the
+/// root itself may be a symlink – the DM chose it). The symlink check happens before the file
+/// operation; a sync peer swapping in a symlink in between is an accepted gap (ARCHITECTURE §6.3).
 pub fn resolve(root: &Path, relative: &str) -> Result<PathBuf, LibraryError> {
     let invalid = || LibraryError::InvalidPath(relative.to_owned());
     let mut path = root.to_path_buf();
     for segment in relative.split('/') {
-        if matches!(segment, "" | "." | "..") || segment.contains(['\\', ':', '\0']) {
+        if !is_portable_segment(segment) {
             return Err(invalid());
         }
         path.push(segment);
@@ -106,8 +129,17 @@ pub fn write_atomic(path: &Path, text: &str) -> Result<(), LibraryError> {
     let mut temp_name = path.file_name().unwrap_or_default().to_owned();
     temp_name.push(".tmp");
     let temp = path.with_file_name(temp_name);
+    // A leftover or planted `.tmp` may be a symlink: remove it (the link, not its target) and
+    // create the file exclusively, which never follows a symlink.
+    match fs::remove_file(&temp) {
+        Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error.into()),
+        _ => {}
+    }
     let result = (|| {
-        let mut file = fs::File::create(&temp)?;
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp)?;
         file.write_all(text.as_bytes())?;
         file.sync_all()?;
         fs::rename(&temp, path)
@@ -194,6 +226,10 @@ mod tests {
             "a\\..\\x",
             "C:/x",
             "a/b:c",
+            "nul.json",
+            "campaigns/CON",
+            "folder./x",
+            "name ",
         ] {
             assert!(resolve(&root, path).is_err(), "{path} must be rejected");
         }
@@ -209,6 +245,19 @@ mod tests {
         let root = temp_root("symlink");
         std::os::unix::fs::symlink(std::env::temp_dir(), root.join("escape")).unwrap();
         assert!(resolve(&root, "escape/x.json").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_atomic_does_not_follow_a_planted_temp_symlink() {
+        let root = temp_root("temp-symlink");
+        let outside = temp_root("temp-symlink-outside").join("secret.txt");
+        fs::write(&outside, "keep").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("campaign.json.tmp")).unwrap();
+        write_atomic(&root.join("campaign.json"), "new").unwrap();
+        assert_eq!(fs::read_to_string(&outside).unwrap(), "keep");
+        let meta = fs::symlink_metadata(root.join("campaign.json")).unwrap();
+        assert!(meta.file_type().is_file());
     }
 
     #[test]

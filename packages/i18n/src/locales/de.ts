@@ -34,6 +34,7 @@ export const de = {
     errors: {
       noLibrary:
         "Es ist kein Bibliotheksordner geöffnet. Bitte einen Ordner wählen.",
+      forbidden: "Dieses Fenster darf nicht auf die Bibliothek zugreifen.",
       invalidPath: "Auf diese Datei darf die App nicht zugreifen.",
     },
   },

@@ -10,6 +10,7 @@ import {
 const CODES: readonly string[] = [
   "noLibrary",
   "invalidPath",
+  "forbidden",
   "io",
 ] satisfies LibraryErrorCode[];
 

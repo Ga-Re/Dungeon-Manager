@@ -4,7 +4,8 @@
 
 use crate::library::{self, DirEntry, LibraryError, ReadResult};
 use crate::settings::{self, DeviceSettings};
-use notify::{RecursiveMode, Watcher};
+use notify::event::ModifyKind;
+use notify::{EventKind, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
@@ -20,7 +21,60 @@ pub struct LibraryState(Mutex<Option<OpenLibrary>>);
 
 struct OpenLibrary {
     root: PathBuf,
-    _watcher: notify::RecommendedWatcher,
+    /// `None` if watching failed (e.g. inotify limits): files stay usable, without live updates.
+    _watcher: Option<notify::RecommendedWatcher>,
+}
+
+/// Whether a watcher event means content or names changed. Reads and metadata updates (e.g.
+/// access times) are dropped: on Linux every read of a file would otherwise trigger a reload,
+/// which reads the file again – an endless loop.
+fn is_content_change(kind: &EventKind) -> bool {
+    matches!(
+        kind,
+        EventKind::Any
+            | EventKind::Create(_)
+            | EventKind::Remove(_)
+            | EventKind::Modify(ModifyKind::Data(_) | ModifyKind::Name(_) | ModifyKind::Any)
+    )
+}
+
+fn start_watcher(app: &AppHandle, root: &Path) -> notify::Result<notify::RecommendedWatcher> {
+    let watched = root.to_path_buf();
+    let app = app.clone();
+    let mut watcher = notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
+        let event = match event {
+            Ok(event) if is_content_change(&event.kind) => event,
+            Ok(_) => return,
+            Err(error) => {
+                eprintln!("Library watcher error: {error}");
+                return;
+            }
+        };
+        let paths: Vec<String> = event
+            .paths
+            .iter()
+            .filter_map(|path| library::relative_path(&watched, path))
+            .collect();
+        if !paths.is_empty() {
+            // Only the DM window learns about file changes.
+            let _ = app.emit_to(DM_WINDOW, CHANGED_EVENT, paths);
+        }
+    })?;
+    watcher.watch(root, RecursiveMode::Recursive)?;
+    Ok(watcher)
+}
+
+/// The root as shown to the DM. On Windows `canonicalize` yields `\\?\C:\…`; that verbatim
+/// form stays in use for file access because it disables device-name and trailing-dot
+/// interpretation, and is only stripped for display.
+fn display_root(root: &Path) -> String {
+    let shown = root.display().to_string();
+    match shown.strip_prefix(r"\\?\UNC\") {
+        Some(unc) => format!(r"\\{unc}"),
+        None => shown
+            .strip_prefix(r"\\?\")
+            .map_or(shown.clone(), str::to_owned),
+    }
 }
 
 impl LibraryState {
@@ -41,25 +95,9 @@ impl LibraryState {
         if !root.is_dir() {
             return Err(LibraryError::InvalidPath(root.display().to_string()));
         }
-        let watched = root.clone();
-        let app = app.clone();
-        let mut watcher =
-            notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
-                let Ok(event) = event else { return };
-                let paths: Vec<String> = event
-                    .paths
-                    .iter()
-                    .filter_map(|path| library::relative_path(&watched, path))
-                    .collect();
-                if !paths.is_empty() {
-                    // Only the DM window learns about file changes.
-                    let _ = app.emit_to(DM_WINDOW, CHANGED_EVENT, paths);
-                }
-            })
-            .map_err(|error| LibraryError::Io(error.to_string()))?;
-        watcher
-            .watch(&root, RecursiveMode::Recursive)
-            .map_err(|error| LibraryError::Io(error.to_string()))?;
+        let watcher = start_watcher(app, &root)
+            .inspect_err(|error| eprintln!("Library opened without live updates: {error}"))
+            .ok();
         let mut guard = self
             .0
             .lock()
@@ -76,7 +114,7 @@ fn require_dm(window: &WebviewWindow) -> Result<(), LibraryError> {
     if window.label() == DM_WINDOW {
         Ok(())
     } else {
-        Err(LibraryError::InvalidPath(String::new()))
+        Err(LibraryError::Forbidden)
     }
 }
 
@@ -99,7 +137,7 @@ pub fn open_saved_library(app: &AppHandle) {
     let saved = || {
         settings_directory(app)
             .ok()
-            .and_then(|directory| settings::load(&directory).library_root)
+            .and_then(|directory| settings::load(&directory).ok()?.library_root)
     };
     let Some(root) = override_root.map(PathBuf::from).or_else(saved) else {
         return;
@@ -117,7 +155,7 @@ pub fn library_root(
 ) -> Result<Option<String>, LibraryError> {
     require_dm(&window)?;
     match state.root() {
-        Ok(root) => Ok(Some(root.display().to_string())),
+        Ok(root) => Ok(Some(display_root(&root))),
         Err(LibraryError::NoLibrary) => Ok(None),
         Err(error) => Err(error),
     }
@@ -131,12 +169,12 @@ pub async fn library_choose(
     window: WebviewWindow,
 ) -> Result<Option<String>, LibraryError> {
     require_dm(&window)?;
-    let Some(picked) = app
-        .dialog()
-        .file()
-        .set_parent(&window)
-        .blocking_pick_folder()
-    else {
+    let dialog = app.dialog().file().set_parent(&window);
+    // The dialog blocks until the DM answers; keep that off the async worker threads.
+    let picked = tauri::async_runtime::spawn_blocking(move || dialog.blocking_pick_folder())
+        .await
+        .map_err(|error| LibraryError::Io(error.to_string()))?;
+    let Some(picked) = picked else {
         return Ok(None);
     };
     let picked = picked
@@ -144,10 +182,10 @@ pub async fn library_choose(
         .map_err(|error| LibraryError::Io(error.to_string()))?;
     let root = app.state::<LibraryState>().open(&app, &picked)?;
     let directory = settings_directory(&app)?;
-    let mut device_settings: DeviceSettings = settings::load(&directory);
+    let mut device_settings: DeviceSettings = settings::load_or_back_up(&directory);
     device_settings.library_root = Some(root.clone());
     settings::save(&directory, &device_settings)?;
-    Ok(Some(root.display().to_string()))
+    Ok(Some(display_root(&root)))
 }
 
 #[tauri::command]
@@ -189,4 +227,42 @@ pub fn library_make_directory(
 ) -> Result<(), LibraryError> {
     require_dm(&window)?;
     library::make_directory(&resolve(&state, &path)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use notify::event::{AccessKind, CreateKind, DataChange, MetadataKind, RenameMode};
+
+    #[test]
+    fn only_content_and_name_changes_count() {
+        assert!(is_content_change(&EventKind::Create(CreateKind::File)));
+        assert!(is_content_change(&EventKind::Modify(ModifyKind::Data(
+            DataChange::Any
+        ))));
+        assert!(is_content_change(&EventKind::Modify(ModifyKind::Name(
+            RenameMode::To
+        ))));
+        assert!(is_content_change(&EventKind::Remove(
+            notify::event::RemoveKind::File
+        )));
+        assert!(!is_content_change(&EventKind::Access(AccessKind::Read)));
+        assert!(!is_content_change(&EventKind::Modify(
+            ModifyKind::Metadata(MetadataKind::AccessTime)
+        )));
+        assert!(!is_content_change(&EventKind::Other));
+    }
+
+    #[test]
+    fn windows_verbatim_prefixes_are_hidden_from_the_dm() {
+        assert_eq!(
+            display_root(Path::new(r"\\?\C:\Users\dm\Library")),
+            r"C:\Users\dm\Library"
+        );
+        assert_eq!(display_root(Path::new(r"\\?\UNC\nas\dm")), r"\\nas\dm");
+        assert_eq!(
+            display_root(Path::new("/Users/dm/Library")),
+            "/Users/dm/Library"
+        );
+    }
 }

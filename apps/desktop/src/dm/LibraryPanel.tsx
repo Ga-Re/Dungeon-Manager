@@ -55,19 +55,30 @@ export function LibraryPanel({
   const [state, setState] = useState<LibraryState>({ status: "loading" });
   const [choosing, setChoosing] = useState(false);
   const active = useRef(true);
+  // Only the most recent load may update the state: a slow earlier one (e.g. the initial load
+  // finishing after the DM chose another folder) must not overwrite newer data.
+  const latest = useRef(0);
 
-  const open = useCallback(
-    async (root: string | null) => {
+  const show = useCallback(
+    async (getRoot: () => Promise<string | null>) => {
+      const request = ++latest.current;
+      const apply = (next: LibraryState) => {
+        if (active.current && request === latest.current) setState(next);
+      };
       try {
+        const root = await getRoot();
         if (root === null) {
-          if (active.current) setState({ status: "none" });
+          apply({ status: "none" });
           return;
         }
         await ensureLibraryLayout(service.fs);
-        const campaigns = await readCampaigns(service);
-        if (active.current) setState({ status: "open", root, campaigns });
+        apply({
+          status: "open",
+          root,
+          campaigns: await readCampaigns(service),
+        });
       } catch (error) {
-        if (active.current) setState({ status: "error", error });
+        apply({ status: "error", error });
       }
     },
     [service],
@@ -75,9 +86,7 @@ export function LibraryPanel({
 
   useEffect(() => {
     active.current = true;
-    service.currentRoot().then(open, (error: unknown) => {
-      if (active.current) setState({ status: "error", error });
-    });
+    void show(() => service.currentRoot());
     let timer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = service.onChange((paths) => {
       // Our own atomic writes show up as *.tmp first; only campaign changes matter here.
@@ -89,7 +98,7 @@ export function LibraryPanel({
         return;
       clearTimeout(timer);
       timer = setTimeout(() => {
-        service.currentRoot().then(open, () => undefined);
+        void show(() => service.currentRoot());
       }, RELOAD_DELAY_MS);
     });
     return () => {
@@ -99,17 +108,18 @@ export function LibraryPanel({
         stop();
       });
     };
-  }, [service, open]);
+  }, [service, show]);
 
   const choose = async () => {
     setChoosing(true);
     try {
       const root = await service.chooseRoot();
-      if (root !== null) await open(root);
+      if (root !== null) await show(() => Promise.resolve(root));
     } catch (error) {
-      setState({ status: "error", error });
+      latest.current++;
+      if (active.current) setState({ status: "error", error });
     } finally {
-      setChoosing(false);
+      if (active.current) setChoosing(false);
     }
   };
 

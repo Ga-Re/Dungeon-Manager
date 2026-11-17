@@ -34,6 +34,7 @@ export const en: Messages = {
     },
     errors: {
       noLibrary: "No library folder is open. Please choose a folder.",
+      forbidden: "This window may not access the library.",
       invalidPath: "The app may not access this file.",
     },
   },
