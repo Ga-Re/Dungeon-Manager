@@ -1,0 +1,129 @@
+import {
+  campaignDocument,
+  campaignSchema,
+  MigrationError,
+  migrateDocument,
+  sceneDocument,
+  sceneSchema,
+  type Campaign,
+  type DocumentType,
+  type MigrationErrorReason,
+  type Scene,
+} from "@dungeon-manager/schema";
+import { findConflictCopies, type ConflictCopy } from "./conflicts.js";
+import type { FileSystem } from "./fs.js";
+import {
+  campaignDirectory,
+  campaignFile,
+  isValidFileId,
+  isValidSlug,
+  sceneFile,
+  scenesDirectory,
+} from "./layout.js";
+
+/** Outcome of loading a document; never throws for bad or missing files (ARCHITECTURE §6.3). */
+export type LoadResult<T> =
+  | { readonly status: "ok"; readonly value: T }
+  | { readonly status: "missing" }
+  /** On-demand cloud placeholder: content not downloaded yet. */
+  | { readonly status: "notAvailable" }
+  | {
+      readonly status: "invalid";
+      readonly reason: "path" | "json" | "schema" | MigrationErrorReason;
+    };
+
+async function loadDocument<T>(
+  fs: FileSystem,
+  path: string,
+  type: DocumentType<T>,
+): Promise<LoadResult<T>> {
+  const file = await fs.read(path);
+  if (file.kind === "missing") return { status: "missing" };
+  if (file.kind === "notAvailable") return { status: "notAvailable" };
+  let json: unknown;
+  try {
+    json = JSON.parse(file.text);
+  } catch {
+    return { status: "invalid", reason: "json" };
+  }
+  try {
+    return { status: "ok", value: migrateDocument(json, type) };
+  } catch (error) {
+    return {
+      status: "invalid",
+      reason: error instanceof MigrationError ? error.reason : "schema",
+    };
+  }
+}
+
+/** JSON as stored in the library: readable diffs for sync clients, trailing newline. */
+const serialize = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
+
+function requireSlug(slug: string): void {
+  if (!isValidSlug(slug)) throw new Error(`Invalid campaign slug: ${slug}`);
+}
+
+/** Loads `campaigns/<slug>/campaign.json`. */
+export function loadCampaign(
+  fs: FileSystem,
+  slug: string,
+): Promise<LoadResult<Campaign>> {
+  if (!isValidSlug(slug))
+    return Promise.resolve({ status: "invalid", reason: "path" });
+  return loadDocument(fs, campaignFile(slug), campaignDocument);
+}
+
+/** Validates and writes `campaign.json` atomically. @throws on an invalid slug or campaign */
+export async function saveCampaign(
+  fs: FileSystem,
+  slug: string,
+  campaign: Campaign,
+): Promise<void> {
+  requireSlug(slug);
+  const valid = campaignSchema.parse(campaign);
+  await fs.makeDirectory(campaignDirectory(slug));
+  await fs.writeAtomic(campaignFile(slug), serialize(valid));
+}
+
+/** Loads `campaigns/<slug>/scenes/<id>.json`. */
+export function loadScene(
+  fs: FileSystem,
+  slug: string,
+  sceneId: string,
+): Promise<LoadResult<Scene>> {
+  if (!isValidSlug(slug) || !isValidFileId(sceneId))
+    return Promise.resolve({ status: "invalid", reason: "path" });
+  return loadDocument(fs, sceneFile(slug, sceneId), sceneDocument);
+}
+
+/** Validates and writes a scene file (named after its id) atomically. @throws on invalid input */
+export async function saveScene(
+  fs: FileSystem,
+  slug: string,
+  scene: Scene,
+): Promise<void> {
+  requireSlug(slug);
+  const valid = sceneSchema.parse(scene);
+  await fs.makeDirectory(scenesDirectory(slug));
+  await fs.writeAtomic(sceneFile(slug, valid.id), serialize(valid));
+}
+
+/** Scene ids of a campaign, plus conflict copies found next to them. */
+export async function listScenes(
+  fs: FileSystem,
+  slug: string,
+): Promise<{ sceneIds: string[]; conflicts: ConflictCopy[] }> {
+  requireSlug(slug);
+  const entries = (await fs.list(scenesDirectory(slug))) ?? [];
+  const names = entries
+    .filter((entry) => entry.kind === "file")
+    .map((entry) => entry.name);
+  const conflicts = findConflictCopies(names);
+  const copies = new Set(conflicts.map((conflict) => conflict.copy));
+  const sceneIds = names
+    .filter((name) => name.endsWith(".json") && !copies.has(name))
+    .map((name) => name.slice(0, -".json".length))
+    .filter(isValidFileId)
+    .sort();
+  return { sceneIds, conflicts };
+}
