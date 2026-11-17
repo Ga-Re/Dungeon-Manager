@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- SPIKE (T-007): performance spike page, opened instead of player.html by `pnpm spike:desktop`. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Performance spike</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+        cursor: none;
+      }
+      #report {
+        position: fixed;
+        inset: 2rem auto auto 2rem;
+        max-width: 60rem;
+        padding: 1rem 1.5rem;
+        background: rgb(0 0 0 / 80%);
+        color: #fff;
+        font:
+          1.25rem/1.5 ui-monospace,
+          monospace;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="report"></pre>
+    <script type="module" src="/src/spike/main.ts"></script>
+  </body>
+</html>

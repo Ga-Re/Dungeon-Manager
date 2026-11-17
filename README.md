@@ -110,6 +110,37 @@ pnpm --filter @dungeon-manager/desktop smoke
 
 It needs `cargo install tauri-driver --version 2.1.0 --locked` and, on Linux, `webkit2gtk-driver` (plus `xvfb-run` without a display).
 
+## Performance spike (T-007, temporary)
+
+Measures whether a 4K video map + fog + 20 tokens reaches 60 FPS in the player window (ARCHITECTURE §11). Run it on the reference notebook with the table TV connected.
+
+**Before measuring**
+
+- Update and install: `git pull`, then `pnpm install` (the spike adds PixiJS).
+- Plug in the charger and switch off Low Power Mode (System Settings → Battery).
+- TV in System Settings → Displays: resolution **Default** (or "1920 × 1080"), refresh rate **60 Hz**. If 60 Hz is not offered, the cable/adapter limits it – the report then says "display below 60 Hz".
+- Close other heavy apps. Don't touch the windows while the spike runs.
+
+**1. Provide the test video (once)** – generate a synthetic 4K video (needs `brew install ffmpeg`):
+
+```bash
+pnpm --filter @dungeon-manager/desktop spike:video
+```
+
+…or use your own animated map instead (stays local, never committed). Use the full path – easiest: type the command, a space, then drag the file into the terminal:
+
+```bash
+pnpm --filter @dungeon-manager/desktop spike:video /Users/you/Maps/animated-map.mp4
+```
+
+**2. Start the app in spike mode**, choose the TV and click **Spieleransicht öffnen**:
+
+```bash
+pnpm spike:desktop
+```
+
+**3. Wait about two minutes.** The spike first measures the display refresh rate, then runs four 25-second scenarios: video only, full scene at native resolution, full scene at Full HD, and native again (to spot thermal throttling). The result appears on the TV and in the terminal between `===== SPIKE RESULTS` and `===== END` – copy that block. It is also saved in `apps/desktop/spike-results/`. Close the app with the DM window to run again.
+
 ## Repository layout
 
 See [ARCHITECTURE.md §3](docs/ARCHITECTURE.md). Workspace packages are named `@dungeon-manager/<folder>`; the shared TypeScript config lives in `tooling/tsconfig`.

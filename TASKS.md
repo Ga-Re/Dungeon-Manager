@@ -67,11 +67,11 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] `pnpm dev:desktop` opens the DM window; a button opens the player window on a selectable display in fullscreen
   - [x] i18next set up (`de` default, `en`), no hard-coded strings
   - [x] Tauri-driver smoke test starts the app and finds both windows
-- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`. From T-003 (DM decision): add React Testing Library, jsdom and React here, with the first component; configure a jsdom Vitest environment for `*.test.tsx`. From T-004: the CI `rust` job starts running fmt/clippy/test once `apps/desktop/src-tauri/Cargo.toml` exists; on Linux it then needs the Tauri system libraries (`libwebkit2gtk-4.1-dev` etc.) installed via apt in that job.
+- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`. From T-003 (DM decision): add React Testing Library, jsdom and React here, with the first component; configure a jsdom Vitest environment for `*.test.tsx`. From T-004: the CI `rust` job starts running fmt/clippy/test once `apps/desktop/src-tauri/Cargo.toml` exists; on Linux it then needs the Tauri system libraries (`libwebkit2gtk-4.1-dev` etc.) installed via apt in that job. Verified manually by the DM on a MacBook Air M5 with a 4K TV: player view fullscreen on the chosen display, switching between TV and laptop, app quits with the DM window.
 
 ### T-007 Performance spike: video map + fog in the player window
 
-- **Status:** todo · **Depends on:** T-006 · **Refs:** ARCHITECTURE §8, §11
+- **Status:** in-progress · **Depends on:** T-006 · **Refs:** ARCHITECTURE §8, §11
 - Throwaway-quality spike (clearly marked) rendering a 4K MP4 map + a fog mask + 20 sprites in PixiJS in the player window; script that records frame times.
 - **Acceptance criteria**
   - [ ] Frame-time report from the DM's reference notebook (p50/p95) committed to `docs/benchmarks/`
@@ -151,7 +151,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Screenshot tests for a fixture map in both views
   - [ ] Benchmark scene added to `test-fixtures`
-- **Notes:** From T-003 review: `pnpm test:visual` mounts the host `node_modules` into the Linux container. Once visual tests need a Vite dev server, native binaries (esbuild/rollup) from a macOS/Windows host will not run there – install dependencies inside the container (separate volume) instead.
+- **Notes:** From T-003 review: `pnpm test:visual` mounts the host `node_modules` into the Linux container. Once visual tests need a Vite dev server, native binaries (esbuild/rollup) from a macOS/Windows host will not run there – install dependencies inside the container (separate volume) instead. From T-007: remove the spike (`apps/desktop/spike.html`, `src/spike/`, `spike/`, the `VITE_SPIKE` switch and the `playerPage` parameter) once the renderer and its benchmark exist; move `pixi.js` (with `pixi.js/unsafe-eval`, required by our CSP) to `packages/renderer`.
 
 ### T-106 Grid overlay and 1-inch calibration
 
@@ -160,6 +160,15 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] On a calibrated display one cell measures 1 inch (manual check documented; unit tests for the math)
   - [ ] Rotation 0/90/180/270 in the player window
+
+### T-116 Player view render resolution setting
+
+- **Status:** todo · **Depends on:** T-105 · **Refs:** SPEC 2.2, ARCHITECTURE §11
+- Device setting for the player view's render resolution: native (e.g. 4K) or Full HD, upscaled to the display. Stored in device settings (OS app-data), not in the library.
+- **Acceptance criteria**
+  - [ ] Setting in the DM window, applied to the player view without restart
+  - [ ] Screenshot test of the player view in both modes
+- **Notes:** DM requirement from T-007 (4K Samsung The Frame, should also run in Full HD). The T-007 spike measures both modes.
 
 ### T-107 Tokens: create, place, move
 
