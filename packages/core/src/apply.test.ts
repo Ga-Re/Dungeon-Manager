@@ -652,8 +652,7 @@ describe("initiative edge cases", () => {
         },
       },
     };
-    const { tokenId: _unused, ...orcWithoutToken } = goblin;
-    const orc = { ...orcWithoutToken, id: "orc", initiative: 20 };
+    const orc = { id: "orc", name: "Ork", initiative: 20, conditions: [] };
     const next = run(manual, { type: "initiative.add", combatant: orc });
     expect(next.scene.initiative?.order).toEqual(["orc", "goblin", "aria"]);
   });

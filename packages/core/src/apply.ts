@@ -47,9 +47,7 @@ export function apply(
   return {
     ok: true,
     state: change.state,
-    events: change.events.map(
-      (event) => ({ ...event, at: ctx.now() }) as DomainEvent,
-    ),
+    events: change.events.map((event) => ({ ...event, at: ctx.now() })),
   };
 }
 
