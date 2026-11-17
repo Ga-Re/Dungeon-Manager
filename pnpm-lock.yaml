@@ -393,6 +393,9 @@ importers:
       '@dungeon-manager/schema':
         specifier: workspace:*
         version: link:../schema
+      pixi.js:
+        specifier: 8.22.0
+        version: 8.22.0
     devDependencies:
       '@dungeon-manager/tsconfig':
         specifier: workspace:*
@@ -423,9 +426,15 @@ importers:
 
   packages/test-fixtures:
     devDependencies:
+      '@dungeon-manager/renderer':
+        specifier: workspace:*
+        version: link:../renderer
       '@dungeon-manager/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/tsconfig
+      vite:
+        specifier: 8.3.8
+        version: 8.3.8
 
   packages/ui:
     dependencies:

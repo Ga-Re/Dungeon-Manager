@@ -9,6 +9,11 @@ set -euo pipefail
 IMAGE="mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
+# The renderer harness is bundled on the host: the container then only opens static pages and
+# never runs a native bundler binary built for another OS (macOS host, Linux container).
+pnpm --dir "$ROOT" exec turbo run build --filter=@dungeon-manager/test-fixtures^... --output-logs=errors-only
+pnpm --dir "$ROOT" --filter @dungeon-manager/test-fixtures build:harness
+
 exec docker run --rm --ipc=host --platform linux/amd64 \
   --user "$(id -u):$(id -g)" \
   -e HOME=/tmp -e CI \

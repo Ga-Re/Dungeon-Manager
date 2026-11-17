@@ -33,6 +33,11 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         viewport: { width: 640, height: 360 },
         deviceScaleFactor: 1,
+        // WebGL for the renderer through SwiftShader: software rendering is slow but identical
+        // on every machine, which pixel-exact goldens need.
+        launchOptions: {
+          args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+        },
       },
     },
   ],

@@ -5,6 +5,7 @@
 mod commands;
 mod import;
 mod library;
+mod protocol;
 mod settings;
 
 use commands::{DM_WINDOW, LibraryState};
@@ -14,6 +15,7 @@ use tauri::{Manager, WindowEvent};
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .register_asynchronous_uri_scheme_protocol(protocol::SCHEME, protocol::handle)
         .manage(LibraryState::default())
         .setup(|app| {
             commands::open_saved_library(app.handle());

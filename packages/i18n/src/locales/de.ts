@@ -80,6 +80,15 @@ export const de = {
       invalid: "{{id}} (kann nicht gelesen werden)",
     },
   },
+  mapView: {
+    label: "Karte der Szene „{{name}}“",
+    help: "Mausrad oder + und − zoomen, ziehen oder Pfeiltasten verschieben, R dreht, 0 passt die Karte ein.",
+    loading: "Karte wird geladen …",
+    error:
+      "Die Karte konnte nicht geladen werden. Ist die Datei noch in der Bibliothek und heruntergeladen?",
+    fit: "Einpassen",
+    rotate: "Drehen",
+  },
   companion: {
     heading: "Dungeon Manager für Spieler",
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",

@@ -1,4 +1,4 @@
-// Smoke test for the screenshot setup; renderer fixtures replace it (T-105).
+// Smoke test for the screenshot setup itself (plain HTML, no WebGL).
 import { expect, test } from "@playwright/test";
 import { fixturePage } from "../fixture-pages.js";
 

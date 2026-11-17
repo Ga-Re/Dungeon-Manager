@@ -8,6 +8,7 @@
 // WebKitWebDriver plus a display (CI uses xvfb-run). Run with `pnpm --filter @dungeon-manager/desktop smoke`.
 //
 // Speaks the W3C WebDriver protocol directly with fetch instead of pulling in a WebDriver client library.
+import { Buffer } from "node:buffer";
 import { spawn } from "node:child_process";
 import {
   existsSync,
@@ -19,6 +20,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { crc32, deflateSync } from "node:zlib";
 
 const DRIVER_URL = "http://127.0.0.1:4444";
 // W3C WebDriver identifier under which element references are returned.
@@ -73,6 +75,34 @@ async function findElement(sessionPath, selector, using = "css selector") {
     value: selector,
   });
   return element[ELEMENT_KEY];
+}
+
+/** A small solid-colour PNG, written by hand so the smoke test needs no image file. */
+function makePng(width, height, [r, g, b]) {
+  const chunk = (type, data) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8; // bit depth
+  header[9] = 2; // RGB
+  const row = Buffer.concat([
+    Buffer.from([0]),
+    Buffer.from(Array.from({ length: width }, () => [r, g, b]).flat()),
+  ]);
+  const pixels = Buffer.concat(Array.from({ length: height }, () => row));
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(pixels)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
 }
 
 /** Waits for the element `xpath` points to and clicks it. */
@@ -224,6 +254,78 @@ async function main() {
     );
     if (trash.length !== 1 || !existsSync(trashedScene))
       throw new Error(`Unexpected trash content: ${trash.join(", ")}`);
+
+    // A scene with a map: the image comes through the read-only dmlib scheme into WebGL.
+    writeFileSync(
+      join(library, "library", "maps", "smoke.png"),
+      makePng(64, 32, [40, 120, 200]),
+    );
+    writeFileSync(
+      join(library, "campaigns", "smoke", "scenes", "map-scene.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "map-scene",
+        name: "Karten-Szene",
+        map: {
+          kind: "image",
+          asset: {
+            path: "library/maps/smoke.png",
+            hash: `sha256:${"0".repeat(64)}`,
+          },
+          grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+          levels: [{ id: "ground", name: "Erdgeschoss" }],
+        },
+        tokens: [],
+        fog: { levels: {} },
+        initiative: null,
+      }),
+    );
+    writeFileSync(
+      join(library, "campaigns", "smoke", "handout.png"),
+      makePng(8, 8, [200, 40, 40]),
+    );
+    await clickXPath(
+      sessionPath,
+      "the map scene",
+      "//button[text()='Karten-Szene']",
+    );
+    await waitFor("the map to load", async () => {
+      const text = await pageText();
+      if (text.includes("Die Karte konnte nicht geladen werden"))
+        throw new Error("The map failed to load.");
+      const fit = await findElement(
+        sessionPath,
+        "//button[text()='Einpassen']",
+        "xpath",
+      );
+      return (
+        (await command("GET", `${sessionPath}/element/${fit}/enabled`)) === true
+      );
+    });
+
+    // The scheme serves library files only; campaign files (notes, hidden data) never.
+    const schemeAccess = await command("POST", `${sessionPath}/execute/async`, {
+      script: `const done = arguments[arguments.length - 1];
+        const url = (path) => window.__TAURI_INTERNALS__.convertFileSrc(path, "dmlib");
+        // Images only: the CSP allows dmlib for img-src, not for fetch.
+        const status = (path) => new Promise((resolve) => {
+          const image = new Image();
+          image.onload = () => resolve("loaded");
+          image.onerror = () => resolve("refused");
+          image.src = url(path);
+        });
+        Promise.all([
+          status("library/maps/smoke.png"),
+          // A real image, so the refusal comes from the folder, not the file type.
+          status("campaigns/smoke/handout.png"),
+          status("library/../campaigns/smoke/handout.png"),
+        ]).then(done);`,
+      args: [],
+    });
+    if (JSON.stringify(schemeAccess) !== '["loaded","refused","refused"]')
+      throw new Error(
+        `Unexpected dmlib access: ${JSON.stringify(schemeAccess)}`,
+      );
 
     // Reading files must not count as a change: on Linux, inotify reports opens and reads, and
     // a reload reacting to them would read again, forever. A quiet library sends no events.

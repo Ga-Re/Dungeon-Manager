@@ -80,6 +80,15 @@ export const en: Messages = {
       invalid: "{{id}} (cannot be read)",
     },
   },
+  mapView: {
+    label: "Map of the scene “{{name}}”",
+    help: "Mouse wheel or + and − zoom, drag or arrow keys pan, R rotates, 0 fits the map.",
+    loading: "Loading map …",
+    error:
+      "The map could not be loaded. Is the file still in the library and downloaded?",
+    fit: "Fit",
+    rotate: "Rotate",
+  },
   companion: {
     heading: "Dungeon Manager for players",
     placeholder: "Soon you can join the game table here.",

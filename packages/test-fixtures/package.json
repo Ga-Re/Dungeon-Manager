@@ -12,9 +12,12 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json && tsc -p playwright/tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p playwright/tsconfig.json && tsc -p harness/tsconfig.json",
+    "build:harness": "vite build --config harness/vite.config.js"
   },
   "devDependencies": {
-    "@dungeon-manager/tsconfig": "workspace:*"
+    "@dungeon-manager/renderer": "workspace:*",
+    "@dungeon-manager/tsconfig": "workspace:*",
+    "vite": "8.3.8"
   }
 }
