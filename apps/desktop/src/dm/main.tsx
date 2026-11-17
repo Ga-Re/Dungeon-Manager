@@ -29,6 +29,8 @@ createRoot(root).render(
       <DmApp
         displayService={displayService}
         libraryService={createTauriLibraryService()}
+        // Lowercase UUIDs: opaque, unique, and safe as file names on every OS.
+        newId={() => crypto.randomUUID()}
       />
     </I18nextProvider>
   </StrictMode>,

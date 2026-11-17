@@ -1,11 +1,16 @@
 import {
+  createCampaign,
   ensureLibraryLayout,
   listCampaigns,
   loadCampaign,
 } from "@dungeon-manager/storage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { LibraryError, type LibraryService } from "../platform/library.js";
+import type { LibraryService } from "../platform/library.js";
+import { CampaignPanel } from "./CampaignPanel.js";
+import { describeLibraryError } from "./describe-error.js";
+import { NameForm } from "./NameForm.js";
+import { useLibraryChanges } from "./useLibraryChanges.js";
 
 interface CampaignEntry {
   readonly slug: string;
@@ -23,9 +28,6 @@ type LibraryState =
       readonly campaigns: readonly CampaignEntry[];
     }
   | { readonly status: "error"; readonly error: unknown };
-
-/** Sync clients write in bursts; wait for a quiet moment before re-reading. */
-const RELOAD_DELAY_MS = 300;
 
 async function readCampaigns(
   service: LibraryService,
@@ -45,15 +47,24 @@ async function readCampaigns(
   );
 }
 
-/** The library folder: choose it, create its layout and list its campaigns live. */
+/** A campaign folder or its campaign.json – not the many files inside a campaign. */
+const isCampaignChange = (path: string) =>
+  /^campaigns\/[^/]+(\/campaign\.json)?$/.test(path);
+
+/** The library folder: choose it, create its layout, list, create and select campaigns live. */
 export function LibraryPanel({
   service,
+  newId,
 }: {
   readonly service: LibraryService;
+  /** Fresh opaque ids for new campaigns and scenes. */
+  readonly newId: () => string;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<LibraryState>({ status: "loading" });
   const [choosing, setChoosing] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
   const active = useRef(true);
   // Only the most recent load may update the state: a slow earlier one (e.g. the initial load
   // finishing after the DM chose another folder) must not overwrite newer data.
@@ -87,34 +98,25 @@ export function LibraryPanel({
   useEffect(() => {
     active.current = true;
     void show(() => service.currentRoot());
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribe = service.onChange((paths) => {
-      // Our own atomic writes show up as *.tmp first; only campaign changes matter here.
-      if (
-        !paths.some(
-          (path) => path.startsWith("campaigns/") && !path.endsWith(".tmp"),
-        )
-      )
-        return;
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        void show(() => service.currentRoot());
-      }, RELOAD_DELAY_MS);
-    });
     return () => {
       active.current = false;
-      clearTimeout(timer);
-      void unsubscribe.then((stop) => {
-        stop();
-      });
     };
   }, [service, show]);
+
+  useLibraryChanges(
+    service,
+    isCampaignChange,
+    () => void show(() => service.currentRoot()),
+  );
 
   const choose = async () => {
     setChoosing(true);
     try {
       const root = await service.chooseRoot();
-      if (root !== null) await show(() => Promise.resolve(root));
+      if (root !== null) {
+        setSelected(null);
+        await show(() => Promise.resolve(root));
+      }
     } catch (error) {
       latest.current++;
       if (active.current) setState({ status: "error", error });
@@ -123,12 +125,25 @@ export function LibraryPanel({
     }
   };
 
-  const describeError = (error: unknown) =>
-    error instanceof LibraryError && error.code !== "io"
-      ? t(`library.errors.${error.code}`)
-      : t("dm.error", {
-          message: error instanceof Error ? error.message : String(error),
-        });
+  const create = async (name: string) => {
+    try {
+      const slug = await createCampaign(service.fs, { id: newId(), name });
+      await show(() => service.currentRoot());
+      setSelected(slug);
+      setNotice(t("library.campaignCreated", { name: name.trim() }));
+      return true;
+    } catch (error) {
+      setNotice(describeLibraryError(t, error));
+      return false;
+    }
+  };
+
+  const selectedCampaign =
+    state.status === "open"
+      ? state.campaigns.find(
+          (campaign) => campaign.slug === selected && campaign.name !== null,
+        )
+      : undefined;
 
   return (
     <section aria-labelledby="library-heading">
@@ -136,7 +151,7 @@ export function LibraryPanel({
       {state.status === "loading" && <p>{t("library.loading")}</p>}
       {state.status === "none" && <p>{t("library.none")}</p>}
       {state.status === "error" && (
-        <p role="alert">{describeError(state.error)}</p>
+        <p role="alert">{describeLibraryError(t, state.error)}</p>
       )}
       {state.status === "open" && (
         <>
@@ -147,14 +162,30 @@ export function LibraryPanel({
             <ul aria-label={t("library.campaigns")}>
               {state.campaigns.map((campaign) => (
                 <li key={campaign.slug}>
-                  {campaign.name ??
+                  {campaign.name === null ? (
                     t(`library.campaign.${campaign.problem ?? "invalid"}`, {
                       slug: campaign.slug,
-                    })}
+                    })
+                  ) : (
+                    <button
+                      type="button"
+                      aria-pressed={campaign.slug === selected}
+                      onClick={() => {
+                        setSelected(campaign.slug);
+                      }}
+                    >
+                      {campaign.name}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
           )}
+          <NameForm
+            label={t("library.newCampaignName")}
+            submitLabel={t("library.createCampaign")}
+            onSubmit={create}
+          />
         </>
       )}
       <button
@@ -165,6 +196,16 @@ export function LibraryPanel({
       >
         {t("library.choose")}
       </button>
+      <p role="status">{notice}</p>
+      {selectedCampaign?.name != null && (
+        <CampaignPanel
+          key={selectedCampaign.slug}
+          service={service}
+          slug={selectedCampaign.slug}
+          name={selectedCampaign.name}
+          newId={newId}
+        />
+      )}
     </section>
   );
 }

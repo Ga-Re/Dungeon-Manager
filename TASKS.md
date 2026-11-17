@@ -188,17 +188,27 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Device settings stored in OS app-data, not in the library
 - **Notes:** Split from T-103. DM approved the needed dependencies (`notify`, folder-picker plugin) on 2026-11-17. Security-relevant (file access from the webview): the DM confirms the Tauri capabilities before merge.
 
-### T-104 Map import and scene creation
+### T-104a Campaigns and scenes in the DM window
 
-- **Status:** todo · **Depends on:** T-103b · **Refs:** SPEC 3.1
-- Import PNG/JPG/WebP into the library; create a scene referencing it.
+- **Status:** done · **Depends on:** T-103b · **Refs:** SPEC 12, 13.2
+- Create a campaign (name → folder slug), select it, list its scenes, create an empty scene, open and close a scene.
+- **Acceptance criteria**
+  - [x] DM creates a campaign by name; its folder and `campaign.json` are created
+  - [x] Scene list in DM window; create, open and close a scene
+- **Notes:** Split from T-104 (agent, 2026-11-17). Campaign creation added to T-104 by DM decision (2026-11-17).
+
+### T-104b Map import
+
+- **Status:** todo · **Depends on:** T-104a · **Refs:** SPEC 3.1, ARCHITECTURE §6.3
+- Import PNG/JPG/WebP into the library (native file picker, copy in Rust, SHA-256 hash); create a scene referencing it.
 - **Acceptance criteria**
   - [ ] Imported file lands in `library/maps/`, referenced by relative path + hash
-  - [ ] Scene list in DM window; open/close scene
+  - [ ] A scene can be created with the imported map
+- **Notes:** DM approved `sha2` (already a transitive dependency) for hashing, 2026-11-17.
 
 ### T-105 Renderer: map layer and camera
 
-- **Status:** todo · **Depends on:** T-104, T-007 · **Refs:** ARCHITECTURE §8
+- **Status:** todo · **Depends on:** T-104b, T-007 · **Refs:** ARCHITECTURE §8
 - `packages/renderer` drawing the map; zoom/pan in DM window; locked scale in player window.
 - **Acceptance criteria**
   - [ ] Screenshot tests for a fixture map in both views

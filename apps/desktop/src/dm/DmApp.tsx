@@ -17,9 +17,11 @@ type DisplayState =
 export function DmApp({
   displayService,
   libraryService,
+  newId,
 }: {
   readonly displayService: DisplayService;
   readonly libraryService: LibraryService;
+  readonly newId: () => string;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<DisplayState>({ status: "loading" });
@@ -125,7 +127,7 @@ export function DmApp({
       </button>
       {/* Always rendered: screen readers only announce changes to an existing live region. */}
       <p role="status">{notice}</p>
-      <LibraryPanel service={libraryService} />
+      <LibraryPanel service={libraryService} newId={newId} />
     </main>
   );
 }

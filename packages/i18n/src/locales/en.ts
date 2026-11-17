@@ -28,6 +28,9 @@ export const en: Messages = {
     choose: "Choose library folder …",
     campaigns: "Campaigns",
     noCampaigns: "No campaigns in this library yet.",
+    newCampaignName: "Name of the new campaign",
+    createCampaign: "Create campaign",
+    campaignCreated: "Campaign “{{name}}” created.",
     campaign: {
       notAvailable: "{{slug}} (not downloaded yet)",
       invalid: "{{slug}} (cannot be read)",
@@ -36,6 +39,21 @@ export const en: Messages = {
       noLibrary: "No library folder is open. Please choose a folder.",
       forbidden: "This window may not access the library.",
       invalidPath: "The app may not access this file.",
+    },
+  },
+  campaign: {
+    heading: "Campaign: {{name}}",
+    loading: "Loading scenes …",
+    scenes: "Scenes",
+    noScenes: "No scenes in this campaign yet.",
+    newSceneName: "Name of the new scene",
+    createScene: "Create scene",
+    sceneCreated: "Scene “{{name}}” created.",
+    openScene: "Open scene: {{name}}",
+    closeScene: "Close scene",
+    scene: {
+      notAvailable: "{{id}} (not downloaded yet)",
+      invalid: "{{id}} (cannot be read)",
     },
   },
   companion: {

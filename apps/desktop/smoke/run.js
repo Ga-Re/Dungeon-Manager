@@ -13,6 +13,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -66,12 +67,20 @@ async function waitFor(description, check, timeoutMs = 15_000) {
   );
 }
 
-async function findElement(sessionPath, selector) {
+async function findElement(sessionPath, selector, using = "css selector") {
   const element = await command("POST", `${sessionPath}/element`, {
-    using: "css selector",
+    using,
     value: selector,
   });
   return element[ELEMENT_KEY];
+}
+
+/** Waits for the element `xpath` points to and clicks it. */
+async function clickXPath(sessionPath, description, xpath) {
+  const element = await waitFor(description, () =>
+    findElement(sessionPath, xpath, "xpath"),
+  );
+  await command("POST", `${sessionPath}/element/${element}/click`, {});
 }
 
 async function main() {
@@ -155,6 +164,39 @@ async function main() {
     await waitFor("the campaign written from outside", async () =>
       (await pageText()).includes("Smoke-Kampagne"),
     );
+
+    // Creating a scene through the UI goes through the real Rust write path.
+    await clickXPath(
+      sessionPath,
+      "the campaign button",
+      "//button[text()='Smoke-Kampagne']",
+    );
+    const sceneName = await waitFor("the scene name field", () =>
+      findElement(
+        sessionPath,
+        "//label[text()='Name der neuen Szene']/following-sibling::input",
+        "xpath",
+      ),
+    );
+    await command("POST", `${sessionPath}/element/${sceneName}/value`, {
+      text: "Smoke-Szene",
+    });
+    await clickXPath(
+      sessionPath,
+      "the create-scene button",
+      "//button[text()='Szene anlegen']",
+    );
+    await clickXPath(
+      sessionPath,
+      "the new scene",
+      "//button[text()='Smoke-Szene']",
+    );
+    await waitFor("the opened scene", async () =>
+      (await pageText()).includes("Geöffnete Szene: Smoke-Szene"),
+    );
+    const scenes = readdirSync(join(library, "campaigns", "smoke", "scenes"));
+    if (scenes.length !== 1 || !scenes[0].endsWith(".json"))
+      throw new Error(`Unexpected scene files: ${scenes.join(", ")}`);
 
     // Reading files must not count as a change: on Linux, inotify reports opens and reads, and
     // a reload reacting to them would read again, forever. A quiet library sends no events.

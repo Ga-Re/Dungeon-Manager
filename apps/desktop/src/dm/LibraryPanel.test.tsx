@@ -18,7 +18,7 @@ const campaignFile = (name: string) =>
 function renderPanel(service: LibraryService) {
   return render(
     <I18nextProvider i18n={createI18n("de")}>
-      <LibraryPanel service={service} />
+      <LibraryPanel service={service} newId={() => "id-1"} />
     </I18nextProvider>,
   );
 }
@@ -72,11 +72,43 @@ describe("LibraryPanel", () => {
       "campaigns/new/campaign.json",
       campaignFile("Neue Kampagne"),
     );
-    library.emit(["library/maps/cave.png", "campaigns/new/campaign.json.tmp"]);
+    // Asset, temp and scene files inside a campaign do not change the campaign list.
+    library.emit([
+      "library/maps/cave.png",
+      "campaigns/new/campaign.json.tmp",
+      "campaigns/old/scenes/s.json",
+    ]);
     library.emit(["campaigns/new/campaign.json"]);
 
     expect(await screen.findByText("Neue Kampagne")).toBeTruthy();
     expect(library.service.currentRoot).toHaveBeenCalledTimes(2);
+  });
+
+  test("creates a campaign by name and opens it", async () => {
+    const library = fakeLibraryService("/lib");
+    renderPanel(library.service);
+
+    fireEvent.change(await screen.findByLabelText("Name der neuen Kampagne"), {
+      target: { value: "Fluch über Größenwahn" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Kampagne anlegen" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Kampagne: Fluch über Größenwahn",
+      }),
+    ).toBeTruthy();
+    expect(
+      library.fs
+        .files()
+        .has("campaigns/fluch-ueber-groessenwahn/campaign.json"),
+    ).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Fluch über Größenwahn" }).ariaPressed,
+    ).toBe("true");
+    expect(
+      screen.getByText("Kampagne „Fluch über Größenwahn“ angelegt."),
+    ).toBeTruthy();
   });
 
   test("a slow earlier load never overwrites a newer folder choice", async () => {

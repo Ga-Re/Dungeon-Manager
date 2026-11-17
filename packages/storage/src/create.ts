@@ -1,0 +1,85 @@
+import {
+  CAMPAIGN_VERSION,
+  SCENE_VERSION,
+  type Scene,
+} from "@dungeon-manager/schema";
+import { saveCampaign, saveScene } from "./documents.js";
+import type { FileSystem } from "./fs.js";
+import { isValidSlug } from "./layout.js";
+
+const TRANSLITERATIONS: Readonly<Record<string, string>> = {
+  ä: "ae",
+  ö: "oe",
+  ü: "ue",
+  ß: "ss",
+};
+
+/**
+ * A folder name for a campaign: lowercase ASCII, digits and dashes, at most 64 characters.
+ * German umlauts are spelled out, other accents dropped; never empty or a reserved name.
+ */
+export function slugify(name: string): string {
+  const slug = name
+    // Composed first, so a decomposed "u" + U+0308 (macOS file names, pasted text) is an "ü".
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/[äöüß]/g, (letter) => TRANSLITERATIONS[letter] ?? letter)
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 64)
+    .replace(/^-+|-+$/g, "");
+  if (slug === "") return "campaign";
+  return isValidSlug(slug) ? slug : `${slug}-campaign`;
+}
+
+/**
+ * Creates `campaigns/<slug>/campaign.json` for a new campaign; the slug comes from the name and
+ * gets a number if a folder or file of that name (in any case) exists. @returns the slug.
+ * @throws on an empty name
+ */
+export async function createCampaign(
+  fs: FileSystem,
+  campaign: { readonly id: string; readonly name: string },
+): Promise<string> {
+  const name = campaign.name.trim();
+  if (name === "") throw new Error("A campaign needs a name");
+  // Every existing folder counts, compared case-insensitively: on macOS/Windows "Mine" and
+  // "mine" are the same folder, and overwriting its campaign.json would lose data.
+  const entries = (await fs.list("campaigns")) ?? [];
+  const taken = new Set(entries.map((entry) => entry.name.toLowerCase()));
+  const base = slugify(name);
+  let slug = base;
+  for (let number = 2; taken.has(slug); number++) {
+    const suffix = `-${String(number)}`;
+    slug = `${base.slice(0, 64 - suffix.length).replace(/-+$/, "")}${suffix}`;
+  }
+  await saveCampaign(fs, slug, {
+    schemaVersion: CAMPAIGN_VERSION,
+    id: campaign.id,
+    name,
+    players: [],
+    visibilityDefaults: {},
+  });
+  return slug;
+}
+
+/** Creates and saves an empty scene (no map yet). @returns the saved scene. @throws on an empty name */
+export async function createScene(
+  fs: FileSystem,
+  slug: string,
+  scene: { readonly id: string; readonly name: string },
+): Promise<Scene> {
+  if (scene.name.trim() === "") throw new Error("A scene needs a name");
+  const created: Scene = {
+    schemaVersion: SCENE_VERSION,
+    id: scene.id,
+    name: scene.name.trim(),
+    map: null,
+    tokens: [],
+    fog: { levels: {} },
+    initiative: null,
+  };
+  await saveScene(fs, slug, created);
+  return created;
+}
