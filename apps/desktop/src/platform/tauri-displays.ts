@@ -12,9 +12,13 @@ export function detectPlatformFamily(userAgent: string): PlatformFamily {
   return userAgent.includes("Macintosh") ? "macos" : "other";
 }
 
-/** Displays and the player window via the Tauri window API. */
+/**
+ * Displays and the player window via the Tauri window API.
+ * @param playerPage page loaded in the player window (the performance spike swaps it, T-007)
+ */
 export function createTauriDisplayService(
   platform: PlatformFamily,
+  playerPage = "player.html",
 ): DisplayService {
   let monitors = new Map<string, Monitor>();
 
@@ -38,7 +42,7 @@ export function createTauriDisplayService(
 
       const window =
         (await WebviewWindow.getByLabel(PLAYER_LABEL)) ??
-        (await createHiddenPlayerWindow(title));
+        (await createHiddenPlayerWindow(title, playerPage));
       // Leave fullscreen first: windows are only moved between displays while windowed.
       await setFullscreen(window, platform, false);
       await window.setPosition(originOf(monitor, platform));
@@ -76,9 +80,12 @@ function setFullscreen(
 }
 
 /** Created hidden so it does not flash on the DM's screen before it is moved. */
-function createHiddenPlayerWindow(title: string): Promise<WebviewWindow> {
+function createHiddenPlayerWindow(
+  title: string,
+  url: string,
+): Promise<WebviewWindow> {
   const window = new WebviewWindow(PLAYER_LABEL, {
-    url: "player.html",
+    url,
     title,
     decorations: false,
     visible: false,

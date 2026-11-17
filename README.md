@@ -110,6 +110,28 @@ pnpm --filter @dungeon-manager/desktop smoke
 
 It needs `cargo install tauri-driver --version 2.1.0 --locked` and, on Linux, `webkit2gtk-driver` (plus `xvfb-run` without a display).
 
+## Performance spike (T-007, temporary)
+
+Measures whether a 4K video map + fog + 20 tokens reaches 60 FPS in the player window (ARCHITECTURE §11). Run it on the reference notebook with the table TV connected:
+
+1. Provide the test video once – either generate a synthetic 4K video (needs `brew install ffmpeg`) or use your own animated map (stays local, never committed):
+
+   ```bash
+   pnpm --filter @dungeon-manager/desktop spike:video
+   ```
+
+   ```bash
+   pnpm --filter @dungeon-manager/desktop spike:video ~/path/to/animated-map.mp4
+   ```
+
+2. Start the app in spike mode, choose the TV and click **Spieleransicht öffnen**:
+
+   ```bash
+   pnpm spike:desktop
+   ```
+
+3. The spike warms up for 5 s and measures 30 s each at native resolution and at Full HD (about 70 s in total). The result appears on the TV and in the terminal between `===== SPIKE RESULTS` and `===== END`; it is also saved in `apps/desktop/spike-results/`.
+
 ## Repository layout
 
 See [ARCHITECTURE.md §3](docs/ARCHITECTURE.md). Workspace packages are named `@dungeon-manager/<folder>`; the shared TypeScript config lives in `tooling/tsconfig`.

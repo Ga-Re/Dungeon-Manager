@@ -11,7 +11,9 @@
     "typecheck": "tsc -p tsconfig.json",
     "tauri": "tauri",
     "build:app": "tauri build --debug --no-bundle",
-    "smoke": "node smoke/run.js"
+    "smoke": "node smoke/run.js",
+    "spike": "VITE_SPIKE=1 tauri dev",
+    "spike:video": "bash spike/make-video.sh"
   },
   "dependencies": {
     "@dungeon-manager/core": "workspace:*",
@@ -23,6 +25,7 @@
     "@dungeon-manager/ui": "workspace:*",
     "@tauri-apps/api": "2.12.4",
     "i18next": "27.1.2",
+    "pixi.js": "8.22.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-i18next": "18.0.1"

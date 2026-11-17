@@ -13,3 +13,7 @@ coverage/
 !tooling/dependency-cruiser/fixtures/packages/*/dist/
 test-results/
 playwright-report/
+
+# Performance spike (T-007): local test video and measurement results.
+apps/desktop/spike-assets/
+apps/desktop/spike-results/

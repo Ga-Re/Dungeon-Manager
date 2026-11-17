@@ -11,6 +11,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev:desktop": "turbo run build --filter=@dungeon-manager/desktop^... && pnpm --filter @dungeon-manager/desktop dev",
+    "spike:desktop": "turbo run build --filter=@dungeon-manager/desktop^... && pnpm --filter @dungeon-manager/desktop spike",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run boundaries && pnpm run check:boundary-rules && pnpm run test",
     "typecheck": "turbo run typecheck",
     "lint": "eslint --max-warnings 0 .",

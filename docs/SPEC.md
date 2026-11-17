@@ -38,6 +38,7 @@ A tool for a Dungeon Master (DM) to plan campaigns and present them live at the 
 - Fullscreen on the second display, no controls visible
 - **Grid calibration:** enter the screen size so one cell is exactly 1 inch (2.54 cm) and physical minis fit
 - Rotatable view (0°/90°/180°/270°) because the TV lies flat and players sit on all sides
+- **Render resolution** selectable in the settings (native, e.g. 4K, or Full HD upscaled) to trade sharpness for frame rate
 - Optional highlight of the active turn (glow ring around the token)
 - **Blackout / panic button:** switch the player view instantly to black or a pause image
 
