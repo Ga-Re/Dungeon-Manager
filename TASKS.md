@@ -71,12 +71,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-007 Performance spike: video map + fog in the player window
 
-- **Status:** in-progress · **Depends on:** T-006 · **Refs:** ARCHITECTURE §8, §11
+- **Status:** done · **Depends on:** T-006 · **Refs:** ARCHITECTURE §8, §11
 - Throwaway-quality spike (clearly marked) rendering a 4K MP4 map + a fog mask + 20 sprites in PixiJS in the player window; script that records frame times.
 - **Acceptance criteria**
-  - [ ] Frame-time report from the DM's reference notebook (p50/p95) committed to `docs/benchmarks/`
-  - [ ] Written conclusion: budget met or not; if not, structured proposal (see CLAUDE.md)
-- **Notes:** This validates ADR-0002. Results may trigger a new ADR.
+  - [x] Frame-time report from the DM's reference notebook (p50/p95) committed to `docs/benchmarks/`
+  - [x] Written conclusion: budget met or not; if not, structured proposal (see CLAUDE.md)
+- **Notes:** This validates ADR-0002. Results may trigger a new ADR. Result (DM's MacBook Air M5, 4K TV at 60 Hz): 4K video as a texture misses the budget; an HTML video element under a transparent PixiJS canvas reaches 59.8 FPS (1.25 % missed refreshes in the worst-case scene) → ADR-0010, ARCHITECTURE §8/§11 updated. Reports in `docs/benchmarks/`.
 
 ### T-008 Mobile app skeleton
 
@@ -151,7 +151,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Screenshot tests for a fixture map in both views
   - [ ] Benchmark scene added to `test-fixtures`
-- **Notes:** From T-003 review: `pnpm test:visual` mounts the host `node_modules` into the Linux container. Once visual tests need a Vite dev server, native binaries (esbuild/rollup) from a macOS/Windows host will not run there – install dependencies inside the container (separate volume) instead. From T-007: remove the spike (`apps/desktop/spike.html`, `src/spike/`, `spike/`, the `VITE_SPIKE` switch and the `playerPage` parameter) once the renderer and its benchmark exist; move `pixi.js` (with `pixi.js/unsafe-eval`, required by our CSP) to `packages/renderer`.
+- **Notes:** From T-003 review: `pnpm test:visual` mounts the host `node_modules` into the Linux container. Once visual tests need a Vite dev server, native binaries (esbuild/rollup) from a macOS/Windows host will not run there – install dependencies inside the container (separate volume) instead. From T-007: remove the spike (`apps/desktop/spike.html`, `src/spike/`, `spike/`, the `VITE_SPIKE` switch and the `playerPage` parameter) once the renderer and its benchmark exist; move `pixi.js` (with `pixi.js/unsafe-eval`, required by our CSP) to `packages/renderer`. From T-007/ADR-0010: video maps are a `<video>` element under a transparent PixiJS canvas with a shared camera transform (zoom/pan/rotation); the benchmark scene must show ≤ 1 % missed refreshes at 4K/60 Hz with realistic fog, the DM window open and an animated camera, judge video smoothness separately and investigate the hitches seen in the spike. The video element must fail closed: hidden until the fog for the scene is drawn and on resize/context loss/teardown.
 
 ### T-106 Grid overlay and 1-inch calibration
 

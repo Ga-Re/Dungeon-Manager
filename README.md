@@ -118,7 +118,7 @@ Measures whether a 4K video map + fog + 20 tokens reaches 60 FPS in the player w
 
 - Update and install: `git pull`, then `pnpm install` (the spike adds PixiJS).
 - Plug in the charger and switch off Low Power Mode (System Settings → Battery).
-- TV in System Settings → Displays: resolution **Default** (or "1920 × 1080"), refresh rate **60 Hz**. If 60 Hz is not offered, the cable/adapter limits it – the report then says "display below 60 Hz".
+- TV in System Settings → Displays: 3840 × 2160 at **60 Hz**. 4K at 60 Hz needs a USB-C/HDMI adapter and cable supporting HDMI 2.0 or newer – many adapters only carry 4K at 30 Hz, and the report then says "display below 60 Hz".
 - Close other heavy apps. Don't touch the windows while the spike runs.
 
 **1. Provide the test videos (once; again after updates)** – generate a synthetic 4K video plus a 1080p version (needs `brew install ffmpeg`):
