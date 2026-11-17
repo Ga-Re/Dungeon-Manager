@@ -6,6 +6,9 @@
 // What is measured: intervals between PixiJS ticker frames (WebKit's requestAnimationFrame
 // cadence = main-thread work plus compositor back-pressure), not GPU present times. Dropped
 // video frames come from the video element's playback quality.
+//
+// Run 1 showed the 4K video upload into a WebGL texture as the bottleneck
+// (docs/benchmarks/2026-11-17-t007-run1.md), so run 2 compares ways to show the video.
 
 // Our CSP forbids eval; this PixiJS module replaces its runtime code generation.
 import "pixi.js/unsafe-eval";
@@ -20,16 +23,25 @@ import {
 import { summarize, verdict, type FrameStats, type Verdict } from "./stats.js";
 
 const WARM_UP_MS = 5_000;
-const MEASURE_MS = Number(import.meta.env.VITE_SPIKE_SECONDS ?? "20") * 1000;
+const MEASURE_MS = Number(import.meta.env.VITE_SPIKE_SECONDS ?? "15") * 1000;
 const BASELINE_MS = 5_000;
 const TOKEN_COUNT = 20;
 const VISION_COUNT = 4;
+
+/**
+ * How the map video reaches the screen:
+ * - `texture`: uploaded into a PixiJS texture every video frame (one canvas, everything in PixiJS)
+ * - `element`: a plain HTML <video> under a transparent PixiJS canvas, composited by the OS (no upload)
+ */
+type VideoMode = "texture" | "element";
 
 interface Scenario {
   readonly name: string;
   /** Renderer resolution (backing pixels per CSS pixel). */
   readonly resolution: () => number;
-  readonly withVideo: boolean;
+  readonly renderer: "webgl" | "webgpu";
+  readonly video: "uhd" | "fhd";
+  readonly videoMode: VideoMode;
   readonly withScene: boolean;
 }
 
@@ -39,38 +51,76 @@ const fullHd = () => 1080 / window.innerHeight;
 
 const SCENARIOS: readonly Scenario[] = [
   {
-    name: "video only, native",
+    name: "A video only · WebGL texture · 4K video",
     resolution: native,
-    withVideo: true,
+    renderer: "webgl",
+    video: "uhd",
+    videoMode: "texture",
     withScene: false,
   },
   {
-    name: "full scene, native",
+    name: "B full scene · WebGL texture · 4K video",
     resolution: native,
-    withVideo: true,
+    renderer: "webgl",
+    video: "uhd",
+    videoMode: "texture",
     withScene: true,
   },
   {
-    name: "full scene, Full HD",
+    name: "C full scene · WebGL texture · 1080p video",
+    resolution: native,
+    renderer: "webgl",
+    video: "fhd",
+    videoMode: "texture",
+    withScene: true,
+  },
+  {
+    name: "D full scene · WebGPU texture · 4K video",
+    resolution: native,
+    renderer: "webgpu",
+    video: "uhd",
+    videoMode: "texture",
+    withScene: true,
+  },
+  {
+    name: "E full scene · HTML video element · 4K video",
+    resolution: native,
+    renderer: "webgl",
+    video: "uhd",
+    videoMode: "element",
+    withScene: true,
+  },
+  {
+    name: "F full scene · HTML video element · 4K video · Full HD render",
     resolution: fullHd,
-    withVideo: true,
+    renderer: "webgl",
+    video: "uhd",
+    videoMode: "element",
     withScene: true,
   },
-  // Repeated last: a fanless notebook may throttle; compare with the first native run.
+  // Repeated last: a fanless notebook may throttle; compare with B.
   {
-    name: "full scene, native (repeat)",
+    name: "G repeat of B",
     resolution: native,
-    withVideo: true,
+    renderer: "webgl",
+    video: "uhd",
+    videoMode: "texture",
     withScene: true,
   },
 ];
 
 interface ScenarioResult extends FrameStats {
   readonly scenario: string;
+  readonly renderer: string;
   readonly renderedPixels: string;
   readonly droppedVideoFrames: number | null;
-  readonly verdict: Verdict;
+  readonly verdict: Verdict | "skipped";
   readonly warnings: readonly string[];
+}
+
+interface Manifest {
+  readonly uhd: string;
+  readonly fhd: string | null;
 }
 
 const reportElement = document.getElementById("report");
@@ -80,9 +130,9 @@ const show = (text: string) => {
 
 async function main() {
   const manifest = await fetch("/spike/manifest.json").then((response) =>
-    response.ok ? (response.json() as Promise<{ video: string }>) : null,
+    response.ok ? (response.json() as Promise<Partial<Manifest>>) : null,
   );
-  if (!manifest) {
+  if (!manifest?.uhd) {
     show(
       "No test video found.\nRun: pnpm --filter @dungeon-manager/desktop spike:video\nthen start the spike again.",
     );
@@ -91,36 +141,35 @@ async function main() {
 
   show("Waiting for the window to settle on the display …");
   await waitForStableWindow();
-  const video = await loadVideo(`/spike/${manifest.video}`);
+  const videos = {
+    uhd: await loadVideo(`/spike/${manifest.uhd}`),
+    fhd: manifest.fhd ? await loadVideo(`/spike/${manifest.fhd}`) : null,
+  };
 
   show("Measuring the display refresh rate …");
-  const baseline = await runScenario(
-    {
-      name: "baseline (empty)",
-      resolution: native,
-      withVideo: false,
-      withScene: false,
-    },
-    video,
-    {
-      warmUpMs: 1_000,
-      measureMs: BASELINE_MS,
-      refreshMs: Number.POSITIVE_INFINITY,
-    },
-  );
+  const baseline = await runScenario(null, {
+    warmUpMs: 1_000,
+    measureMs: BASELINE_MS,
+    refreshMs: Number.POSITIVE_INFINITY,
+  });
   const refreshMs = baseline.result.p50;
   const refreshHz = 1000 / refreshMs;
 
   const results: ScenarioResult[] = [];
   for (const [index, scenario] of SCENARIOS.entries()) {
+    const video = videos[scenario.video];
+    const skip = skipReason(scenario, video);
+    if (skip) {
+      results.push(skipped(scenario, skip));
+      continue;
+    }
     show(
       `Running ${String(index + 1)}/${String(SCENARIOS.length)}: ${scenario.name} …`,
     );
-    const run = await runScenario(scenario, video, {
-      warmUpMs: WARM_UP_MS,
-      measureMs: MEASURE_MS,
-      refreshMs,
-    });
+    const run = await runScenario(
+      { scenario, video: video as HTMLVideoElement },
+      { warmUpMs: WARM_UP_MS, measureMs: MEASURE_MS, refreshMs },
+    );
     results.push({ ...run.result, verdict: verdict(run.result, refreshHz) });
   }
 
@@ -128,10 +177,9 @@ async function main() {
     date: new Date().toISOString(),
     userAgent: navigator.userAgent,
     gpu: baseline.gpu,
-    renderer: baseline.renderer,
     window: `${String(window.innerWidth)}×${String(window.innerHeight)} CSS px, devicePixelRatio ${String(window.devicePixelRatio)}`,
     refreshHz: Math.round(refreshHz * 10) / 10,
-    video: `${manifest.video}, ${String(video.videoWidth)}×${String(video.videoHeight)}`,
+    video: `${manifest.uhd} ${String(videos.uhd.videoWidth)}×${String(videos.uhd.videoHeight)}${videos.fhd ? `, ${String(manifest.fhd)} ${String(videos.fhd.videoWidth)}×${String(videos.fhd.videoHeight)}` : ""}`,
     tokens: TOKEN_COUNT,
     measureSeconds: MEASURE_MS / 1000,
     results,
@@ -143,12 +191,39 @@ async function main() {
   }).catch(() => undefined);
 }
 
+function skipReason(
+  scenario: Scenario,
+  video: HTMLVideoElement | null,
+): string | null {
+  if (!video)
+    return "no 1080p video (install ffmpeg and run spike:video again)";
+  if (
+    scenario.resolution === fullHd &&
+    Math.round(window.innerHeight * window.devicePixelRatio) <= 1080
+  ) {
+    return "display already renders 1080 rows – same as native";
+  }
+  return null;
+}
+
+function skipped(scenario: Scenario, reason: string): ScenarioResult {
+  return {
+    ...summarize([], 1),
+    scenario: scenario.name,
+    renderer: "–",
+    renderedPixels: "–",
+    droppedVideoFrames: null,
+    verdict: "skipped",
+    warnings: [reason],
+  };
+}
+
 /** The page starts in the hidden window before it is moved fullscreen; wait until that is done. */
 async function waitForStableWindow() {
   let last = "";
   let stableSince = performance.now();
   for (;;) {
-    const current = `${String(window.innerWidth)}×${String(window.innerHeight)}@${String(window.devicePixelRatio)}`;
+    const current = describeWindow();
     if (current !== last) {
       last = current;
       stableSince = performance.now();
@@ -162,6 +237,7 @@ async function waitForStableWindow() {
   }
 }
 
+/** Loads a muted looping video, paused until a scenario needs it (only one decodes at a time). */
 function loadVideo(src: string): Promise<HTMLVideoElement> {
   const video = document.createElement("video");
   Object.assign(video, {
@@ -169,16 +245,14 @@ function loadVideo(src: string): Promise<HTMLVideoElement> {
     muted: true,
     loop: true,
     playsInline: true,
-    autoplay: true,
     preload: "auto",
   });
+  video.className = "map-video";
   return new Promise((resolve, reject) => {
     video.addEventListener(
       "canplay",
       () => {
-        void video.play().then(() => {
-          resolve(video);
-        }, reject);
+        resolve(video);
       },
       { once: true },
     );
@@ -192,25 +266,34 @@ function loadVideo(src: string): Promise<HTMLVideoElement> {
   });
 }
 
+/** Runs one scenario; `null` measures an empty stage (display refresh baseline). */
 async function runScenario(
-  scenario: Scenario,
-  video: HTMLVideoElement,
+  setup: { scenario: Scenario; video: HTMLVideoElement } | null,
   timing: { warmUpMs: number; measureMs: number; refreshMs: number },
 ) {
+  const scenario = setup?.scenario;
+  const video = setup?.video;
   const app = new Application();
   await app.init({
     resizeTo: window,
-    resolution: scenario.resolution(),
+    resolution: scenario ? scenario.resolution() : native(),
     autoDensity: true,
     antialias: false,
     background: "#000000",
-    preference: "webgl",
+    // Transparent when the video element sits underneath the canvas.
+    backgroundAlpha: scenario?.videoMode === "element" ? 0 : 1,
+    preference: scenario?.renderer ?? "webgl",
   });
+  app.canvas.classList.add("stage");
   document.body.prepend(app.canvas);
   const windowAtStart = describeWindow();
 
+  if (video) {
+    video.currentTime = 0;
+    await video.play();
+  }
   const { width, height } = app.screen;
-  if (scenario.withVideo) {
+  if (video && scenario?.videoMode === "texture") {
     // Map: the video as a texture, scaled to cover the screen.
     const map = new Sprite(Texture.from(video));
     map.scale.set(
@@ -218,10 +301,11 @@ async function runScenario(
     );
     app.stage.addChild(map);
   }
+  if (video && scenario?.videoMode === "element") document.body.prepend(video);
 
   const tokens: Sprite[] = [];
   const fog = new Graphics();
-  if (scenario.withScene) {
+  if (scenario?.withScene) {
     // Tokens: 20 round tokens moving every frame.
     const tokenRadius = height / 30;
     const tokenTexture = app.renderer.generateTexture(
@@ -252,7 +336,7 @@ async function runScenario(
     const now = performance.now();
     if (measuring) intervals.push(now - last);
     last = now;
-    if (!scenario.withScene) return;
+    if (!scenario?.withScene) return;
     const t = (now - started) / 1000;
     tokens.forEach((token, index) => {
       const phase = (index / TOKEN_COUNT) * Math.PI * 2;
@@ -272,11 +356,12 @@ async function runScenario(
   });
 
   await sleep(timing.warmUpMs);
-  const droppedBefore = video.getVideoPlaybackQuality().droppedVideoFrames;
+  const droppedBefore =
+    video?.getVideoPlaybackQuality().droppedVideoFrames ?? 0;
   measuring = true;
   await sleep(timing.measureMs);
   measuring = false;
-  const droppedAfter = video.getVideoPlaybackQuality().droppedVideoFrames;
+  const droppedAfter = video?.getVideoPlaybackQuality().droppedVideoFrames ?? 0;
 
   const warnings: string[] = [];
   if (describeWindow() !== windowAtStart) {
@@ -285,23 +370,29 @@ async function runScenario(
     );
   }
   const renderedPixels = `${String(app.canvas.width)}×${String(app.canvas.height)}`;
-  if (scenario.resolution === native && renderedPixels !== "3840×2160") {
+  if (scenario?.resolution === native && renderedPixels !== "3840×2160") {
     warnings.push(
       `native rendered ${renderedPixels}, not 3840×2160 – check the TV's macOS display setting`,
     );
   }
+  if (scenario && scenario.renderer !== app.renderer.name) {
+    warnings.push(
+      `${scenario.renderer} unavailable, fell back to ${app.renderer.name}`,
+    );
+  }
 
-  const info = describeRenderer(app.renderer);
+  const info = { renderer: app.renderer.name, gpu: describeGpu(app.renderer) };
   const result = {
-    scenario: scenario.name,
+    scenario: scenario?.name ?? "baseline",
+    renderer: info.renderer,
     renderedPixels,
-    droppedVideoFrames: scenario.withVideo
-      ? droppedAfter - droppedBefore
-      : null,
+    droppedVideoFrames: video ? droppedAfter - droppedBefore : null,
     warnings,
     // A frame missed a refresh when it took clearly longer than one refresh interval.
     ...summarize(intervals, timing.refreshMs * 1.5),
   };
+  video?.pause();
+  video?.remove();
   app.destroy({ removeView: true }, { children: true });
   return { result, ...info };
 }
@@ -310,20 +401,17 @@ function describeWindow() {
   return `${String(window.innerWidth)}×${String(window.innerHeight)}@${String(window.devicePixelRatio)}`;
 }
 
-function describeRenderer(renderer: Renderer) {
-  if (!("gl" in renderer))
-    return { renderer: renderer.name, gpu: "unknown (WebGPU)" };
+function describeGpu(renderer: Renderer) {
+  if (!("gl" in renderer)) return "unknown (WebGPU)";
   const gl = renderer.gl;
   const debug = gl.getExtension("WEBGL_debug_renderer_info");
-  const gpu = debug
+  return debug
     ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL))
     : String(gl.getParameter(gl.RENDERER));
-  return { renderer: renderer.name, gpu };
 }
 
 function formatReport(report: {
   gpu: string;
-  renderer: string;
   window: string;
   refreshHz: number;
   video: string;
@@ -331,16 +419,17 @@ function formatReport(report: {
 }) {
   const ms = (value: number) => `${value.toFixed(1)} ms`;
   const lines = report.results.map((r) =>
-    [
-      `${r.scenario} – rendered ${r.renderedPixels}`,
-      `  ${r.averageFps.toFixed(1)} FPS · missed refreshes ${r.missedPercent.toFixed(1)} % · dropped video frames ${String(r.droppedVideoFrames ?? "–")}`,
-      `  p50 ${ms(r.p50)} · p95 ${ms(r.p95)} · p99 ${ms(r.p99)} · max ${ms(r.max)}`,
-      `  60 FPS budget: ${r.verdict.toUpperCase()}`,
-      ...r.warnings.map((warning) => `  ! ${warning}`),
-    ].join("\n"),
+    r.verdict === "skipped"
+      ? `${r.scenario}\n  skipped: ${r.warnings.join("; ")}`
+      : [
+          `${r.scenario} – ${r.renderer}, rendered ${r.renderedPixels}`,
+          `  ${r.averageFps.toFixed(1)} FPS · missed refreshes ${r.missedPercent.toFixed(1)} % · dropped video frames ${String(r.droppedVideoFrames ?? "–")}`,
+          `  p50 ${ms(r.p50)} · p95 ${ms(r.p95)} · p99 ${ms(r.p99)} · max ${ms(r.max)} · 60 FPS budget: ${r.verdict.toUpperCase()}`,
+          ...r.warnings.map((warning) => `  ! ${warning}`),
+        ].join("\n"),
   );
   return [
-    `GPU: ${report.gpu} (${report.renderer})`,
+    `GPU: ${report.gpu}`,
     `Window: ${report.window} · display refresh ≈ ${String(report.refreshHz)} Hz`,
     `Video: ${report.video}`,
     "",

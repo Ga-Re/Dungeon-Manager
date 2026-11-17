@@ -121,7 +121,7 @@ Measures whether a 4K video map + fog + 20 tokens reaches 60 FPS in the player w
 - TV in System Settings → Displays: resolution **Default** (or "1920 × 1080"), refresh rate **60 Hz**. If 60 Hz is not offered, the cable/adapter limits it – the report then says "display below 60 Hz".
 - Close other heavy apps. Don't touch the windows while the spike runs.
 
-**1. Provide the test video (once)** – generate a synthetic 4K video (needs `brew install ffmpeg`):
+**1. Provide the test videos (once; again after updates)** – generate a synthetic 4K video plus a 1080p version (needs `brew install ffmpeg`):
 
 ```bash
 pnpm --filter @dungeon-manager/desktop spike:video
@@ -139,7 +139,9 @@ pnpm --filter @dungeon-manager/desktop spike:video /Users/you/Maps/animated-map.
 pnpm spike:desktop
 ```
 
-**3. Wait about two minutes.** The spike first measures the display refresh rate, then runs four 25-second scenarios: video only, full scene at native resolution, full scene at Full HD, and native again (to spot thermal throttling). The result appears on the TV and in the terminal between `===== SPIKE RESULTS` and `===== END` – copy that block. It is also saved in `apps/desktop/spike-results/`. Close the app with the DM window to run again.
+**3. Wait about three minutes.** The spike first measures the display refresh rate, then runs seven 20-second scenarios (A–G) comparing ways to show the video map: as a WebGL texture (4K and 1080p video), as a WebGPU texture, and as a plain video element under a transparent PixiJS canvas – plus a Full HD render and a repeat to spot thermal throttling. The result appears on the TV and in the terminal between `===== SPIKE RESULTS` and `===== END` – copy that block. It is also saved in `apps/desktop/spike-results/`. Close the app with the DM window to run again.
+
+For the 4K scenarios the TV must receive a 4K signal: in System Settings → Displays, the TV should offer 3840 × 2160 (or a "(HiDPI)" mode). If only 1920 × 1080 is offered, the cable or adapter limits the connection.
 
 ## Repository layout
 
