@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "DM window: list displays and open/move the player window. Player window: nothing beyond the core defaults.",
+  "windows": ["dm", "player"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-set-position",
+    "core:window:allow-set-focus"
+  ]
+}

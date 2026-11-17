@@ -1,0 +1,16 @@
+[package]
+name = "dungeon-manager-desktop"
+version = "0.0.0"
+description = "Dungeon Manager desktop app"
+edition = "2024"
+publish = false
+
+[lib]
+name = "dungeon_manager_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "=2.7.4", features = [] }
+
+[dependencies]
+tauri = { version = "=2.12.5", features = [] }
