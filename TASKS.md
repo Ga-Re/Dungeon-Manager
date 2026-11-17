@@ -299,6 +299,15 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Video map follows the camera; hidden until fog is drawn and on resize/context loss/teardown
   - [ ] Benchmark scene added to `test-fixtures`; ≤ 1 % missed refreshes at 4K/60 Hz on the reference notebook (DM measures)
   - [ ] Spike code removed; `pixi.js` only in `packages/renderer`
+- **Notes:** From the T-105a review: the `dmlib` scheme reads whole files into memory per request; videos need streaming with HTTP Range support (and a `media-src` CSP entry).
+
+### T-127 Maps larger than the GPU texture limit
+
+- **Status:** todo · **Depends on:** T-105a · **Refs:** ARCHITECTURE §8, §11
+- Battle maps often exceed `MAX_TEXTURE_SIZE` (8192 px on many integrated GPUs). Detect it and either split the map into tiles or show a clear error instead of a black map.
+- **Acceptance criteria**
+  - [ ] A map larger than the texture limit is shown correctly (tiled) or with an actionable message
+- **Notes:** From the T-105a review.
 
 ### T-106 Grid overlay and 1-inch calibration
 

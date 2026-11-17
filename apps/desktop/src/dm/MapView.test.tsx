@@ -6,6 +6,7 @@ import type {
 } from "@dungeon-manager/renderer";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
+import { StrictMode } from "react";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { createI18n } from "../i18n.js";
 import type { MapViewService } from "../platform/map-images.js";
@@ -47,32 +48,59 @@ afterAll(() => {
     );
 });
 
-function fakeService(load: () => Promise<MapImage>) {
-  const cameras: Camera[] = [];
-  const view = {
+function fakeView(cameras: Camera[]) {
+  return {
     setMap: vi.fn(),
     setCamera: vi.fn((camera: Camera) => cameras.push(camera)),
     resize: vi.fn(),
     drawn: () => Promise.resolve(),
     destroy: vi.fn(),
   } satisfies Renderer;
+}
+
+function fakeService(load: () => Promise<MapImage>) {
+  const cameras: Camera[] = [];
+  const views: {
+    canvas: HTMLCanvasElement;
+    view: ReturnType<typeof fakeView>;
+  }[] = [];
   const service = {
     loadImage: vi.fn(load),
-    createRenderer: vi.fn(() => Promise.resolve(view)),
+    createRenderer: vi.fn((canvas: HTMLCanvasElement) => {
+      const view = fakeView(cameras);
+      views.push({ canvas, view });
+      return Promise.resolve(view);
+    }),
   } satisfies MapViewService;
-  return { service, view, camera: () => cameras.at(-1) };
+  return {
+    service,
+    views,
+    /** The most recently created renderer. */
+    get view() {
+      const last = views.at(-1);
+      if (!last) throw new Error("no renderer yet");
+      return last.view;
+    },
+    camera: () => cameras.at(-1),
+  };
 }
 
 const image = { width: 1600, height: 800 } as unknown as MapImage;
 
-function renderView(service: MapViewService) {
-  return render(
-    <I18nextProvider i18n={createI18n("de")}>
-      <MapViewContext value={service}>
-        <MapView path="library/maps/hoehle.png" label="Höhle" />
-      </MapViewContext>
-    </I18nextProvider>,
+function tree(service: MapViewService, path = "library/maps/hoehle.png") {
+  return (
+    <StrictMode>
+      <I18nextProvider i18n={createI18n("de")}>
+        <MapViewContext value={service}>
+          <MapView path={path} label="Höhle" />
+        </MapViewContext>
+      </I18nextProvider>
+    </StrictMode>
   );
+}
+
+function renderView(service: MapViewService) {
+  return render(tree(service));
 }
 
 const area = () =>
@@ -82,18 +110,19 @@ describe("MapView", () => {
   test("loads the map and fits it into the view", async () => {
     const fake = fakeService(() => Promise.resolve(image));
     renderView(fake.service);
+    // The camera is set in the render after the map: wait for it, not just for the map.
     await waitFor(() => {
-      expect(fake.view.setMap).toHaveBeenCalledWith(image);
+      expect(fake.camera()).toEqual({
+        centerX: 800,
+        centerY: 400,
+        zoom: 0.5,
+        rotation: 0,
+      });
     });
+    expect(fake.view.setMap).toHaveBeenCalledWith(image);
     expect(fake.service.loadImage).toHaveBeenCalledWith(
       "library/maps/hoehle.png",
     );
-    expect(fake.camera()).toEqual({
-      centerX: 800,
-      centerY: 400,
-      zoom: 0.5,
-      rotation: 0,
-    });
   });
 
   test("zooms, pans, rotates and fits with keys, wheel and drag", async () => {
@@ -153,6 +182,58 @@ describe("MapView", () => {
       expect(fake.view.setMap).toHaveBeenCalled();
     });
     unmount();
-    expect(fake.view.destroy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(fake.view.destroy).toHaveBeenCalled();
+    });
+  });
+
+  test("releases the renderer when the map cannot be loaded", async () => {
+    const fake = fakeService(() => Promise.reject(new Error("404")));
+    const { unmount } = renderView(fake.service);
+    await screen.findByRole("alert");
+    unmount();
+    await waitFor(() => {
+      expect(fake.view.destroy).toHaveBeenCalled();
+    });
+  });
+
+  test("gives every renderer its own canvas and releases the old one", async () => {
+    const fake = fakeService(() => Promise.resolve(image));
+    const { rerender } = renderView(fake.service);
+    await waitFor(() => {
+      expect(fake.views[0]?.view.setMap).toHaveBeenCalledWith(image);
+    });
+    rerender(tree(fake.service, "library/maps/andere.png"));
+    await waitFor(() => {
+      expect(fake.views[1]?.view.setMap).toHaveBeenCalledWith(image);
+    });
+    const [first, second] = fake.views;
+    expect(first?.canvas).not.toBe(second?.canvas);
+    expect(first?.view.destroy).toHaveBeenCalled();
+    expect(first?.canvas.isConnected).toBe(false);
+    expect(second?.view.destroy).not.toHaveBeenCalled();
+    expect(second?.canvas.isConnected).toBe(true);
+  });
+
+  test("leaves browser shortcuts and secondary buttons alone", async () => {
+    const fake = fakeService(() => Promise.resolve(image));
+    renderView(fake.service);
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    const before = fake.camera();
+    fireEvent.keyDown(area(), { key: "0", ctrlKey: true });
+    fireEvent.keyDown(area(), { key: "+", metaKey: true });
+    fireEvent.pointerDown(area(), {
+      button: 2,
+      clientX: 0,
+      clientY: 0,
+      pointerId: 2,
+    });
+    fireEvent.pointerMove(area(), { clientX: 300, clientY: 0, pointerId: 2 });
+    expect(fake.camera()).toEqual(before);
+    const wheel = new WheelEvent("wheel", { deltaY: -100, cancelable: true });
+    area().dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(true);
   });
 });

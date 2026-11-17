@@ -15,7 +15,6 @@ import {
   useState,
   type KeyboardEvent,
   type PointerEvent,
-  type WheelEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { MapViewService } from "../platform/map-images.js";
@@ -39,9 +38,9 @@ export function MapView({
   const { t } = useTranslation();
   const service = useContext(MapViewContext);
   const host = useRef<HTMLDivElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
   const renderer = useRef<Renderer | null>(null);
   const [size, setSize] = useState<Size | null>(null);
+  const sizeNow = useRef<Size | null>(null);
   const [mapSize, setMapSize] = useState<Size | null>(null);
   const [camera, setCamera] = useState<Camera | null>(null);
   const [load, setLoad] = useState<LoadState>("loading");
@@ -52,7 +51,12 @@ export function MapView({
     const element = host.current;
     if (!element) return;
     const measure = () => {
-      setSize({ width: element.clientWidth, height: element.clientHeight });
+      const measured = {
+        width: element.clientWidth,
+        height: element.clientHeight,
+      };
+      sizeNow.current = measured;
+      setSize(measured);
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
@@ -63,28 +67,31 @@ export function MapView({
     };
   }, []);
 
-  // One renderer per mounted view; the map is (re)loaded when the path changes.
+  // One renderer per map, each on its own canvas: a WebGL context belongs to its canvas, and
+  // destroying one renderer must never take another one's context with it (e.g. in React's
+  // StrictMode, which mounts effects twice). The renderer is always released through its
+  // promise, also when the map fails to load or the view goes away while loading.
   const ready = size !== null && size.width > 0 && size.height > 0;
   useEffect(() => {
-    if (!service || !canvas.current || !ready) return;
+    const element = host.current;
+    const initial = sizeNow.current;
+    if (!service || !element || !initial || !ready) return;
     let cancelled = false;
     setLoad("loading");
-    const element = canvas.current;
-    const created = Promise.all([
-      service.createRenderer(element, size),
-      service.loadImage(path),
-    ]);
-    created.then(
+    const canvas = document.createElement("canvas");
+    element.appendChild(canvas);
+    const created = service.createRenderer(canvas, initial);
+    Promise.all([created, service.loadImage(path)]).then(
       ([view, image]) => {
-        if (cancelled) {
-          view.destroy();
-          return;
-        }
+        if (cancelled) return;
+        // The box may have changed size while the map was loading.
+        const current = sizeNow.current ?? initial;
         renderer.current = view;
+        view.resize(current);
         view.setMap(image);
         const imageSize = { width: image.width, height: image.height };
         setMapSize(imageSize);
-        setCamera(fitCamera(imageSize, size, 0));
+        setCamera(fitCamera(imageSize, current, 0));
         setLoad("ready");
       },
       () => {
@@ -93,10 +100,15 @@ export function MapView({
     );
     return () => {
       cancelled = true;
-      renderer.current?.destroy();
       renderer.current = null;
+      created.then(
+        (view) => {
+          view.destroy();
+        },
+        () => undefined,
+      );
+      canvas.remove();
     };
-    // Created once per map (not per size): size changes go to `resize` below.
   }, [service, path, ready]);
 
   useEffect(() => {
@@ -107,8 +119,12 @@ export function MapView({
     if (camera) renderer.current?.setCamera(camera);
   }, [camera]);
 
+  // Functional updates: event handlers (also the native wheel listener) never see a stale camera.
   const change = (update: (current: Camera, view: Size) => Camera) => {
-    if (camera && size) setCamera(update(camera, size));
+    setCamera((current) => {
+      const view = sizeNow.current;
+      return current && view ? update(current, view) : current;
+    });
   };
   const fit = () => {
     change((current, view) =>
@@ -117,14 +133,34 @@ export function MapView({
   };
   const centre = (view: Size) => ({ x: view.width / 2, y: view.height / 2 });
 
-  const onWheel = (event: WheelEvent) => {
-    const box = event.currentTarget.getBoundingClientRect();
-    const anchor = { x: event.clientX - box.left, y: event.clientY - box.top };
-    change((current, view) =>
-      zoomAt(current, Math.exp(-event.deltaY * 0.0015), anchor, view),
-    );
-  };
+  // A native, non-passive listener: zooming must not also scroll the page (React's wheel
+  // handlers are passive and cannot prevent that).
+  useEffect(() => {
+    const element = host.current;
+    if (!element) return;
+    const onWheel = (event: globalThis.WheelEvent) => {
+      event.preventDefault();
+      const box = element.getBoundingClientRect();
+      const anchor = {
+        x: event.clientX - box.left,
+        y: event.clientY - box.top,
+      };
+      setCamera((current) => {
+        const view = sizeNow.current;
+        return current && view
+          ? zoomAt(current, Math.exp(-event.deltaY * 0.0015), anchor, view)
+          : current;
+      });
+    };
+    element.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      element.removeEventListener("wheel", onWheel);
+    };
+  }, []);
+
   const onPointerDown = (event: PointerEvent) => {
+    // Primary button only (touch and pen report it too); the others stay free for menus.
+    if (event.button !== 0) return;
     drag.current = { x: event.clientX, y: event.clientY };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -143,6 +179,8 @@ export function MapView({
     drag.current = null;
   };
   const onKeyDown = (event: KeyboardEvent) => {
+    // Ctrl/Cmd + "+", "−", "0" belong to the browser and the OS.
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     const actions: Record<string, (current: Camera, view: Size) => Camera> = {
       "+": (current, view) => zoomAt(current, KEY_ZOOM, centre(view), view),
       "=": (current, view) => zoomAt(current, KEY_ZOOM, centre(view), view),
@@ -174,15 +212,12 @@ export function MapView({
         aria-label={t("mapView.label", { name: label })}
         aria-describedby="map-view-help"
         tabIndex={0}
-        onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onKeyDown={onKeyDown}
-      >
-        <canvas ref={canvas} />
-      </div>
+      ></div>
       <p id="map-view-help" className="map-view-help">
         {t("mapView.help")}
       </p>

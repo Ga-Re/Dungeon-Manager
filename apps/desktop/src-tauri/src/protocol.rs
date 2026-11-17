@@ -58,7 +58,7 @@ fn respond<R: Runtime>(
     uri_path: &str,
 ) -> Response<Vec<u8>> {
     if label != DM_WINDOW && label != PLAYER_WINDOW {
-        return status(StatusCode::FORBIDDEN);
+        return status(StatusCode::NOT_FOUND);
     }
     let (Some(path), Ok(root)) = (requested_path(uri_path), app.state::<LibraryState>().root())
     else {
@@ -67,8 +67,9 @@ fn respond<R: Runtime>(
     let Some(mime) = content_type(&path) else {
         return status(StatusCode::NOT_FOUND);
     };
+    // Every refusal looks the same from outside: not found.
     let Ok(file) = library::resolve(&root, &path) else {
-        return status(StatusCode::FORBIDDEN);
+        return status(StatusCode::NOT_FOUND);
     };
     match std::fs::read(file) {
         Ok(bytes) => Response::builder()
