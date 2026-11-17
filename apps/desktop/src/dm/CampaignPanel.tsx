@@ -79,7 +79,11 @@ export function CampaignPanel({
     };
   }, [reload]);
 
-  useLibraryChanges(service, `campaigns/${slug}/scenes/`, () => void reload());
+  useLibraryChanges(
+    service,
+    (path) => path.startsWith(`campaigns/${slug}/scenes/`),
+    () => void reload(),
+  );
 
   const create = async (sceneName: string) => {
     try {
@@ -89,14 +93,16 @@ export function CampaignPanel({
       });
       setNotice(t("campaign.sceneCreated", { name: scene.name }));
       await reload();
+      return true;
     } catch (error) {
       setNotice(describeLibraryError(t, error));
+      return false;
     }
   };
 
   return (
     <section aria-labelledby="campaign-heading">
-      <h2 id="campaign-heading">{t("campaign.heading", { name })}</h2>
+      <h3 id="campaign-heading">{t("campaign.heading", { name })}</h3>
       {openScene && (
         <div>
           <p>{t("campaign.openScene", { name: openScene.name })}</p>

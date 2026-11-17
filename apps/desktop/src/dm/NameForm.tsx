@@ -1,6 +1,6 @@
 import { useId, useState, type SyntheticEvent } from "react";
 
-/** A one-field form for naming something new (campaign, scene); clears itself on success. */
+/** A one-field form for naming something new (campaign, scene); keeps the name if creating failed. */
 export function NameForm({
   label,
   submitLabel,
@@ -8,7 +8,8 @@ export function NameForm({
 }: {
   readonly label: string;
   readonly submitLabel: string;
-  readonly onSubmit: (name: string) => Promise<void>;
+  /** Resolves to whether creating succeeded (and the field may be cleared). */
+  readonly onSubmit: (name: string) => Promise<boolean>;
 }) {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -19,8 +20,7 @@ export function NameForm({
     if (name.trim() === "" || busy) return;
     setBusy(true);
     try {
-      await onSubmit(name);
-      setName("");
+      if (await onSubmit(name)) setName("");
     } finally {
       setBusy(false);
     }

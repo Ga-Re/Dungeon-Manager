@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import { createI18n } from "../i18n.js";
 import { CampaignPanel } from "./CampaignPanel.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";
+import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
 
 const sceneFile = (id: string, name: string) =>
   JSON.stringify({
@@ -81,10 +82,30 @@ describe("CampaignPanel", () => {
       "campaigns/mine/scenes/x.json",
       sceneFile("x", "Neue Szene"),
     );
+    // Another campaign's scenes do not concern this panel.
     library.emit(["campaigns/other/scenes/y.json"]);
+    await new Promise((resolve) => setTimeout(resolve, RELOAD_DELAY_MS + 100));
+    expect(screen.queryByRole("button", { name: "Neue Szene" })).toBeNull();
+
     library.emit(["campaigns/mine/scenes/x.json"]);
     expect(
       await screen.findByRole("button", { name: "Neue Szene" }),
     ).toBeTruthy();
+  });
+
+  test("keeps the typed name and explains when saving fails", async () => {
+    const library = fakeLibraryService("/lib");
+    library.fs.writeAtomic = () =>
+      Promise.reject(new Error("Datenträger voll"));
+    renderCampaign(library);
+    const field = await screen.findByLabelText<HTMLInputElement>(
+      "Name der neuen Szene",
+    );
+    fireEvent.change(field, { target: { value: "Eingang" } });
+    fireEvent.click(screen.getByRole("button", { name: "Szene anlegen" }));
+    expect(
+      await screen.findByText("Das hat nicht geklappt: Datenträger voll"),
+    ).toBeTruthy();
+    expect(field.value).toBe("Eingang");
   });
 });

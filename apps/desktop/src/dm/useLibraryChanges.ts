@@ -5,24 +5,26 @@ import type { LibraryService } from "../platform/library.js";
 export const RELOAD_DELAY_MS = 300;
 
 /**
- * Calls `onChange` (debounced) when files under `prefix` change on disk. Temporary files of
+ * Calls `onChange` (debounced) when a changed path satisfies `matches`. Temporary files of
  * atomic writes are ignored: the final rename reports the real file anyway.
  */
 export function useLibraryChanges(
   service: LibraryService,
-  prefix: string,
+  matches: (path: string) => boolean,
   onChange: () => void,
 ): void {
   const callback = useRef(onChange);
+  const matcher = useRef(matches);
   useEffect(() => {
     callback.current = onChange;
+    matcher.current = matches;
   });
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = service.onChange((paths) => {
       if (
-        !paths.some((path) => path.startsWith(prefix) && !path.endsWith(".tmp"))
+        !paths.some((path) => !path.endsWith(".tmp") && matcher.current(path))
       )
         return;
       clearTimeout(timer);
@@ -36,5 +38,5 @@ export function useLibraryChanges(
         stop();
       });
     };
-  }, [service, prefix]);
+  }, [service]);
 }

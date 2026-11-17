@@ -72,7 +72,12 @@ describe("LibraryPanel", () => {
       "campaigns/new/campaign.json",
       campaignFile("Neue Kampagne"),
     );
-    library.emit(["library/maps/cave.png", "campaigns/new/campaign.json.tmp"]);
+    // Asset, temp and scene files inside a campaign do not change the campaign list.
+    library.emit([
+      "library/maps/cave.png",
+      "campaigns/new/campaign.json.tmp",
+      "campaigns/old/scenes/s.json",
+    ]);
     library.emit(["campaigns/new/campaign.json"]);
 
     expect(await screen.findByText("Neue Kampagne")).toBeTruthy();

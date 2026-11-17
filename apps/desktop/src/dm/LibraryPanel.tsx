@@ -47,6 +47,10 @@ async function readCampaigns(
   );
 }
 
+/** A campaign folder or its campaign.json – not the many files inside a campaign. */
+const isCampaignChange = (path: string) =>
+  /^campaigns\/[^/]+(\/campaign\.json)?$/.test(path);
+
 /** The library folder: choose it, create its layout, list, create and select campaigns live. */
 export function LibraryPanel({
   service,
@@ -101,7 +105,7 @@ export function LibraryPanel({
 
   useLibraryChanges(
     service,
-    "campaigns/",
+    isCampaignChange,
     () => void show(() => service.currentRoot()),
   );
 
@@ -127,8 +131,10 @@ export function LibraryPanel({
       await show(() => service.currentRoot());
       setSelected(slug);
       setNotice(t("library.campaignCreated", { name: name.trim() }));
+      return true;
     } catch (error) {
       setNotice(describeLibraryError(t, error));
+      return false;
     }
   };
 

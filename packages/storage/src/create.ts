@@ -3,7 +3,7 @@ import {
   SCENE_VERSION,
   type Scene,
 } from "@dungeon-manager/schema";
-import { listCampaigns, saveCampaign, saveScene } from "./documents.js";
+import { saveCampaign, saveScene } from "./documents.js";
 import type { FileSystem } from "./fs.js";
 import { isValidSlug } from "./layout.js";
 
@@ -20,6 +20,8 @@ const TRANSLITERATIONS: Readonly<Record<string, string>> = {
  */
 export function slugify(name: string): string {
   const slug = name
+    // Composed first, so a decomposed "u" + U+0308 (macOS file names, pasted text) is an "ü".
+    .normalize("NFC")
     .toLowerCase()
     .replace(/[äöüß]/g, (letter) => TRANSLITERATIONS[letter] ?? letter)
     .normalize("NFKD")
@@ -33,7 +35,8 @@ export function slugify(name: string): string {
 
 /**
  * Creates `campaigns/<slug>/campaign.json` for a new campaign; the slug comes from the name and
- * gets a number if the folder is taken. @returns the slug. @throws on an empty name
+ * gets a number if a folder or file of that name (in any case) exists. @returns the slug.
+ * @throws on an empty name
  */
 export async function createCampaign(
   fs: FileSystem,
@@ -41,7 +44,10 @@ export async function createCampaign(
 ): Promise<string> {
   const name = campaign.name.trim();
   if (name === "") throw new Error("A campaign needs a name");
-  const taken = new Set(await listCampaigns(fs));
+  // Every existing folder counts, compared case-insensitively: on macOS/Windows "Mine" and
+  // "mine" are the same folder, and overwriting its campaign.json would lose data.
+  const entries = (await fs.list("campaigns")) ?? [];
+  const taken = new Set(entries.map((entry) => entry.name.toLowerCase()));
   const base = slugify(name);
   let slug = base;
   for (let number = 2; taken.has(slug); number++) {
@@ -58,12 +64,13 @@ export async function createCampaign(
   return slug;
 }
 
-/** Creates and saves an empty scene (no map yet). @returns the saved scene */
+/** Creates and saves an empty scene (no map yet). @returns the saved scene. @throws on an empty name */
 export async function createScene(
   fs: FileSystem,
   slug: string,
   scene: { readonly id: string; readonly name: string },
 ): Promise<Scene> {
+  if (scene.name.trim() === "") throw new Error("A scene needs a name");
   const created: Scene = {
     schemaVersion: SCENE_VERSION,
     id: scene.id,

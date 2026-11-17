@@ -15,6 +15,7 @@ describe("slugify", () => {
     ["Fluch über Größenwahn!", "fluch-ueber-groessenwahn"],
     ["  ---Curse of  Strahd--- ", "curse-of-strahd"],
     ["Été à Paris", "ete-a-paris"],
+    ["Fu\u0308hrer der Zwerge", "fuehrer-der-zwerge"],
     ["nul", "nul-campaign"],
     ["???", "campaign"],
   ])("%j → %j", (name, slug) => {
@@ -56,6 +57,16 @@ describe("createCampaign", () => {
     expect(await createCampaign(fs, { id: "c-2", name: "Mine" })).toBe(
       "mine-3",
     );
+  });
+
+  test("treats folders differing only in case as taken", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/Mine/campaign.json": "hand-made",
+    });
+    expect(await createCampaign(fs, { id: "c-3", name: "Mine" })).toBe(
+      "mine-2",
+    );
+    expect(fs.files().get("campaigns/Mine/campaign.json")).toBe("hand-made");
   });
 
   test("rejects an empty name and writes nothing", async () => {
