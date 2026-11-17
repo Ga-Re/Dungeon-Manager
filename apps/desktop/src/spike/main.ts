@@ -138,6 +138,32 @@ const show = (text: string) => {
   if (reportElement) reportElement.textContent = text;
 };
 
+/**
+ * Progress across page reloads. Every scenario runs in a freshly loaded page: PixiJS keeps
+ * global caches (texture pool, batch bind groups) that otherwise leak from one renderer into
+ * the next – run 2 failed that way when a WebGPU scenario followed WebGL ones.
+ */
+interface Progress {
+  readonly step: number;
+  readonly refreshMs: number | null;
+  readonly gpu: string;
+  readonly results: readonly ScenarioResult[];
+}
+
+const PROGRESS_KEY = "spike-progress";
+
+function loadProgress(): Progress {
+  const stored = sessionStorage.getItem(PROGRESS_KEY);
+  return stored
+    ? (JSON.parse(stored) as Progress)
+    : { step: 0, refreshMs: null, gpu: "unknown", results: [] };
+}
+
+function continueWith(progress: Progress) {
+  sessionStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+  location.reload();
+}
+
 async function main() {
   const manifest = await fetch("/spike/manifest.json").then((response) =>
     response.ok ? (response.json() as Promise<Partial<Manifest>>) : null,
@@ -148,55 +174,85 @@ async function main() {
     );
     return;
   }
-
-  show("Waiting for the window to settle on the display …");
-  await waitForStableWindow();
   const sources = {
     uhd: `/spike/${manifest.uhd}`,
     fhd: manifest.fhd ? `/spike/${manifest.fhd}` : null,
   };
+
+  const progress = loadProgress();
+  show(
+    `Step ${String(progress.step + 1)}/${String(SCENARIOS.length + 1)}: waiting for the window to settle …`,
+  );
+  await waitForStableWindow();
+
+  if (progress.refreshMs === null) {
+    show("Measuring the display refresh rate …");
+    const baseline = await runScenario(null, {
+      warmUpMs: 1_000,
+      measureMs: BASELINE_MS,
+      refreshMs: Number.POSITIVE_INFINITY,
+    });
+    continueWith({
+      ...progress,
+      step: 1,
+      refreshMs: baseline.result.p50,
+      gpu: baseline.gpu,
+    });
+    return;
+  }
+
+  const refreshMs = progress.refreshMs;
+  const scenario = SCENARIOS[progress.step - 1];
+  if (scenario) {
+    const src = sources[scenario.video];
+    const skip = skipReason(scenario, src);
+    let result: ScenarioResult;
+    if (skip) {
+      result = skipped(scenario, `skipped: ${skip}`);
+    } else {
+      show(
+        `Running ${String(progress.step)}/${String(SCENARIOS.length)}: ${scenario.name} …`,
+      );
+      try {
+        const run = await runScenario(
+          { scenario, src: src as string },
+          { warmUpMs: WARM_UP_MS, measureMs: MEASURE_MS, refreshMs },
+        );
+        result = {
+          ...run.result,
+          verdict: verdict(run.result, 1000 / refreshMs),
+        };
+      } catch (error) {
+        // One failing scenario must not cost the whole run.
+        result = skipped(
+          scenario,
+          `failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    continueWith({
+      ...progress,
+      step: progress.step + 1,
+      results: [...progress.results, result],
+    });
+    return;
+  }
+
+  sessionStorage.removeItem(PROGRESS_KEY);
   const sizes = {
     uhd: await probeVideoSize(sources.uhd),
     fhd: sources.fhd ? await probeVideoSize(sources.fhd) : null,
   };
-
-  show("Measuring the display refresh rate …");
-  const baseline = await runScenario(null, {
-    warmUpMs: 1_000,
-    measureMs: BASELINE_MS,
-    refreshMs: Number.POSITIVE_INFINITY,
-  });
-  const refreshMs = baseline.result.p50;
-  const refreshHz = 1000 / refreshMs;
-
-  const results: ScenarioResult[] = [];
-  for (const [index, scenario] of SCENARIOS.entries()) {
-    const src = sources[scenario.video];
-    const skip = skipReason(scenario, src);
-    if (skip) {
-      results.push(skipped(scenario, skip));
-      continue;
-    }
-    show(
-      `Running ${String(index + 1)}/${String(SCENARIOS.length)}: ${scenario.name} …`,
-    );
-    const run = await runScenario(
-      { scenario, src: src as string },
-      { warmUpMs: WARM_UP_MS, measureMs: MEASURE_MS, refreshMs },
-    );
-    results.push({ ...run.result, verdict: verdict(run.result, refreshHz) });
-  }
-
   const report = {
     date: new Date().toISOString(),
     userAgent: navigator.userAgent,
-    gpu: baseline.gpu,
+    gpu: progress.gpu,
     window: `${String(window.innerWidth)}×${String(window.innerHeight)} CSS px, devicePixelRatio ${String(window.devicePixelRatio)}`,
-    refreshHz: Math.round(refreshHz * 10) / 10,
+    refreshHz: Math.round((1000 / refreshMs) * 10) / 10,
     video: `${manifest.uhd} ${sizes.uhd}${sizes.fhd ? `, ${String(manifest.fhd)} ${sizes.fhd}` : ""}`,
     tokens: TOKEN_COUNT,
     measureSeconds: MEASURE_MS / 1000,
-    results,
+    results: progress.results,
   };
   show(formatReport(report));
   await fetch("/__spike/results", {
@@ -320,7 +376,7 @@ async function runScenario(
 
   if (video) await video.play();
   const { width, height } = app.screen;
-  // Uncached (second argument): a cached texture would stay attached to the element.
+  // Uncached (second argument): no cache entry ties the texture to the element.
   const videoTexture =
     video && scenario?.videoMode === "texture"
       ? Texture.from(video, true)
@@ -433,7 +489,6 @@ async function runScenario(
     ...summarize(intervals, timing.refreshMs * 1.5),
   };
   app.destroy({ removeView: true }, { children: true });
-  videoTexture?.destroy(true);
   if (video) releaseVideo(video);
   return { result, ...info };
 }
@@ -456,12 +511,12 @@ function formatReport(report: {
   window: string;
   refreshHz: number;
   video: string;
-  results: ScenarioResult[];
+  results: readonly ScenarioResult[];
 }) {
   const ms = (value: number) => `${value.toFixed(1)} ms`;
   const lines = report.results.map((r) =>
     r.verdict === "skipped"
-      ? `${r.scenario}\n  skipped: ${r.warnings.join("; ")}`
+      ? `${r.scenario}\n  ${r.warnings.join("; ")}`
       : [
           `${r.scenario} – ${r.renderer}, rendered ${r.renderedPixels}`,
           `  ${r.averageFps.toFixed(1)} FPS · missed refreshes ${r.missedPercent.toFixed(1)} % · video frames ${r.totalVideoFrames === null ? "n/a" : `${String(r.totalVideoFrames)} decoded, ${String(r.droppedVideoFrames)} dropped`}`,
