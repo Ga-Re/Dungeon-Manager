@@ -131,6 +131,8 @@ apply(state: SessionState, command: Command, ctx: Ctx): { state: SessionState; e
 
 Coordinates: grid cells (integer `col,row`) for game logic; map pixels for rendering. Conversion lives in `core`.
 
+The entities are zod schemas in `packages/schema`. Only the files carry `schemaVersion` – `campaign.json` and one file per scene (version 1 since T-101); the other entities are embedded in them. Unknown fields are kept on round-trip, documents from a newer app version are refused instead of downgraded, and older ones are migrated step by step (`migrateDocument`).
+
 ---
 
 ## 6. Storage
