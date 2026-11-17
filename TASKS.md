@@ -136,12 +136,29 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-102b Core: permissions and viewer projection
 
-- **Status:** todo · **Depends on:** T-102a · **Refs:** ARCHITECTURE §5
+- **Status:** done · **Depends on:** T-102a · **Refs:** ARCHITECTURE §5
 - `canApply(actor, command, state)` for DM, DM phone and player companions; `projectForViewer(state, viewer)` built from an explicit allow-list with strict viewer schemas.
 - **Acceptance criteria**
-  - [ ] Projection never leaks hidden tokens, hidden HP numbers or unrevealed fog (property-based tests with `fast-check`)
-  - [ ] Permission checks tested for every command and actor
-- **Notes:** Split from T-102 (DM decision, 2026-11-17). From T-102a review: (1) `DomainEvent`s carry hidden data (`hp.changed` exact HP, `token.moved` of hidden tokens) – the session log and any broadcast must be projected too, not just the state. (2) Tokens have no owning player yet; "players move their own token" (SPEC §2.4/§5) needs a schema addition (e.g. `ownerPlayerId`, schema v1 is unreleased) – ask the DM first. (3) Undo restores whole-state snapshots: before remote commands (companion, DM phone) go through `execute`, decide whether only local DM commands are recorded or whether to switch to per-command inverse patches, so undoing a DM action never reverts a later remote one.
+  - [x] Projection never leaks hidden tokens, hidden HP numbers or unrevealed fog (property-based tests with `fast-check`)
+  - [x] Permission checks tested for every command and actor
+- **Notes:** Split from T-102 (DM decision, 2026-11-17). From T-102a review: (1) `DomainEvent`s carry hidden data (`hp.changed` exact HP, `token.moved` of hidden tokens) – the session log and any broadcast must be projected too, not just the state. (2) Tokens have no owning player yet; "players move their own token" (SPEC §2.4/§5) needs a schema addition (e.g. `ownerPlayerId`, schema v1 is unreleased) – ask the DM first. (3) Undo restores whole-state snapshots: before remote commands (companion, DM phone) go through `execute`, decide whether only local DM commands are recorded or whether to switch to per-command inverse patches, so undoing a DM action never reverts a later remote one. DM approved `ownerPlayerId` on tokens (2026-11-17). Not yet covered (stage 3, companion): DM locks per player and movement rules (range, fog) for player moves. DM decisions (2026-11-17): combatants without a token are hidden from the initiative until released, and combatants get optional per-element `visibility` overrides (combatant > token > campaign default); companion map/level leakage deferred to T-118.
+
+### T-117 Project domain events for viewers
+
+- **Status:** todo · **Depends on:** T-102b · **Refs:** ARCHITECTURE §5.1
+- `DomainEvent`s carry hidden data (exact HP in `hp.changed`, moves of hidden tokens). Add a pure `projectEvents(events, stateAfter, viewer)` in `core` so the session log shown to players and any event broadcast never leak; property tests like the state projection.
+- **Acceptance criteria**
+  - [ ] No event reveals a token, HP number or name that `projectForViewer` hides (property-based tests)
+- **Notes:** From the T-102a review; needed before events leave the host (companion, session log on the TV).
+
+### T-118 Companion-safe map delivery and released levels
+
+- **Status:** todo · **Depends on:** T-102b · **Refs:** ARCHITECTURE §5.1, SPEC §2.4, §3.1
+- The projection currently sends the map asset reference and every level (id, name, asset), whatever has been revealed. Fine for the host-rendered TV; a companion could fetch the whole un-fogged map and read level names like "Geheimgang". Add a "current/released levels" concept to the scene and send companions only fog-composited (or tiled) images of released levels.
+- **Acceptance criteria**
+  - [ ] Companion projections contain no asset reference to un-fogged map files and no unreleased level
+  - [ ] The table view shows the scene's current level
+- **Notes:** From the T-102b review; must be done before companions show maps (stage 3).
 
 ### T-103 Storage: library folder, read/write, watching, conflicts
 

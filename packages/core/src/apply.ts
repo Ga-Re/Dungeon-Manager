@@ -126,6 +126,30 @@ function applyChange(state: SessionState, command: Command): Change {
           events: [event],
         };
       }
+      if (target.kind === "combatant") {
+        const initiative = scene.initiative;
+        if (!initiative) return "noInitiative";
+        const combatant = initiative.combatants.find(
+          (candidate) => candidate.id === target.combatantId,
+        );
+        if (!combatant) return "unknownCombatant";
+        const combatants = initiative.combatants.map((candidate) =>
+          candidate.id === combatant.id
+            ? {
+                ...combatant,
+                visibility: setRule(
+                  combatant.visibility ?? {},
+                  elementType,
+                  visibility,
+                ),
+              }
+            : candidate,
+        );
+        return {
+          state: withInitiative(state, { ...initiative, combatants }),
+          events: [event],
+        };
+      }
       const token = scene.tokens.find(
         (candidate) => candidate.id === target.tokenId,
       );

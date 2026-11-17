@@ -1,4 +1,4 @@
-import type { LevelFog, Polygon, Ring } from "@dungeon-manager/schema";
+import type { LevelFog, Point, Polygon, Ring } from "@dungeon-manager/schema";
 import { difference, intersection, union, type Geom } from "polyclip-ts";
 
 // Never call polyclip-ts's setPrecision: it is module-level state and would make core impure.
@@ -63,3 +63,24 @@ export function hideArea(
 
 /** Fog of a level that has never been touched. */
 export const EMPTY_LEVEL_FOG: LevelFog = { revealed: [], remembered: [] };
+
+/** Ray casting; points exactly on an edge may count either way. */
+function inRing(ring: Ring, [x, y]: Point): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i] ?? [0, 0];
+    const [xj, yj] = ring[j] ?? [0, 0];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)
+      inside = !inside;
+  }
+  return inside;
+}
+
+/** Whether `point` (map pixels) lies inside one of `polygons` and not in one of its holes. */
+export function isInside(polygons: readonly Polygon[], point: Point): boolean {
+  return polygons.some(
+    (polygon) =>
+      inRing(polygon.outer, point) &&
+      !polygon.holes.some((hole) => inRing(hole, point)),
+  );
+}

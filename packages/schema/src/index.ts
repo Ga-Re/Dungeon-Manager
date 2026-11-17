@@ -3,3 +3,4 @@ export * from "./common.js";
 export * from "./entities.js";
 export * from "./documents.js";
 export * from "./migrate.js";
+export * from "./viewer.js";

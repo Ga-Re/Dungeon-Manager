@@ -75,6 +75,8 @@ export const tokenSchema = z.looseObject({
   position: gridCellSchema,
   levelId: idSchema,
   image: assetRefSchema.optional(),
+  /** The player who may move this token from their companion (SPEC §2.4); absent for DM-only tokens. */
+  ownerPlayerId: idSchema.optional(),
   /** Per-element overrides of the campaign's visibility defaults (token itself, name, HP, conditions …). */
   visibility: visibilityRulesSchema.optional(),
 });
@@ -105,6 +107,11 @@ export const combatantSchema = z.looseObject({
   id: idSchema,
   name: z.string().min(1),
   tokenId: idSchema.optional(),
+  /**
+   * Per-combatant visibility overrides; they win over the token's and the campaign's. A combatant
+   * without a token is hidden from the initiative until `initiative` is set here (DM decision).
+   */
+  visibility: visibilityRulesSchema.optional(),
   initiative: z.number(),
   hp: z
     .looseObject({

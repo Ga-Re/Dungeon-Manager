@@ -52,6 +52,7 @@ export const token: Token = {
   size: "small",
   position: { col: 4, row: 7 },
   levelId: "level-1",
+  ownerPlayerId: "player-1",
   visibility: { name: "hidden" },
 };
 
