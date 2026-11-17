@@ -12,7 +12,12 @@ export const de = {
     loadingDisplays: "Displays werden gesucht …",
     openPlayerView: "Spieleransicht öffnen",
     playerViewOpened: "Spieleransicht läuft auf {{name}}.",
+    refreshDisplays: "Displays neu suchen",
     error: "Das hat nicht geklappt: {{message}}",
+    errors: {
+      unknownDisplay:
+        "Dieses Display ist nicht mehr verfügbar. Bitte Displays neu suchen.",
+    },
   },
   player: {
     windowTitle: "Spieleransicht",

@@ -1,11 +1,21 @@
 import { availableMonitors, type Monitor } from "@tauri-apps/api/window";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import type { Display, DisplayService } from "./displays.js";
+import { DisplayError, type DisplayService } from "./displays.js";
 
 const PLAYER_LABEL = "player";
 
+/** Operating system family; window placement differs on macOS. */
+export type PlatformFamily = "macos" | "other";
+
+/** Detects the platform from the webview's user agent (WKWebView on macOS). */
+export function detectPlatformFamily(userAgent: string): PlatformFamily {
+  return userAgent.includes("Macintosh") ? "macos" : "other";
+}
+
 /** Displays and the player window via the Tauri window API. */
-export function createTauriDisplayService(): DisplayService {
+export function createTauriDisplayService(
+  platform: PlatformFamily,
+): DisplayService {
   let monitors = new Map<string, Monitor>();
 
   return {
@@ -22,27 +32,56 @@ export function createTauriDisplayService(): DisplayService {
       }));
     },
 
-    async openPlayerView(display: Display, title: string) {
+    async openPlayerView(display, title) {
       const monitor = monitors.get(display.id);
-      if (!monitor) throw new Error(`Unknown display ${display.id}`);
+      if (!monitor) throw new DisplayError("unknownDisplay");
 
       const window =
         (await WebviewWindow.getByLabel(PLAYER_LABEL)) ??
-        (await createPlayerWindow(title));
-      // Leave fullscreen first: most platforms only move a windowed window between displays.
-      await window.setFullscreen(false);
-      await window.setPosition(monitor.position);
-      await window.setFullscreen(true);
+        (await createHiddenPlayerWindow(title));
+      // Leave fullscreen first: windows are only moved between displays while windowed.
+      await setFullscreen(window, platform, false);
+      await window.setPosition(originOf(monitor, platform));
+      await setFullscreen(window, platform, true);
+      await window.show();
       await window.setFocus();
     },
   };
 }
 
-function createPlayerWindow(title: string): Promise<WebviewWindow> {
+/**
+ * The monitor's top-left corner in the units `setPosition` expects. On macOS the reported
+ * physical position is the logical origin scaled by *that* monitor's factor, while
+ * `setPosition` converts physical values with the *window's* factor – so mixed Retina/TV
+ * setups need the logical origin. Elsewhere physical desktop coordinates are exact.
+ */
+function originOf(monitor: Monitor, platform: PlatformFamily) {
+  return platform === "macos"
+    ? monitor.position.toLogical(monitor.scaleFactor)
+    : monitor.position;
+}
+
+/**
+ * macOS: "simple" fullscreen avoids a separate Space and its animation, during which
+ * further window commands are ignored. Elsewhere regular fullscreen is immediate.
+ */
+function setFullscreen(
+  window: WebviewWindow,
+  platform: PlatformFamily,
+  fullscreen: boolean,
+): Promise<void> {
+  return platform === "macos"
+    ? window.setSimpleFullscreen(fullscreen)
+    : window.setFullscreen(fullscreen);
+}
+
+/** Created hidden so it does not flash on the DM's screen before it is moved. */
+function createHiddenPlayerWindow(title: string): Promise<WebviewWindow> {
   const window = new WebviewWindow(PLAYER_LABEL, {
     url: "player.html",
     title,
     decorations: false,
+    visible: false,
   });
   return new Promise((resolve, reject) => {
     void window.once("tauri://created", () => {

@@ -6,6 +6,7 @@ import "../styles.css";
 import { PlayerApp } from "./PlayerApp.js";
 
 const i18n = createI18n();
+document.documentElement.lang = i18n.language;
 document.title = i18n.t("player.windowTitle");
 const root = document.getElementById("root");
 if (!root) throw new Error("#root is missing in player.html");

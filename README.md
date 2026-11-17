@@ -108,7 +108,7 @@ pnpm --filter @dungeon-manager/desktop build:app
 pnpm --filter @dungeon-manager/desktop smoke
 ```
 
-It needs `cargo install tauri-driver --locked` and, on Linux, `webkit2gtk-driver` (plus `xvfb-run` without a display).
+It needs `cargo install tauri-driver --version 2.1.0 --locked` and, on Linux, `webkit2gtk-driver` (plus `xvfb-run` without a display).
 
 ## Repository layout
 

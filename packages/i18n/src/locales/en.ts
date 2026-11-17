@@ -13,7 +13,12 @@ export const en: Messages = {
     loadingDisplays: "Looking for displays …",
     openPlayerView: "Open player view",
     playerViewOpened: "Player view is running on {{name}}.",
+    refreshDisplays: "Search displays again",
     error: "That did not work: {{message}}",
+    errors: {
+      unknownDisplay:
+        "This display is no longer available. Please search displays again.",
+    },
   },
   player: {
     windowTitle: "Player view",

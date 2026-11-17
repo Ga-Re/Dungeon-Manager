@@ -2,7 +2,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, test, vi } from "vitest";
 import { createI18n } from "../i18n.js";
-import type { Display, DisplayService } from "../platform/displays.js";
+import {
+  DisplayError,
+  type Display,
+  type DisplayService,
+} from "../platform/displays.js";
 import { DmApp } from "./DmApp.js";
 
 const laptop: Display = {
@@ -32,6 +36,9 @@ function renderDm(service: DisplayService, language: "de" | "en" = "de") {
   );
 }
 
+const openButton = () =>
+  screen.findByRole("button", { name: "Spieleransicht öffnen" });
+
 describe("DmApp", () => {
   test("lists the displays and preselects the last one (usually the table TV)", async () => {
     renderDm(fakeService());
@@ -55,35 +62,85 @@ describe("DmApp", () => {
       await screen.findByLabelText("Display für die Spieleransicht"),
       { target: { value: "0" } },
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Spieleransicht öffnen" }),
-    );
+    fireEvent.click(await openButton());
 
-    expect(await screen.findByRole("status")).toHaveProperty(
-      "textContent",
-      "Spieleransicht läuft auf Built-in Retina.",
-    );
+    expect(
+      await screen.findByText("Spieleransicht läuft auf Built-in Retina."),
+    ).toBeDefined();
     expect(service.openPlayerView).toHaveBeenCalledWith(
       laptop,
       "Spieleransicht",
     );
   });
 
-  test("shows an actionable error when the player view cannot be opened", async () => {
+  test("ignores further clicks while the player view is being opened", async () => {
+    const service = fakeService();
+    let finish: () => void = () => undefined;
+    service.openPlayerView.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderDm(service);
+
+    const button = await openButton();
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    expect(service.openPlayerView).toHaveBeenCalledTimes(1);
+    expect(button).toHaveProperty("disabled", true);
+    finish();
+    expect(
+      await screen.findByText("Spieleransicht läuft auf Display 2."),
+    ).toBeDefined();
+    expect(button).toHaveProperty("disabled", false);
+  });
+
+  test("shows the error when the player view cannot be opened", async () => {
     const service = fakeService();
     service.openPlayerView.mockRejectedValueOnce(
       new Error("window creation denied"),
     );
     renderDm(service);
 
+    fireEvent.click(await openButton());
+
+    expect(
+      await screen.findByText("Das hat nicht geklappt: window creation denied"),
+    ).toBeDefined();
+  });
+
+  test("translates known display errors", async () => {
+    const service = fakeService();
+    service.openPlayerView.mockRejectedValueOnce(
+      new DisplayError("unknownDisplay"),
+    );
+    renderDm(service);
+
+    fireEvent.click(await openButton());
+
+    expect(
+      await screen.findByText(
+        "Dieses Display ist nicht mehr verfügbar. Bitte Displays neu suchen.",
+      ),
+    ).toBeDefined();
+  });
+
+  test("searches displays again on request, e.g. after plugging in the TV", async () => {
+    const service = fakeService([laptop]);
+    renderDm(service);
+    await openButton();
+    service.listDisplays.mockResolvedValueOnce([laptop, tv]);
+
     fireEvent.click(
-      await screen.findByRole("button", { name: "Spieleransicht öffnen" }),
+      screen.getByRole("button", { name: "Displays neu suchen" }),
     );
 
-    expect(await screen.findByRole("status")).toHaveProperty(
-      "textContent",
-      "Das hat nicht geklappt: window creation denied",
-    );
+    expect(
+      await screen.findByRole("option", { name: "Display 2 (3840 × 2160)" }),
+    ).toBeDefined();
+    expect(service.listDisplays).toHaveBeenCalledTimes(2);
   });
 
   test("reports when listing displays fails", async () => {
@@ -101,7 +158,9 @@ describe("DmApp", () => {
     renderDm(fakeService([]));
 
     expect(await screen.findByText("Keine Displays gefunden.")).toBeDefined();
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Spieleransicht öffnen" }),
+    ).toBeNull();
   });
 
   test("renders in English", async () => {

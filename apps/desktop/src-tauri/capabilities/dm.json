@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "dm",
+  "description": "DM window: list displays and open/move the player window. The player window gets no capability: it makes no IPC calls (ARCHITECTURE: it only ever shows projected state).",
+  "windows": ["dm"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-set-simple-fullscreen",
+    "core:window:allow-set-position",
+    "core:window:allow-show",
+    "core:window:allow-set-focus"
+  ]
+}
