@@ -1,8 +1,8 @@
 import type { MapImage, Size } from "@dungeon-manager/renderer";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
-import { StrictMode } from "react";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { StrictMode, type ComponentProps } from "react";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { createI18n } from "../i18n.js";
 import { fakeMapService } from "../fake-renderer.test-data.js";
 import type { MapViewService } from "../platform/map-images.js";
@@ -46,20 +46,27 @@ afterAll(() => {
 
 const image = { width: 1600, height: 800 } as unknown as MapImage;
 
-function tree(service: MapViewService, path = "library/maps/hoehle.png") {
+function tree(
+  service: MapViewService,
+  path = "library/maps/hoehle.png",
+  props: Partial<ComponentProps<typeof MapView>> = {},
+) {
   return (
     <StrictMode>
       <I18nextProvider i18n={createI18n("de")}>
         <MapViewContext value={service}>
-          <MapView path={path} label="Höhle" />
+          <MapView path={path} label="Höhle" {...props} />
         </MapViewContext>
       </I18nextProvider>
     </StrictMode>
   );
 }
 
-function renderView(service: MapViewService) {
-  return render(tree(service));
+function renderView(
+  service: MapViewService,
+  props: Partial<ComponentProps<typeof MapView>> = {},
+) {
+  return render(tree(service, undefined, props));
 }
 
 const area = () =>
@@ -194,5 +201,91 @@ describe("MapView", () => {
     const wheel = new WheelEvent("wheel", { deltaY: -100, cancelable: true });
     area().dispatchEvent(wheel);
     expect(wheel.defaultPrevented).toBe(true);
+  });
+
+  test("the reveal tool turns a dragged rectangle into a map area", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, { tool: "reveal", onArea, fog: [] });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    // The DM sees the fog see-through.
+    expect(fake.view.setFog).toHaveBeenLastCalledWith([], { opacity: 0.55 });
+
+    // Fitted: zoom 0.5, map centre (800, 400) in the view centre (400, 200).
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(area(), { clientX: 300, clientY: 200, pointerId: 1 });
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    expect(onArea).toHaveBeenCalledExactlyOnceWith(
+      {
+        outer: [
+          [200, 200],
+          [600, 200],
+          [600, 400],
+          [200, 400],
+        ],
+        holes: [],
+      },
+      "reveal",
+    );
+    // The camera did not move: marking is not panning.
+    expect(fake.camera()).toEqual({
+      centerX: 800,
+      centerY: 400,
+      zoom: 0.5,
+      rotation: 0,
+    });
+  });
+
+  test("tiny drags and Escape mark nothing; a rotated view still marks map rectangles", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, { tool: "hide", onArea });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(area(), { clientX: 300, clientY: 200, pointerId: 1 });
+    fireEvent.keyDown(area(), { key: "Escape" });
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    expect(onArea).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(area(), { key: "r" });
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 300,
+      clientY: 100,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(area(), { clientX: 500, clientY: 300, pointerId: 1 });
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    const [polygon, tool] = onArea.mock.calls[0] as [
+      { outer: [number, number][] },
+      string,
+    ];
+    expect(tool).toBe("hide");
+    const xs = polygon.outer.map(([x]) => Math.round(x));
+    const ys = polygon.outer.map(([, y]) => Math.round(y));
+    // Rotated by 90°: screen x runs along map y, screen y against map x.
+    expect([Math.min(...xs), Math.max(...xs)]).toEqual([600, 1000]);
+    expect([Math.min(...ys), Math.max(...ys)]).toEqual([200, 600]);
   });
 });

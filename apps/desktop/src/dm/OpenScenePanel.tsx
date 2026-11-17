@@ -1,4 +1,5 @@
-import type { AssetRef, Scene } from "@dungeon-manager/schema";
+import type { Size } from "@dungeon-manager/renderer";
+import type { AssetRef, Polygon, Scene } from "@dungeon-manager/schema";
 import {
   deleteScene,
   loadScene,
@@ -12,14 +13,44 @@ import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
 import { MapChangeChoice } from "./MapChangeChoice.js";
-import { MapView } from "./MapView.js";
-import { usePlayerView } from "./usePlayerView.js";
+import { MapView, type MapTool } from "./MapView.js";
+import { FogToolbar } from "./FogToolbar.js";
+import { useSceneSession } from "./useSceneSession.js";
 
-/** The open scene: change its map, delete it (to the trash, after confirming) or close it. */
+/** A rectangle polygon in map pixels. */
+const rectangle = (size: Size): Polygon => ({
+  outer: [
+    [0, 0],
+    [size.width, 0],
+    [size.width, size.height],
+    [0, size.height],
+  ],
+  holes: [],
+});
+
+/** Undo/redo keys, unless the DM is typing in a field (where they edit the text). */
+function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    target.closest("input, textarea, select, [contenteditable]")
+  )
+    return null;
+  if (!(event.metaKey || event.ctrlKey) || event.altKey) return null;
+  const key = event.key.toLowerCase();
+  if (key === "z") return event.shiftKey ? "redo" : "undo";
+  if (key === "y" && !event.shiftKey) return "redo";
+  return null;
+}
+
+/**
+ * The open scene: its map with fog tools (reveal/hide, undo), changing its map, deleting it (to
+ * the trash, after confirming) and closing it. Fog edits are saved and reach the TV at once.
+ */
 export function OpenScenePanel({
   service,
   slug,
-  scene,
+  scene: opened,
   newId,
   onChanged,
   onDeleted,
@@ -38,7 +69,35 @@ export function OpenScenePanel({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
   const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
-  const notOnTv = usePlayerView(service, slug, scene);
+  const session = useSceneSession(service, slug, opened);
+  const { scene, notOnTv } = session;
+  const [tool, setTool] = useState<MapTool>("pan");
+  const [mapSize, setMapSize] = useState<Size | null>(null);
+  const levelId = scene.map?.levels[0]?.id;
+  const revealed =
+    levelId === undefined ? [] : (scene.fog.levels[levelId]?.revealed ?? []);
+
+  const fogCommand = (type: "fog.reveal" | "fog.hide", area: Polygon) => {
+    if (levelId === undefined) return;
+    if (type === "fog.reveal") session.run({ type, levelId, area });
+    // Memory fog arrives with T-109; until then hiding forgets.
+    else session.run({ type, levelId, area, remember: false });
+  };
+
+  // Undo/redo from the keyboard anywhere in the DM window while the scene is open.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const action = historyKey(event);
+      if (!action) return;
+      event.preventDefault();
+      if (action === "undo") session.undo();
+      else session.redo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  });
   const changeMapButton = useRef<HTMLButtonElement>(null);
   const choosing = useRef(false);
 
@@ -73,8 +132,9 @@ export function OpenScenePanel({
 
   const applyMap = (asset: AssetRef, reset: MapReset) =>
     run(async () => {
-      // Start from the file on disk: a newer version synced from another device must not be
-      // overwritten with the copy loaded when the scene was opened.
+      // Start from the file on disk (after our own pending fog saves): a newer version synced
+      // from another device must not be overwritten with the copy loaded when it was opened.
+      await session.flush();
       const current = await loadScene(service.fs, slug, scene.id);
       const changed = withMap(
         current.status === "ok" ? current.value : scene,
@@ -98,6 +158,8 @@ export function OpenScenePanel({
 
   const remove = () =>
     run(async () => {
+      // A save still in flight would otherwise bring the file back after it went to the trash.
+      await session.flush();
       await deleteScene(service.fs, slug, scene.id);
       onDeleted(scene);
     });
@@ -172,12 +234,40 @@ export function OpenScenePanel({
       </button>
       {notOnTv && <p role="alert">{t("player.notShown")}</p>}
       {error && <p role="alert">{error}</p>}
+      {session.saveFailed && <p role="alert">{t("fog.saveFailed")}</p>}
       {scene.map && (
-        <MapView
-          key={scene.map.asset.path}
-          path={scene.map.asset.path}
-          label={scene.name}
-        />
+        <>
+          <FogToolbar
+            tool={tool}
+            onTool={setTool}
+            disabled={mapSize === null || notOnTv}
+            onRevealAll={() => {
+              if (mapSize) fogCommand("fog.reveal", rectangle(mapSize));
+            }}
+            onCoverAll={() => {
+              if (mapSize) fogCommand("fog.hide", rectangle(mapSize));
+            }}
+            canUndo={session.canUndo}
+            canRedo={session.canRedo}
+            onUndo={() => {
+              session.undo();
+            }}
+            onRedo={() => {
+              session.redo();
+            }}
+          />
+          <MapView
+            key={scene.map.asset.path}
+            path={scene.map.asset.path}
+            label={scene.name}
+            fog={revealed}
+            tool={tool}
+            onArea={(area, kind) => {
+              fogCommand(kind === "reveal" ? "fog.reveal" : "fog.hide", area);
+            }}
+            onMapSize={setMapSize}
+          />
+        </>
       )}
     </div>
   );

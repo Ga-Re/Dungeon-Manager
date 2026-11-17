@@ -5,6 +5,11 @@ import type { Camera, Size } from "./camera.js";
 /** An image the browser has loaded (or drawn), ready to become the map texture. */
 export type MapImage = HTMLImageElement | HTMLCanvasElement | ImageBitmap;
 
+export interface FogOptions {
+  /** 1 for players (opaque, the default); less for the DM, who must see what lies beneath. */
+  readonly opacity?: number;
+}
+
 export interface RendererOptions {
   /** The canvas to draw into; it is sized by the caller (CSS) and by `resize`. */
   readonly canvas: HTMLCanvasElement;
@@ -28,7 +33,7 @@ export interface Renderer {
    * layer with `null` (the DM sees the whole map). Set it before or with the map: the player
    * view must never draw a map without its fog (ARCHITECTURE §5.1, ADR-0010).
    */
-  setFog(revealed: readonly Polygon[] | null): void;
+  setFog(revealed: readonly Polygon[] | null, options?: FogOptions): void;
   setCamera(camera: Camera): void;
   resize(size: Size): void;
   /** Resolves after the next draw has been submitted (for screenshots and tests). */
@@ -58,7 +63,7 @@ export async function createRenderer(
   const world = new Container();
   app.stage.addChild(world);
   let map: Sprite | null = null;
-  let fog: Graphics | null = null;
+  let fog: Container | null = null;
   let size = options.size;
   let camera: Camera | null = null;
   let frame: number | null = null;
@@ -100,14 +105,14 @@ export async function createRenderer(
       }
       requestDraw();
     },
-    setFog(revealed) {
+    setFog(revealed, fogOptions) {
       if (fog) {
         world.removeChild(fog);
-        fog.destroy();
+        fog.destroy({ children: true });
         fog = null;
       }
       if (revealed) {
-        fog = drawFog(revealed);
+        fog = drawFog(revealed, fogOptions?.opacity ?? 1);
         world.addChild(fog);
       }
       requestDraw();
@@ -152,18 +157,22 @@ const flat = (ring: readonly (readonly [number, number])[]) =>
   ring.flatMap(([x, y]) => [x, y]);
 
 /**
- * Opaque fog with the revealed areas cut out. Revealed polygons come from a union (core/fog),
- * so they never overlap; holes inside them (hidden again) are filled with fog once more.
+ * Fog: an opaque area with the revealed polygons as an inverse stencil mask. Each polygon is
+ * filled on its own (holes cut only from their own outer ring), and the stencil adds them up, so
+ * nested shapes (an island revealed inside a hidden hole), touching corners and overlaps are all
+ * drawn correctly – no hole ever has to fit inside one shared outer shape.
  */
-function drawFog(revealed: readonly Polygon[]): Graphics {
-  const graphics = new Graphics();
-  graphics
+function drawFog(revealed: readonly Polygon[], opacity: number): Container {
+  const layer = new Container();
+  const cover = new Graphics()
     .rect(-FOG_EXTENT, -FOG_EXTENT, 2 * FOG_EXTENT, 2 * FOG_EXTENT)
-    .fill({ color: FOG_COLOUR });
-  for (const polygon of revealed) graphics.poly(flat(polygon.outer)).cut();
+    .fill({ color: FOG_COLOUR, alpha: opacity });
+  const open = new Graphics();
   for (const polygon of revealed) {
-    for (const hole of polygon.holes)
-      graphics.poly(flat(hole)).fill({ color: FOG_COLOUR });
+    open.poly(flat(polygon.outer)).fill({ color: 0xffffff });
+    for (const hole of polygon.holes) open.poly(flat(hole)).cut();
   }
-  return graphics;
+  layer.addChild(cover, open);
+  cover.setMask({ mask: open, inverse: true });
+  return layer;
 }

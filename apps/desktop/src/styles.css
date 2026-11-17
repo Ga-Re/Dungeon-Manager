@@ -45,6 +45,26 @@ button {
   cursor: grab;
 }
 
+.map-view-canvas[data-tool="reveal"],
+.map-view-canvas[data-tool="hide"] {
+  cursor: crosshair;
+}
+
+.map-view-selection {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  border: 2px dashed #fff;
+}
+
+.map-view-selection-reveal {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.map-view-selection-hide {
+  background: rgba(0, 0, 0, 0.45);
+}
+
 .map-view-canvas:focus-visible {
   outline: 3px solid #6ea8fe;
 }

@@ -11,8 +11,14 @@ for (const scenario of ["fit", "zoomed", "rotated"]) {
   });
 }
 
-// Player view (T-105b): opaque fog except the revealed areas, also when rotated.
-for (const scenario of ["player", "player-rotated"]) {
+// Fog (T-105b, T-108a): opaque for players, also rotated and for nested or touching areas;
+// see-through for the DM.
+for (const scenario of [
+  "player",
+  "player-rotated",
+  "player-nested",
+  "dm-fog",
+]) {
   test(`player view: ${scenario}`, async ({ page }) => {
     await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
     await expect(page.locator("body")).toHaveAttribute("data-ready", "true");

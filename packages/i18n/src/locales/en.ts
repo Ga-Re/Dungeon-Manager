@@ -90,6 +90,21 @@ export const en: Messages = {
     fit: "Fit",
     rotate: "Rotate",
   },
+  fog: {
+    toolbar: "Fog",
+    tool: "Dragging on the map",
+    tools: {
+      pan: "Move",
+      reveal: "Reveal (rectangle)",
+      hide: "Cover (rectangle)",
+    },
+    revealAll: "Reveal all",
+    coverAll: "Cover all",
+    undo: "Undo",
+    redo: "Redo",
+    saveFailed:
+      "The last change could not be saved. It is kept and saved again with the next change.",
+  },
   companion: {
     heading: "Dungeon Manager for players",
     placeholder: "Soon you can join the game table here.",

@@ -2,6 +2,7 @@ import {
   fitCamera,
   panBy,
   rotateBy,
+  screenToMap,
   zoomAt,
   type Camera,
   type Renderer,
@@ -16,6 +17,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
+import type { Polygon } from "@dungeon-manager/schema";
 import { useTranslation } from "react-i18next";
 import type { MapViewService } from "../platform/map-images.js";
 
@@ -27,13 +29,36 @@ const KEY_PAN = 80;
 
 type LoadState = "loading" | "ready" | "error";
 
+/** What dragging on the map does: move it, or mark an area to reveal or hide. */
+export type MapTool = "pan" | "reveal" | "hide";
+
+/** The DM sees fog, but must see what lies beneath it. */
+const DM_FOG_OPACITY = 0.55;
+/** Smaller drags are taken as slips, not areas. */
+const MIN_AREA_PX = 4;
+
+interface Selection {
+  readonly start: { readonly x: number; readonly y: number };
+  readonly end: { readonly x: number; readonly y: number };
+}
+
 /** A map with zoom (wheel, +/−), pan (drag, arrow keys), rotation and "fit" (DM window). */
 export function MapView({
   path,
   label,
+  fog = null,
+  tool = "pan",
+  onArea,
+  onMapSize,
 }: {
   readonly path: string;
   readonly label: string;
+  /** Revealed areas, shown see-through to the DM; `null` shows no fog. */
+  readonly fog?: readonly Polygon[] | null;
+  readonly tool?: MapTool;
+  /** A rectangle the DM marked with the reveal or hide tool, in map pixels. */
+  readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
+  readonly onMapSize?: (size: Size) => void;
 }) {
   const { t } = useTranslation();
   const service = useContext(MapViewContext);
@@ -45,6 +70,9 @@ export function MapView({
   const [camera, setCamera] = useState<Camera | null>(null);
   const [load, setLoad] = useState<LoadState>("loading");
   const drag = useRef<{ x: number; y: number } | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
+  const fogNow = useRef(fog);
+  fogNow.current = fog;
 
   // The view follows the size of its box.
   useEffect(() => {
@@ -88,9 +116,11 @@ export function MapView({
         const current = sizeNow.current ?? initial;
         renderer.current = view;
         view.resize(current);
+        view.setFog(fogNow.current, { opacity: DM_FOG_OPACITY });
         view.setMap(image);
         const imageSize = { width: image.width, height: image.height };
         setMapSize(imageSize);
+        onMapSize?.(imageSize);
         setCamera(fitCamera(imageSize, current, 0));
         setLoad("ready");
       },
@@ -118,6 +148,10 @@ export function MapView({
   useEffect(() => {
     if (camera) renderer.current?.setCamera(camera);
   }, [camera]);
+
+  useEffect(() => {
+    renderer.current?.setFog(fog, { opacity: DM_FOG_OPACITY });
+  }, [fog]);
 
   // Functional updates: event handlers (also the native wheel listener) never see a stale camera.
   const change = (update: (current: Camera, view: Size) => Camera) => {
@@ -158,13 +192,27 @@ export function MapView({
     };
   }, []);
 
+  const local = (event: PointerEvent) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - box.left, y: event.clientY - box.top };
+  };
   const onPointerDown = (event: PointerEvent) => {
     // Primary button only (touch and pen report it too); the others stay free for menus.
     if (event.button !== 0) return;
-    drag.current = { x: event.clientX, y: event.clientY };
     event.currentTarget.setPointerCapture(event.pointerId);
+    if (tool === "pan") {
+      drag.current = { x: event.clientX, y: event.clientY };
+      return;
+    }
+    const point = local(event);
+    setSelection({ start: point, end: point });
   };
   const onPointerMove = (event: PointerEvent) => {
+    if (selection) {
+      const end = local(event);
+      setSelection({ ...selection, end });
+      return;
+    }
     const start = drag.current;
     if (!start) return;
     drag.current = { x: event.clientX, y: event.clientY };
@@ -177,8 +225,38 @@ export function MapView({
   };
   const onPointerUp = () => {
     drag.current = null;
+    const marked = selection;
+    setSelection(null);
+    const view = sizeNow.current;
+    if (!marked || !camera || !view || tool === "pan") return;
+    const { start, end } = marked;
+    if (
+      Math.abs(end.x - start.x) < MIN_AREA_PX ||
+      Math.abs(end.y - start.y) < MIN_AREA_PX
+    )
+      return;
+    // All four corners: with the view rotated, a screen rectangle is still a map rectangle, but
+    // its corners swap places.
+    const corners = [
+      start,
+      { x: end.x, y: start.y },
+      end,
+      { x: start.x, y: end.y },
+    ].map((corner) => {
+      const point = screenToMap(camera, view, corner);
+      return [point.x, point.y] as [number, number];
+    });
+    onArea?.({ outer: corners, holes: [] }, tool);
+  };
+  const onPointerCancel = () => {
+    drag.current = null;
+    setSelection(null);
   };
   const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && selection) {
+      setSelection(null);
+      return;
+    }
     // Ctrl/Cmd + "+", "−", "0" belong to the browser and the OS.
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const actions: Record<string, (current: Camera, view: Size) => Camera> = {
@@ -215,9 +293,22 @@ export function MapView({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={onPointerCancel}
         onKeyDown={onKeyDown}
-      ></div>
+        data-tool={tool}
+      >
+        {selection && (
+          <div
+            className={`map-view-selection map-view-selection-${tool}`}
+            style={{
+              left: Math.min(selection.start.x, selection.end.x),
+              top: Math.min(selection.start.y, selection.end.y),
+              width: Math.abs(selection.end.x - selection.start.x),
+              height: Math.abs(selection.end.y - selection.start.y),
+            }}
+          />
+        )}
+      </div>
       <p id="map-view-help" className="map-view-help">
         {t("mapView.help")}
       </p>
