@@ -3,12 +3,13 @@
 # if ffmpeg is installed, a 1080p version of the same content.
 #   pnpm --filter @dungeon-manager/desktop spike:video                 → generates a synthetic 4K H.264 video (needs ffmpeg)
 #   pnpm --filter @dungeon-manager/desktop spike:video /full/path.mp4  → uses your own MP4/WebM map instead (stays local)
-# Options: SPIKE_VIDEO_SECONDS (default 20), SPIKE_VIDEO_FPS (default 30; animated maps are often 30, some 60).
+# Options: SPIKE_VIDEO_SECONDS (default 40), SPIKE_VIDEO_FPS (default 30; animated maps are often 30, some 60).
 # The videos are stored in apps/desktop/spike-assets/ (git-ignored) and never committed.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)/spike-assets/spike"
-LENGTH="${SPIKE_VIDEO_SECONDS:-20}"
+# 40 s: longer than warm-up + measurement, so the loop restart never falls into a measurement.
+LENGTH="${SPIKE_VIDEO_SECONDS:-40}"
 FPS="${SPIKE_VIDEO_FPS:-30}"
 mkdir -p "$DIR"
 uhd_tmp="$DIR/.incoming-uhd"

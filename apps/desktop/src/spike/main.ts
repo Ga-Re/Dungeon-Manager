@@ -23,7 +23,7 @@ import {
 import { summarize, verdict, type FrameStats, type Verdict } from "./stats.js";
 
 const WARM_UP_MS = 5_000;
-const MEASURE_MS = Number(import.meta.env.VITE_SPIKE_SECONDS ?? "15") * 1000;
+const MEASURE_MS = Number(import.meta.env.VITE_SPIKE_SECONDS ?? "20") * 1000;
 const BASELINE_MS = 5_000;
 const TOKEN_COUNT = 20;
 const VISION_COUNT = 4;
@@ -98,9 +98,17 @@ const SCENARIOS: readonly Scenario[] = [
     videoMode: "element",
     withScene: true,
   },
+  {
+    name: "G full scene · WebGL texture · 4K video · Full HD render",
+    resolution: fullHd,
+    renderer: "webgl",
+    video: "uhd",
+    videoMode: "texture",
+    withScene: true,
+  },
   // Repeated last: a fanless notebook may throttle; compare with B.
   {
-    name: "G repeat of B",
+    name: "H repeat of B",
     resolution: native,
     renderer: "webgl",
     video: "uhd",
@@ -113,6 +121,8 @@ interface ScenarioResult extends FrameStats {
   readonly scenario: string;
   readonly renderer: string;
   readonly renderedPixels: string;
+  /** Video frames decoded during the measurement; null if WebKit does not report them. */
+  readonly totalVideoFrames: number | null;
   readonly droppedVideoFrames: number | null;
   readonly verdict: Verdict | "skipped";
   readonly warnings: readonly string[];
@@ -141,9 +151,13 @@ async function main() {
 
   show("Waiting for the window to settle on the display …");
   await waitForStableWindow();
-  const videos = {
-    uhd: await loadVideo(`/spike/${manifest.uhd}`),
-    fhd: manifest.fhd ? await loadVideo(`/spike/${manifest.fhd}`) : null,
+  const sources = {
+    uhd: `/spike/${manifest.uhd}`,
+    fhd: manifest.fhd ? `/spike/${manifest.fhd}` : null,
+  };
+  const sizes = {
+    uhd: await probeVideoSize(sources.uhd),
+    fhd: sources.fhd ? await probeVideoSize(sources.fhd) : null,
   };
 
   show("Measuring the display refresh rate …");
@@ -157,8 +171,8 @@ async function main() {
 
   const results: ScenarioResult[] = [];
   for (const [index, scenario] of SCENARIOS.entries()) {
-    const video = videos[scenario.video];
-    const skip = skipReason(scenario, video);
+    const src = sources[scenario.video];
+    const skip = skipReason(scenario, src);
     if (skip) {
       results.push(skipped(scenario, skip));
       continue;
@@ -167,7 +181,7 @@ async function main() {
       `Running ${String(index + 1)}/${String(SCENARIOS.length)}: ${scenario.name} …`,
     );
     const run = await runScenario(
-      { scenario, video: video as HTMLVideoElement },
+      { scenario, src: src as string },
       { warmUpMs: WARM_UP_MS, measureMs: MEASURE_MS, refreshMs },
     );
     results.push({ ...run.result, verdict: verdict(run.result, refreshHz) });
@@ -179,7 +193,7 @@ async function main() {
     gpu: baseline.gpu,
     window: `${String(window.innerWidth)}×${String(window.innerHeight)} CSS px, devicePixelRatio ${String(window.devicePixelRatio)}`,
     refreshHz: Math.round(refreshHz * 10) / 10,
-    video: `${manifest.uhd} ${String(videos.uhd.videoWidth)}×${String(videos.uhd.videoHeight)}${videos.fhd ? `, ${String(manifest.fhd)} ${String(videos.fhd.videoWidth)}×${String(videos.fhd.videoHeight)}` : ""}`,
+    video: `${manifest.uhd} ${sizes.uhd}${sizes.fhd ? `, ${String(manifest.fhd)} ${sizes.fhd}` : ""}`,
     tokens: TOKEN_COUNT,
     measureSeconds: MEASURE_MS / 1000,
     results,
@@ -191,12 +205,8 @@ async function main() {
   }).catch(() => undefined);
 }
 
-function skipReason(
-  scenario: Scenario,
-  video: HTMLVideoElement | null,
-): string | null {
-  if (!video)
-    return "no 1080p video (install ffmpeg and run spike:video again)";
+function skipReason(scenario: Scenario, src: string | null): string | null {
+  if (!src) return "no 1080p video (install ffmpeg and run spike:video again)";
   if (
     scenario.resolution === fullHd &&
     Math.round(window.innerHeight * window.devicePixelRatio) <= 1080
@@ -212,6 +222,7 @@ function skipped(scenario: Scenario, reason: string): ScenarioResult {
     scenario: scenario.name,
     renderer: "–",
     renderedPixels: "–",
+    totalVideoFrames: null,
     droppedVideoFrames: null,
     verdict: "skipped",
     warnings: [reason],
@@ -237,7 +248,18 @@ async function waitForStableWindow() {
   }
 }
 
-/** Loads a muted looping video, paused until a scenario needs it (only one decodes at a time). */
+/** Reads a video's resolution and releases it again. */
+async function probeVideoSize(src: string): Promise<string> {
+  const video = await loadVideo(src);
+  const size = `${String(video.videoWidth)}×${String(video.videoHeight)}`;
+  releaseVideo(video);
+  return size;
+}
+
+/**
+ * A fresh, muted, looping video element. Every scenario gets its own, so no decoder state or
+ * PixiJS video listeners carry over between scenarios.
+ */
 function loadVideo(src: string): Promise<HTMLVideoElement> {
   const video = document.createElement("video");
   Object.assign(video, {
@@ -266,13 +288,21 @@ function loadVideo(src: string): Promise<HTMLVideoElement> {
   });
 }
 
+/** Stops decoding and frees the element's media resources. */
+function releaseVideo(video: HTMLVideoElement) {
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+  video.remove();
+}
+
 /** Runs one scenario; `null` measures an empty stage (display refresh baseline). */
 async function runScenario(
-  setup: { scenario: Scenario; video: HTMLVideoElement } | null,
+  setup: { scenario: Scenario; src: string } | null,
   timing: { warmUpMs: number; measureMs: number; refreshMs: number },
 ) {
   const scenario = setup?.scenario;
-  const video = setup?.video;
+  const video = setup ? await loadVideo(setup.src) : undefined;
   const app = new Application();
   await app.init({
     resizeTo: window,
@@ -288,14 +318,16 @@ async function runScenario(
   document.body.prepend(app.canvas);
   const windowAtStart = describeWindow();
 
-  if (video) {
-    video.currentTime = 0;
-    await video.play();
-  }
+  if (video) await video.play();
   const { width, height } = app.screen;
-  if (video && scenario?.videoMode === "texture") {
+  // Uncached (second argument): a cached texture would stay attached to the element.
+  const videoTexture =
+    video && scenario?.videoMode === "texture"
+      ? Texture.from(video, true)
+      : null;
+  if (video && videoTexture) {
     // Map: the video as a texture, scaled to cover the screen.
-    const map = new Sprite(Texture.from(video));
+    const map = new Sprite(videoTexture);
     map.scale.set(
       Math.max(width / video.videoWidth, height / video.videoHeight),
     );
@@ -356,12 +388,17 @@ async function runScenario(
   });
 
   await sleep(timing.warmUpMs);
-  const droppedBefore =
-    video?.getVideoPlaybackQuality().droppedVideoFrames ?? 0;
+  const qualityBefore = video?.getVideoPlaybackQuality();
   measuring = true;
   await sleep(timing.measureMs);
   measuring = false;
-  const droppedAfter = video?.getVideoPlaybackQuality().droppedVideoFrames ?? 0;
+  const qualityAfter = video?.getVideoPlaybackQuality();
+  const totalVideoFrames =
+    qualityBefore && qualityAfter
+      ? qualityAfter.totalVideoFrames - qualityBefore.totalVideoFrames
+      : 0;
+  // WebKit may not count frames for file playback; 0 decoded frames means "not reported".
+  const countsReported = totalVideoFrames > 0;
 
   const warnings: string[] = [];
   if (describeWindow() !== windowAtStart) {
@@ -386,14 +423,18 @@ async function runScenario(
     scenario: scenario?.name ?? "baseline",
     renderer: info.renderer,
     renderedPixels,
-    droppedVideoFrames: video ? droppedAfter - droppedBefore : null,
+    totalVideoFrames: countsReported ? totalVideoFrames : null,
+    droppedVideoFrames:
+      countsReported && qualityBefore && qualityAfter
+        ? qualityAfter.droppedVideoFrames - qualityBefore.droppedVideoFrames
+        : null,
     warnings,
     // A frame missed a refresh when it took clearly longer than one refresh interval.
     ...summarize(intervals, timing.refreshMs * 1.5),
   };
-  video?.pause();
-  video?.remove();
   app.destroy({ removeView: true }, { children: true });
+  videoTexture?.destroy(true);
+  if (video) releaseVideo(video);
   return { result, ...info };
 }
 
@@ -423,7 +464,7 @@ function formatReport(report: {
       ? `${r.scenario}\n  skipped: ${r.warnings.join("; ")}`
       : [
           `${r.scenario} – ${r.renderer}, rendered ${r.renderedPixels}`,
-          `  ${r.averageFps.toFixed(1)} FPS · missed refreshes ${r.missedPercent.toFixed(1)} % · dropped video frames ${String(r.droppedVideoFrames ?? "–")}`,
+          `  ${r.averageFps.toFixed(1)} FPS · missed refreshes ${r.missedPercent.toFixed(1)} % · video frames ${r.totalVideoFrames === null ? "n/a" : `${String(r.totalVideoFrames)} decoded, ${String(r.droppedVideoFrames)} dropped`}`,
           `  p50 ${ms(r.p50)} · p95 ${ms(r.p95)} · p99 ${ms(r.p99)} · max ${ms(r.max)} · 60 FPS budget: ${r.verdict.toUpperCase()}`,
           ...r.warnings.map((warning) => `  ! ${warning}`),
         ].join("\n"),

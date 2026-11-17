@@ -139,7 +139,11 @@ pnpm --filter @dungeon-manager/desktop spike:video /Users/you/Maps/animated-map.
 pnpm spike:desktop
 ```
 
-**3. Wait about three minutes.** The spike first measures the display refresh rate, then runs seven 20-second scenarios (A–G) comparing ways to show the video map: as a WebGL texture (4K and 1080p video), as a WebGPU texture, and as a plain video element under a transparent PixiJS canvas – plus a Full HD render and a repeat to spot thermal throttling. The result appears on the TV and in the terminal between `===== SPIKE RESULTS` and `===== END` – copy that block. It is also saved in `apps/desktop/spike-results/`. Close the app with the DM window to run again.
+**3. Wait about four minutes.** The spike first measures the display refresh rate, then runs eight 25-second scenarios (A–H) comparing ways to show the video map: as a WebGL texture (4K and 1080p video), as a WebGPU texture, and as a plain video element under a transparent PixiJS canvas – plus Full HD renders and a repeat to spot thermal throttling. The result appears on the TV and in the terminal between `===== SPIKE RESULTS` and `===== END` – copy that block. It is also saved in `apps/desktop/spike-results/`. Close the app with the DM window to run again.
+
+While scenarios E and F run ("HTML video element"), watch the TV: does the video look smooth, or does it judder? Please mention it with the results – the spike cannot measure that part itself.
+
+With your own map: use a video that is at least 30 s long (shorter ones restart during a measurement); a `.webm` map is compared against an H.264 1080p version, so codecs differ too.
 
 For the 4K scenarios the TV must receive a 4K signal: in System Settings → Displays, the TV should offer 3840 × 2160 (or a "(HiDPI)" mode). If only 1920 × 1080 is offered, the cable or adapter limits the connection.
 
