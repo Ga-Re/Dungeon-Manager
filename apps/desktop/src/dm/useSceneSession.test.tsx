@@ -246,7 +246,7 @@ describe("editing the fog", () => {
     expect(library.fs.files().has("campaigns/mine/scenes/s.json")).toBe(false);
 
     library.fs.writeAtomic = write;
-    fireEvent.click(screen.getByRole("button", { name: "Alles verdecken" }));
+    fireEvent.click(screen.getByRole("button", { name: "Erneut speichern" }));
     await waitFor(() => {
       expect(screen.queryByText(/konnte nicht gespeichert werden/)).toBeNull();
     });

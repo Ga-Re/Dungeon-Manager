@@ -103,9 +103,10 @@ export const de = {
     undo: "Rückgängig",
     redo: "Wiederherstellen",
     unsavedBeforeMapChange:
-      "Die letzten Nebeländerungen sind noch nicht gespeichert. Bitte erst eine weitere Änderung speichern lassen (oder das Speicherproblem beheben), dann die Karte ändern.",
+      "Die letzten Nebeländerungen sind noch nicht gespeichert. Bitte zuerst „Erneut speichern“ wählen, dann die Karte ändern.",
+    retrySave: "Erneut speichern",
     saveFailed:
-      "Die letzte Änderung konnte nicht gespeichert werden. Sie bleibt erhalten und wird mit der nächsten Änderung erneut gespeichert.",
+      "Die letzte Änderung konnte nicht gespeichert werden. Sie bleibt erhalten.",
   },
   companion: {
     heading: "Dungeon Manager für Spieler",

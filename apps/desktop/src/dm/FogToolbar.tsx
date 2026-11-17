@@ -3,7 +3,10 @@ import type { MapTool } from "./MapView.js";
 
 const TOOLS: readonly MapTool[] = ["pan", "reveal", "hide"];
 
-/** Fog tools for the open scene (a labelled group; Tab moves between them) (SPEC 4): what dragging does, reveal/cover all, undo/redo. */
+/**
+ * Fog tools for the open scene (SPEC 4): what dragging does, reveal/cover all, undo/redo.
+ * A labelled group; Tab moves between the controls.
+ */
 export function FogToolbar({
   tool,
   onTool,

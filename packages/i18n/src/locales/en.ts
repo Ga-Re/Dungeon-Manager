@@ -103,9 +103,9 @@ export const en: Messages = {
     undo: "Undo",
     redo: "Redo",
     unsavedBeforeMapChange:
-      "The latest fog changes are not saved yet. Let another change save (or fix the saving problem) before changing the map.",
-    saveFailed:
-      "The last change could not be saved. It is kept and saved again with the next change.",
+      "The latest fog changes are not saved yet. Choose “Save again” first, then change the map.",
+    retrySave: "Save again",
+    saveFailed: "The last change could not be saved. It is kept.",
   },
   companion: {
     heading: "Dungeon Manager for players",

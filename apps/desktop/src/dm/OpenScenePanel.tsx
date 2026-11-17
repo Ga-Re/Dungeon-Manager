@@ -148,8 +148,10 @@ export function OpenScenePanel({
       // Start from the file on disk (after our own pending fog saves): a newer version synced
       // from another device must not be overwritten with the copy loaded when it was opened.
       // If fog edits could not be saved, the file lacks them: stop instead of dropping them.
-      if (!(await session.flush()))
-        throw new Error(t("fog.unsavedBeforeMapChange"));
+      if (!(await session.flush())) {
+        setError(t("fog.unsavedBeforeMapChange"));
+        return;
+      }
       const current = await loadScene(service.fs, slug, scene.id);
       const changed = withMap(
         current.status === "ok" ? current.value : scene,
@@ -249,7 +251,19 @@ export function OpenScenePanel({
       </button>
       {notOnTv && <p role="alert">{t("player.notShown")}</p>}
       {error && <p role="alert">{error}</p>}
-      {session.saveFailed && <p role="alert">{t("fog.saveFailed")}</p>}
+      {session.saveFailed && (
+        <div role="alert">
+          <p>{t("fog.saveFailed")}</p>
+          <button
+            type="button"
+            onClick={() => {
+              session.retrySave();
+            }}
+          >
+            {t("fog.retrySave")}
+          </button>
+        </div>
+      )}
       {scene.map && (
         <>
           <FogToolbar

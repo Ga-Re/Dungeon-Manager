@@ -28,8 +28,10 @@ export interface SceneSession {
   readonly canRedo: boolean;
   /** The TV shows nothing because the campaign could not be read or projected. */
   readonly notOnTv: boolean;
-  /** Saving the last change failed (it stays in memory; the next change retries). */
+  /** Saving the last change failed (it stays in memory; the next change or `retrySave` retries). */
   readonly saveFailed: boolean;
+  /** Writes the current scene again, e.g. after a failed save. */
+  retrySave(): void;
   /**
    * Resolves once every change so far has been written – before reading or moving the file.
    * @returns whether the last write succeeded (`false`: the file lacks the latest changes)
@@ -156,6 +158,9 @@ export function useSceneSession(
     canRedo: campaign !== null && history.future.length > 0,
     notOnTv,
     saveFailed,
+    retrySave() {
+      save(scene);
+    },
     async flush() {
       await saving.current;
       return !failed.current;
