@@ -277,6 +277,51 @@ describe("visibility.set", () => {
   });
 });
 
+describe("visibility.set on a combatant", () => {
+  test("sets and clears a combatant override", () => {
+    const fighting = run(state, { type: "initiative.add", combatant: goblin });
+    const released = run(fighting, {
+      type: "visibility.set",
+      target: { kind: "combatant", combatantId: "goblin" },
+      elementType: "initiative",
+      visibility: "visible",
+    });
+    expect(released.scene.initiative?.combatants[0]?.visibility).toEqual({
+      initiative: "visible",
+    });
+    const cleared = run(released, {
+      type: "visibility.set",
+      target: { kind: "combatant", combatantId: "goblin" },
+      elementType: "initiative",
+      visibility: null,
+    });
+    expect(cleared.scene.initiative?.combatants[0]?.visibility).toEqual({});
+  });
+
+  test("rejects unknown combatants and a missing tracker", () => {
+    const command: Command = {
+      type: "visibility.set",
+      target: { kind: "combatant", combatantId: "x" },
+      elementType: "hp",
+      visibility: "hidden",
+    };
+    expect(apply(state, command, ctx)).toEqual({
+      ok: false,
+      reason: "noInitiative",
+    });
+    expect(
+      apply(
+        run(state, { type: "initiative.add", combatant: goblin }),
+        command,
+        ctx,
+      ),
+    ).toEqual({
+      ok: false,
+      reason: "unknownCombatant",
+    });
+  });
+});
+
 describe("initiative", () => {
   test("adds combatants in descending initiative, keeping ties in insertion order", () => {
     const tie = { ...goblin, id: "goblin-2", initiative: 12 };

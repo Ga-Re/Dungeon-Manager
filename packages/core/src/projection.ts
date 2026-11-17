@@ -93,16 +93,25 @@ function copyPolygon(polygon: {
   };
 }
 
-/** Element visibility: the token's override, else the campaign default, else visible (SPEC §6). */
+/**
+ * Element visibility (SPEC §6): the combatant's override, else the token's, else the campaign
+ * default, else visible. A combatant without a token is hidden from the initiative until the DM
+ * releases it (e.g. monsters entered before their token is placed – no ambush on the TV).
+ */
 function visibilityOf(
   state: SessionState,
   elementType: VisibilityElementType,
   token?: Token,
+  combatant?: Combatant,
 ): Visibility {
+  const fallback =
+    elementType === "initiative" && combatant && combatant.tokenId === undefined
+      ? "hidden"
+      : (state.campaign.visibilityDefaults[elementType] ?? "visible");
   return (
+    combatant?.visibility?.[elementType] ??
     token?.visibility?.[elementType] ??
-    state.campaign.visibilityDefaults[elementType] ??
-    "visible"
+    fallback
   );
 }
 
@@ -178,7 +187,10 @@ function projectInitiative(
     .filter((combatant) => {
       const token = tokenOf(combatant);
       const own = ownedBy(token, viewer);
-      if (!own && visibilityOf(state, "initiative", token) === "hidden")
+      if (
+        !own &&
+        visibilityOf(state, "initiative", token, combatant) === "hidden"
+      )
         return false;
       return (
         combatant.tokenId === undefined ||
@@ -210,11 +222,14 @@ function projectCombatant(
   viewer: Viewer,
 ): ViewerCombatant {
   const own = ownedBy(token, viewer);
-  const nameVisible = own || visibilityOf(state, "name", token) === "visible";
-  const hpVisibility = own ? "visible" : visibilityOf(state, "hp", token);
+  const nameVisible =
+    own || visibilityOf(state, "name", token, combatant) === "visible";
+  const hpVisibility = own
+    ? "visible"
+    : visibilityOf(state, "hp", token, combatant);
   const conditionVisibility = own
     ? "visible"
-    : visibilityOf(state, "conditions", token);
+    : visibilityOf(state, "conditions", token, combatant);
   const { hp } = combatant;
   return {
     id: combatant.id,

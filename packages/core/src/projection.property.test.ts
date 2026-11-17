@@ -66,6 +66,13 @@ const tokenSpec = fc.record({
   initiative: maybe,
   inCombat: fc.boolean(),
   current: fc.integer({ min: -5, max: 40 }),
+  // Overrides on the combatant itself (they win over the token's).
+  combatantOverrides: fc.record({
+    name: maybe,
+    hp: maybe,
+    conditions: maybe,
+    initiative: maybe,
+  }),
 });
 
 const session = fc.record({
@@ -127,6 +134,11 @@ function build(spec: Spec): SessionState {
             name: `Secret Name ${String(i)}`,
             ...(e.hasToken && { tokenId: `secret-token-${String(i)}` }),
             initiative: i,
+            visibility: Object.fromEntries(
+              Object.entries(e.combatantOverrides).filter(
+                ([, value]) => value !== undefined,
+              ),
+            ),
             hp: { current: e.current, max: 40, temp: 0 },
             conditions: [{ type: "poisoned", remainingRounds: 3 }],
           },
@@ -185,11 +197,22 @@ function expected(spec: Spec, index: number) {
     e.hasToken &&
     spec.viewer.kind === "player" &&
     e.owner === spec.viewer.playerId;
-  // Combatants without a token only follow the campaign defaults.
-  const resolve = (key: (typeof OVERRIDES)[number]): Visibility =>
-    own
-      ? "visible"
-      : ((e.hasToken ? e[key] : undefined) ?? spec.defaults[key] ?? "visible");
+  // Combatant override, then token override, then campaign default; a combatant without a token
+  // is off the tracker until released by its own `initiative` override.
+  const resolve = (key: (typeof OVERRIDES)[number]): Visibility => {
+    if (own) return "visible";
+    const fromCombatant =
+      key === "token" ? undefined : e.combatantOverrides[key];
+    const fromToken = e.hasToken ? e[key] : undefined;
+    const fallback =
+      key === "initiative" && !e.hasToken
+        ? "hidden"
+        : (spec.defaults[key] ?? "visible");
+    return fromCombatant ?? fromToken ?? fallback;
+  };
+  // The token itself (and its name/image on the map) follows only token and campaign settings.
+  const resolveToken = (key: "token" | "name"): Visibility =>
+    own ? "visible" : (e[key] ?? spec.defaults[key] ?? "visible");
   const cx = spec.offset.x * CELL + (e.col + cellsPerSide(e.size) / 2) * CELL;
   const cy = spec.offset.y * CELL + (e.row + cellsPerSide(e.size) / 2) * CELL;
   const revealed = spec.reveals.some(
@@ -201,7 +224,7 @@ function expected(spec: Spec, index: number) {
       cy < r.y + r.size,
   );
   const tokenVisible =
-    e.hasToken && (own || (resolve("token") !== "hidden" && revealed));
+    e.hasToken && (own || (resolveToken("token") !== "hidden" && revealed));
   const listed =
     (e.inCombat || !e.hasToken) &&
     resolve("initiative") !== "hidden" &&
@@ -209,6 +232,7 @@ function expected(spec: Spec, index: number) {
   return {
     tokenVisible,
     listed,
+    tokenNameVisible: resolveToken("name") === "visible",
     nameVisible: resolve("name") === "visible",
     hp: resolve("hp"),
     conditions: resolve("conditions"),
@@ -250,9 +274,11 @@ describe("projectForViewer (property-based)", () => {
               new RegExp(`secret-token-${n}"|fighter-${n}"`),
             );
           if (!e.listed) expect(json).not.toContain(`fighter-${n}"`);
-          if (!e.nameVisible || (!e.tokenVisible && !e.listed))
-            expect(json).not.toContain(`Secret Name ${n}"`);
-          if (!e.nameVisible || !e.tokenVisible)
+          const nameShown =
+            (e.tokenVisible && e.tokenNameVisible) ||
+            (e.listed && e.nameVisible);
+          if (!nameShown) expect(json).not.toContain(`Secret Name ${n}"`);
+          if (!e.tokenNameVisible || !e.tokenVisible)
             expect(json).not.toContain(`secret-image-${n}.webp`);
         });
       }),

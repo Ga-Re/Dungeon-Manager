@@ -107,6 +107,11 @@ export const combatantSchema = z.looseObject({
   id: idSchema,
   name: z.string().min(1),
   tokenId: idSchema.optional(),
+  /**
+   * Per-combatant visibility overrides; they win over the token's and the campaign's. A combatant
+   * without a token is hidden from the initiative until `initiative` is set here (DM decision).
+   */
+  visibility: visibilityRulesSchema.optional(),
   initiative: z.number(),
   hp: z
     .looseObject({

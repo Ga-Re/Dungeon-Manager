@@ -140,8 +140,54 @@ describe("projectForViewer", () => {
       revealAll,
       { type: "initiative.add", combatant: hurt },
       { type: "initiative.add", combatant: pc },
+      // Without a token, the PC stays off the tracker until the DM releases it.
+      {
+        type: "visibility.set",
+        target: { kind: "combatant", combatantId: "pc" },
+        elementType: "initiative",
+        visibility: "visible",
+      },
       { type: "initiative.next" },
     );
+
+    test("a combatant without a token is hidden until the DM releases it", () => {
+      const ambush = run(state, revealAll, {
+        type: "initiative.add",
+        combatant: { ...pc, id: "lurker", name: "Lauerer" },
+      });
+      expect(projectForViewer(ambush, table).initiative?.combatants).toEqual(
+        [],
+      );
+      expect(JSON.stringify(projectForViewer(ambush, table))).not.toContain(
+        "Lauerer",
+      );
+
+      const released = run(ambush, {
+        type: "visibility.set",
+        target: { kind: "combatant", combatantId: "lurker" },
+        elementType: "initiative",
+        visibility: "visible",
+      });
+      expect(
+        projectForViewer(released, table).initiative?.combatants.map(
+          (c) => c.id,
+        ),
+      ).toEqual(["lurker"]);
+    });
+
+    test("a combatant's own override wins over its token's and the campaign's", () => {
+      const secretHp = run(fight, {
+        type: "visibility.set",
+        target: { kind: "combatant", combatantId: "goblin" },
+        elementType: "hp",
+        visibility: "hidden",
+      });
+      const row = projectForViewer(secretHp, table).initiative?.combatants.find(
+        (c) => c.id === "goblin",
+      );
+      expect(row?.hp).toBeUndefined();
+      expect(row?.hpState).toBeUndefined();
+    });
 
     test("approximate HP become a coarse state; exact numbers stay on the host", () => {
       const goblinRow = projectForViewer(
@@ -216,14 +262,27 @@ describe("projectForViewer", () => {
       expect(initiative?.activeCombatantId).toBeNull();
     });
 
-    test("a hidden tracker is not sent at all", () => {
+    test("a hidden tracker shows only entries the DM released individually", () => {
       const hidden = run(fight, {
         type: "visibility.set",
         target: { kind: "campaign" },
         elementType: "initiative",
         visibility: "hidden",
       });
-      expect(projectForViewer(hidden, table).initiative).toBeUndefined();
+      // The PC was released on the combatant itself, which wins over the campaign default.
+      expect(
+        projectForViewer(hidden, table).initiative?.combatants.map((c) => c.id),
+      ).toEqual(["pc"]);
+
+      const nothingReleased = run(hidden, {
+        type: "visibility.set",
+        target: { kind: "combatant", combatantId: "pc" },
+        elementType: "initiative",
+        visibility: null,
+      });
+      expect(
+        projectForViewer(nothingReleased, table).initiative,
+      ).toBeUndefined();
     });
 
     test("a player sees exact HP and the name of their own combatant", () => {

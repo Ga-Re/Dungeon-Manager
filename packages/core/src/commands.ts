@@ -9,6 +9,7 @@ import type {
 /** Where a visibility setting applies: one token, or the campaign default for an element type. */
 export type VisibilityTarget =
   | { readonly kind: "token"; readonly tokenId: string }
+  | { readonly kind: "combatant"; readonly combatantId: string }
   | { readonly kind: "campaign" };
 
 /** Everything that can change session state (ARCHITECTURE §5.1). */
