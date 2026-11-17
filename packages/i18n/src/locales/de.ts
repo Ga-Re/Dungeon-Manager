@@ -27,6 +27,9 @@ export const de = {
     choose: "Bibliotheksordner wählen …",
     campaigns: "Kampagnen",
     noCampaigns: "Noch keine Kampagnen in dieser Bibliothek.",
+    newCampaignName: "Name der neuen Kampagne",
+    createCampaign: "Kampagne anlegen",
+    campaignCreated: "Kampagne „{{name}}“ angelegt.",
     campaign: {
       notAvailable: "{{slug}} (noch nicht heruntergeladen)",
       invalid: "{{slug}} (kann nicht gelesen werden)",
@@ -36,6 +39,21 @@ export const de = {
         "Es ist kein Bibliotheksordner geöffnet. Bitte einen Ordner wählen.",
       forbidden: "Dieses Fenster darf nicht auf die Bibliothek zugreifen.",
       invalidPath: "Auf diese Datei darf die App nicht zugreifen.",
+    },
+  },
+  campaign: {
+    heading: "Kampagne: {{name}}",
+    loading: "Szenen werden geladen …",
+    scenes: "Szenen",
+    noScenes: "Noch keine Szenen in dieser Kampagne.",
+    newSceneName: "Name der neuen Szene",
+    createScene: "Szene anlegen",
+    sceneCreated: "Szene „{{name}}“ angelegt.",
+    openScene: "Geöffnete Szene: {{name}}",
+    closeScene: "Szene schließen",
+    scene: {
+      notAvailable: "{{id}} (noch nicht heruntergeladen)",
+      invalid: "{{id}} (kann nicht gelesen werden)",
     },
   },
   companion: {

@@ -35,6 +35,7 @@ function renderDm(service: DisplayService, language: "de" | "en" = "de") {
       <DmApp
         displayService={service}
         libraryService={fakeLibraryService(null).service}
+        newId={() => "id-1"}
       />
     </I18nextProvider>,
   );
