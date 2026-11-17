@@ -35,6 +35,10 @@ const EXPECTED = {
   "packages/core/src/uses-vitest.test.ts": [],
   "packages/core/src/imports-node-fs.test.ts": ["core-only-schema-in-tests"],
   "packages/core/src/imports-vitest.ts": ["core-only-schema"],
+  // polyclip-ts is allowed in core; fast-check only in its tests.
+  "packages/core/src/imports-polyclip.ts": [],
+  "packages/core/src/uses-fast-check.test.ts": [],
+  "packages/core/src/imports-fast-check.ts": ["core-only-schema"],
   "packages/schema/src/imports-pixi.test.ts": ["schema-only-zod-in-tests"],
   "packages/core/src/cycle-a.ts": ["no-circular"],
   // depcruise reports a cycle once, at the module where it first enters it.

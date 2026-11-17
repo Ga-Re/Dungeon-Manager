@@ -93,7 +93,7 @@ New dependencies require approval (see CLAUDE.md).
 
 | Package    | May depend on                                                         | Must NOT depend on                                     |
 | ---------- | --------------------------------------------------------------------- | ------------------------------------------------------ |
-| `core`     | `schema`                                                              | React, PixiJS, Tauri, Expo, Node/Browser APIs, any I/O |
+| `core`     | `schema`, `polyclip-ts` (pure polygon boolean ops for fog)            | React, PixiJS, Tauri, Expo, Node/Browser APIs, any I/O |
 | `schema`   | zod                                                                   | everything else                                        |
 | `protocol` | `core`, `schema`                                                      | UI, renderer, I/O                                      |
 | `storage`  | `core`, `schema`                                                      | UI, renderer; real FS (uses an injected adapter)       |

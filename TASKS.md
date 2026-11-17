@@ -125,14 +125,23 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Unknown fields are preserved on round-trip
 - **Notes:** From T-003 review: workspace packages export `dist/`, so a test importing another package runs against its last build (fine inside `pnpm check`, which builds first; stale in a standalone `pnpm test`). Consider a Vitest alias/source condition pointing workspace imports at `src/`.
 
-### T-102 Core reducer: commands, events, permissions, projection
+### T-102a Core: session state, commands, undo/redo
 
-- **Status:** todo · **Depends on:** T-101 · **Refs:** ARCHITECTURE §5
-- `apply`, `canApply`, `projectForViewer` with injected time/RNG; undo via inverse snapshots.
+- **Status:** done · **Depends on:** T-101 · **Refs:** ARCHITECTURE §5
+- `apply(state, command, ctx)` with injected time/RNG; commands for token move, fog reveal/hide (polygon boolean ops via `polyclip-ts`), visibility change, initiative and HP; undo/redo via snapshots.
 - **Acceptance criteria**
-  - [ ] Commands for token move, fog reveal/hide, visibility change, initiative and HP changes
-  - [ ] Projection never leaks hidden tokens, hidden HP numbers or unrevealed fog (property-based tests)
-  - [ ] Undo/redo tested
+  - [x] Commands for token move, fog reveal/hide, visibility change, initiative and HP changes
+  - [x] Undo/redo tested
+- **Notes:** Split from T-102 (DM decision, 2026-11-17). DM approved `polyclip-ts` (core) and `fast-check` (tests).
+
+### T-102b Core: permissions and viewer projection
+
+- **Status:** todo · **Depends on:** T-102a · **Refs:** ARCHITECTURE §5
+- `canApply(actor, command, state)` for DM, DM phone and player companions; `projectForViewer(state, viewer)` built from an explicit allow-list with strict viewer schemas.
+- **Acceptance criteria**
+  - [ ] Projection never leaks hidden tokens, hidden HP numbers or unrevealed fog (property-based tests with `fast-check`)
+  - [ ] Permission checks tested for every command and actor
+- **Notes:** Split from T-102 (DM decision, 2026-11-17). From T-102a review: (1) `DomainEvent`s carry hidden data (`hp.changed` exact HP, `token.moved` of hidden tokens) – the session log and any broadcast must be projected too, not just the state. (2) Tokens have no owning player yet; "players move their own token" (SPEC §2.4/§5) needs a schema addition (e.g. `ownerPlayerId`, schema v1 is unreleased) – ask the DM first. (3) Undo restores whole-state snapshots: before remote commands (companion, DM phone) go through `execute`, decide whether only local DM commands are recorded or whether to switch to per-command inverse patches, so undoing a DM action never reverts a later remote one.
 
 ### T-103 Storage: library folder, read/write, watching, conflicts
 
@@ -181,7 +190,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-107 Tokens: create, place, move
 
-- **Status:** todo · **Depends on:** T-102, T-106 · **Refs:** SPEC 5
+- **Status:** todo · **Depends on:** T-102b, T-106 · **Refs:** SPEC 5
 - Tokens with D&D size categories; tap-token-tap-cell, drag, keyboard shortcuts, group move; snapping.
 - **Acceptance criteria**
   - [ ] All move modes covered by component/E2E tests
@@ -189,11 +198,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-108 Manual fog with undo
 
-- **Status:** todo · **Depends on:** T-102, T-105 · **Refs:** SPEC 4
+- **Status:** todo · **Depends on:** T-102b, T-105 · **Refs:** SPEC 4
 - Brush, rectangle, polygon; predefined rooms (polygons) revealable with one click; undo.
 - **Acceptance criteria**
   - [ ] Player window shows only revealed areas (screenshot tests)
   - [ ] Undo restores the previous fog state
+- **Notes:** From T-102a review: fog ops use exact arithmetic (polyclip-ts/BigNumber) – measured ~9 ms average, ~20 ms worst per reveal after 300 brush dabs, 34 ms for hiding a 64-gon. Combine a brush stroke into one polygon per stroke (one command), not one command per pointer move.
 
 ### T-109 Memory fog
 
@@ -204,7 +214,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-110 Per-element visibility with type defaults
 
-- **Status:** todo · **Depends on:** T-102, T-107 · **Refs:** SPEC 6
+- **Status:** todo · **Depends on:** T-102b, T-107 · **Refs:** SPEC 6
 - Visible / hidden / approximate per element; defaults per element type in campaign settings.
 - **Acceptance criteria**
   - [ ] Approximate HP rendering ("unhurt / wounded / badly wounded")
@@ -212,11 +222,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-111 Initiative tracker
 
-- **Status:** todo · **Depends on:** T-102 · **Refs:** SPEC 11
+- **Status:** todo · **Depends on:** T-102b · **Refs:** SPEC 11
 - Order, rounds, active turn (highlight on TV), delay/ready, quick entry.
 - **Acceptance criteria**
   - [ ] Reducer tests for all initiative commands
   - [ ] Active token highlighted in player window (screenshot)
+- **Notes:** From T-102a: removing all combatants resets the tracker (round 0); an explicit "end combat" command, delay/ready and manual reordering belong here (adding a combatant inserts without re-sorting, so manual order is kept).
 
 ### T-112 HP and conditions
 
@@ -234,7 +245,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-114 Autosave and crash recovery
 
-- **Status:** todo · **Depends on:** T-103, T-102
+- **Status:** todo · **Depends on:** T-103, T-102b
 - Periodic and on-change save of scene state; recovery on next start.
 - **Acceptance criteria**
   - [ ] Killing the app mid-session loses at most the last few seconds (E2E test with forced kill)

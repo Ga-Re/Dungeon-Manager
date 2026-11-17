@@ -1,0 +1,1 @@
+import "polyclip-ts";
