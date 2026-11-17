@@ -1,3 +1,4 @@
+import type { Polygon } from "@dungeon-manager/schema";
 import { beforeAll, describe, expect, test } from "vitest";
 import {
   apply,
@@ -25,8 +26,9 @@ function ok(result: ApplyResult) {
 }
 
 function run(start: SessionState, ...commands: Command[]): SessionState {
+  // Every intermediate state is frozen too, so mutation anywhere in apply fails loudly.
   return commands.reduce(
-    (current, command) => ok(apply(current, command, ctx)).state,
+    (current, command) => ok(apply(deepFreeze(current), command, ctx)).state,
     start,
   );
 }
@@ -508,4 +510,161 @@ describe("hp", () => {
 test("apply never mutates its input (state is deep-frozen in these tests)", () => {
   expect(Object.isFrozen(state.scene.tokens[0])).toBe(true);
   expect(campaign.visibilityDefaults).toEqual({ hp: "approximate" });
+});
+
+describe("invalid input never corrupts the scene", () => {
+  const ring = (points: [number, number][]) => ({ outer: points, holes: [] });
+  test.each([
+    [
+      "NaN coordinates",
+      ring([
+        [0, 0],
+        [Number.NaN, 0],
+        [0, 1],
+      ]),
+    ],
+    [
+      "infinite coordinates",
+      ring([
+        [0, 0],
+        [Number.POSITIVE_INFINITY, 0],
+        [0, 1],
+      ]),
+    ],
+    ["an empty ring", ring([])],
+    [
+      "a hole with two points",
+      {
+        outer: square(0, 0, 10).outer,
+        holes: [
+          [
+            [1, 1],
+            [2, 2],
+          ],
+        ],
+      },
+    ],
+  ] satisfies [string, Polygon][])(
+    "rejects a fog area with %s",
+    (_case, area) => {
+      expect(
+        apply(state, { type: "fog.reveal", levelId: "ground", area }, ctx),
+      ).toEqual({ ok: false, reason: "invalidArea" });
+      expect(
+        apply(
+          state,
+          { type: "fog.hide", levelId: "ground", area, remember: true },
+          ctx,
+        ),
+      ).toEqual({
+        ok: false,
+        reason: "invalidArea",
+      });
+    },
+  );
+
+  test.each([
+    { col: -1, row: 0 },
+    { col: 1.5, row: 0 },
+    { col: Number.NaN, row: 0 },
+  ])("rejects moving a token to %j", (to) => {
+    expect(
+      apply(state, { type: "token.move", tokenId: "token-goblin", to }, ctx),
+    ).toEqual({ ok: false, reason: "invalidCell" });
+  });
+});
+
+describe("initiative edge cases", () => {
+  const twoFighters = () =>
+    run(
+      state,
+      { type: "initiative.add", combatant: goblin },
+      { type: "initiative.add", combatant: aria },
+    );
+
+  test("removing the active combatant at the end of the order starts the next round", () => {
+    const goblinsTurn = run(
+      twoFighters(),
+      { type: "initiative.next" },
+      { type: "initiative.next" },
+    );
+    expect(goblinsTurn.scene.initiative).toMatchObject({
+      round: 1,
+      activeCombatantId: "goblin",
+    });
+
+    const result = ok(
+      apply(
+        goblinsTurn,
+        { type: "initiative.remove", combatantId: "goblin" },
+        ctx,
+      ),
+    );
+    expect(result.state.scene.initiative).toMatchObject({
+      round: 2,
+      activeCombatantId: "aria",
+    });
+    expect(result.events).toEqual([
+      { type: "initiative.combatantRemoved", at: 1_000, combatantId: "goblin" },
+      {
+        type: "initiative.turnStarted",
+        at: 1_000,
+        round: 2,
+        combatantId: "aria",
+      },
+    ]);
+  });
+
+  test("removing everyone ends combat, so the next fight starts at round 1", () => {
+    const ended = run(
+      twoFighters(),
+      { type: "initiative.next" },
+      { type: "initiative.next" },
+      { type: "initiative.next" },
+      { type: "initiative.remove", combatantId: "aria" },
+      { type: "initiative.remove", combatantId: "goblin" },
+    );
+    expect(ended.scene.initiative).toMatchObject({
+      round: 0,
+      activeCombatantId: null,
+      order: [],
+    });
+
+    const restarted = run(
+      ended,
+      { type: "initiative.add", combatant: goblin },
+      { type: "initiative.next" },
+    );
+    expect(restarted.scene.initiative?.round).toBe(1);
+  });
+
+  test("adding a combatant keeps a hand-made order intact", () => {
+    // Order changed by hand (e.g. the goblin delayed its turn before Aria): no re-sorting on add.
+    const manual: SessionState = {
+      ...state,
+      scene: {
+        ...scene,
+        initiative: {
+          round: 1,
+          activeCombatantId: "goblin",
+          order: ["goblin", "aria"],
+          combatants: [goblin, aria],
+        },
+      },
+    };
+    const { tokenId: _unused, ...orcWithoutToken } = goblin;
+    const orc = { ...orcWithoutToken, id: "orc", initiative: 20 };
+    const next = run(manual, { type: "initiative.add", combatant: orc });
+    expect(next.scene.initiative?.order).toEqual(["orc", "goblin", "aria"]);
+  });
+
+  test("healing never lowers HP above the maximum", () => {
+    const boosted = { ...goblin, hp: { current: 9, max: 7, temp: 0 } };
+    const next = run(
+      state,
+      { type: "initiative.add", combatant: boosted },
+      { type: "hp.change", combatantId: "goblin", amount: 3 },
+    );
+    expect(next.scene.initiative?.combatants[0]?.hp?.current).toBe(9);
+  });
 });

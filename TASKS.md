@@ -141,7 +141,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Projection never leaks hidden tokens, hidden HP numbers or unrevealed fog (property-based tests with `fast-check`)
   - [ ] Permission checks tested for every command and actor
-- **Notes:** Split from T-102 (DM decision, 2026-11-17).
+- **Notes:** Split from T-102 (DM decision, 2026-11-17). From T-102a review: (1) `DomainEvent`s carry hidden data (`hp.changed` exact HP, `token.moved` of hidden tokens) – the session log and any broadcast must be projected too, not just the state. (2) Tokens have no owning player yet; "players move their own token" (SPEC §2.4/§5) needs a schema addition (e.g. `ownerPlayerId`, schema v1 is unreleased) – ask the DM first. (3) Undo restores whole-state snapshots: before remote commands (companion, DM phone) go through `execute`, decide whether only local DM commands are recorded or whether to switch to per-command inverse patches, so undoing a DM action never reverts a later remote one.
 
 ### T-103 Storage: library folder, read/write, watching, conflicts
 
@@ -203,6 +203,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Player window shows only revealed areas (screenshot tests)
   - [ ] Undo restores the previous fog state
+- **Notes:** From T-102a review: fog ops use exact arithmetic (polyclip-ts/BigNumber) – measured ~9 ms average, ~20 ms worst per reveal after 300 brush dabs, 34 ms for hiding a 64-gon. Combine a brush stroke into one polygon per stroke (one command), not one command per pointer move.
 
 ### T-109 Memory fog
 
@@ -226,6 +227,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Reducer tests for all initiative commands
   - [ ] Active token highlighted in player window (screenshot)
+- **Notes:** From T-102a: removing all combatants resets the tracker (round 0); an explicit "end combat" command, delay/ready and manual reordering belong here (adding a combatant inserts without re-sorting, so manual order is kept).
 
 ### T-112 HP and conditions
 

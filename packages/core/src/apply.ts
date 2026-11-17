@@ -1,6 +1,9 @@
 import type {
   Combatant,
+  GridCell,
   InitiativeState,
+  LevelFog,
+  Polygon,
   Scene,
   Token,
 } from "@dungeon-manager/schema";
@@ -18,7 +21,10 @@ export type ApplyResult =
   | { readonly ok: false; readonly reason: RejectionReason };
 
 type Change =
-  | { readonly state: SessionState; readonly event: DomainEventBody }
+  | {
+      readonly state: SessionState;
+      readonly events: readonly DomainEventBody[];
+    }
   | RejectionReason;
 /** An event without its timestamp; `apply` adds `at` from the injected clock. */
 type DomainEventBody = DomainEvent extends infer E
@@ -41,7 +47,9 @@ export function apply(
   return {
     ok: true,
     state: change.state,
-    events: [{ ...change.event, at: ctx.now() }],
+    events: change.events.map(
+      (event) => ({ ...event, at: ctx.now() }) as DomainEvent,
+    ),
   };
 }
 
@@ -53,6 +61,7 @@ function applyChange(state: SessionState, command: Command): Change {
         (candidate) => candidate.id === command.tokenId,
       );
       if (!token) return "unknownToken";
+      if (!isCell(command.to)) return "invalidCell";
       if (!scene.map) return "noMap";
       const levelId = command.levelId ?? token.levelId;
       if (!hasLevel(scene, levelId)) return "unknownLevel";
@@ -64,13 +73,15 @@ function applyChange(state: SessionState, command: Command): Change {
             levelId,
           }),
         }),
-        event: {
-          type: "token.moved",
-          tokenId: token.id,
-          from: token.position,
-          to: command.to,
-          levelId,
-        },
+        events: [
+          {
+            type: "token.moved",
+            tokenId: token.id,
+            from: token.position,
+            to: command.to,
+            levelId,
+          },
+        ],
       };
     }
     case "fog.reveal":
@@ -78,10 +89,8 @@ function applyChange(state: SessionState, command: Command): Change {
       if (!scene.map) return "noMap";
       if (!hasLevel(scene, command.levelId)) return "unknownLevel";
       const current = scene.fog.levels[command.levelId] ?? EMPTY_LEVEL_FOG;
-      const next =
-        command.type === "fog.reveal"
-          ? revealArea(current, command.area)
-          : hideArea(current, command.area, command.remember);
+      const next = changeFog(current, command);
+      if (!next) return "invalidArea";
       return {
         state: withScene(state, {
           fog: {
@@ -89,10 +98,12 @@ function applyChange(state: SessionState, command: Command): Change {
             levels: { ...scene.fog.levels, [command.levelId]: next },
           },
         }),
-        event: {
-          type: command.type === "fog.reveal" ? "fog.revealed" : "fog.hidden",
-          levelId: command.levelId,
-        },
+        events: [
+          {
+            type: command.type === "fog.reveal" ? "fog.revealed" : "fog.hidden",
+            levelId: command.levelId,
+          },
+        ],
       };
     }
     case "visibility.set": {
@@ -114,7 +125,7 @@ function applyChange(state: SessionState, command: Command): Change {
             ...state,
             campaign: { ...state.campaign, visibilityDefaults },
           },
-          event,
+          events: [event],
         };
       }
       const token = scene.tokens.find(
@@ -127,7 +138,7 @@ function applyChange(state: SessionState, command: Command): Change {
       };
       return {
         state: withScene(state, { tokens: replaceToken(scene, updated) }),
-        event,
+        events: [event],
       };
     }
     case "initiative.add":
@@ -148,6 +159,41 @@ function withScene(state: SessionState, changes: Partial<Scene>): SessionState {
 
 function hasLevel(scene: Scene, levelId: string): boolean {
   return scene.map?.levels.some((level) => level.id === levelId) ?? false;
+}
+
+/** Grid cells are non-negative integers; anything else would corrupt the scene file. */
+function isCell(cell: GridCell): boolean {
+  return (
+    Number.isInteger(cell.col) &&
+    Number.isInteger(cell.row) &&
+    cell.col >= 0 &&
+    cell.row >= 0
+  );
+}
+
+/** Rings need three or more finite points: NaN/Infinity would throw or be saved as `null`. */
+function isValidArea(area: Polygon): boolean {
+  return [area.outer, ...area.holes].every(
+    (ring) =>
+      ring.length >= 3 &&
+      ring.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y)),
+  );
+}
+
+/** Applies a fog command, or returns `null` for an area the geometry cannot handle. */
+function changeFog(
+  current: LevelFog,
+  command: Extract<Command, { type: "fog.reveal" } | { type: "fog.hide" }>,
+): LevelFog | null {
+  if (!isValidArea(command.area)) return null;
+  try {
+    return command.type === "fog.reveal"
+      ? revealArea(current, command.area)
+      : hideArea(current, command.area, command.remember);
+  } catch {
+    // polyclip-ts throws on geometry it cannot process; reject instead of crashing the session.
+    return null;
+  }
 }
 
 function replaceToken(scene: Scene, token: Token): Token[] {
@@ -193,14 +239,23 @@ function addCombatant(state: SessionState, combatant: Combatant): Change {
     return "unknownToken";
   }
   const combatants = [...initiative.combatants, combatant];
-  const byId = new Map(combatants.map((entry) => [entry.id, entry]));
-  // Highest initiative first; equal values keep their order (Array.prototype.sort is stable).
-  const order = [...initiative.order, combatant.id].sort(
-    (a, b) => (byId.get(b)?.initiative ?? 0) - (byId.get(a)?.initiative ?? 0),
+  const initiativeOf = new Map(
+    combatants.map((entry) => [entry.id, entry.initiative]),
   );
+  // Insert after everyone with an equal or higher initiative; the rest of the order (which may
+  // have been changed by hand, e.g. delay/ready) stays as it is.
+  const position = initiative.order.findIndex(
+    (id) => (initiativeOf.get(id) ?? 0) < combatant.initiative,
+  );
+  const at = position === -1 ? initiative.order.length : position;
+  const order = [
+    ...initiative.order.slice(0, at),
+    combatant.id,
+    ...initiative.order.slice(at),
+  ];
   return {
     state: withInitiative(state, { ...initiative, combatants, order }),
-    event: { type: "initiative.combatantAdded", combatantId: combatant.id },
+    events: [{ type: "initiative.combatantAdded", combatantId: combatant.id }],
   };
 }
 
@@ -210,21 +265,46 @@ function removeCombatant(state: SessionState, combatantId: string): Change {
   const index = initiative.order.indexOf(combatantId);
   if (index === -1) return "unknownCombatant";
   const order = initiative.order.filter((id) => id !== combatantId);
-  // The turn passes to whoever followed the removed combatant.
-  const activeCombatantId =
-    initiative.activeCombatantId === combatantId
-      ? (order[index % Math.max(order.length, 1)] ?? null)
-      : initiative.activeCombatantId;
+  const combatants = initiative.combatants.filter(
+    (combatant) => combatant.id !== combatantId,
+  );
+  const removed = { type: "initiative.combatantRemoved", combatantId } as const;
+  if (order.length === 0) {
+    // Combat is over; adding combatants later starts again at round 1.
+    return {
+      state: withInitiative(state, { ...EMPTY_INITIATIVE, combatants }),
+      events: [removed],
+    };
+  }
+  if (initiative.activeCombatantId !== combatantId) {
+    return {
+      state: withInitiative(state, { ...initiative, order, combatants }),
+      events: [removed],
+    };
+  }
+  // The turn passes to whoever followed the removed combatant; past the end it wraps into the next round.
+  const wraps = index >= order.length;
+  const activeCombatantId = (wraps ? order[0] : order[index]) ?? null;
+  const round = wraps ? initiative.round + 1 : initiative.round;
   return {
     state: withInitiative(state, {
       ...initiative,
       order,
+      combatants,
       activeCombatantId,
-      combatants: initiative.combatants.filter(
-        (combatant) => combatant.id !== combatantId,
-      ),
+      round,
     }),
-    event: { type: "initiative.combatantRemoved", combatantId },
+    events:
+      activeCombatantId === null
+        ? [removed]
+        : [
+            removed,
+            {
+              type: "initiative.turnStarted",
+              round,
+              combatantId: activeCombatantId,
+            },
+          ],
   };
 }
 
@@ -249,11 +329,9 @@ function nextTurn(state: SessionState): Change {
         : initiative.round;
   return {
     state: withInitiative(state, { ...initiative, round, activeCombatantId }),
-    event: {
-      type: "initiative.turnStarted",
-      round,
-      combatantId: activeCombatantId,
-    },
+    events: [
+      { type: "initiative.turnStarted", round, combatantId: activeCombatantId },
+    ],
   };
 }
 
@@ -280,7 +358,11 @@ function changeHp(
     const { amount } = command;
     if (!Number.isInteger(amount) || amount === 0) return "invalidAmount";
     if (amount > 0) {
-      next = { ...hp, current: Math.min(hp.max, hp.current + amount) };
+      // Healing never lowers HP that are above the maximum (e.g. after a reduced max).
+      next = {
+        ...hp,
+        current: Math.max(hp.current, Math.min(hp.max, hp.current + amount)),
+      };
     } else {
       const absorbed = Math.min(hp.temp, -amount);
       next = {
@@ -295,11 +377,13 @@ function changeHp(
   );
   return {
     state: withInitiative(state, { ...initiative, combatants }),
-    event: {
-      type: "hp.changed",
-      combatantId: combatant.id,
-      current: next.current,
-      temp: next.temp,
-    },
+    events: [
+      {
+        type: "hp.changed",
+        combatantId: combatant.id,
+        current: next.current,
+        temp: next.temp,
+      },
+    ],
   };
 }

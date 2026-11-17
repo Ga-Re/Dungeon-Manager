@@ -100,4 +100,6 @@ export type RejectionReason =
   | "noInitiative"
   | "emptyInitiative"
   | "hpNotTracked"
-  | "invalidAmount";
+  | "invalidAmount"
+  | "invalidArea"
+  | "invalidCell";

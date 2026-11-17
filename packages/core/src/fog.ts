@@ -1,6 +1,8 @@
 import type { LevelFog, Polygon, Ring } from "@dungeon-manager/schema";
 import { difference, intersection, union, type Geom } from "polyclip-ts";
 
+// Never call polyclip-ts's setPrecision: it is module-level state and would make core impure.
+
 // Fog regions are lists of polygons with holes (schema v1). polyclip-ts works on the same model
 // ([outer, ...holes] per polygon) but closes rings by repeating the first point.
 
