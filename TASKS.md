@@ -93,7 +93,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - React web app in `apps/companion`, built as static files.
 - **Acceptance criteria**
   - [x] `pnpm dev:companion` serves a placeholder page; production build outputs static files consumable by the desktop backend later
-- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`.
+- **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`. For the backend task that serves the companion: the build uses relative asset URLs (`base: "./"`), so mount it at a path with a trailing slash (redirect `/companion` → `/companion/`) or at the root; a future client-side router with deep links needs the same care.
 
 ### T-010 Upgrade to TypeScript 7
 
