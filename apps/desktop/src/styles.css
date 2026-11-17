@@ -34,3 +34,27 @@ button {
   background: #000;
   cursor: none;
 }
+
+.map-view-canvas {
+  position: relative;
+  height: 60vh;
+  min-height: 20rem;
+  overflow: hidden;
+  background: #111;
+  touch-action: none;
+  cursor: grab;
+}
+
+.map-view-canvas:focus-visible {
+  outline: 3px solid #6ea8fe;
+}
+
+.map-view-canvas canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.map-view-help {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}

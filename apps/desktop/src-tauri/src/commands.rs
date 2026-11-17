@@ -79,7 +79,7 @@ fn display_root(root: &Path) -> String {
 }
 
 impl LibraryState {
-    fn root(&self) -> Result<PathBuf, LibraryError> {
+    pub fn root(&self) -> Result<PathBuf, LibraryError> {
         let guard = self
             .0
             .lock()

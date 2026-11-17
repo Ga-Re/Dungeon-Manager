@@ -12,6 +12,7 @@ import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
 import { MapChangeChoice } from "./MapChangeChoice.js";
+import { MapView } from "./MapView.js";
 
 /** The open scene: change its map, delete it (to the trash, after confirming) or close it. */
 export function OpenScenePanel({
@@ -168,6 +169,13 @@ export function OpenScenePanel({
         {t("campaign.closeScene")}
       </button>
       {error && <p role="alert">{error}</p>}
+      {scene.map && (
+        <MapView
+          key={scene.map.asset.path}
+          path={scene.map.asset.path}
+          label={scene.name}
+        />
+      )}
     </div>
   );
 }

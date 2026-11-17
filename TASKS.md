@@ -217,7 +217,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-121 Map change: compare image sizes
 
-- **Status:** todo · **Depends on:** T-120, T-105 · **Refs:** SPEC 3.1, 4
+- **Status:** todo · **Depends on:** T-120, T-105a · **Refs:** SPEC 3.1, 4
 - When a scene's map is changed (T-120 asks what to reset), compare the old and new image dimensions. If they differ, say so in the question and pre-tick "reset fog" and "reset grid", since fog and token positions are stored in map pixels.
 - **Acceptance criteria**
   - [ ] Changing to an image of different dimensions shows the difference and pre-ticks fog and grid reset
@@ -271,18 +271,38 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Searching by text or tag finds matching items quickly (budget to be set in the task, e.g. < 100 ms for 10 000 items)
 - **Notes:** DM request (2026-11-17). Stored with the T-125 metadata.
 
-### T-105 Renderer: map layer and camera
+### T-105a Renderer: image map and camera in the DM window
 
-- **Status:** todo · **Depends on:** T-104b, T-007 · **Refs:** ARCHITECTURE §8
-- `packages/renderer` drawing the map; zoom/pan in DM window; locked scale in player window.
+- **Status:** done · **Depends on:** T-104b, T-007 · **Refs:** ARCHITECTURE §8
+- `packages/renderer` (PixiJS) draws an image map with a camera (zoom, pan, rotation 0/90/180/270); the DM window shows the open scene's map with zoom/pan. Map files reach the webview through a read-only `dmlib` protocol that serves only `library/…`.
 - **Acceptance criteria**
-  - [ ] Screenshot tests for a fixture map in both views
-  - [ ] Benchmark scene added to `test-fixtures`
-- **Notes:** From T-003 review: `pnpm test:visual` mounts the host `node_modules` into the Linux container. Once visual tests need a Vite dev server, native binaries (esbuild/rollup) from a macOS/Windows host will not run there – install dependencies inside the container (separate volume) instead. From T-007: remove the spike (`apps/desktop/spike.html`, `src/spike/`, `spike/`, the `VITE_SPIKE` switch and the `playerPage` parameter) once the renderer and its benchmark exist; move `pixi.js` (with `pixi.js/unsafe-eval`, required by our CSP) to `packages/renderer`. From T-007/ADR-0010: video maps are a `<video>` element under a transparent PixiJS canvas with a shared camera transform (zoom/pan/rotation); the benchmark scene must show ≤ 1 % missed refreshes at 4K/60 Hz with realistic fog, the DM window open and an animated camera, judge video smoothness separately and investigate the hitches seen in the spike. The video element must fail closed: hidden until the fog for the scene is drawn and on resize/context loss/teardown.
+  - [x] Screenshot tests for a fixture map in the DM view (fit, zoomed, rotated)
+  - [x] DM zooms (wheel, keys), pans (drag, arrow keys), rotates and fits the map
+  - [x] Only `library/…` files are served, only to the DM and player windows
+- **Notes:** Split from T-105 (DM decision, 2026-11-17): own read-only protocol for library files, player window receives events only. From T-003 review: `pnpm test:visual` mounts the host `node_modules` into the Linux container. Once visual tests need a Vite dev server, native binaries (esbuild/rollup) from a macOS/Windows host will not run there – install dependencies inside the container (separate volume) instead. From T-007: remove the spike (`apps/desktop/spike.html`, `src/spike/`, `spike/`, the `VITE_SPIKE` switch and the `playerPage` parameter) once the renderer and its benchmark exist; move `pixi.js` (with `pixi.js/unsafe-eval`, required by our CSP) to `packages/renderer`. From T-007/ADR-0010: video maps are a `<video>` element under a transparent PixiJS canvas with a shared camera transform (zoom/pan/rotation); the benchmark scene must show ≤ 1 % missed refreshes at 4K/60 Hz with realistic fog, the DM window open and an animated camera, judge video smoothness separately and investigate the hitches seen in the spike. The video element must fail closed: hidden until the fog for the scene is drawn and on resize/context loss/teardown.
+
+### T-105b Player window shows the open scene
+
+- **Status:** todo · **Depends on:** T-105a · **Refs:** ARCHITECTURE §5.1, §8
+- The DM window sends the player window the projected scene (`projectForViewer`) via a Tauri event; the player window's only permission is listening to events, and it validates every message with the strict viewer schema. Locked scale (placeholder until T-106 calibration), camera controlled from the DM window.
+- **Acceptance criteria**
+  - [ ] Opening a scene in the DM window shows its map on the TV; closing it clears the TV
+  - [ ] Screenshot test for the player view
+  - [ ] The player window rejects messages that fail the viewer schema
+- **Notes:** Security-relevant (player window capability): DM confirmed the approach 2026-11-17; confirms the capability before merge.
+
+### T-105c Video maps and renderer benchmark
+
+- **Status:** todo · **Depends on:** T-105b · **Refs:** ARCHITECTURE §8, §11, ADR-0010
+- Video maps (MP4/WebM) as a `<video>` element under the transparent canvas, sharing the camera; fail closed. Benchmark scene in `test-fixtures`; remove the T-007 spike.
+- **Acceptance criteria**
+  - [ ] Video map follows the camera; hidden until fog is drawn and on resize/context loss/teardown
+  - [ ] Benchmark scene added to `test-fixtures`; ≤ 1 % missed refreshes at 4K/60 Hz on the reference notebook (DM measures)
+  - [ ] Spike code removed; `pixi.js` only in `packages/renderer`
 
 ### T-106 Grid overlay and 1-inch calibration
 
-- **Status:** todo · **Depends on:** T-105 · **Refs:** SPEC 2.2
+- **Status:** todo · **Depends on:** T-105b · **Refs:** SPEC 2.2
 - Grid overlay; align grid to the map; display calibration (screen diagonal / resolution → pixels per inch) per display in device settings.
 - **Acceptance criteria**
   - [ ] On a calibrated display one cell measures 1 inch (manual check documented; unit tests for the math)
@@ -290,7 +310,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-116 Player view render resolution setting
 
-- **Status:** todo · **Depends on:** T-105 · **Refs:** SPEC 2.2, ARCHITECTURE §11
+- **Status:** todo · **Depends on:** T-105b · **Refs:** SPEC 2.2, ARCHITECTURE §11
 - Device setting for the player view's render resolution: native (e.g. 4K) or Full HD, upscaled to the display. Stored in device settings (OS app-data), not in the library.
 - **Acceptance criteria**
   - [ ] Setting in the DM window, applied to the player view without restart
@@ -307,7 +327,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-108 Manual fog with undo
 
-- **Status:** todo · **Depends on:** T-102b, T-105 · **Refs:** SPEC 4
+- **Status:** todo · **Depends on:** T-102b, T-105b · **Refs:** SPEC 4
 - Brush, rectangle, polygon; predefined rooms (polygons) revealable with one click; undo.
 - **Acceptance criteria**
   - [ ] Player window shows only revealed areas (screenshot tests)
@@ -347,7 +367,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-113 Blackout button and DM preview of the player view
 
-- **Status:** todo · **Depends on:** T-105
+- **Status:** todo · **Depends on:** T-105b
 - Instant black/pause image in the player window; small live preview of the player view in the DM window.
 - **Acceptance criteria**
   - [ ] Blackout reachable by button and keyboard shortcut; E2E test

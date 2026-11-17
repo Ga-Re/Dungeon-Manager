@@ -7,8 +7,10 @@ import {
   detectPlatformFamily,
 } from "../platform/tauri-displays.js";
 import { createTauriLibraryService } from "../platform/tauri-library.js";
+import { createTauriMapViewService } from "../platform/tauri-map-images.js";
 import "../styles.css";
 import { DmApp } from "./DmApp.js";
+import { MapViewContext } from "./MapView.js";
 
 const i18n = createI18n();
 // SPIKE (T-007): `pnpm spike:desktop` opens the performance spike instead of the player view.
@@ -26,12 +28,14 @@ if (!root) throw new Error("#root is missing in dm.html");
 createRoot(root).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
-      <DmApp
-        displayService={displayService}
-        libraryService={createTauriLibraryService()}
-        // Lowercase UUIDs: opaque, unique, and safe as file names on every OS.
-        newId={() => crypto.randomUUID()}
-      />
+      <MapViewContext value={createTauriMapViewService()}>
+        <DmApp
+          displayService={displayService}
+          libraryService={createTauriLibraryService()}
+          // Lowercase UUIDs: opaque, unique, and safe as file names on every OS.
+          newId={() => crypto.randomUUID()}
+        />
+      </MapViewContext>
     </I18nextProvider>
   </StrictMode>,
 );

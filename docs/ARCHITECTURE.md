@@ -206,6 +206,8 @@ Layer order (bottom → top): map (image/video) → grid → assets → light/vi
 - The **same renderer** draws the DM window and the player window, with different viewer projections and overlays.
 - The player window is a separate Tauri window placed fullscreen on the chosen display.
 - Grid calibration: `pixelsPerInch` of the target display → cell size of 1 inch.
+- Library images reach the webviews through the read-only `dmlib` URI scheme (Rust, `protocol.rs`): it serves only files under `library/` with the usual path confinement, only to the DM and player windows, and never `campaigns/` (scenes, notes, hidden data). It replaces any file permission for displaying maps. Image maps are uploaded as WebGL textures, so responses are CORS-clean.
+- The renderer draws on demand (once per change), not every frame, so an idle DM window costs no GPU time; animation (video, effects) will run a frame loop only while needed.
 - Video maps: a positioned HTML `<video>` element underneath a transparent PixiJS canvas, sharing the camera transform; not a texture (ADR-0010, measured in T-007). Image maps are PixiJS textures. Preload the next scene.
 - Renderer fixtures in `test-fixtures` are used for screenshot tests.
 
