@@ -160,14 +160,22 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] The table view shows the scene's current level
 - **Notes:** From the T-102b review; must be done before companions show maps (stage 3).
 
+### T-119 Case-insensitive id collisions in file names
+
+- **Status:** todo · **Depends on:** T-103a · **Refs:** ARCHITECTURE §6, ADR-0005
+- Ids allow mixed case (`idSchema`), and scenes are stored as `<id>.json`. On the default macOS/Windows file systems `Scene-1` and `scene-1` are the same file, so saving one overwrites the other.
+- **Acceptance criteria**
+  - [ ] Two entities whose ids differ only in case can never overwrite each other's files (e.g. lowercase ids, or collision check on save)
+- **Notes:** From the T-103a review. Touches the id scheme in `schema` (v1 unreleased) – ask the DM which option before implementing.
+
 ### T-103a Storage package: layout, documents, conflict copies
 
-- **Status:** in-progress · **Depends on:** T-101 · **Refs:** ARCHITECTURE §6, ADR-0005
+- **Status:** done · **Depends on:** T-101 · **Refs:** ARCHITECTURE §6, ADR-0005
 - `packages/storage` with an injected file-system adapter: library layout, reading/writing `campaign.json` and scene files (migrations + validation), conflict-copy detection, "not available" state for placeholders, classification of changed paths for the watcher.
 - **Acceptance criteria**
-  - [ ] Layout is created if empty
-  - [ ] Conflict copies of Dropbox/OneDrive/Google Drive/iCloud naming patterns are detected (fixtures)
-  - [ ] Missing/placeholder files produce a "not available" state, no crash
+  - [x] Layout is created if empty
+  - [x] Conflict copies of Dropbox/OneDrive/Google Drive/iCloud naming patterns are detected (fixtures)
+  - [x] Missing/placeholder files produce a "not available" state, no crash
 - **Notes:** Split from T-103 (agent, 2026-11-17) to keep PRs reviewable; no new dependencies.
 
 ### T-103b Desktop file system adapter, watching, folder choice

@@ -11,7 +11,7 @@ import {
   type Scene,
 } from "@dungeon-manager/schema";
 import { findConflictCopies, type ConflictCopy } from "./conflicts.js";
-import type { FileSystem } from "./fs.js";
+import type { FileSystem, ReadResult } from "./fs.js";
 import {
   campaignDirectory,
   campaignFile,
@@ -21,10 +21,12 @@ import {
   scenesDirectory,
 } from "./layout.js";
 
-/** Outcome of loading a document; never throws for bad or missing files (ARCHITECTURE §6.3). */
+/** Outcome of loading a document; never throws for bad, missing or unreadable files (ARCHITECTURE §6.3). */
 export type LoadResult<T> =
   | { readonly status: "ok"; readonly value: T }
   | { readonly status: "missing" }
+  /** The adapter failed to read (e.g. no permission, I/O error). */
+  | { readonly status: "unreadable" }
   /** On-demand cloud placeholder: content not downloaded yet. */
   | { readonly status: "notAvailable" }
   | {
@@ -37,7 +39,12 @@ async function loadDocument<T>(
   path: string,
   type: DocumentType<T>,
 ): Promise<LoadResult<T>> {
-  const file = await fs.read(path);
+  let file: ReadResult;
+  try {
+    file = await fs.read(path);
+  } catch {
+    return { status: "unreadable" };
+  }
   if (file.kind === "missing") return { status: "missing" };
   if (file.kind === "notAvailable") return { status: "notAvailable" };
   let json: unknown;
@@ -104,11 +111,32 @@ export async function saveScene(
 ): Promise<void> {
   requireSlug(slug);
   const valid = sceneSchema.parse(scene);
+  if (!isValidFileId(valid.id))
+    throw new Error(`Invalid scene id: ${valid.id}`);
   await fs.makeDirectory(scenesDirectory(slug));
   await fs.writeAtomic(sceneFile(slug, valid.id), serialize(valid));
 }
 
-/** Scene ids of a campaign, plus conflict copies found next to them. */
+/**
+ * Whether a name-based OneDrive match really is a copy: `saveScene` names every file after the
+ * scene's id, so a real scene's file contains its own id, while a copy contains the original's.
+ * If the content cannot be checked, it counts as a scene – hiding a real scene would be worse.
+ */
+async function isConfirmedCopy(
+  fs: FileSystem,
+  slug: string,
+  conflict: ConflictCopy,
+): Promise<boolean> {
+  const id = conflict.copy.slice(0, -".json".length);
+  if (conflict.provider !== "OneDrive" || !isValidFileId(id)) return true;
+  const loaded = await loadScene(fs, slug, id);
+  return loaded.status === "ok" && loaded.value.id !== id;
+}
+
+/**
+ * Scene ids of a campaign, plus conflict copies found next to them.
+ * @throws on an invalid slug or when the adapter cannot list the folder
+ */
 export async function listScenes(
   fs: FileSystem,
   slug: string,
@@ -118,7 +146,11 @@ export async function listScenes(
   const names = entries
     .filter((entry) => entry.kind === "file")
     .map((entry) => entry.name);
-  const conflicts = findConflictCopies(names);
+  const candidates = findConflictCopies(names);
+  const confirmed = await Promise.all(
+    candidates.map((conflict) => isConfirmedCopy(fs, slug, conflict)),
+  );
+  const conflicts = candidates.filter((_, index) => confirmed[index]);
   const copies = new Set(conflicts.map((conflict) => conflict.copy));
   const sceneIds = names
     .filter((name) => name.endsWith(".json") && !copies.has(name))

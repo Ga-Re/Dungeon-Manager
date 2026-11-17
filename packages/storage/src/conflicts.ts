@@ -37,7 +37,8 @@ const oneDriveOriginals = (base: string): readonly string[] =>
         /^-[A-Za-z0-9][A-Za-z0-9-]*$/.test(base.slice(index)) &&
         /[A-Z]/.test(base.slice(index)),
     )
-    .map((index) => base.slice(0, index));
+    .map((index) => base.slice(0, index))
+    .reverse();
 
 const PATTERNS: readonly Pattern[] = [
   {
@@ -95,15 +96,11 @@ function matchCopy(
 }
 
 /**
- * Conflict copies among the file names of one directory (ARCHITECTURE §6.3). Detection only:
- * both versions are kept; merging is a later UI task.
+ * Conflict copies among the file names of one directory (ARCHITECTURE §6.3), by name only.
+ * Detection only: both versions are kept; merging is a later UI task. OneDrive names can also be
+ * real ids (`keller-Ost`), so `listScenes` additionally checks the content of those.
  */
 export function findConflictCopies(names: readonly string[]): ConflictCopy[] {
   const existing = new Set(names);
   return names.flatMap((name) => matchCopy(name, existing) ?? []);
-}
-
-/** Whether a single file name has the shape of a conflict copy, without knowing its neighbours. */
-export function looksLikeConflictCopy(name: string): boolean {
-  return matchCopy(name, null) !== null;
 }

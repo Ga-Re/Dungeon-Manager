@@ -21,6 +21,12 @@ describe("findConflictCopies", () => {
     ]);
   });
 
+  test("attributes a OneDrive copy to the longest matching original", () => {
+    expect(findConflictCopies(["a.json", "a-b.json", "a-b-PC.json"])).toEqual([
+      { copy: "a-b-PC.json", original: "a-b.json", provider: "OneDrive" },
+    ]);
+  });
+
   test("reports copies whose original is gone, if the pattern is unambiguous", () => {
     expect(
       findConflictCopies(["campaign (conflicted copy 2026-11-17).json"]),

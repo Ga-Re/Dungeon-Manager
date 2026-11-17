@@ -165,6 +165,44 @@ describe("scene files", () => {
     });
   });
 
+  test("tells OneDrive copies from real scenes by the id inside the file", async () => {
+    const file = (id: string) => JSON.stringify({ ...scene, id });
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/scenes/keller.json": file("keller"),
+      // A real scene whose name merely looks like a OneDrive copy of "keller".
+      "campaigns/mine/scenes/keller-Ost.json": file("keller-Ost"),
+      "campaigns/mine/scenes/keller-DESKTOP-4F2KQ1.json": file("keller"),
+      // Content unknown: listed as a scene, so nothing is hidden.
+      "campaigns/mine/scenes/keller-MacBook-Air.json": { placeholder: true },
+    });
+    expect(await listScenes(fs, "mine")).toEqual({
+      sceneIds: ["keller", "keller-MacBook-Air", "keller-Ost"],
+      conflicts: [
+        {
+          copy: "keller-DESKTOP-4F2KQ1.json",
+          original: "keller.json",
+          provider: "OneDrive",
+        },
+      ],
+    });
+  });
+
+  test("an id that is a reserved Windows name is not saved", async () => {
+    const fs = createMemoryFileSystem();
+    await expect(
+      saveScene(fs, "mine", { ...scene, id: "nul" }),
+    ).rejects.toThrow("Invalid scene id");
+    expect(fs.files().size).toBe(0);
+  });
+
+  test("a failing read is reported, not thrown", async () => {
+    const fs = createMemoryFileSystem();
+    fs.read = () => Promise.reject(new Error("EACCES"));
+    expect(await loadScene(fs, "mine", "scene-1")).toEqual({
+      status: "unreadable",
+    });
+  });
+
   test("a campaign without scenes lists nothing", async () => {
     expect(await listScenes(createMemoryFileSystem(), "mine")).toEqual({
       sceneIds: [],
