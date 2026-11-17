@@ -80,18 +80,19 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-008 Mobile app skeleton
 
-- **Status:** todo · **Depends on:** T-001 · **Refs:** ADR-0003
+- **Status:** blocked · **Depends on:** T-001 · **Refs:** ADR-0003
 - Expo app (dev build) in `apps/mobile` importing `core` and `i18n`; one screen.
 - **Acceptance criteria**
   - [ ] Runs on an Android emulator/device; iOS build steps documented
   - [ ] Imports a function from `packages/core` (proves workspace sharing works with Metro)
+- **Notes:** Deferred by the DM (2026-11-17): most players and the DM use iPhones; revisit when the phone app is due (stage 2).
 
 ### T-009 Companion skeleton
 
-- **Status:** todo · **Depends on:** T-001 · **Refs:** ADR-0007
+- **Status:** done · **Depends on:** T-001 · **Refs:** ADR-0007
 - React web app in `apps/companion`, built as static files.
 - **Acceptance criteria**
-  - [ ] `pnpm dev:companion` serves a placeholder page; production build outputs static files consumable by the desktop backend later
+  - [x] `pnpm dev:companion` serves a placeholder page; production build outputs static files consumable by the desktop backend later
 - **Notes:** From T-002: root-level `.ts` configs (e.g. `vite.config.ts`) are outside every tsconfig `include`, so type-aware ESLint rejects them – add them to a tsconfig or to `projectService.allowDefaultProject` in `tooling/eslint/config.js`.
 
 ### T-010 Upgrade to TypeScript 7
@@ -101,6 +102,14 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] `typescript` bumped to the current 7.x; `pnpm check` green
 - **Notes:** Discovered during T-001.
+
+### T-011 Shared i18n setup for web apps
+
+- **Status:** todo · **Depends on:** T-009
+- `createI18n` exists twice (`apps/desktop/src/i18n.ts`, `apps/companion/src/i18n.ts`). Move it to a shared place (e.g. `packages/ui` once it has its first component) and use it from both apps.
+- **Acceptance criteria**
+  - [ ] One implementation, used by desktop and companion; tests unchanged and green
+- **Notes:** Discovered during T-009; kept duplicated there to avoid a drive-by refactor.
 
 ---
 

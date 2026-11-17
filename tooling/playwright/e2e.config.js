@@ -20,4 +20,13 @@ export default defineConfig({
   ],
   forbidOnly: Boolean(process.env.CI),
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // The companion is tested as its production build, served like the desktop backend will.
+  webServer: {
+    command:
+      "pnpm exec turbo run build --filter=@dungeon-manager/companion... && pnpm --filter @dungeon-manager/companion preview",
+    cwd: repoRoot,
+    url: "http://localhost:4174/",
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
+  },
 });

@@ -1,0 +1,18 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #1b1b1f;
+  color: #ececf1;
+  /* Phones: comfortable reading size and room for notches. */
+  font-size: 18px;
+}
+
+body {
+  margin: 0;
+}
+
+.companion {
+  padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem 1.5rem;
+  max-width: 40rem;
+  margin: 0 auto;
+}
