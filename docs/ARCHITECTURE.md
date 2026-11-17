@@ -203,7 +203,7 @@ Layer order (bottom → top): map (image/video) → grid → assets → light/vi
 - The **same renderer** draws the DM window and the player window, with different viewer projections and overlays.
 - The player window is a separate Tauri window placed fullscreen on the chosen display.
 - Grid calibration: `pixelsPerInch` of the target display → cell size of 1 inch.
-- Video maps: HTML video element as texture; preload next scene.
+- Video maps: a positioned HTML `<video>` element underneath a transparent PixiJS canvas, sharing the camera transform; not a texture (ADR-0010, measured in T-007). Image maps are PixiJS textures. Preload the next scene.
 - Renderer fixtures in `test-fixtures` are used for screenshot tests.
 
 ---
@@ -229,13 +229,15 @@ Layer order (bottom → top): map (image/video) → grid → assets → light/vi
 
 Measured on the reference notebook before each release (not in CI – CI runners have no usable GPU):
 
-| Metric                                                 | Budget                              |
-| ------------------------------------------------------ | ----------------------------------- |
-| Player view frame rate, 4K video map + fog + 20 tokens | ≥ 60 FPS (p95 frame time ≤ 16.7 ms) |
-| Scene switch with preloading                           | ≤ 1 s to first frame                |
-| Command from phone/companion → visible on TV (LAN)     | ≤ 100 ms                            |
-| Light effect trigger → lamp reacts (HA/WLED/Hue Ent.)  | ≤ 150 ms                            |
-| Desktop cold start                                     | ≤ 3 s                               |
+| Metric                                                 | Budget                                            |
+| ------------------------------------------------------ | ------------------------------------------------- |
+| Player view frame rate, 4K video map + fog + 20 tokens | ≥ 60 FPS: ≤ 1 % of frames miss a display refresh¹ |
+| Scene switch with preloading                           | ≤ 1 s to first frame                              |
+| Command from phone/companion → visible on TV (LAN)     | ≤ 100 ms                                          |
+| Light effect trigger → lamp reacts (HA/WLED/Hue Ent.)  | ≤ 150 ms                                          |
+| Desktop cold start                                     | ≤ 3 s                                             |
+
+¹ Measured at 60 Hz output as frame intervals longer than 1.5 × the refresh interval. A literal p95 ≤ 16.7 ms is unreachable even at a perfect 60 Hz (interval jitter, timers rounded to 1 ms in WebKit); see `docs/benchmarks/2026-11-17-t007-run2-run3.md`.
 
 A benchmark scene in `test-fixtures` plus a script that records frame times is part of stage 0.
 
