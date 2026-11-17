@@ -28,12 +28,18 @@ const rectangle = (size: Size): Polygon => ({
   holes: [],
 });
 
+/** One shared empty list, so an unrevealed level does not rebuild the fog on every render. */
+const NOTHING_REVEALED: readonly Polygon[] = [];
+
 /** Undo/redo keys, unless the DM is typing in a field (where they edit the text). */
 function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
   const target = event.target;
   if (
     target instanceof HTMLElement &&
-    target.closest("input, textarea, select, [contenteditable]")
+    // Text entry only: on a tool radio button the shortcuts still undo fog edits.
+    target.closest(
+      'input:not([type="radio"]):not([type="checkbox"]):not([type="button"]), textarea, select, [contenteditable]',
+    )
   )
     return null;
   if (!(event.metaKey || event.ctrlKey) || event.altKey) return null;
@@ -75,7 +81,13 @@ export function OpenScenePanel({
   const [mapSize, setMapSize] = useState<Size | null>(null);
   const levelId = scene.map?.levels[0]?.id;
   const revealed =
-    levelId === undefined ? [] : (scene.fog.levels[levelId]?.revealed ?? []);
+    (levelId === undefined ? undefined : scene.fog.levels[levelId]?.revealed) ??
+    NOTHING_REVEALED;
+  const mapPath = scene.map?.asset.path;
+  // A new map is measured again; until then "reveal all" has no size to use.
+  useEffect(() => {
+    setMapSize(null);
+  }, [mapPath]);
 
   const fogCommand = (type: "fog.reveal" | "fog.hide", area: Polygon) => {
     if (levelId === undefined) return;
@@ -88,7 +100,8 @@ export function OpenScenePanel({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const action = historyKey(event);
-      if (!action) return;
+      // While the map changes or the scene is deleted, edits could land after the file moved.
+      if (!action || busy) return;
       event.preventDefault();
       if (action === "undo") session.undo();
       else session.redo();
@@ -134,7 +147,9 @@ export function OpenScenePanel({
     run(async () => {
       // Start from the file on disk (after our own pending fog saves): a newer version synced
       // from another device must not be overwritten with the copy loaded when it was opened.
-      await session.flush();
+      // If fog edits could not be saved, the file lacks them: stop instead of dropping them.
+      if (!(await session.flush()))
+        throw new Error(t("fog.unsavedBeforeMapChange"));
       const current = await loadScene(service.fs, slug, scene.id);
       const changed = withMap(
         current.status === "ok" ? current.value : scene,
@@ -240,15 +255,15 @@ export function OpenScenePanel({
           <FogToolbar
             tool={tool}
             onTool={setTool}
-            disabled={mapSize === null || notOnTv}
+            disabled={mapSize === null || notOnTv || busy}
             onRevealAll={() => {
               if (mapSize) fogCommand("fog.reveal", rectangle(mapSize));
             }}
             onCoverAll={() => {
               if (mapSize) fogCommand("fog.hide", rectangle(mapSize));
             }}
-            canUndo={session.canUndo}
-            canRedo={session.canRedo}
+            canUndo={session.canUndo && !busy}
+            canRedo={session.canRedo && !busy}
             onUndo={() => {
               session.undo();
             }}
@@ -261,9 +276,10 @@ export function OpenScenePanel({
             path={scene.map.asset.path}
             label={scene.name}
             fog={revealed}
-            tool={tool}
+            tool={busy ? "pan" : tool}
             onArea={(area, kind) => {
-              fogCommand(kind === "reveal" ? "fog.reveal" : "fog.hide", area);
+              if (!busy)
+                fogCommand(kind === "reveal" ? "fog.reveal" : "fog.hide", area);
             }}
             onMapSize={setMapSize}
           />

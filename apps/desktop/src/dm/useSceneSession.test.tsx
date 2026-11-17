@@ -7,9 +7,11 @@ import { fakeMapService } from "../fake-renderer.test-data.js";
 import { createI18n } from "../i18n.js";
 import type { PlayerFeedSender } from "../platform/player-feed.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";
+import { CampaignPanel } from "./CampaignPanel.js";
 import { OpenScenePanel } from "./OpenScenePanel.js";
 import { MapViewContext } from "./MapView.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
+import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
 
 const campaign = JSON.stringify({
   schemaVersion: 1,
@@ -198,5 +200,94 @@ describe("editing the fog", () => {
     fireEvent.keyDown(field, { key: "z", metaKey: true });
     expect(tv.shown.at(-1)?.fog["ground"]?.revealed).toHaveLength(1);
     field.remove();
+  });
+
+  const enabled = async (name: string) => {
+    const button = await screen.findByRole("button", { name });
+    await waitFor(() => {
+      expect(button).toHaveProperty("disabled", false);
+    });
+    return button;
+  };
+
+  test("undo keys still work while a tool radio button has focus", async () => {
+    const { tv } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      mapped,
+    );
+    fireEvent.click(await enabled("Alles aufdecken"));
+    const radio = screen.getByRole("radio", { name: "Aufdecken (Rechteck)" });
+    fireEvent.keyDown(radio, { key: "z", ctrlKey: true });
+    expect(tv.shown.at(-1)?.fog["ground"]?.revealed ?? []).toHaveLength(0);
+  });
+
+  test("a failed save is reported, blocks a map change and is cleared by the next save", async () => {
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      mapped,
+    );
+    const write = library.fs.writeAtomic.bind(library.fs);
+    library.fs.writeAtomic = () =>
+      Promise.reject(new Error("Datenträger voll"));
+    fireEvent.click(await enabled("Alles aufdecken"));
+    expect(
+      await screen.findByText(/konnte nicht gespeichert werden/),
+    ).toBeTruthy();
+
+    library.service.importMap.mockResolvedValue({
+      path: "library/maps/neu.webp",
+      hash: `sha256:${"b".repeat(64)}`,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Karte übernehmen" }),
+    );
+    expect(await screen.findByText(/noch nicht gespeichert/)).toBeTruthy();
+    expect(library.fs.files().has("campaigns/mine/scenes/s.json")).toBe(false);
+
+    library.fs.writeAtomic = write;
+    fireEvent.click(screen.getByRole("button", { name: "Alles verdecken" }));
+    await waitFor(() => {
+      expect(screen.queryByText(/konnte nicht gespeichert werden/)).toBeNull();
+    });
+    expect(library.fs.files().has("campaigns/mine/scenes/s.json")).toBe(true);
+  });
+
+  test("clicking the open scene in the list keeps its edits and undo history", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/campaign.json": campaign,
+      "campaigns/mine/scenes/s.json": JSON.stringify(mapped),
+    });
+    const tv = fakeFeed();
+    const maps = fakeMapService(() =>
+      Promise.resolve({ width: 1000, height: 500 } as unknown as MapImage),
+    );
+    render(
+      <I18nextProvider i18n={createI18n("de")}>
+        <PlayerFeedContext value={tv.feed}>
+          <MapViewContext value={maps.service}>
+            <CampaignPanel
+              service={library.service}
+              slug="mine"
+              name="Mine"
+              newId={() => "id"}
+            />
+          </MapViewContext>
+        </PlayerFeedContext>
+      </I18nextProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Höhle" }));
+    // The list reloads (as after the watcher reports a save) while the save is still pending,
+    // so its copy of the scene is the old one.
+    library.fs.writeAtomic = () => new Promise(() => undefined);
+    fireEvent.click(await enabled("Alles aufdecken"));
+    library.emit(["campaigns/mine/scenes/s.json"]);
+    await new Promise((resolve) => setTimeout(resolve, RELOAD_DELAY_MS + 100));
+    fireEvent.click(screen.getByRole("button", { name: "Höhle" }));
+    expect(tv.shown.at(-1)?.fog["ground"]?.revealed).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Rückgängig" })).toHaveProperty(
+      "disabled",
+      false,
+    );
   });
 });

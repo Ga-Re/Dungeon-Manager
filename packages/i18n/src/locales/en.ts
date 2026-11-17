@@ -102,6 +102,8 @@ export const en: Messages = {
     coverAll: "Cover all",
     undo: "Undo",
     redo: "Redo",
+    unsavedBeforeMapChange:
+      "The latest fog changes are not saved yet. Let another change save (or fix the saving problem) before changing the map.",
     saveFailed:
       "The last change could not be saved. It is kept and saved again with the next change.",
   },

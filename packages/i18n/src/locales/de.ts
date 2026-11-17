@@ -102,6 +102,8 @@ export const de = {
     coverAll: "Alles verdecken",
     undo: "Rückgängig",
     redo: "Wiederherstellen",
+    unsavedBeforeMapChange:
+      "Die letzten Nebeländerungen sind noch nicht gespeichert. Bitte erst eine weitere Änderung speichern lassen (oder das Speicherproblem beheben), dann die Karte ändern.",
     saveFailed:
       "Die letzte Änderung konnte nicht gespeichert werden. Sie bleibt erhalten und wird mit der nächsten Änderung erneut gespeichert.",
   },

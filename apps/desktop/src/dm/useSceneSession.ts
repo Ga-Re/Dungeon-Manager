@@ -30,8 +30,11 @@ export interface SceneSession {
   readonly notOnTv: boolean;
   /** Saving the last change failed (it stays in memory; the next change retries). */
   readonly saveFailed: boolean;
-  /** Resolves once every change so far is on disk – before reading or moving the file. */
-  flush(): Promise<void>;
+  /**
+   * Resolves once every change so far has been written – before reading or moving the file.
+   * @returns whether the last write succeeded (`false`: the file lacks the latest changes)
+   */
+  flush(): Promise<boolean>;
 }
 
 /**
@@ -53,6 +56,7 @@ export function useSceneSession(
   const [notOnTv, setNotOnTv] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const saving = useRef<Promise<unknown>>(Promise.resolve());
+  const failed = useRef(false);
 
   // A scene opened (or replaced from outside, e.g. a new map) starts a fresh history.
   useEffect(() => {
@@ -63,11 +67,17 @@ export function useSceneSession(
   useEffect(() => {
     let active = true;
     setCampaign(null);
-    void loadCampaign(service.fs, slug).then((result) => {
-      if (!active) return;
-      if (result.status === "ok") setCampaign(result.value);
-      else setNotOnTv(true);
-    });
+    setNotOnTv(false);
+    loadCampaign(service.fs, slug).then(
+      (result) => {
+        if (!active) return;
+        if (result.status === "ok") setCampaign(result.value);
+        else setNotOnTv(true);
+      },
+      () => {
+        if (active) setNotOnTv(true);
+      },
+    );
     return () => {
       active = false;
     };
@@ -98,10 +108,12 @@ export function useSceneSession(
       saving.current = saving.current.then(() =>
         saveScene(service.fs, slug, next).then(
           () => {
+            failed.current = false;
             setSaveFailed(false);
           },
           (error: unknown) => {
             console.error("Saving the scene failed.", error);
+            failed.current = true;
             setSaveFailed(true);
           },
         ),
@@ -146,6 +158,7 @@ export function useSceneSession(
     saveFailed,
     async flush() {
       await saving.current;
+      return !failed.current;
     },
   };
 }

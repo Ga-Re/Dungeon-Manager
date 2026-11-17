@@ -3,7 +3,7 @@ import type { MapTool } from "./MapView.js";
 
 const TOOLS: readonly MapTool[] = ["pan", "reveal", "hide"];
 
-/** Fog tools for the open scene (SPEC 4): what dragging does, reveal/cover all, undo/redo. */
+/** Fog tools for the open scene (a labelled group; Tab moves between them) (SPEC 4): what dragging does, reveal/cover all, undo/redo. */
 export function FogToolbar({
   tool,
   onTool,
@@ -28,7 +28,7 @@ export function FogToolbar({
 }) {
   const { t } = useTranslation();
   return (
-    <div role="toolbar" aria-label={t("fog.toolbar")} className="fog-toolbar">
+    <div role="group" aria-label={t("fog.toolbar")} className="fog-toolbar">
       <fieldset disabled={disabled}>
         <legend>{t("fog.tool")}</legend>
         {TOOLS.map((each) => (
