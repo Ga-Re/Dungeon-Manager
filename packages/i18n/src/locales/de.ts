@@ -58,6 +58,7 @@ export const de = {
     map: "Karte: {{file}}",
     noMap: "Ohne Karte",
     defaultLevel: "Erdgeschoss",
+    chooseSceneMap: "Karte für diese Szene wählen …",
     changeMap: "Karte ändern …",
     deleteScene: "Szene löschen …",
     confirmDelete:
@@ -65,6 +66,14 @@ export const de = {
     deleteConfirmed: "Ja, löschen",
     cancel: "Abbrechen",
     sceneDeleted: "Szene „{{name}}“ ist im Papierkorb der Kampagne.",
+    mapChange: {
+      question:
+        "Neue Karte: {{file}}. Was soll mit der bisherigen Einrichtung passieren? Nicht Angehaktes bleibt erhalten.",
+      fog: "Nebel zurücksetzen (alles wieder verdeckt)",
+      grid: "Raster zurücksetzen (neu kalibrieren)",
+      tokens: "Tokens entfernen (samt ihren Initiative-Einträgen)",
+      apply: "Karte übernehmen",
+    },
     closeScene: "Szene schließen",
     scene: {
       notAvailable: "{{id}} (noch nicht heruntergeladen)",

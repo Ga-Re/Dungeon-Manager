@@ -1,3 +1,4 @@
+import type { Scene } from "@dungeon-manager/schema";
 import { describe, expect, test } from "vitest";
 import {
   createCampaign,
@@ -196,6 +197,92 @@ describe("withMap", () => {
         asset: { path: asset.path, hash: asset.hash },
       },
     );
+  });
+});
+
+describe("withMap with resets", () => {
+  const asset = {
+    path: "library/maps/new.webp",
+    hash: `sha256:${"c".repeat(64)}`,
+  };
+  const square = {
+    outer: [
+      [0, 0],
+      [10, 0],
+      [10, 10],
+    ] as [number, number][],
+    holes: [],
+  };
+  const scene: Scene = {
+    schemaVersion: 1,
+    id: "s",
+    name: "S",
+    map: {
+      kind: "image",
+      asset: {
+        path: "library/maps/old.webp",
+        hash: `sha256:${"a".repeat(64)}`,
+      },
+      grid: { cellSizePx: 72, offsetXPx: 3, offsetYPx: 4 },
+      levels: [{ id: "ground", name: "Unten" }],
+    },
+    tokens: [
+      {
+        id: "t-1",
+        name: "Goblin",
+        size: "small",
+        position: { col: 1, row: 2 },
+        levelId: "ground",
+      },
+    ],
+    fog: { levels: { ground: { revealed: [square], remembered: [] } } },
+    initiative: {
+      round: 2,
+      activeCombatantId: "c-goblin",
+      order: ["c-goblin", "c-wolf"],
+      combatants: [
+        {
+          id: "c-goblin",
+          name: "Goblin",
+          tokenId: "t-1",
+          initiative: 12,
+          conditions: [],
+        },
+        { id: "c-wolf", name: "Wolf", initiative: 8, conditions: [] },
+      ],
+    },
+  };
+  const level = { id: "unused", name: "unused" };
+
+  test("keeps everything by default", () => {
+    const changed = withMap(scene, asset, level);
+    expect(changed.fog).toEqual(scene.fog);
+    expect(changed.tokens).toEqual(scene.tokens);
+    expect(changed.map?.grid).toEqual(scene.map?.grid);
+  });
+
+  test("resets fog and grid on request, keeping levels", () => {
+    const changed = withMap(scene, asset, level, { fog: true, grid: true });
+    expect(changed.fog).toEqual({ levels: {} });
+    expect(changed.map?.grid).toEqual({
+      cellSizePx: 100,
+      offsetXPx: 0,
+      offsetYPx: 0,
+    });
+    expect(changed.map?.levels).toEqual(scene.map?.levels);
+    expect(changed.tokens).toEqual(scene.tokens);
+  });
+
+  test("removing tokens also removes their initiative entries", () => {
+    const changed = withMap(scene, asset, level, { tokens: true });
+    expect(changed.tokens).toEqual([]);
+    expect(changed.initiative).toMatchObject({
+      round: 2,
+      activeCombatantId: null,
+      order: ["c-wolf"],
+    });
+    expect(changed.initiative?.combatants.map((c) => c.id)).toEqual(["c-wolf"]);
+    expect(changed.fog).toEqual(scene.fog);
   });
 });
 

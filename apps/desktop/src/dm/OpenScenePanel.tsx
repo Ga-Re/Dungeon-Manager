@@ -1,15 +1,17 @@
-import type { Scene } from "@dungeon-manager/schema";
+import type { AssetRef, Scene } from "@dungeon-manager/schema";
 import {
   deleteScene,
   loadScene,
   saveScene,
   withMap,
+  type MapReset,
 } from "@dungeon-manager/storage";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
+import { MapChangeChoice } from "./MapChangeChoice.js";
 
 /** The open scene: change its map, delete it (to the trash, after confirming) or close it. */
 export function OpenScenePanel({
@@ -33,6 +35,7 @@ export function OpenScenePanel({
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
+  const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
   const deleteButton = useRef<HTMLButtonElement>(null);
   const confirmButton = useRef<HTMLButtonElement>(null);
   const asked = useRef(false);
@@ -56,23 +59,29 @@ export function OpenScenePanel({
     }
   };
 
-  const changeMap = () =>
+  const applyMap = (asset: AssetRef, reset: MapReset) =>
     run(async () => {
-      const asset = await service.importMap(t("campaign.mapFilter"));
-      if (!asset) return;
       // Start from the file on disk: a newer version synced from another device must not be
       // overwritten with the copy loaded when the scene was opened.
       const current = await loadScene(service.fs, slug, scene.id);
       const changed = withMap(
         current.status === "ok" ? current.value : scene,
         asset,
-        {
-          id: newId(),
-          name: t("campaign.defaultLevel"),
-        },
+        { id: newId(), name: t("campaign.defaultLevel") },
+        reset,
       );
       await saveScene(service.fs, slug, changed);
+      setPendingMap(null);
       onChanged(changed);
+    });
+
+  const changeMap = () =>
+    run(async () => {
+      const asset = await service.importMap(t("campaign.mapFilter"));
+      if (!asset) return;
+      // Without a map there is nothing to keep or reset.
+      if (scene.map) setPendingMap(asset);
+      else await applyMap(asset, {});
     });
 
   const remove = () =>
@@ -92,9 +101,20 @@ export function OpenScenePanel({
           ? t("campaign.map", { file: fileName(scene.map.asset.path) })
           : t("campaign.noMap")}
       </p>
-      <button type="button" disabled={busy} onClick={() => void changeMap()}>
-        {scene.map ? t("campaign.changeMap") : t("campaign.importMap")}
-      </button>
+      {pendingMap ? (
+        <MapChangeChoice
+          file={fileName(pendingMap.path)}
+          busy={busy}
+          onApply={(reset) => void applyMap(pendingMap, reset)}
+          onCancel={() => {
+            setPendingMap(null);
+          }}
+        />
+      ) : (
+        <button type="button" disabled={busy} onClick={() => void changeMap()}>
+          {scene.map ? t("campaign.changeMap") : t("campaign.chooseSceneMap")}
+        </button>
+      )}
       {confirmingDelete ? (
         <div
           role="group"

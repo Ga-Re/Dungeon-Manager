@@ -162,7 +162,15 @@ describe("CampaignPanel", () => {
     ).toBeTruthy();
   });
 
-  test("changes the map of an open scene and keeps its levels", async () => {
+  test("asks what to reset when the map of an open scene changes", async () => {
+    const square = {
+      outer: [
+        [0, 0],
+        [10, 0],
+        [10, 10],
+      ],
+      holes: [],
+    };
     const library = fakeLibraryService("/lib", {
       "campaigns/mine/scenes/a.json": JSON.stringify({
         ...JSON.parse(sceneFile("a", "Höhle")),
@@ -175,6 +183,7 @@ describe("CampaignPanel", () => {
           grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },
           levels: [{ id: "ground", name: "Unten" }],
         },
+        fog: { levels: { ground: { revealed: [square], remembered: [] } } },
       }),
     });
     const asset = {
@@ -183,22 +192,55 @@ describe("CampaignPanel", () => {
     };
     library.service.importMap.mockResolvedValue(asset);
     renderCampaign(library);
+    const saved = () =>
+      JSON.parse(
+        library.fs.files().get("campaigns/mine/scenes/a.json") ?? "{}",
+      ) as {
+        map: { asset: unknown; levels: unknown; grid: unknown };
+        fog: unknown;
+      };
 
     fireEvent.click(await screen.findByRole("button", { name: "Höhle" }));
     expect(screen.getByText("Karte: alt.webp")).toBeTruthy();
+
+    // Cancelling changes nothing.
     fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Abbrechen" }));
+    expect(saved().map.asset).not.toEqual(asset);
+
+    fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+    const fog = await screen.findByRole<HTMLInputElement>("checkbox", {
+      name: "Nebel zurücksetzen (alles wieder verdeckt)",
+    });
+    expect(document.activeElement).toBe(fog);
+    fireEvent.click(fog);
+    fireEvent.click(screen.getByRole("button", { name: "Karte übernehmen" }));
 
     expect(await screen.findByText("Karte: neu.webp")).toBeTruthy();
-    const saved = JSON.parse(
-      library.fs.files().get("campaigns/mine/scenes/a.json") ?? "{}",
-    ) as { map: { asset: unknown; levels: unknown; grid: unknown } };
-    expect(saved.map.asset).toEqual(asset);
-    expect(saved.map.levels).toEqual([{ id: "ground", name: "Unten" }]);
-    expect(saved.map.grid).toEqual({
+    expect(saved().map.asset).toEqual(asset);
+    expect(saved().fog).toEqual({ levels: {} });
+    expect(saved().map.levels).toEqual([{ id: "ground", name: "Unten" }]);
+    expect(saved().map.grid).toEqual({
       cellSizePx: 70,
       offsetXPx: 0,
       offsetYPx: 0,
     });
+  });
+
+  test("a scene without a map gets one without questions", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/scenes/a.json": sceneFile("a", "Leer"),
+    });
+    library.service.importMap.mockResolvedValue({
+      path: "library/maps/neu.webp",
+      hash: `sha256:${"b".repeat(64)}`,
+    });
+    renderCampaign(library);
+    fireEvent.click(await screen.findByRole("button", { name: "Leer" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Karte für diese Szene wählen …" }),
+    );
+    expect(await screen.findByText("Karte: neu.webp")).toBeTruthy();
   });
 
   test("deletes a scene only after confirming, into the trash", async () => {
