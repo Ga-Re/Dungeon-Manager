@@ -75,6 +75,8 @@ export const tokenSchema = z.looseObject({
   position: gridCellSchema,
   levelId: idSchema,
   image: assetRefSchema.optional(),
+  /** The player who may move this token from their companion (SPEC §2.4); absent for DM-only tokens. */
+  ownerPlayerId: idSchema.optional(),
   /** Per-element overrides of the campaign's visibility defaults (token itself, name, HP, conditions …). */
   visibility: visibilityRulesSchema.optional(),
 });
