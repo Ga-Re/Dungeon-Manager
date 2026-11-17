@@ -160,20 +160,37 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] The table view shows the scene's current level
 - **Notes:** From the T-102b review; must be done before companions show maps (stage 3).
 
-### T-103 Storage: library folder, read/write, watching, conflicts
+### T-119 Case-insensitive id collisions in file names
 
-- **Status:** todo · **Depends on:** T-101 · **Refs:** ARCHITECTURE §6
-- `packages/storage` with injected FS adapter; Rust FS adapter + file watching in desktop; atomic writes; conflict-copy detection (detection only, merge UI later).
+- **Status:** todo · **Depends on:** T-103a · **Refs:** ARCHITECTURE §6, ADR-0005
+- Ids allow mixed case (`idSchema`), and scenes are stored as `<id>.json`. On the default macOS/Windows file systems `Scene-1` and `scene-1` are the same file, so saving one overwrites the other.
+- **Acceptance criteria**
+  - [ ] Two entities whose ids differ only in case can never overwrite each other's files (e.g. lowercase ids, or collision check on save)
+- **Notes:** From the T-103a review. Touches the id scheme in `schema` (v1 unreleased) – ask the DM which option before implementing.
+
+### T-103a Storage package: layout, documents, conflict copies
+
+- **Status:** done · **Depends on:** T-101 · **Refs:** ARCHITECTURE §6, ADR-0005
+- `packages/storage` with an injected file-system adapter: library layout, reading/writing `campaign.json` and scene files (migrations + validation), conflict-copy detection, "not available" state for placeholders, classification of changed paths for the watcher.
+- **Acceptance criteria**
+  - [x] Layout is created if empty
+  - [x] Conflict copies of Dropbox/OneDrive/Google Drive/iCloud naming patterns are detected (fixtures)
+  - [x] Missing/placeholder files produce a "not available" state, no crash
+- **Notes:** Split from T-103 (agent, 2026-11-17) to keep PRs reviewable; no new dependencies.
+
+### T-103b Desktop file system adapter, watching, folder choice
+
+- **Status:** todo · **Depends on:** T-103a · **Refs:** ARCHITECTURE §6, ADR-0005
+- Rust FS adapter in `apps/desktop/src-tauri` (paths confined to the library root, atomic writes via temp file + rename, placeholder detection), file watching with `notify`, folder picker, device settings in the OS app-data directory.
 - **Acceptance criteria**
   - [ ] DM chooses a library folder; layout is created if empty
   - [ ] External file changes are picked up while the app runs
-  - [ ] Conflict copies of Dropbox/OneDrive/Google Drive/iCloud naming patterns are detected (fixtures)
-  - [ ] Missing/placeholder files produce a "not available" state, no crash
   - [ ] Device settings stored in OS app-data, not in the library
+- **Notes:** Split from T-103. DM approved the needed dependencies (`notify`, folder-picker plugin) on 2026-11-17. Security-relevant (file access from the webview): the DM confirms the Tauri capabilities before merge.
 
 ### T-104 Map import and scene creation
 
-- **Status:** todo · **Depends on:** T-103 · **Refs:** SPEC 3.1
+- **Status:** todo · **Depends on:** T-103b · **Refs:** SPEC 3.1
 - Import PNG/JPG/WebP into the library; create a scene referencing it.
 - **Acceptance criteria**
   - [ ] Imported file lands in `library/maps/`, referenced by relative path + hash
@@ -262,7 +279,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-114 Autosave and crash recovery
 
-- **Status:** todo · **Depends on:** T-103, T-102b
+- **Status:** todo · **Depends on:** T-103b, T-102b
 - Periodic and on-change save of scene state; recovery on next start.
 - **Acceptance criteria**
   - [ ] Killing the app mid-session loses at most the last few seconds (E2E test with forced kill)
