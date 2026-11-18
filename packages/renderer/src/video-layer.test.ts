@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { screenToMap, type Camera } from "./camera.js";
-import { createVideoGate, cssTransform } from "./video-layer.js";
+import { createVideoGate, cssTransform, sameAspect } from "./video-layer.js";
 
 const view = { width: 800, height: 400 };
 
@@ -80,4 +80,34 @@ describe("video gate (fail closed, ADR-0010)", () => {
     gate.drawn();
     expect(gate.visible()).toBe(true);
   });
+
+  test("a stream changing its aspect ratio stays hidden until a new video", () => {
+    const gate = createVideoGate();
+    gate.fogSet();
+    gate.drawn();
+    gate.videoResized(true);
+    expect(gate.visible()).toBe(true);
+    gate.videoResized(false);
+    expect(gate.visible()).toBe(false);
+    gate.drawn();
+    expect(gate.visible()).toBe(false);
+    gate.newVideo();
+    gate.drawn();
+    expect(gate.visible()).toBe(true);
+  });
+});
+
+test("sameAspect allows encoder rounding, nothing more", () => {
+  expect(
+    sameAspect({ width: 3840, height: 2160 }, { width: 1920, height: 1080 }),
+  ).toBe(true);
+  expect(
+    sameAspect({ width: 1920, height: 1080 }, { width: 1920, height: 1088 }),
+  ).toBe(true);
+  expect(
+    sameAspect({ width: 1920, height: 1080 }, { width: 1080, height: 1080 }),
+  ).toBe(false);
+  expect(sameAspect({ width: 1, height: 0 }, { width: 1, height: 1 })).toBe(
+    false,
+  );
 });

@@ -1,7 +1,7 @@
 import type { Polygon } from "@dungeon-manager/schema";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import type { Camera, Size } from "./camera.js";
-import { createVideoGate, cssTransform } from "./video-layer.js";
+import { createVideoGate, cssTransform, sameAspect } from "./video-layer.js";
 
 /** An image the browser has loaded (or drawn), ready to become the map texture. */
 export type MapImage = HTMLImageElement | HTMLCanvasElement | ImageBitmap;
@@ -103,17 +103,14 @@ export async function createRenderer(
   const hideVideo = () => {
     if (video) video.style.visibility = "hidden";
   };
-  // One video pixel per map pixel; a stream may change resolution while playing (VP9 can).
-  const sizeVideo = (element: HTMLVideoElement) => {
-    element.style.width = `${String(element.videoWidth)}px`;
-    element.style.height = `${String(element.videoHeight)}px`;
-  };
+  // The element keeps the map size it had when handed over: fog and camera are in those map
+  // pixels. Later frames of another resolution are stretched onto it (object-fit: fill).
+  let videoSize = { width: 0, height: 0 };
   const onVideoResize = () => {
     if (!video) return;
-    gate.resized();
-    hideVideo();
-    sizeVideo(video);
-    requestDraw();
+    const frames = { width: video.videoWidth, height: video.videoHeight };
+    gate.videoResized(sameAspect(frames, videoSize));
+    if (!gate.visible()) hideVideo();
   };
   const onContextLost = () => {
     gate.contextLost();
@@ -185,7 +182,10 @@ export async function createRenderer(
         next.style.position = "absolute";
         next.style.left = "0";
         next.style.top = "0";
-        sizeVideo(next);
+        videoSize = { width: next.videoWidth, height: next.videoHeight };
+        next.style.width = `${String(videoSize.width)}px`;
+        next.style.height = `${String(videoSize.height)}px`;
+        next.style.objectFit = "fill";
         next.style.transformOrigin = "0 0";
         next.style.visibility = "hidden";
       }

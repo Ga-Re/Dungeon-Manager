@@ -143,8 +143,14 @@ export function MapView({
         setLoad("ready");
       },
       () => {
-        // A video that loaded although the renderer did not would otherwise play on, unseen.
-        releaseVideo(video);
+        // A video that loads although the renderer did not would otherwise play on, unseen –
+        // also when it finishes loading only after the renderer failed.
+        void media.then(
+          (loaded) => {
+            if (loaded instanceof HTMLVideoElement) releaseVideo(loaded);
+          },
+          () => undefined,
+        );
         if (!cancelled) setLoad("error");
       },
     );

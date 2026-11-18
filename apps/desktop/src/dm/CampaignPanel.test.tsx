@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, test } from "vitest";
 import { createI18n } from "../i18n.js";
@@ -213,7 +219,10 @@ describe("CampaignPanel", () => {
     const fog = await screen.findByRole<HTMLInputElement>("checkbox", {
       name: "Nebel zurücksetzen (alles wieder verdeckt)",
     });
-    expect(document.activeElement).toBe(fog);
+    // Focus moves in an effect after the asynchronous update that showed the question.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(fog);
+    });
     fireEvent.click(fog);
     fireEvent.click(screen.getByRole("button", { name: "Karte übernehmen" }));
 

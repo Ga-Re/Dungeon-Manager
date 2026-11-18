@@ -18,13 +18,15 @@ export function cssTransform(camera: Camera, view: Size): string {
  * Decides when the video map may be visible (ADR-0010: fail closed). The video lies under the
  * canvas, so wherever the canvas has not drawn fog, the raw map shows. It is therefore visible
  * only after a frame was drawn while the fog is known, and hidden again from a new video, a
- * resize or a lost WebGL context until the next such frame – and for good after teardown.
+ * resize or a lost WebGL context until the next such frame – and for good after teardown or
+ * when the stream changes its aspect ratio.
  */
 export function createVideoGate() {
   let fogKnown = false;
   let drawnSafely = false;
   let contextLost = false;
   let destroyed = false;
+  let misaligned = false;
   return {
     // `setFog(null)` (the DM view: no fog) also counts as known. The player view must therefore
     // always pass an array – `PlayerApp` does, starting with "everything covered".
@@ -33,6 +35,18 @@ export function createVideoGate() {
     },
     newVideo() {
       drawnSafely = false;
+      misaligned = false;
+    },
+    /**
+     * The stream's frames changed size. Same aspect ratio: still stretched onto the map, so
+     * fog and video stay aligned. Another aspect ratio: the fog can no longer match – the video
+     * stays hidden until a new video is set.
+     */
+    videoResized(sameAspect: boolean) {
+      if (!sameAspect) {
+        misaligned = true;
+        drawnSafely = false;
+      }
     },
     resized() {
       drawnSafely = false;
@@ -49,7 +63,7 @@ export function createVideoGate() {
       drawnSafely = false;
     },
     drawn() {
-      drawnSafely = fogKnown && !contextLost && !destroyed;
+      drawnSafely = fogKnown && !contextLost && !destroyed && !misaligned;
     },
     destroyed() {
       destroyed = true;
@@ -57,4 +71,15 @@ export function createVideoGate() {
     },
     visible: () => drawnSafely,
   };
+}
+
+/** Whether two sizes have the same aspect ratio (within rounding of encoded frame sizes). */
+export function sameAspect(
+  a: { width: number; height: number },
+  b: { width: number; height: number },
+): boolean {
+  if (a.height === 0 || b.height === 0) return false;
+  const ratio = a.width / a.height / (b.width / b.height);
+  // 1 %: e.g. 1080 vs 1088 rows (codecs pad to multiples of 16); 16:9 vs 16:10 is 11 %.
+  return Math.abs(ratio - 1) < 0.01;
 }

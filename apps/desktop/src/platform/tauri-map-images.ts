@@ -1,6 +1,6 @@
 import { createRenderer } from "@dungeon-manager/renderer";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import type { MapViewService } from "./map-images.js";
+import { releaseVideo, type MapViewService } from "./map-images.js";
 
 /** The URL of a library file on the read-only `dmlib` scheme (served by `protocol.rs`). */
 export function libraryUrl(path: string): string {
@@ -32,6 +32,8 @@ export function createTauriMapViewService(): MapViewService {
       await new Promise<void>((resolve, reject) => {
         // A stalled source fires neither event; give up instead of loading forever.
         const timeout = setTimeout(() => {
+          // Stop fetching: the element would otherwise keep loading in the background.
+          releaseVideo(video);
           reject(new Error(`The video map ${path} did not load in time.`));
         }, VIDEO_LOAD_TIMEOUT_MS);
         video.addEventListener(
@@ -46,6 +48,7 @@ export function createTauriMapViewService(): MapViewService {
           "error",
           () => {
             clearTimeout(timeout);
+            releaseVideo(video);
             reject(new Error(`The video map ${path} could not be loaded.`));
           },
           { once: true },

@@ -26,6 +26,20 @@ const MP4_BRANDS: [&[u8]; 8] = [
     b"isom", b"iso2", b"iso5", b"iso6", b"mp41", b"mp42", b"avc1", b"dash",
 ];
 
+/// Whether the `ftyp` box names a video brand as its major brand or among its compatible
+/// brands (those follow the 4-byte minor version, up to the end of the box).
+fn has_mp4_brand(header: &[u8]) -> bool {
+    let box_end = header
+        .get(..4)
+        .and_then(|size| <[u8; 4]>::try_from(size).ok())
+        .map_or(0, |size| u32::from_be_bytes(size) as usize)
+        .min(header.len());
+    let (compatible, _) = header.get(16..box_end).unwrap_or_default().as_chunks::<4>();
+    std::iter::once(&header[8..12])
+        .chain(compatible.iter().map(<[u8; 4]>::as_slice))
+        .any(|brand| MP4_BRANDS.contains(&brand))
+}
+
 /// How many leading bytes the format check looks at (enough for the WebM document type).
 const HEADER_BYTES: usize = 64;
 
@@ -38,8 +52,7 @@ fn map_extension(header: &[u8]) -> Option<&'static str> {
         Some("jpg")
     } else if header.len() >= 12 && &header[..4] == b"RIFF" && &header[8..12] == b"WEBP" {
         Some("webp")
-    } else if header.len() >= 12 && &header[4..8] == b"ftyp" && MP4_BRANDS.contains(&&header[8..12])
-    {
+    } else if header.len() >= 12 && &header[4..8] == b"ftyp" && has_mp4_brand(header) {
         Some("mp4")
     } else if header.starts_with(&[0x1A, 0x45, 0xDF, 0xA3])
         && header.windows(4).any(|window| window == b"webm")
@@ -184,6 +197,13 @@ mod tests {
         // AVIF images and QuickTime files share the box but are no MP4 videos.
         assert_eq!(map_extension(b"\0\0\0\x20ftypavif"), None);
         assert_eq!(map_extension(b"\0\0\0\x14ftypqt  "), None);
+        // M4V as major brand, but compatible with isom: plays like any MP4.
+        assert_eq!(
+            map_extension(b"\0\0\0\x18ftypM4V \0\0\0\0isommp42"),
+            Some("mp4")
+        );
+        // An AVIF that lists only image brands stays refused.
+        assert_eq!(map_extension(b"\0\0\0\x18ftypavif\0\0\0\0avifmif1"), None);
         let webm = [
             &[0x1A, 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x82, 0x84][..],
             b"webm",
