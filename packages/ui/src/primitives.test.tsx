@@ -236,6 +236,76 @@ describe("TreeList", () => {
     });
   });
 
+  it("never selects an item when one of its actions is clicked", () => {
+    const onSelect = vi.fn();
+    render(
+      <TreeList
+        label="Szene"
+        nodes={nodes}
+        onSelect={onSelect}
+        renderActions={(node) => (
+          <button
+            type="button"
+            tabIndex={-1}
+          >{`Entfernen ${node.label}`}</button>
+        )}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Entfernen Grabkammer" }),
+    );
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("keeps focus on a folder when its focused descendant is collapsed away", () => {
+    render(<TreeList label="Szene" nodes={nodes} />);
+    item("Grabkammer").focus();
+    const toggle = item("Krypta").querySelector<HTMLElement>(".dm-tree-toggle");
+    if (!toggle) throw new Error("toggle box missing");
+    fireEvent.click(toggle);
+    expect(document.activeElement?.getAttribute("data-id")).toBe("crypt");
+  });
+
+  it("expands folders that appear later, but keeps folders the DM collapsed", () => {
+    const { rerender } = render(<TreeList label="Szene" nodes={nodes} />);
+    const toggle = item("Tokens").querySelector<HTMLElement>(".dm-tree-toggle");
+    if (!toggle) throw new Error("toggle box missing");
+    fireEvent.click(toggle);
+    rerender(
+      <TreeList
+        label="Szene"
+        nodes={[
+          ...nodes,
+          {
+            id: "notes",
+            label: "Notizen",
+            children: [{ id: "n1", label: "Rätsel" }],
+          },
+        ]}
+      />,
+    );
+    expect(item("Notizen").getAttribute("aria-expanded")).toBe("true");
+    expect(item("Tokens").getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("can be controlled", () => {
+    const onExpandedChange = vi.fn();
+    render(
+      <TreeList
+        label="Szene"
+        nodes={nodes}
+        expandedIds={new Set(["crypt"])}
+        onExpandedChange={onExpandedChange}
+      />,
+    );
+    expect(item("Räume").getAttribute("aria-expanded")).toBe("false");
+    const toggle = item("Räume").querySelector<HTMLElement>(".dm-tree-toggle");
+    if (!toggle) throw new Error("toggle box missing");
+    fireEvent.click(toggle);
+    expect(onExpandedChange).toHaveBeenCalledWith(new Set(["crypt", "rooms"]));
+    expect(item("Räume").getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("renders trailing actions per item", () => {
     render(
       <TreeList

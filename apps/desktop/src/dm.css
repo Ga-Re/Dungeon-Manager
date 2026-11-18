@@ -87,7 +87,7 @@ button {
 }
 
 .map-view-canvas:focus-visible {
-  outline: 3px solid var(--dm-focus);
+  outline: var(--dm-focus-width) solid var(--dm-focus);
 }
 
 .map-view-canvas canvas {

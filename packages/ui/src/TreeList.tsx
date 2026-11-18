@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 
-/** One entry of a {@link TreeList}. A node with `children` (even empty) is a folder. */
+/** One entry of a {@link TreeList}. A node with `children` (even empty) is a folder. Ids are unique per tree. */
 export interface TreeNode {
   id: string;
   /** Translated, user-visible name. */
@@ -15,10 +15,10 @@ export interface TreeNode {
   /** Decorative icon in front of the label. */
   icon?: ReactNode;
   /** Show the label in the monospace face (file names, technical values). */
-  mono?: boolean;
+  mono?: boolean | undefined;
   /** Small trailing info such as a badge ("4K", "geheim") or a role marker. */
   meta?: ReactNode;
-  children?: readonly TreeNode[];
+  children?: readonly TreeNode[] | undefined;
 }
 
 /** Props of {@link TreeList}. */
@@ -26,43 +26,62 @@ export interface TreeListProps {
   /** Translated accessible name of the tree. */
   label: string;
   nodes: readonly TreeNode[];
-  selectedId?: string | null;
-  onSelect?: (id: string) => void;
-  /** Expanded folders when controlled; leave out to let the tree manage it (all folders start expanded). */
-  expandedIds?: ReadonlySet<string>;
-  onExpandedChange?: (ids: ReadonlySet<string>) => void;
-  /** Trailing actions of an item (e.g. visibility toggle, remove). */
-  renderActions?: (node: TreeNode) => ReactNode;
-  className?: string;
+  selectedId?: string | null | undefined;
+  onSelect?: ((id: string) => void) | undefined;
+  /**
+   * Expanded folders when controlled. Leave out to let the tree manage it: then every folder,
+   * including ones added later, is expanded until the DM collapses it.
+   */
+  expandedIds?: ReadonlySet<string> | undefined;
+  onExpandedChange?: ((ids: ReadonlySet<string>) => void) | undefined;
+  /**
+   * Trailing actions of an item (e.g. visibility toggle, remove). They are pointer shortcuts:
+   * clicks on them never select the item. Give them `tabIndex={-1}` so the tree keeps a single
+   * tab stop, and offer the same actions to keyboard users elsewhere (e.g. the ribbon).
+   */
+  renderActions?: ((node: TreeNode) => ReactNode) | undefined;
+  className?: string | undefined;
 }
 
-interface VisibleItem {
-  node: TreeNode;
-  parentId: string | null;
+interface TreeIndex {
+  /** Position of every node in document order, used for stable label ids. */
+  order: Map<string, number>;
+  parent: Map<string, string | null>;
+  folders: string[];
 }
 
-function folderIds(nodes: readonly TreeNode[]): string[] {
-  return nodes.flatMap((node) =>
-    node.children ? [node.id, ...folderIds(node.children)] : [],
-  );
+function indexTree(nodes: readonly TreeNode[]): TreeIndex {
+  const index: TreeIndex = { order: new Map(), parent: new Map(), folders: [] };
+  const visit = (list: readonly TreeNode[], parentId: string | null) => {
+    for (const node of list) {
+      index.order.set(node.id, index.order.size);
+      index.parent.set(node.id, parentId);
+      if (node.children) {
+        index.folders.push(node.id);
+        visit(node.children, node.id);
+      }
+    }
+  };
+  visit(nodes, null);
+  return index;
 }
 
-function visibleItems(
+function visibleIds(
   nodes: readonly TreeNode[],
   expanded: ReadonlySet<string>,
-  parentId: string | null = null,
-): VisibleItem[] {
+): string[] {
   return nodes.flatMap((node) => [
-    { node, parentId },
+    node.id,
     ...(node.children && expanded.has(node.id)
-      ? visibleItems(node.children, expanded, node.id)
+      ? visibleIds(node.children, expanded)
       : []),
   ]);
 }
 
 /**
  * Outline tree with connector lines, junction dots and toggle boxes (ADR-0011).
- * Keyboard support follows the WAI-ARIA tree pattern: arrow keys, Home/End, Enter/Space.
+ * Keyboard support follows the WAI-ARIA tree pattern: arrow keys, Home/End, Enter/Space,
+ * with a single (roving) tab stop.
  */
 export function TreeList({
   label,
@@ -75,59 +94,82 @@ export function TreeList({
   className,
 }: TreeListProps) {
   const idPrefix = useId();
-  const [ownExpanded, setOwnExpanded] = useState<ReadonlySet<string>>(
-    () => new Set(folderIds(nodes)),
+  // Uncontrolled mode remembers what was collapsed, so new folders start expanded.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
+    () => new Set(),
   );
-  const expanded = expandedIds ?? ownExpanded;
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const elements = useRef(new Map<string, HTMLLIElement>());
 
-  const visible = useMemo(
-    () => visibleItems(nodes, expanded),
-    [nodes, expanded],
+  const tree = useMemo(() => indexTree(nodes), [nodes]);
+  const expanded = useMemo(
+    () =>
+      expandedIds ?? new Set(tree.folders.filter((id) => !collapsed.has(id))),
+    [expandedIds, tree, collapsed],
   );
-  const isVisible = (id: string | null) =>
-    id !== null && visible.some((item) => item.node.id === id);
+  const visible = useMemo(() => visibleIds(nodes, expanded), [nodes, expanded]);
+  const position = useMemo(
+    () => new Map(visible.map((id, index) => [id, index])),
+    [visible],
+  );
+
+  const isVisible = (id: string | null): id is string =>
+    id !== null && position.has(id);
   // Roving tab stop: the focused item, else the selected one, else the first.
   const tabStop = isVisible(focusedId)
     ? focusedId
     : isVisible(selectedId)
       ? selectedId
-      : (visible[0]?.node.id ?? null);
-
-  function setExpanded(id: string, open: boolean) {
-    const next = new Set(expanded);
-    if (open) next.add(id);
-    else next.delete(id);
-    if (!expandedIds) setOwnExpanded(next);
-    onExpandedChange?.(next);
-  }
+      : (visible[0] ?? null);
 
   function moveFocus(id: string) {
     setFocusedId(id);
     elements.current.get(id)?.focus();
   }
 
-  function onKeyDown(event: KeyboardEvent<HTMLLIElement>, item: VisibleItem) {
+  function setExpanded(id: string, open: boolean) {
+    const next = new Set(expanded);
+    if (open) next.add(id);
+    else next.delete(id);
+    if (!expandedIds) {
+      const nextCollapsed = new Set(collapsed);
+      if (open) nextCollapsed.delete(id);
+      else nextCollapsed.add(id);
+      setCollapsed(nextCollapsed);
+    }
+    onExpandedChange?.(next);
+    // Collapsing would unmount a focused descendant; keep focus on the folder instead.
+    const folder = elements.current.get(id);
+    const active = folder?.ownerDocument.activeElement;
+    if (
+      !open &&
+      folder &&
+      active &&
+      active !== folder &&
+      folder.contains(active)
+    ) {
+      moveFocus(id);
+    }
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLLIElement>, node: TreeNode) {
     // Items are nested, so ignore key presses bubbling up from a child item.
     if (event.target !== event.currentTarget) return;
-    const { node } = item;
-    const index = visible.indexOf(item);
+    const index = position.get(node.id) ?? 0;
     const isOpen = node.children !== undefined && expanded.has(node.id);
-    const target = (offset: number) => visible[index + offset]?.node.id;
     let next: string | undefined;
     switch (event.key) {
       case "ArrowDown":
-        next = target(1);
+        next = visible[index + 1];
         break;
       case "ArrowUp":
-        next = target(-1);
+        next = visible[index - 1];
         break;
       case "Home":
-        next = visible[0]?.node.id;
+        next = visible[0];
         break;
       case "End":
-        next = visible.at(-1)?.node.id;
+        next = visible.at(-1);
         break;
       case "ArrowRight":
         if (node.children && !isOpen) setExpanded(node.id, true);
@@ -135,7 +177,7 @@ export function TreeList({
         break;
       case "ArrowLeft":
         if (isOpen) setExpanded(node.id, false);
-        else next = item.parentId ?? undefined;
+        else next = tree.parent.get(node.id) ?? undefined;
         break;
       case "Enter":
       case " ":
@@ -150,11 +192,10 @@ export function TreeList({
 
   function renderItems(list: readonly TreeNode[], level: number): ReactNode {
     return list.map((node) => {
-      const item = visible.find((entry) => entry.node === node);
-      if (!item) return null;
       const isFolder = node.children !== undefined;
       const isOpen = isFolder && expanded.has(node.id);
-      const labelId = `${idPrefix}-${String(visible.indexOf(item))}`;
+      const labelId = `${idPrefix}-${String(tree.order.get(node.id))}`;
+      const actions = renderActions?.(node);
       return (
         <li
           key={node.id}
@@ -171,7 +212,7 @@ export function TreeList({
           aria-labelledby={labelId}
           tabIndex={node.id === tabStop ? 0 : -1}
           onKeyDown={(event) => {
-            onKeyDown(event, item);
+            onKeyDown(event, node);
           }}
           onFocus={(event) => {
             if (event.target === event.currentTarget) setFocusedId(node.id);
@@ -215,7 +256,16 @@ export function TreeList({
             {node.meta !== undefined && (
               <span className="dm-tree-meta">{node.meta}</span>
             )}
-            {renderActions?.(node)}
+            {actions !== undefined && actions !== null && (
+              <span
+                className="dm-tree-actions"
+                onClick={(event) => {
+                  event.stopPropagation();
+                }}
+              >
+                {actions}
+              </span>
+            )}
           </div>
           {isOpen && node.children && node.children.length > 0 && (
             <ul role="group" className="dm-tree-group">

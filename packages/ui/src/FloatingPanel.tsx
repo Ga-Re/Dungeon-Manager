@@ -6,10 +6,10 @@ export interface FloatingPanelProps {
   /** Translated panel title; also names the region. */
   title: string;
   /** Number of items, shown as a translated badge ("9 Objekte"). */
-  count?: number;
+  count?: number | undefined;
   /** Controls at the right end of the header. */
   headerActions?: ReactNode;
-  className?: string;
+  className?: string | undefined;
   children: ReactNode;
 }
 

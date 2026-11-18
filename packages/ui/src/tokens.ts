@@ -50,7 +50,7 @@ export const THEMES: Record<ThemeName, Record<ColorToken, string>> = {
     accent: "#e2a62b",
     "accent-soft": "#f3d48a",
     "accent-line": "#9c6f17",
-    focus: "#1d6f75",
+    focus: "#2a7f86",
     danger: "#9e3324",
     success: "#2e6034",
   },
@@ -108,6 +108,9 @@ export const COLOR_PAIRS: readonly (readonly [
   ["accent-line", "surface-panel", 3],
   ["focus", "surface-panel", 3],
   ["focus", "surface-sunken", 3],
+  ["focus", "surface-raised", 3],
+  ["focus", "surface-chrome", 3],
+  ["focus", "surface-canvas", 3],
 ];
 
 /** Theme-dependent values that are not plain colours. */
@@ -136,6 +139,7 @@ const SHARED: Record<string, string> = {
   "radius-sm": "4px",
   "radius-md": "6px",
   "radius-lg": "8px",
+  "radius-pill": "999px",
   "focus-width": "2px",
   // Layering contract (ADR-0011): canvas · overlays · HUD · ribbon/data panel · popovers · modals.
   "z-canvas": "0",
@@ -191,9 +195,8 @@ function themeBlock(theme: ThemeName, indent: string): string {
 }
 
 /**
- * The token sheet as CSS: parchment by default, night when the OS prefers dark
- * (unless `data-dm-theme="parchment"` is set) or when `data-dm-theme="night"` is set
- * on the root element.
+ * The token sheet as CSS: parchment by default, night when `data-dm-theme="night"` is set on
+ * the root element (the DM switches it; ADR-0011).
  */
 export function tokensToCss(): string {
   return `/* Generated from packages/ui/src/tokens.ts – do not edit by hand. */
@@ -201,12 +204,6 @@ export function tokensToCss(): string {
 :root {
 ${declarations(SHARED, "  ")}
 ${themeBlock("parchment", "  ")}
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-dm-theme="parchment"]) {
-${themeBlock("night", "    ")}
-  }
 }
 
 :root[data-dm-theme="night"] {

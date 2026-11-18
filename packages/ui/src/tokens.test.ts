@@ -46,7 +46,7 @@ describe("tokensToCss", () => {
 
   it("defines every colour token for both themes", () => {
     for (const name of Object.keys(THEMES.parchment)) {
-      expect(css.match(new RegExp(`--dm-${name}:`, "g"))).toHaveLength(3);
+      expect(css.match(new RegExp(`--dm-${name}:`, "g"))).toHaveLength(2);
     }
   });
 

@@ -37,6 +37,25 @@ describe("findHardCodedValues", () => {
     ]);
   });
 
+  it("reports negative lengths, literal fallbacks, font shorthands and font sizes", () => {
+    expect(
+      findHardCodedValues(
+        ".a { margin: -4px; }\n.b { color: var(--dm-text, #fff); }\n.c { font: 14px/1.4 serif; }\n.d { font-size: 13px; }",
+      ),
+    ).toEqual([
+      "1: margin: -4px",
+      "2: color: var(--dm-text, #fff)",
+      "3: font: 14px/1.4 serif",
+      "4: font-size: 13px",
+    ]);
+  });
+
+  it("accepts nested token fallbacks", () => {
+    expect(
+      findHardCodedValues(".a { color: var(--dm-a, var(--dm-b)); }"),
+    ).toEqual([]);
+  });
+
   it("ignores comments and custom property definitions", () => {
     expect(
       findHardCodedValues("/* color: #fff; */\n:root { --local: #fff; }"),

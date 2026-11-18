@@ -29,7 +29,7 @@
 .dm-panel-count {
   font-size: var(--dm-font-size-xs);
   padding: 0 var(--dm-space-2);
-  border-radius: 999px;
+  border-radius: var(--dm-radius-pill);
   border: 1px solid var(--dm-border-subtle);
   color: var(--dm-text-secondary);
 }
@@ -69,9 +69,11 @@
   height: 20px;
 }
 
+/* Explicit text colour: the button may sit on the dark title bar, the hover surface is light. */
 .dm-icon-button:hover {
   background: var(--dm-surface-raised);
   border-color: var(--dm-border-subtle);
+  color: var(--dm-text-primary);
 }
 
 .dm-icon-button[aria-pressed="true"] {
@@ -249,6 +251,11 @@
 
 .dm-tree-label-mono {
   font-family: var(--dm-font-mono);
+}
+
+.dm-tree-actions {
+  display: inline-flex;
+  gap: var(--dm-space-1);
 }
 
 .dm-tree-meta {
