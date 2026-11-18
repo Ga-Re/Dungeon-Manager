@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, test } from "vitest";
 import { isInside } from "./fog.js";
-import { circleArea, strokeArea } from "./index.js";
+import { circleArea, ringArea, strokeArea } from "./index.js";
 
 const close = (a: number, b: number) => Math.abs(a - b) < 1e-6;
 
@@ -178,4 +178,24 @@ describe("strokeArea", () => {
     );
     // ~3 s normally; coverage instrumentation makes polygon unions about three times slower.
   }, 30_000);
+});
+
+describe("ringArea", () => {
+  test("the same area in either winding order; nothing for a line", () => {
+    const square: [number, number][] = [
+      [0, 0],
+      [2, 0],
+      [2, 2],
+      [0, 2],
+    ];
+    expect(ringArea(square)).toBe(4);
+    expect(ringArea([...square].reverse())).toBe(4);
+    expect(
+      ringArea([
+        [0, 0],
+        [5, 5],
+        [10, 10],
+      ]),
+    ).toBe(0);
+  });
 });
