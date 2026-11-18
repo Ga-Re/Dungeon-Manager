@@ -328,28 +328,6 @@ importers:
         specifier: 8.3.8
         version: 8.3.8
 
-  apps/mobile:
-    dependencies:
-      '@dungeon-manager/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@dungeon-manager/i18n':
-        specifier: workspace:*
-        version: link:../../packages/i18n
-      '@dungeon-manager/protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
-      '@dungeon-manager/schema':
-        specifier: workspace:*
-        version: link:../../packages/schema
-      '@dungeon-manager/storage':
-        specifier: workspace:*
-        version: link:../../packages/storage
-    devDependencies:
-      '@dungeon-manager/tsconfig':
-        specifier: workspace:*
-        version: link:../../tooling/tsconfig
-
   packages/core:
     dependencies:
       '@dungeon-manager/schema':

@@ -65,8 +65,6 @@ const EXPECTED = {
   "packages/i18n/src/imports-app.ts": ["packages-not-to-apps"],
   "apps/companion/src/index.ts": [],
   "apps/desktop/src/imports-other-app.ts": ["apps-not-to-other-apps"],
-  "apps/mobile/src/imports-renderer.ts": ["mobile-not-web-only"],
-  "apps/mobile/src/imports-core.ts": [],
 };
 
 /** Same roots as the `boundaries` script: only src/ folders, so dist/ is a target, never a root. */

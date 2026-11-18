@@ -1,7 +1,0 @@
-{
-  "extends": "@dungeon-manager/tsconfig/base.json",
-  "compilerOptions": {
-    "noEmit": true
-  },
-  "include": ["src"]
-}

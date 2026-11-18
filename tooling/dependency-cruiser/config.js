@@ -133,12 +133,6 @@ export default {
       { path: "^apps/([^/]+)/" },
       { path: "^apps/", pathNot: "^apps/$1/" },
     ),
-    forbid(
-      "mobile-not-web-only",
-      "apps/mobile must not import the web-only renderer or ui packages.",
-      { path: "^apps/mobile/" },
-      { path: pkg("renderer", "ui") },
-    ),
 
     // General hygiene.
     forbid(
