@@ -459,7 +459,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-130 DM window zone layout
 
-- **Status:** in-progress · **Depends on:** T-129, T-130a · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
+- **Status:** done · **Depends on:** T-129, T-130a · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
 - Map viewport fills the DM window; collapsible left data panel holds `LibraryPanel` and `CampaignPanel`; dark title bar (save status, undo, redo, scene tab, settings) and parchment ribbon with mode tabs; floating scene browser top left. Player window unchanged.
 - DM decisions (2026-11-18):
   - Title bar shows a **save status** ("Gespeichert" / "Speichert …" / "Nicht gespeichert – erneut versuchen") instead of a save button (scenes already save on every change).
@@ -469,21 +469,37 @@ New tasks discovered during work are appended to the right stage with status `to
   - Data panel toggles with a button and **Cmd/Ctrl+B**.
   - Icons from Lucide (`lucide-react`, approved by the DM).
 - **Acceptance criteria**
-  - [ ] The canvas stays full-window (100vw × 100vh) whether the data panel is open or closed; the panel overlays it (asserted in E2E via the canvas bounding box)
-  - [ ] Data panel toggles by button and Cmd/Ctrl+B
-  - [ ] Theme setting (OS / light / dark) applies immediately and survives a restart
-  - [ ] Existing E2E flows pass with updated selectors; DM-window screenshot test added
+  - [x] The canvas stays full-window (100vw × 100vh) whether the data panel is open or closed; the panel overlays it (asserted in E2E via the canvas bounding box)
+  - [x] Data panel toggles by button and Cmd/Ctrl+B
+  - [x] Theme setting (OS / light / dark) applies immediately and survives a restart
+  - [x] Existing E2E flows pass with updated selectors; DM-window screenshot test added
 - **Notes:** From ADR-0011.
+
+### T-130b Fusion-style look of the DM window
+
+- **Status:** todo · **Depends on:** T-130 · **Refs:** ARCHITECTURE §15, ADR-0011, `.claude/skills/ui-design/SKILL.md`
+- Make the zones from T-130 look and work like the Fusion 360 reference the DM gave (2026-11-19); layout zones stay as they are.
+- DM decisions (2026-11-19):
+  - **Data panel** stays an overlay that can be folded in and out (ADR-0011 unchanged); it becomes the **map and asset catalogue** (library), shown as compact cards/rows with icon, title and short description and a header with actions.
+  - **Scene browser** stays a tree floating over the map, compact header ("Szene"), visibility toggles per entry.
+  - **Ribbon:** tool groups with large icons over a short label and a group caption with ▾ below (dropdown for less frequent tools), replacing the plain text buttons and native selects.
+  - Form controls (buttons, inputs, selects) styled from tokens in `@dungeon-manager/ui`.
+- **Acceptance criteria**
+  - [ ] Ribbon modes use icon tool groups with captions; keyboard reachable, labels translated
+  - [ ] Data panel shows the library as a catalogue; folds in/out as before
+  - [ ] No native-looking controls left in the DM window; tokens only
+  - [ ] Screenshot golden updated; component tests for new primitives
+- **Notes:** Where campaign and scene management lives once the data panel is the catalogue is to be settled in the plan (ask the DM). Dock (reference #8) stays in T-131; a right-click/radial menu (reference #6) is not planned yet.
 
 ### T-131 Fog tools in the ribbon and navigation dock
 
-- **Status:** todo · **Depends on:** T-130 · **Refs:** ARCHITECTURE §15, ADR-0011
+- **Status:** todo · **Depends on:** T-130b · **Refs:** ARCHITECTURE §15, ADR-0011
 - Move `FogToolbar` into the ribbon's fog mode (tool groups with captions, active tool highlighted); bottom-centre dock with zoom and fit-to-screen for the DM view, the player-view rotation (SPEC 2.2) and player-feed status.
 - **Acceptance criteria**
   - [ ] All fog tools reachable from the ribbon, with keyboard shortcuts as before
   - [ ] Zoom/fit change the DM view transform, rotation turns the player view; component and E2E tests
   - [ ] No regression on the benchmark scene (ARCHITECTURE §11)
-- **Notes:** From ADR-0011.
+- **Notes:** From ADR-0011. Left over from T-130 review: at 1280 px the open data panel covers the left end of today's map dock, and `.dm-notices` sits at a fixed offset above it – lay both out with the new dock; display status (`role="status"`) moves out of the hidden Anzeige tab into the dock.
 
 ### T-134 Sidecar files for map and asset data
 
