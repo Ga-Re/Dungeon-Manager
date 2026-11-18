@@ -412,9 +412,21 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-113 Blackout button and DM preview of the player view
 
 - **Status:** todo · **Depends on:** T-105b
-- Instant black/pause image in the player window; small live preview of the player view in the DM window.
+- Instant black/pause image in the player window; small live preview of the player view in the DM window as a floating HUD panel (ARCHITECTURE §15).
 - **Acceptance criteria**
   - [ ] Blackout reachable by button and keyboard shortcut; E2E test
+  - [ ] The preview shows exactly the projected player view (incl. blackout), never DM-only data; component/E2E test
+- **Notes:** Preview placement decided by the DM (2026-11-18, PR #27).
+
+### T-133 Player-view preview on an additional DM monitor
+
+- **Status:** todo · **Depends on:** T-113 · **Refs:** SPEC 2.1, ARCHITECTURE §8, §15
+- Open the player-view preview as its own window on a chosen display (windowed or fullscreen), for a better overview on an additional DM monitor.
+- **Acceptance criteria**
+  - [ ] DM chooses the display and opens/closes the window; the choice is remembered
+  - [ ] The window receives only `PlayerViewMessage` output, has the player window's permissions and fails closed; E2E test
+  - [ ] Benchmark scene (ARCHITECTURE §11) with TV + DM monitor + DM window open stays within budget, measured on the reference notebook
+- **Notes:** Requested by the DM (2026-11-18). A third renderer decoding the same 4K video costs GPU time; if the budget is missed, render the monitor window at reduced resolution or frame rate. Open: should it follow the TV's rotation or stay upright for the DM?
 
 ### T-114 Autosave and crash recovery
 
