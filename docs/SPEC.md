@@ -105,7 +105,7 @@ There is no DM phone app (ADR-0013). Planning on the go happens in tools the DM 
 - **Soft fades and soft edges** for fog changes; can be switched off in the settings (performance)
 - **Dynamic vision:** walls, closed doors and asset blockers stop line of sight and light (2D raycasting); the TV shows the union of what all player tokens see; respects light sources, darkvision and torch radius
 - **Light model:** brightness per scene (day / dusk / dark), bright and dim radius per light (5e), darkvision in greyscale, coloured and flickering light
-- **Secret rooms** stay hidden on "reveal all" and when neighbouring rooms are revealed, until the DM reveals them explicitly; their contents are never sent to the TV or companions before that
+- **Secret rooms** stay hidden on "reveal all" and when neighbouring or overlapping rooms are revealed (the reveal skips the secret area), until the DM reveals them explicitly or paints into them with a manual tool; their contents are never sent to the TV or companions before that
 - **Memory fog:** visited areas stay dimly visible, but current movement inside them is hidden
 - Fog per level
 - Per map: how player movement behaves in fog
