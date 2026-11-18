@@ -25,7 +25,12 @@ const MODE_SLOT: Record<Mode, ShellSlot> = {
 
 /** Cmd+B on macOS, Ctrl+B elsewhere; not in rich-text fields, where it means bold. */
 function isPanelShortcut(event: globalThis.KeyboardEvent): boolean {
-  if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey)
+  if (
+    !(event.metaKey || event.ctrlKey) ||
+    event.altKey ||
+    event.shiftKey ||
+    event.repeat
+  )
     return false;
   if (event.key.toLowerCase() !== "b") return false;
   return !(
@@ -64,6 +69,8 @@ export function DmShell({
   const tabs = useRef(new Map<Mode, HTMLButtonElement>());
   const settingsButton = useRef<HTMLButtonElement>(null);
   const settingsPanel = useRef<HTMLDivElement>(null);
+  const panelButton = useRef<HTMLButtonElement>(null);
+  const dataPanelRef = useRef<HTMLElement>(null);
   const idPrefix = useId();
 
   // One stable ref callback per slot, so React does not re-register them on every render.
@@ -91,6 +98,10 @@ export function DmShell({
   }, []);
 
   const togglePanel = useCallback(() => {
+    // Hiding the panel would drop focus inside it to <body>; keep it on the toggle instead.
+    const active = document.activeElement;
+    if (active && dataPanelRef.current?.contains(active))
+      panelButton.current?.focus();
     setPanelOpen((open) => !open);
   }, []);
 
@@ -109,8 +120,15 @@ export function DmShell({
   // The settings popover closes on Escape and on a click outside it.
   useEffect(() => {
     if (!settingsOpen) return;
+    // Only when focus is in the popover or on the gear: elsewhere Escape belongs to the map.
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      const target = event.target as Node;
+      if (
+        !settingsPanel.current?.contains(target) &&
+        !settingsButton.current?.contains(target)
+      )
+        return;
       setSettingsOpen(false);
       settingsButton.current?.focus();
     };
@@ -153,6 +171,7 @@ export function DmShell({
         <div className="dm-overlay">
           <header className="dm-titlebar">
             <IconButton
+              ref={panelButton}
               icon={<PanelLeft />}
               label={t("shell.toggleDataPanel")}
               pressed={panelOpen}
@@ -176,8 +195,6 @@ export function DmShell({
                 <div
                   ref={settingsPanel}
                   id={`${idPrefix}-settings`}
-                  role="dialog"
-                  aria-label={t("shell.settings")}
                   className="dm-popover"
                 >
                   <fieldset className="dm-settings-group">
@@ -244,6 +261,7 @@ export function DmShell({
           </div>
           <div className="dm-workspace">
             <aside
+              ref={dataPanelRef}
               id={`${idPrefix}-panel`}
               aria-label={t("shell.dataPanel")}
               className="dm-datapanel"

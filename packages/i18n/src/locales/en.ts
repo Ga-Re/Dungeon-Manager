@@ -140,6 +140,7 @@ export const en: Messages = {
     },
     save: {
       saved: "Saved",
+      saving: "Saving…",
       failed: "Not saved",
     },
     browser: {

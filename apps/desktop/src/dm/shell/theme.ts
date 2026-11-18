@@ -14,6 +14,15 @@ const STORAGE_KEY = "dm.theme";
 /** Parchment unless the DM chose otherwise on this device (ADR-0011: parchment is the default). */
 const DEFAULT_THEME: ThemeSetting = "light";
 
+/** The webview's `localStorage`; even reading it throws when storage is disabled. */
+export function deviceStorage(): Storage | undefined {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 function isThemeSetting(value: unknown): value is ThemeSetting {
   return THEME_SETTINGS.includes(value as ThemeSetting);
 }

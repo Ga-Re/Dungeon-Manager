@@ -156,6 +156,11 @@ button {
   color: var(--dm-text-on-chrome-muted);
 }
 
+/* Hidden (also from screen readers) once a map fills the canvas. */
+.dm-canvas:has(.map-view) > .dm-canvas-empty {
+  display: none;
+}
+
 .dm-overlay {
   position: fixed;
   inset: 0;

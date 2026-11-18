@@ -142,6 +142,7 @@ export const de = {
     },
     save: {
       saved: "Gespeichert",
+      saving: "Speichert …",
       failed: "Nicht gespeichert",
     },
     browser: {

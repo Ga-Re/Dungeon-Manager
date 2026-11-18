@@ -10,6 +10,7 @@ import { LibraryPanel } from "./LibraryPanel.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 import { DmShell } from "./shell/DmShell.js";
 import { ShellPortal } from "./shell/slots.js";
+import { deviceStorage } from "./shell/theme.js";
 
 type DisplayState =
   | { readonly status: "loading" }
@@ -21,7 +22,7 @@ export function DmApp({
   displayService,
   libraryService,
   newId,
-  storage = globalThis.localStorage,
+  storage = deviceStorage(),
   root = document.documentElement,
 }: {
   readonly displayService: DisplayService;

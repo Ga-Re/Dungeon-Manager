@@ -120,18 +120,18 @@ describe("DmShell", () => {
 
   it("applies and stores the theme chosen in the settings", () => {
     const { storage, root } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
-    const dialog = screen.getByRole("dialog", { name: "Einstellungen" });
+    const gear = screen.getByRole("button", { name: "Einstellungen" });
+    expect(gear.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(gear);
+    expect(gear.getAttribute("aria-expanded")).toBe("true");
     expect(
-      within(dialog).getByRole("radio", { name: "Hell (Pergament)" }),
+      screen.getByRole("radio", { name: "Hell (Pergament)" }),
     ).toHaveProperty("checked", true);
-    fireEvent.click(
-      within(dialog).getByRole("radio", { name: "Dunkel (Nacht)" }),
-    );
+    fireEvent.click(screen.getByRole("radio", { name: "Dunkel (Nacht)" }));
     expect(root.dataset["dmTheme"]).toBe("night");
     expect(storage.getItem("dm.theme")).toBe("dark");
     fireEvent.click(
-      within(dialog).getByRole("radio", { name: "Wie das Betriebssystem" }),
+      screen.getByRole("radio", { name: "Wie das Betriebssystem" }),
     );
     expect(root.dataset["dmTheme"]).toBe("system");
   });
@@ -139,12 +139,38 @@ describe("DmShell", () => {
   it("closes the settings with Escape (focus back on the gear) and on an outside click", () => {
     setup();
     const gear = screen.getByRole("button", { name: "Einstellungen" });
+    const themeRadio = () =>
+      screen.queryByRole("radio", { name: "Dunkel (Nacht)" });
     fireEvent.click(gear);
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.keyDown(themeRadio() ?? gear, { key: "Escape" });
+    expect(themeRadio()).toBeNull();
     expect(document.activeElement).toBe(gear);
     fireEvent.click(gear);
     fireEvent.pointerDown(document.body);
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(themeRadio()).toBeNull();
+  });
+
+  it("leaves Escape elsewhere (e.g. on the map) to its owner", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    fireEvent.keyDown(screen.getByTestId("map"), { key: "Escape" });
+    expect(screen.getByRole("radio", { name: "Dunkel (Nacht)" })).toBeTruthy();
+  });
+
+  it("keeps focus on the toggle when hiding a panel that had it", () => {
+    setup();
+    const inside = document.createElement("button");
+    panel().append(inside);
+    inside.focus();
+    fireEvent.keyDown(inside, { key: "b", ctrlKey: true });
+    expect(panel().hidden).toBe(true);
+    expect(document.activeElement).toBe(toggle());
+  });
+
+  it("ignores the auto-repeat of a held Cmd/Ctrl+B", () => {
+    setup();
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true, repeat: true });
+    expect(panel().hidden).toBe(true);
   });
 });

@@ -1,5 +1,12 @@
 import { IconButton } from "@dungeon-manager/ui";
-import { CircleAlert, CircleCheck, Redo2, Undo2, X } from "lucide-react";
+import {
+  CircleAlert,
+  CircleCheck,
+  LoaderCircle,
+  Redo2,
+  Undo2,
+  X,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -14,6 +21,7 @@ export function SceneTitle({
   canRedo,
   onUndo,
   onRedo,
+  saving,
   saveFailed,
   onRetrySave,
 }: {
@@ -24,6 +32,8 @@ export function SceneTitle({
   readonly canRedo: boolean;
   readonly onUndo: () => void;
   readonly onRedo: () => void;
+  /** A write is still pending; wins over "saved" but not over a failure. */
+  readonly saving: boolean;
   readonly saveFailed: boolean;
   readonly onRetrySave: () => void;
 }) {
@@ -63,6 +73,11 @@ export function SceneTitle({
           <button type="button" onClick={onRetrySave}>
             {t("fog.retrySave")}
           </button>
+        </span>
+      ) : saving ? (
+        <span className="dm-save-status">
+          <LoaderCircle aria-hidden="true" />
+          {t("shell.save.saving")}
         </span>
       ) : (
         <span className="dm-save-status">

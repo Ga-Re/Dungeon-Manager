@@ -206,6 +206,7 @@ export function OpenScenePanel({
           onRedo={() => {
             session.redo();
           }}
+          saving={session.saving}
           saveFailed={session.saveFailed}
           onRetrySave={() => {
             session.retrySave();

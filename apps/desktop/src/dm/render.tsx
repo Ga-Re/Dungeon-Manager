@@ -14,7 +14,7 @@ import "../dm.css";
 import { DmApp } from "./DmApp.js";
 import { MapViewContext } from "./MapView.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
-import { applyTheme, readThemeSetting } from "./shell/theme.js";
+import { applyTheme, deviceStorage, readThemeSetting } from "./shell/theme.js";
 
 /** Platform services the DM window runs on. */
 export interface DmWindowServices {
@@ -31,8 +31,8 @@ export function renderDmWindow(services: DmWindowServices): void {
   const documentRoot = document.documentElement;
   documentRoot.lang = i18n.language;
   document.title = i18n.t("app.title");
-  // Before the first paint, so a dark-theme DM never sees a parchment flash.
-  applyTheme(readThemeSetting(globalThis.localStorage), documentRoot);
+  // Before React renders, so the first frame of the UI already has the DM's theme.
+  applyTheme(readThemeSetting(deviceStorage()), documentRoot);
   const root = document.getElementById("root");
   if (!root) throw new Error("#root is missing");
 

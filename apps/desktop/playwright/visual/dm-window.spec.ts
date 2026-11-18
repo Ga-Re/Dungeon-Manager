@@ -16,11 +16,16 @@ test.use({ viewport: { width: 1280, height: 800 } });
 
 async function openHarness(page: Page) {
   // Playwright reads the file and sets the content type from its extension.
-  await page.route(`${ORIGIN}/**`, (route) =>
-    route.fulfill({
-      path: harnessFile(new URL(route.request().url()).pathname),
-    }),
-  );
+  await page.route(`${ORIGIN}/**`, async (route) => {
+    try {
+      await route.fulfill({
+        path: harnessFile(new URL(route.request().url()).pathname),
+      });
+    } catch {
+      // Not in the build (e.g. a favicon request): answer instead of leaving it hanging.
+      await route.fulfill({ status: 404 });
+    }
+  });
   await page.goto(`${ORIGIN}/e2e.html`);
 }
 

@@ -221,6 +221,27 @@ describe("editing the fog", () => {
     expect(tv.shown.at(-1)?.fog["ground"]?.revealed ?? []).toHaveLength(0);
   });
 
+  test("the title bar says saving while a write is pending, then saved", async () => {
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      mapped,
+    );
+    const write = library.fs.writeAtomic.bind(library.fs);
+    let release: () => void = () => undefined;
+    library.fs.writeAtomic = (...args) =>
+      new Promise((resolve) => {
+        release = () => {
+          resolve(write(...args));
+        };
+      });
+    expect(screen.getByText("Gespeichert")).toBeTruthy();
+    fireEvent.click(await enabled("Alles aufdecken"));
+    expect(await screen.findByText("Speichert …")).toBeTruthy();
+    release();
+    expect(await screen.findByText("Gespeichert")).toBeTruthy();
+    expect(screen.queryByText("Speichert …")).toBeNull();
+  });
+
   test("a failed save is reported, blocks a map change and is cleared by the next save", async () => {
     const { library } = renderScene(
       { "campaigns/mine/campaign.json": campaign },
