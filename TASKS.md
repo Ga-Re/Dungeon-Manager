@@ -260,7 +260,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] A map's calibration is stored once and pre-fills the grid of every new scene using it
   - [ ] Assets and tokens are placed at the size given by their metadata, matching the map scale
   - [ ] Name and origin/license can be edited per item
-- **Notes:** DM request (2026-11-17). Stored in the item's sidecar `<file>.dm.json` (ADR-0012, T-134); grid calibration is not overridable per scene.
+- **Notes:** DM request (2026-11-17). Stored in the item's sidecar `<file>.dm.json` (ADR-0012, T-134); grid calibration is not overridable per scene. Tokens keep their D&D size category (`token.size`) as the source of truth; the footprint in cells applies to assets only.
 
 ### T-126 Tags and search in the catalog
 
@@ -269,7 +269,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] DM adds and removes tags on a catalog item
   - [ ] Searching by text or tag finds matching items quickly (budget to be set in the task, e.g. < 100 ms for 10 000 items)
-- **Notes:** DM request (2026-11-17). Stored with the T-125 metadata in the sidecar (ADR-0012). The search reads sidecars once and keeps an in-memory index; no central index file (ADR-0012 option 3).
+- **Notes:** DM request (2026-11-17). Stored with the T-125 metadata in the sidecar (ADR-0012). The search reads sidecars once and keeps an in-memory index; no central index file (ADR-0012 option 3). The < 100 ms budget is for queries on that index; set a separate budget for building it cold and show placeholders (not yet downloaded) as "pending".
 
 ### T-105a Renderer: image map and camera in the DM window
 
@@ -327,8 +327,8 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-106 Grid overlay and 1-inch calibration
 
-- **Status:** todo · **Depends on:** T-105b · **Refs:** SPEC 2.2
-- Grid overlay; align grid to the map; display calibration (screen diagonal / resolution → pixels per inch) per display in device settings.
+- **Status:** todo · **Depends on:** T-105b, T-134 · **Refs:** SPEC 2.2, ADR-0012
+- Grid overlay (calibration stored in the map's sidecar, T-134); align grid to the map; display calibration (screen diagonal / resolution → pixels per inch) per display in device settings.
 - **Acceptance criteria**
   - [ ] On a calibrated display one cell measures 1 inch (manual check documented; unit tests for the math)
   - [ ] Rotation 0/90/180/270 in the player window
@@ -378,8 +378,8 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] DM defines rooms on a map; a second scene with the same map shows the same rooms
   - [ ] Hovering a room in fog mode highlights it; a click reveals/hides it as one undo step
   - [ ] Room list with per-room reveal toggle
-  - [ ] Secret rooms stay hidden on "reveal all"; nothing of a hidden secret room reaches the player view (projection test)
-- **Notes:** Format decided by ADR-0012 (DM, 2026-11-18). Suggesting rooms from walls comes with T-141; reveal by trigger with the trigger zones (stage 5).
+  - [ ] Room reveals and "reveal all" subtract hidden secret rooms: afterwards `revealed ∩ hiddenSecretRoom = ∅` and no token centred in it is projected (property test, incl. overlapping rooms)
+- **Notes:** Format per ADR-0012 (proposed; implement after it is accepted). Suggesting rooms from walls comes with T-141; reveal by trigger with the trigger zones (stage 5).
 
 ### T-109 Memory fog
 
@@ -478,23 +478,25 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-134 Sidecar files for map and asset data
 
-- **Status:** todo · **Depends on:** T-103b, T-124 · **Refs:** ADR-0012, ARCHITECTURE §5.2, §6
+- **Status:** todo · **Depends on:** T-103b · **Refs:** ADR-0012, ARCHITECTURE §5.2, §6, §8
 - Versioned zod schema for `<file>.dm.json` (metadata, scale, levels, rooms; walls/doors/lights/blockers/variants reserved for stage 5, all with stable ids); storage reads, watches and writes sidecars atomically, incl. conflict copies and placeholders; scenes reference the map and keep overrides by element id; pure `resolveMap(sidecar, overrides)` in `core` with orphan detection.
 - **Acceptance criteria**
   - [ ] A missing sidecar yields defaults; the first edit creates it
-  - [ ] Grid and levels move from the scene file into the sidecar (scene schema adjusted; existing test campaigns migrated)
+  - [ ] Scene schema v2: migration `map → { asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v1 fixtures)
   - [ ] `resolveMap` applies overrides and reports orphaned ones (unit tests ≥ 80 %)
-  - [ ] Sidecars are never served to companions and never sent to the player window (only `projectForViewer` output)
-- **Notes:** From the DM planning interview (2026-11-18). File format change: implement only after ADR-0012 is accepted.
+  - [ ] A level still used by scenes cannot be deleted, only archived; fog, tokens and released levels stay resolvable
+  - [ ] `SessionState` carries the resolved map, `projectForViewer` takes it as input, and the existing projection property tests still pass
+  - [ ] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (regression test); the catalog ignores sidecars and maps sidecar conflict copies back to their original
+- **Notes:** From the DM planning interview (2026-11-18). File format change: implement only after ADR-0012 is accepted. Open: should a global edit (e.g. a deleted wall) change a scene that is live on the TV right away, or only after DM confirmation?
 
 ### T-135 Selectable scene transitions
 
-- **Status:** todo · **Depends on:** T-105b · **Refs:** SPEC 3.2, ARCHITECTURE §8
+- **Status:** todo · **Depends on:** T-105b · **Refs:** SPEC 3.2, ARCHITECTURE §8, ADR-0010
 - When switching the TV to another scene, the DM chooses crossfade (default), through black or instant; duration in the settings.
 - **Acceptance criteria**
   - [ ] All three transitions work for image and video maps
-  - [ ] Fail-closed: the incoming scene is visible only once its fog is set (screenshot/E2E test mid-transition)
-  - [ ] No missed-frame regression on the benchmark scene during a crossfade (ARCHITECTURE §11)
+  - [ ] Fail-closed for both scenes: each is drawn only with its own fog set (screenshot/E2E test mid-transition)
+  - [ ] Benchmark incl. a video-to-video crossfade stays within ARCHITECTURE §11 (≤ 1 % missed refreshes); a crossfade between two videos needs a second `<video>` element under the canvas (extends ADR-0010's single slot)
 - **Notes:** From the DM planning interview (2026-11-18). Themed transitions are T-147.
 
 ### T-136 Soft fog fades and edges
@@ -504,12 +506,13 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Fades for manual reveals/hides and room reveals; setting off = current hard behaviour
   - [ ] Soft edges never reveal more than the hard polygon (fail-closed: the blur falls inside the hidden side; screenshot test)
-  - [ ] Benchmark scene stays within budget with the effect on; if not, use a precomputed soft mask instead of a real-time blur
+  - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11 (≤ 1 % missed refreshes at 60 Hz)
+- **Implementation hint:** if a real-time blur misses the budget, use a precomputed soft mask.
 - **Notes:** From the DM planning interview (2026-11-18).
 
 ### T-115 MVP end-to-end flow
 
-- **Status:** todo · **Depends on:** T-107 … T-114
+- **Status:** todo · **Depends on:** T-107 … T-114, T-134 … T-136
 - E2E: choose library → import map → create scene → place tokens → reveal fog → run two initiative rounds → blackout → restart → state restored.
 - **Acceptance criteria**
   - [ ] Flow passes in CI; benchmark run on reference notebook documented in `docs/benchmarks/`
@@ -526,7 +529,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Show/hide with animation; blackout still wins over a handout
   - [ ] Single and mirrored (2×/4×) layouts and DM rotation; screenshot tests
   - [ ] Only released handouts reach the player view (projection test)
-- **Notes:** From the DM planning interview (2026-11-18). The paper-rustle sound needs the sound system; add it when sound exists. Companion view of handouts comes in stage 3.
+- **Notes:** From the DM planning interview (2026-11-18). The paper-rustle sound needs the sound system; add it when sound exists. Companion view of handouts comes in stage 3. Handouts are new campaign files (e.g. `campaigns/<slug>/handouts/`): folder layout and format need DM approval first.
 
 ### T-138 Handout generator: paper, text, ageing, frames
 
@@ -544,7 +547,8 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] DM selects a region of a map and gets a fragment handout
   - [ ] Released fragments of a puzzle appear in their place; unreleased ones are never sent
-- **Notes:** From the DM planning interview (2026-11-18). A fragment must not leak the rest of the map (render only the cut region).
+  - [ ] The projection contains no reference to the full source map, only the rendered fragment (ARCHITECTURE §5.1: asset refs are capabilities)
+- **Notes:** From the DM planning interview (2026-11-18).
 
 ---
 
@@ -556,7 +560,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - Draw walls, windows and doors (open/closed/locked/secret) in the map's sidecar; import them from `.uvtt`/`.dd2vtt`; the DM opens/closes a door with one click; secret doors look like walls to players and become normal doors once discovered (per scene).
 - **Acceptance criteria**
   - [ ] Wall/door editor with undo; VTT import fixture (self-made) round-trips walls, doors and lights
-  - [ ] A closed or secret door is never sent as a door to the player view (projection test)
+  - [ ] An undiscovered secret door is projected as a plain wall or not at all; walls and doors reach the player view only as far as needed for drawing (vision runs on the host) – projection test
 
 ### T-141 Automatic walls and room suggestions
 
@@ -570,7 +574,7 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-142 Dynamic vision with raycasting
 
 - **Status:** todo · **Depends on:** T-140, T-109, T-107 · **Refs:** SPEC 4, ARCHITECTURE §8
-- Pure visibility polygon per viewer token against resolved walls, closed doors and asset blockers; the TV shows the union of all player tokens' vision; memory fog for visited areas; per-map setting whether movement auto-reveals.
+- Pure visibility polygon per viewer token against resolved walls and closed doors (asset blockers join in T-144); the TV shows the union of all player tokens' vision; memory fog for visited areas; per-map setting whether movement auto-reveals.
 - **Acceptance criteria**
   - [ ] `computeVisibilityPolygon` unit tests incl. pillars, doors opening, collinear and touching walls (≥ 80 %)
   - [ ] Opening a door lets vision through immediately on the TV
@@ -582,15 +586,15 @@ New tasks discovered during work are appended to the right stage with status `to
 - Scene brightness (day / dusk / dark); bright and dim radius per light source (tokens and map); darkvision in greyscale; coloured and flickering light; light stops at walls like vision.
 - **Acceptance criteria**
   - [ ] Screenshot tests for each brightness level, dim vs bright, darkvision and a coloured light
-  - [ ] Flicker is seeded (deterministic in tests) and respects the photosensitivity limits
+  - [ ] Flicker is seeded (deterministic in tests) and stays within the photosensitivity limits (SPEC 10.3, ARCHITECTURE §9), which this task also applies to on-screen light
 
 ### T-144 Asset placement and asset blockers
 
-- **Status:** todo · **Depends on:** T-134, T-125 · **Refs:** SPEC 8.1, 8.2, ADR-0012
+- **Status:** todo · **Depends on:** T-134, T-125, T-142 · **Refs:** SPEC 8.1, 8.2, ADR-0012
 - Place assets from the catalog on a scene (scale from metadata, rotate, mirror, z-order); per asset a blocker generated from its alpha channel (simplified polygon), editable, with type: blocks sight and light / one-way / partial (dimmed).
 - **Acceptance criteria**
   - [ ] Generated blocker follows the opaque outline within a set tolerance (unit test on a self-made fixture)
-  - [ ] Vision treats the three blocker types correctly (unit tests; with T-142)
+  - [ ] Vision treats the three blocker types correctly (unit tests)
 
 ### T-145 Scene overrides of global map data
 
@@ -614,7 +618,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-147 Themed scene transitions
 
-- **Status:** todo · **Depends on:** T-135, sound and effects systems · **Refs:** SPEC 3.2
+- **Status:** todo · **Depends on:** T-135 (and the sound and effects tasks once they exist) · **Refs:** SPEC 3.2
 - Transitions with sound and particles, e.g. door sound and fade when leaving a house, snowflakes blending over from a snowstorm into a cave; chosen per scene change or stored on the scene link.
 - **Acceptance criteria**
   - [ ] At least two themed transitions; fail-closed like T-135
@@ -626,3 +630,4 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Export → import round-trip keeps metadata, walls, rooms and variants
   - [ ] Import validates the sidecar with zod and rejects unsafe paths inside the bundle (zip-slip test)
+- **Notes:** A ZIP library is a dependency decision for the DM (Rust `zip` crate vs. alternatives).
