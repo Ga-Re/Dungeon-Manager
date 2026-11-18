@@ -1,6 +1,6 @@
 # ADR-0013: Obsidian and Markdown tools instead of a DM phone app; DM remote in the web app
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-18
 - **Deciders:** DM (product owner), agent
 - Supersedes ADR-0003

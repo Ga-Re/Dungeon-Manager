@@ -1,6 +1,6 @@
 # ADR-0003: DM phone app with React Native / Expo
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0013
 - **Date:** 2026-11-16
 
 ## Context

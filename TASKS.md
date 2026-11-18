@@ -85,7 +85,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Runs on an Android emulator/device; iOS build steps documented
   - [ ] Imports a function from `packages/core` (proves workspace sharing works with Metro)
-- **Notes:** Deferred by the DM (2026-11-17): most players and the DM use iPhones; revisit when the phone app is due (stage 2). Obsolete with ADR-0013 (no DM phone app); removed by T-149 once the ADR is accepted.
+- **Notes:** Deferred by the DM (2026-11-17): most players and the DM use iPhones; revisit when the phone app is due (stage 2). Obsolete with ADR-0013 (no DM phone app); removed by T-149.
 
 ### T-009 Companion skeleton
 
@@ -118,7 +118,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] `pnpm install`, `pnpm check` and CI pass without `apps/mobile`
   - [ ] No remaining references to Expo/React Native in configs or docs except ADR history
-- **Notes:** From the DM decision (2026-11-18). Folder layout change: do it only after ADR-0013 is accepted.
+- **Notes:** From the DM decision (2026-11-18). Folder layout change approved with ADR-0013 (DM, 2026-11-18).
 
 ---
 
@@ -388,7 +388,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Hovering a room in fog mode highlights it; a click reveals/hides it as one undo step
   - [ ] Room list with per-room reveal toggle
   - [ ] Room reveals and "reveal all" subtract hidden secret rooms: afterwards `revealed ∩ hiddenSecretRoom = ∅` and no token centred in it is projected (property test, incl. overlapping rooms)
-- **Notes:** Format per ADR-0012 (proposed; implement after it is accepted). Suggesting rooms from walls comes with T-141; reveal by trigger with the trigger zones (stage 5).
+- **Notes:** Format per ADR-0012 (accepted by the DM, 2026-11-18). Suggesting rooms from walls comes with T-141; reveal by trigger with the trigger zones (stage 5).
 
 ### T-109 Memory fog
 
@@ -483,7 +483,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - `apps/mobile` cannot import `packages/ui`; provide the token values in a platform-neutral source (e.g. a TS/JSON file) from which the CSS tokens are generated, and consume it in Expo.
 - **Acceptance criteria**
   - [ ] Desktop CSS tokens and mobile theme come from one source
-- **Notes:** From ADR-0011. Do this when the mobile UI work starts. Obsolete with ADR-0013 (no mobile app); removed by T-149 once the ADR is accepted.
+- **Notes:** From ADR-0011. Do this when the mobile UI work starts. Obsolete with ADR-0013 (no mobile app); removed by T-149.
 
 ### T-134 Sidecar files for map and asset data
 
@@ -494,9 +494,10 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Scene schema v2: migration `map → { asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v1 fixtures)
   - [ ] `resolveMap` applies overrides and reports orphaned ones (unit tests ≥ 80 %)
   - [ ] A level still used by scenes cannot be deleted, only archived; fog, tokens and released levels stay resolvable
+  - [ ] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open
   - [ ] `SessionState` carries the resolved map, `projectForViewer` takes it as input, and the existing projection property tests still pass
   - [ ] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (regression test); the catalog ignores sidecars and maps sidecar conflict copies back to their original
-- **Notes:** From the DM planning interview (2026-11-18). File format change: implement only after ADR-0012 is accepted. Open: should a global edit (e.g. a deleted wall) change a scene that is live on the TV right away, or only after DM confirmation?
+- **Notes:** From the DM planning interview (2026-11-18). ADR-0012 accepted by the DM (2026-11-18), incl. "global edits reach the live scene only after confirmation".
 
 ### T-135 Selectable scene transitions
 

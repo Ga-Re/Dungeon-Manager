@@ -1,6 +1,6 @@
 # ADR-0012: Map and asset data in sidecar files, scene overrides on top
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-18
 - **Deciders:** DM (product owner), agent
 
@@ -13,7 +13,7 @@ Maps and assets live in the global library (ADR-0005, ARCHITECTURE §6.2) and ar
 - rooms and areas (incl. secret rooms) that the DM reveals with one click (T-108c),
 - for assets: footprint, occlusion mask (from the alpha channel, editable) with a blocker type (blocks sight and light / one-way / partial sight), and variants such as a house's exterior and interior.
 
-Scenes must still be able to deviate: a wall has collapsed, a door is bricked up, a room has a different shape, a lamp is off. When the DM later improves the global data, all scenes pick it up immediately. Today a scene embeds its whole `map` (asset ref, grid, levels) in `scenes/<id>.json`, so each scene has its own copy and nothing is shared. Schema v1 is not released yet (T-101), so this is the moment to change it.
+Scenes must still be able to deviate: a wall has collapsed, a door is bricked up, a room has a different shape, a lamp is off. When the DM later improves the global data, all scenes pick it up. Today a scene embeds its whole `map` (asset ref, grid, levels) in `scenes/<id>.json`, so each scene has its own copy and nothing is shared. Schema v1 is not released yet (T-101), so this is the moment to change it.
 
 Constraints: the library sits in a cloud-synced folder (ADR-0005) – small files sync fast and conflict rarely; video maps are streamed in byte ranges from the original file (ADR-0010); imported asset packs (thousands of files in folders) must stay usable as they are; every file read is validated with zod (CLAUDE.md); hidden data (secret doors and rooms) never leaves the host (ARCHITECTURE §5).
 
@@ -28,7 +28,7 @@ Option 4.
 
 - **Sidecar:** `<file>.dm.json` next to each library file, versioned (`schemaVersion`) and validated by a zod schema in `packages/schema`. It holds the item's metadata (name, tags, origin/license, hash of the original), scale (map: grid calibration; asset/token: footprint in cells), levels, walls, doors, windows, lights, rooms/areas, and for assets the occlusion mask, blocker type and variants. Every element has a **stable id**. A missing sidecar means defaults; the desktop creates it on first edit.
 - **Scenes reference, not copy:** a scene stores the map's asset ref plus **overrides keyed by element id** (hide/show a wall or door, change a room's shape or name, switch a light) and its own additions (placed assets, door states, fog, tokens). Scale and grid are not overridable per scene, so minis always fit.
-- **Global edits apply everywhere immediately.** An override whose target id no longer exists is kept but inactive and flagged as **orphaned**; the scene shows the DM a hint to clean it up. Fog polygons stay in map pixels; room-based actions refer to room ids.
+- **Global edits apply to every scene** – a scene that is currently live on the TV picks a global edit up only after the DM confirms it (so a deleted wall never changes the table view mid-session by surprise); all other scenes use it the next time they open. An override whose target id no longer exists is kept but inactive and flagged as **orphaned**; the scene shows the DM a hint to clean it up. Fog polygons stay in map pixels; room-based actions refer to room ids.
 - **Levels have stable ids.** Fog, tokens and released levels (T-118) refer to level ids, so a level that scenes still use cannot be deleted globally: the editor lists those scenes and offers to archive the level instead (hidden from new scenes, still resolvable). Grid and scale belong to the map; a level with its own image must have the same pixel size as the map's image, so one calibration fits all levels.
 - **Secret rooms win over reveals.** Revealing a room and "reveal all" reveal the room or map polygon *minus* every hidden secret room; only the manual brush/shape tools can reveal into a secret room, as an explicit DM action.
 - **Secret elements** (secret doors, secret rooms and their contents) are ordinary sidecar/scene data on the host; only `projectForViewer` output reaches the player window and companions, so they are never sent until discovered. Sidecars are never served to companions.
