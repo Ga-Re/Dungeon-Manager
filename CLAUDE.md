@@ -61,7 +61,7 @@ If you see a **better solution** than the one specified, say so – even unasked
 - **Validate at the edges.** Every file read and every network message goes through zod schemas.
 - **Small, readable code over clever code.** Clear names, small functions, no dead code, no commented-out code.
 - **Errors are handled, not swallowed.** User-visible errors are actionable and translated; logs are useful.
-- **Accessibility and i18n:** no hard-coded UI strings (use i18next, German first), keyboard support on desktop, sensible touch targets on mobile.
+- **Accessibility and i18n:** no hard-coded UI strings (use i18next, German first), keyboard support on desktop, sensible touch targets in the web app on phones.
 - **Performance budgets** in ARCHITECTURE.md §11 are requirements. Renderer changes must not regress the benchmark scene.
 - **UI & Design consistency (`ui-design` skill).** All UI layouts, styling, and UX decisions must follow `.claude/skills/ui-design/SKILL.md` (Fusion 360 spatial canvas-first layout combined with the tactile parchment/fantasy theme). Shared design tokens and primitives belong in `@dungeon-manager/ui`. Always invoke the `ui-design` skill when making design decisions or modifying UI components/CSS.
 
@@ -128,7 +128,7 @@ Summary of findings and how they were addressed
 These exist after task T-001/T-002 (see TASKS.md); until then, create them as part of those tasks.
 
 - `pnpm install` – install workspace
-- `pnpm dev:desktop` / `pnpm dev:mobile` / `pnpm dev:companion`
+- `pnpm dev:desktop` / `pnpm dev:companion`
 - `pnpm check` – typecheck + lint + format check + dependency-cruiser + unit/component tests with coverage
 - `pnpm test:e2e` – Playwright E2E
 - `pnpm test:visual` – renderer screenshot tests (Docker)
