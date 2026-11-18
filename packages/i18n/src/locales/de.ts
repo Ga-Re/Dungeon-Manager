@@ -96,9 +96,18 @@ export const de = {
     tool: "Ziehen auf der Karte",
     tools: {
       pan: "Verschieben",
-      reveal: "Aufdecken (Rechteck)",
-      hide: "Verdecken (Rechteck)",
+      reveal: "Aufdecken",
+      hide: "Verdecken",
     },
+    shape: "Form",
+    shapes: {
+      rectangle: "Rechteck",
+      circle: "Kreis (aus der Mitte)",
+      polygon:
+        "Polygon (klicken; Doppelklick, Enter oder erster Punkt schließt)",
+      brush: "Pinsel",
+    },
+    brushSize: "Pinselgröße: {{cells}} Felder",
     revealAll: "Alles aufdecken",
     coverAll: "Alles verdecken",
     undo: "Rückgängig",

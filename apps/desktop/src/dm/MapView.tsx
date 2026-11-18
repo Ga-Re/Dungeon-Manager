@@ -1,10 +1,12 @@
 import {
   fitCamera,
   panBy,
+  mapToScreen,
   rotateBy,
   screenToMap,
   zoomAt,
   type Camera,
+  type Point,
   type Renderer,
   type Size,
 } from "@dungeon-manager/renderer";
@@ -19,6 +21,13 @@ import {
 } from "react";
 import type { Polygon } from "@dungeon-manager/schema";
 import { useTranslation } from "react-i18next";
+import { FogPreview } from "./FogPreview.js";
+import {
+  brushArea,
+  dragArea,
+  polygonArea,
+  type FogShape,
+} from "./fog-shapes.js";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
 
 /** Provided once in `main.tsx`, so panels deep in the tree can show maps. */
@@ -34,13 +43,18 @@ export type MapTool = "pan" | "reveal" | "hide";
 
 /** The DM sees fog, but must see what lies beneath it. */
 const DM_FOG_OPACITY = 0.55;
-/** Smaller drags are taken as slips, not areas. */
-const MIN_AREA_PX = 4;
+/** A click this close to the first corner closes a polygon. */
+const CLOSE_PX = 12;
 
-interface Selection {
-  readonly start: { readonly x: number; readonly y: number };
-  readonly end: { readonly x: number; readonly y: number };
-}
+/** A drag or stroke in progress, in screen pixels of the view. */
+type Drawing =
+  | {
+      readonly kind: "drag";
+      readonly shape: "rectangle" | "circle";
+      readonly start: Point;
+      readonly end: Point;
+    }
+  | { readonly kind: "brush"; readonly points: readonly Point[] };
 
 /** A map with zoom (wheel, +/−), pan (drag, arrow keys), rotation and "fit" (DM window). */
 export function MapView({
@@ -49,6 +63,8 @@ export function MapView({
   label,
   fog = null,
   tool = "pan",
+  shape = "rectangle",
+  brushRadius = 50,
   onArea,
   onMapSize,
 }: {
@@ -59,7 +75,11 @@ export function MapView({
   /** Revealed areas, shown see-through to the DM; `null` shows no fog. */
   readonly fog?: readonly Polygon[] | null;
   readonly tool?: MapTool;
-  /** A rectangle the DM marked with the reveal or hide tool, in map pixels. */
+  /** How the reveal and hide tools mark an area. */
+  readonly shape?: FogShape;
+  /** Brush radius in map pixels. */
+  readonly brushRadius?: number;
+  /** An area the DM marked with the reveal or hide tool, in map pixels. */
   readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
   readonly onMapSize?: (size: Size) => void;
 }) {
@@ -73,7 +93,16 @@ export function MapView({
   const [camera, setCamera] = useState<Camera | null>(null);
   const [load, setLoad] = useState<LoadState>("loading");
   const drag = useRef<{ x: number; y: number } | null>(null);
-  const [selection, setSelection] = useState<Selection | null>(null);
+  const [drawing, setDrawing] = useState<Drawing | null>(null);
+  // Polygon corners in map pixels, so panning with the keys between clicks keeps them in place.
+  const [corners, setCorners] = useState<readonly [number, number][]>([]);
+  const [hover, setHover] = useState<Point | null>(null);
+
+  // Switching tools drops a half-drawn shape.
+  useEffect(() => {
+    setDrawing(null);
+    setCorners([]);
+  }, [tool, shape]);
   const fogNow = useRef(fog);
   fogNow.current = fog;
 
@@ -226,27 +255,62 @@ export function MapView({
     };
   }, []);
 
-  const local = (event: PointerEvent) => {
+  const local = (event: {
+    clientX: number;
+    clientY: number;
+    currentTarget: Element;
+  }) => {
     const box = event.currentTarget.getBoundingClientRect();
     return { x: event.clientX - box.left, y: event.clientY - box.top };
   };
+  const mark = (area: Polygon | null) => {
+    if (area && tool !== "pan") onArea?.(area, tool);
+  };
+  const finishPolygon = () => {
+    mark(polygonArea(corners));
+    setCorners([]);
+    setHover(null);
+  };
+  const addCorner = (point: Point) => {
+    const view = sizeNow.current;
+    if (!camera || !view) return;
+    const first = corners[0];
+    if (first && corners.length >= 3) {
+      const shown = mapToScreen(camera, view, { x: first[0], y: first[1] });
+      if (Math.hypot(shown.x - point.x, shown.y - point.y) <= CLOSE_PX) {
+        finishPolygon();
+        return;
+      }
+    }
+    const mapped = screenToMap(camera, view, point);
+    setCorners([...corners, [mapped.x, mapped.y]]);
+  };
+
   const onPointerDown = (event: PointerEvent) => {
     // Primary button only (touch and pen report it too); the others stay free for menus.
     if (event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    if (tool === "pan") {
-      drag.current = { x: event.clientX, y: event.clientY };
+    const point = local(event);
+    if (tool !== "pan" && shape === "polygon") {
+      addCorner(point);
       return;
     }
-    const point = local(event);
-    setSelection({ start: point, end: point });
+    event.currentTarget.setPointerCapture(event.pointerId);
+    if (tool === "pan") drag.current = { x: event.clientX, y: event.clientY };
+    else if (shape === "brush") setDrawing({ kind: "brush", points: [point] });
+    else if (shape !== "polygon")
+      setDrawing({ kind: "drag", shape, start: point, end: point });
   };
   const onPointerMove = (event: PointerEvent) => {
-    if (selection) {
-      const end = local(event);
-      setSelection({ ...selection, end });
+    const point = local(event);
+    if (drawing?.kind === "drag") {
+      setDrawing({ ...drawing, end: point });
       return;
     }
+    if (drawing?.kind === "brush") {
+      setDrawing({ kind: "brush", points: [...drawing.points, point] });
+      return;
+    }
+    if (corners.length > 0) setHover(point);
     const start = drag.current;
     if (!start) return;
     drag.current = { x: event.clientX, y: event.clientY };
@@ -259,36 +323,32 @@ export function MapView({
   };
   const onPointerUp = () => {
     drag.current = null;
-    const marked = selection;
-    setSelection(null);
+    const done = drawing;
+    setDrawing(null);
     const view = sizeNow.current;
-    if (!marked || !camera || !view || tool === "pan") return;
-    const { start, end } = marked;
-    if (
-      Math.abs(end.x - start.x) < MIN_AREA_PX ||
-      Math.abs(end.y - start.y) < MIN_AREA_PX
-    )
-      return;
-    // All four corners: with the view rotated, a screen rectangle is still a map rectangle, but
-    // its corners swap places.
-    const corners = [
-      start,
-      { x: end.x, y: start.y },
-      end,
-      { x: start.x, y: end.y },
-    ].map((corner) => {
-      const point = screenToMap(camera, view, corner);
-      return [point.x, point.y] as [number, number];
-    });
-    onArea?.({ outer: corners, holes: [] }, tool);
+    if (!done || !camera || !view) return;
+    if (done.kind === "brush")
+      mark(brushArea(done.points, brushRadius, camera, view));
+    else mark(dragArea(done.shape, done.start, done.end, camera, view));
   };
   const onPointerCancel = () => {
     drag.current = null;
-    setSelection(null);
+    setDrawing(null);
   };
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && selection) {
-      setSelection(null);
+    if (event.key === "Escape" && (drawing || corners.length > 0)) {
+      setDrawing(null);
+      setCorners([]);
+      return;
+    }
+    if (corners.length > 0 && event.key === "Enter") {
+      event.preventDefault();
+      finishPolygon();
+      return;
+    }
+    if (corners.length > 0 && event.key === "Backspace") {
+      event.preventDefault();
+      setCorners(corners.slice(0, -1));
       return;
     }
     // Ctrl/Cmd + "+", "−", "0" belong to the browser and the OS.
@@ -329,17 +389,23 @@ export function MapView({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
         onKeyDown={onKeyDown}
+        onDoubleClick={() => {
+          if (corners.length > 0) finishPolygon();
+        }}
         data-tool={tool}
       >
-        {selection && (
-          <div
-            className={`map-view-selection map-view-selection-${tool}`}
-            style={{
-              left: Math.min(selection.start.x, selection.end.x),
-              top: Math.min(selection.start.y, selection.end.y),
-              width: Math.abs(selection.end.x - selection.start.x),
-              height: Math.abs(selection.end.y - selection.start.y),
-            }}
+        {camera && sizeNow.current && tool !== "pan" && (
+          <FogPreview
+            tool={tool}
+            drawing={drawing}
+            corners={corners.map(([x, y]) =>
+              mapToScreen(camera, sizeNow.current ?? { width: 0, height: 0 }, {
+                x,
+                y,
+              }),
+            )}
+            hover={hover}
+            brushWidth={2 * brushRadius * camera.zoom}
           />
         )}
       </div>

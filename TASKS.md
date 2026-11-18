@@ -360,13 +360,15 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Fog changes are saved and shown on the TV without a black flash
 - **Notes:** Split from T-108 (agent, 2026-11-17). From T-102a review: fog ops use exact arithmetic (polyclip-ts/BigNumber) – measured ~9 ms average, ~20 ms worst per reveal after 300 brush dabs, 34 ms for hiding a 64-gon. Combine a brush stroke into one polygon per stroke (one command), not one command per pointer move. From the T-105b review: the renderer's fog (`drawFog`, earcut holes) does not handle a revealed island inside a hidden hole, and degenerate or vertex-touching polygons could leave gaps (fail-open) – add goldens for these and switch to an even-odd/stencil approach if needed. Fog edits must not blank the TV: load the campaign once per scene and project synchronously (today `usePlayerView` sends `null` before every update).
 
-### T-108b Fog: brush and polygon tools
+### T-108b Fog: brush, polygon and circle tools
 
-- **Status:** todo · **Depends on:** T-108a · **Refs:** SPEC 4
-- Brush (one polygon per stroke, one command) and polygon tool for revealing and hiding.
+- **Status:** done · **Depends on:** T-108a · **Refs:** SPEC 4
+- Shapes for revealing and hiding besides the rectangle: brush (one area per stroke, one command), polygon (clicked points) and circle (dragged from its centre). Brush size in grid cells.
 - **Acceptance criteria**
-  - [ ] A brush stroke reveals/hides along the stroke as one undo step
-  - [ ] A clicked polygon reveals/hides its area
+  - [x] A brush stroke reveals/hides along the stroke as one undo step
+  - [x] A clicked polygon reveals/hides its area
+  - [x] A circle dragged from its centre reveals/hides its area
+- **Notes:** Circle tool added by the DM (2026-11-18).
 
 ### T-108c Fog: predefined rooms
 
