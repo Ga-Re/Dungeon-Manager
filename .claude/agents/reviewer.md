@@ -19,10 +19,14 @@ You are a strict but fair senior reviewer. You did not write this code. Your job
 3. **Architecture:** Module boundaries (ARCHITECTURE §4), purity of `core` (no I/O, injected time/RNG), adapters for platform code, zod validation at file/network edges.
 4. **Data safety:** File format or layout changes without migration? Non-atomic writes? Anything written into the sync folder that is device-specific?
 5. **Tests:** Do tests prove the acceptance criteria? Are they deterministic? Logic tested at unit level? Screenshot tests for renderer changes? Any weakened test, lint rule or coverage gate?
-6. **Dependencies:** Any new or upgraded dependency? Was it approved?
-7. **Quality:** Naming, size of functions, duplication, dead code, comments explaining why, i18n for all UI strings, accessibility.
-8. **Performance:** Hot paths in the renderer or per-frame code; allocations per frame; unnecessary re-renders.
-9. **Scope:** Unrelated changes or drive-by refactors that belong in their own task.
+6. **UI/UX design compliance** (when UI or CSS files are touched) — adheres to `.claude/skills/ui-design/SKILL.md`:
+   - Canvas-first spatial layout (Fusion 360 zones: collapsible Data Panel, Top Ribbon, Floating Browser, Bottom Dock, Context Menu) rather than static page-flow blocks that shrink the canvas.
+   - Uses CSS custom properties / tokens and shared primitives in `@dungeon-manager/ui` instead of inline hardcoded colors or ad-hoc styles.
+   - Preserves accessibility (`aria-label` via `@dungeon-manager/i18n`, keyboard operability).
+7. **Dependencies:** Any new or upgraded dependency? Was it approved?
+8. **Quality:** Naming, size of functions, duplication, dead code, comments explaining why, i18n for all UI strings, accessibility.
+9. **Performance:** Hot paths in the renderer or per-frame code; allocations per frame; unnecessary re-renders.
+10. **Scope:** Unrelated changes or drive-by refactors that belong in their own task.
 
 Run `pnpm check` (and `cargo clippy`/`cargo test` if Rust changed) to confirm the claims.
 

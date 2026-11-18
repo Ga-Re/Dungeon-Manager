@@ -281,3 +281,19 @@ A benchmark scene in `test-fixtures` plus a script that records frame times is p
 - Linux: Tauri uses WebKitGTK; video playback depends on GStreamer codecs – document requirements.
 - iOS: builds need a Mac and an Apple Developer account; persistent folder access needs a small native module (security-scoped bookmarks).
 - Android: folder access via Storage Access Framework; most cloud apps don't keep folders in sync → in-app guide recommends a sync app.
+
+---
+
+## 15. UI shell & design system
+
+_Decided in ADR-0011; binding details in `.claude/skills/ui-design/SKILL.md`._
+
+- **DM window zones:** the map viewport fills the whole window; collapsible left data panel (library, campaign); top ribbon grouped by workflow mode; floating scene browser (top left); floating navigation/display dock (bottom centre); right-click context menu. Features are placed in a zone and never resize the canvas; the data panel and ribbon overlay it, so the canvas stays full-window when they open or close.
+- **Player window:** unchanged – chrome-free fullscreen, no design-system UI.
+- **Tokens:** CSS custom properties (`--dm-surface-*`, `--dm-border-*`, `--dm-text-*`, `--dm-accent-*`, `--dm-space-*`, `--dm-font-*`, `--dm-z-*`) are defined once in `packages/ui`; apps consume them and never hard-code colours, spacing, fonts or z-indices.
+- **Layering (`--dm-z-*`):** 0 map canvas/video · 10 canvas overlays · 20 floating HUD · 30 ribbon and data panel · 40 context menus/popovers · 50 modals.
+- **Theme:** light parchment panels with dark ink, dark slate window chrome, one amber accent for active/selected states, plus a dimmed "night" variant for dark rooms; WCAG AA contrast minimum in both. Restrained styling: one line-icon set, no illustrative decoration (see ADR-0011 "Design references"). Textures, fonts and icons are self-made, CC0 or OFL and bundled locally.
+- **Performance:** HUD elements over the canvas avoid costly effects (e.g. `backdrop-filter`) unless the benchmark scene (§11) shows no regression.
+- **Previews:** the player-view preview and the next-scene preview are floating HUD panels (layer 20) in the DM window. The player-view preview can additionally open as a separate window on an additional DM monitor; that window gets exactly what the TV gets (`PlayerViewMessage`, same permissions and fail-closed rules as the player window, §8) and shows no controls.
+- **Screenshot tests** of the DM window (zone layout) run in the pinned Docker image like the renderer goldens (§12), because the window contains the PixiJS canvas.
+- **Companion** reuses tokens and primitives with a single-column touch layout. **Mobile** cannot import `ui` (§4); a platform-neutral token source is a later follow-up.

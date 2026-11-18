@@ -9,7 +9,7 @@ Finish the current task following CLAUDE.md. Do not skip steps.
 1. Determine the task ID from the current branch name.
 2. Re-read the task's acceptance criteria; confirm each one is met and covered by a test. If not, go back and finish it.
 3. Run `pnpm check`. If Rust changed: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`. Run relevant `pnpm test:e2e` / `pnpm test:visual`. Fix failures – never weaken tests or gates.
-4. Self-review `git diff main...HEAD`: scope, naming, dead code, i18n, hidden-data safety, docs.
+4. Self-review `git diff main...HEAD`: scope, naming, dead code, i18n, hidden-data safety, docs. If UI, layout or CSS files changed (e.g. in `packages/ui/`, `apps/desktop/src/`, `apps/companion/src/`), also check compliance with `.claude/skills/ui-design/SKILL.md` (no hard-coded style values outside tokens, correct layout zone, all labels via `@dungeon-manager/i18n`).
 5. Update docs if behaviour or structure changed (SPEC, ARCHITECTURE, new ADR via `/new-adr`).
 6. Use the `reviewer` subagent on the branch. Fix blocking findings; for any finding you do not fix, write the reason in the PR.
 7. Commit with Conventional Commits, push the branch.

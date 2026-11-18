@@ -29,7 +29,7 @@ A tool for a Dungeon Master (DM) to plan campaigns and present them live at the 
 ### 2.1 DM view (notebook)
 
 - Full map including hidden areas, traps, secret doors and DM notes
-- **Live preview of the player view** in a small window, so the DM always sees what the TV shows
+- **Live preview of the player view** in a small window, so the DM always sees what the TV shows; optionally also on an additional DM monitor (windowed or fullscreen) for a better overview
 - **Preview of the next scene** to prepare it before it goes live
 - All control panels: fog, tokens, initiative, sound, light, scenes, camera
 

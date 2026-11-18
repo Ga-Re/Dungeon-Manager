@@ -19,8 +19,8 @@ Use `/next-task` to start and `/finish-task` to finish.
 
 1. **Pick** the first task in `TASKS.md` with status `todo` whose dependencies are `done` (unless the DM named one). Set it to `in-progress`.
 2. **Branch** from `main`: `task/T-XXX-short-slug`.
-3. **Understand:** read the task, the referenced spec sections, ADRs and existing code. If the task is ambiguous, stop and ask (see "When to stop").
-4. **Plan:** write a short plan (approach, files touched, tests, risks) – it becomes the PR description. If the plan reveals the task is bigger than expected, split it in `TASKS.md` and ask.
+3. **Understand:** read the task, the referenced spec sections, ADRs and existing code. If the task touches UI, layout, CSS or UX, invoke `/ui-design` (or follow `.claude/skills/ui-design/SKILL.md`) before planning. If the task is ambiguous, stop and ask (see "When to stop").
+4. **Plan:** write a short plan (approach, files touched, tests, risks; for UI tasks the layout zone and `@dungeon-manager/ui` tokens/primitives) – it becomes the PR description. If the plan reveals the task is bigger than expected, split it in `TASKS.md` and ask.
 5. **Tests first for logic:** write failing tests for `core`/`schema`/`storage`/`protocol` behaviour before the implementation. For UI and rendering, add component/E2E/screenshot tests alongside.
 6. **Implement** the smallest change that satisfies the acceptance criteria. No drive-by refactors; note them as new tasks instead.
 7. **Verify:** run `pnpm check` (typecheck, lint, format, boundaries, unit + component tests with coverage) and the relevant E2E/visual tests. For Rust: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`.
@@ -63,6 +63,7 @@ If you see a **better solution** than the one specified, say so – even unasked
 - **Errors are handled, not swallowed.** User-visible errors are actionable and translated; logs are useful.
 - **Accessibility and i18n:** no hard-coded UI strings (use i18next, German first), keyboard support on desktop, sensible touch targets on mobile.
 - **Performance budgets** in ARCHITECTURE.md §11 are requirements. Renderer changes must not regress the benchmark scene.
+- **UI & Design consistency (`ui-design` skill).** All UI layouts, styling, and UX decisions must follow `.claude/skills/ui-design/SKILL.md` (Fusion 360 spatial canvas-first layout combined with the tactile parchment/fantasy theme). Shared design tokens and primitives belong in `@dungeon-manager/ui`. Always invoke the `ui-design` skill when making design decisions or modifying UI components/CSS.
 
 ## Public repository
 
