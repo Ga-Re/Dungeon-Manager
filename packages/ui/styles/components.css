@@ -1,0 +1,257 @@
+/* Styles of the @dungeon-manager/ui primitives. Uses only tokens from tokens.css (ADR-0011). */
+
+/* FloatingPanel */
+.dm-panel {
+  background: var(--dm-surface-panel);
+  color: var(--dm-text-primary);
+  border: 1px solid var(--dm-border-strong);
+  border-radius: var(--dm-radius-lg);
+  box-shadow: var(--dm-shadow-panel);
+  min-width: 0;
+}
+
+.dm-panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2);
+  padding: var(--dm-space-2) var(--dm-space-3);
+  border-bottom: 1px solid var(--dm-border-subtle);
+}
+
+.dm-panel-title {
+  flex: 1;
+  margin: 0;
+  font-family: var(--dm-font-heading);
+  font-size: var(--dm-font-size-md);
+  font-weight: 600;
+}
+
+.dm-panel-count {
+  font-size: var(--dm-font-size-xs);
+  padding: 0 var(--dm-space-2);
+  border-radius: 999px;
+  border: 1px solid var(--dm-border-subtle);
+  color: var(--dm-text-secondary);
+}
+
+.dm-panel-body {
+  padding: var(--dm-space-2) var(--dm-space-3) var(--dm-space-3);
+}
+
+/* IconButton */
+.dm-icon-button {
+  font: inherit;
+  font-size: var(--dm-font-size-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dm-space-1);
+  padding: var(--dm-space-2);
+  border-radius: var(--dm-radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dm-icon-button-labelled {
+  flex-direction: column;
+  min-width: 56px;
+  padding: var(--dm-space-1) var(--dm-space-2);
+}
+
+.dm-icon-button-icon {
+  display: inline-flex;
+}
+
+.dm-icon-button-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.dm-icon-button:hover {
+  background: var(--dm-surface-raised);
+  border-color: var(--dm-border-subtle);
+}
+
+.dm-icon-button[aria-pressed="true"] {
+  background: var(--dm-accent);
+  color: var(--dm-text-on-accent);
+  border-color: var(--dm-border-strong);
+}
+
+.dm-icon-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.dm-icon-button:focus-visible {
+  outline: var(--dm-focus-width) solid var(--dm-focus);
+  outline-offset: 2px;
+}
+
+/* TreeList – outline-tree guides: a parent's vertical line drops from the centre of its toggle
+   box and stops at its last child's junction. Every child draws its own segment of that line plus
+   a stub to its toggle box (folders) or icon (leaves); the gold dot marks the junction.
+   Row height 30px → junction at 15px; the line centre is 8px from the row's left edge at every depth. */
+.dm-tree {
+  --tree-guide-x: 7px;
+  --tree-line: 2px;
+  --tree-indent: 26px;
+  --tree-junction-y: 15px;
+  --tree-dot: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dm-tree-group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dm-tree-item {
+  position: relative;
+  outline: none;
+}
+
+.dm-tree-group > .dm-tree-item {
+  padding-left: var(--tree-indent);
+}
+
+.dm-tree-group > .dm-tree-item::before {
+  content: "";
+  position: absolute;
+  left: var(--tree-guide-x);
+  top: 0;
+  bottom: 0;
+  width: var(--tree-line);
+  background: var(--dm-border-strong);
+}
+
+.dm-tree-group > .dm-tree-item:last-child::before {
+  bottom: auto;
+  height: calc(var(--tree-junction-y) + var(--tree-line) / 2);
+}
+
+.dm-tree-group > .dm-tree-item::after {
+  content: "";
+  position: absolute;
+  left: var(--tree-guide-x);
+  top: calc(var(--tree-junction-y) - var(--tree-line) / 2);
+  width: calc(var(--tree-indent) - var(--tree-guide-x) + 2px);
+  height: var(--tree-line);
+  background: var(--dm-border-strong);
+}
+
+.dm-tree-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2);
+  height: 30px;
+  padding: 0 var(--dm-space-2) 0 1px;
+  border-radius: var(--dm-radius-md);
+  border: 1px solid transparent;
+  min-width: 0;
+  cursor: default;
+}
+
+/* Junction dot, positioned back onto the parent's line. */
+.dm-tree-group > .dm-tree-item > .dm-tree-row::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: calc(
+    var(--tree-guide-x) + var(--tree-line) / 2 - var(--tree-dot) / 2 -
+      var(--tree-indent) - 1px
+  );
+  top: calc(var(--tree-junction-y) - var(--tree-dot) / 2 - 1px);
+  width: var(--tree-dot);
+  height: var(--tree-dot);
+  border-radius: 50%;
+  background: var(--dm-accent);
+  box-shadow: 0 0 0 1px var(--dm-border-strong);
+}
+
+/* Line from an expanded folder's toggle box down to its children. */
+.dm-tree-item[aria-expanded="true"] > .dm-tree-row::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--tree-guide-x) - 1px);
+  top: calc(var(--tree-junction-y) + 5px);
+  bottom: -1px;
+  width: var(--tree-line);
+  background: var(--dm-border-strong);
+}
+
+.dm-tree-item[aria-selected="true"] > .dm-tree-row {
+  background: var(--dm-accent-soft);
+  border-color: var(--dm-border-strong);
+}
+
+.dm-tree-item:focus-visible > .dm-tree-row {
+  outline: var(--dm-focus-width) solid var(--dm-focus);
+  outline-offset: 1px;
+}
+
+.dm-tree-toggle {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  border: 1.5px solid var(--dm-border-strong);
+  border-radius: 2px;
+  background: var(--dm-surface-raised);
+  color: var(--dm-border-strong);
+}
+
+.dm-tree-toggle svg {
+  width: 8px;
+  height: 8px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.dm-tree-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--dm-text-secondary);
+}
+
+.dm-tree-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.dm-tree-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--dm-font-size-sm);
+}
+
+.dm-tree-item[aria-expanded] > .dm-tree-row .dm-tree-label {
+  font-weight: 600;
+}
+
+/* Without an icon the label would touch the stub. */
+.dm-tree-row > .dm-tree-label:first-child {
+  margin-left: var(--dm-space-1);
+}
+
+.dm-tree-label-mono {
+  font-family: var(--dm-font-mono);
+}
+
+.dm-tree-meta {
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+}

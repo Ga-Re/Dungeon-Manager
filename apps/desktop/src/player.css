@@ -1,0 +1,21 @@
+/* Player window (table TV): chrome-free and black, outside the design system (ARCHITECTURE §15). */
+:root {
+  background: #000;
+}
+
+body {
+  margin: 0;
+}
+
+.player {
+  position: fixed;
+  inset: 0;
+  padding: 0;
+  background: #000;
+  cursor: none;
+}
+
+.player canvas {
+  position: absolute;
+  inset: 0;
+}

@@ -1,8 +1,8 @@
+/* DM window. Only design tokens from @dungeon-manager/ui (checked by dm-styles.test.ts). */
 :root {
-  color-scheme: dark;
-  font-family: system-ui, sans-serif;
-  background: #1b1b1f;
-  color: #ececf1;
+  font-family: var(--dm-font-ui);
+  background: var(--dm-surface-sunken);
+  color: var(--dm-text-primary);
 }
 
 body {
@@ -10,29 +10,21 @@ body {
 }
 
 main {
-  padding: 1.5rem;
+  padding: var(--dm-space-5);
 }
 
 label {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: var(--dm-space-2);
+  margin-bottom: var(--dm-space-4);
 }
 
 select,
 button {
   font: inherit;
-  padding: 0.5rem 0.75rem;
+  padding: var(--dm-space-2) var(--dm-space-3);
   max-width: 24rem;
-}
-
-.player {
-  position: fixed;
-  inset: 0;
-  padding: 0;
-  background: #000;
-  cursor: none;
 }
 
 .map-view-canvas {
@@ -40,7 +32,7 @@ button {
   height: 60vh;
   min-height: 20rem;
   overflow: hidden;
-  background: #111;
+  background: var(--dm-surface-canvas);
   touch-action: none;
   cursor: grab;
 }
@@ -53,33 +45,33 @@ button {
 .map-view-preview {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: var(--dm-z-overlay);
   width: 100%;
   height: 100%;
   pointer-events: none;
-  stroke: #fff;
+  stroke: var(--dm-overlay-line);
   stroke-width: 2;
   stroke-dasharray: 6 4;
 }
 
 .map-view-preview-reveal {
-  fill: rgba(255, 255, 255, 0.2);
+  fill: var(--dm-overlay-reveal-fill);
 }
 
 .map-view-preview-hide {
-  fill: rgba(0, 0, 0, 0.45);
+  fill: var(--dm-overlay-hide-fill);
 }
 
 .map-view-preview .map-view-preview-brush {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.35);
+  stroke: var(--dm-overlay-reveal-stroke);
   stroke-dasharray: none;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .map-view-preview-hide .map-view-preview-brush {
-  stroke: rgba(0, 0, 0, 0.5);
+  stroke: var(--dm-overlay-hide-stroke);
 }
 
 .map-view-preview .map-view-preview-polygon {
@@ -91,11 +83,11 @@ button {
 }
 
 .map-view-preview-first {
-  fill: #fff;
+  fill: var(--dm-overlay-line);
 }
 
 .map-view-canvas:focus-visible {
-  outline: 3px solid #6ea8fe;
+  outline: 3px solid var(--dm-focus);
 }
 
 .map-view-canvas canvas {
@@ -104,11 +96,6 @@ button {
 }
 
 .map-view-help {
-  font-size: 0.875rem;
-  opacity: 0.8;
-}
-
-.player canvas {
-  position: absolute;
-  inset: 0;
+  font-size: var(--dm-font-size-sm);
+  color: var(--dm-text-secondary);
 }

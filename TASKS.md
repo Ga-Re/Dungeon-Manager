@@ -440,13 +440,13 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-129 UI design tokens and base primitives
 
-- **Status:** todo · **Depends on:** – · **Refs:** ARCHITECTURE §15, ADR-0011
+- **Status:** done · **Depends on:** – · **Refs:** ARCHITECTURE §15, ADR-0011
 - Token sheet in `packages/ui` (`--dm-surface-*`, `--dm-border-*`, `--dm-text-*`, `--dm-accent-*`, `--dm-space-*`, `--dm-font-*`, `--dm-z-*`) with a parchment and a dimmed "night" variant; base primitives `FloatingPanel`, `IconButton`, `TreeList` (connector lines, node markers, trailing actions, badges); `apps/desktop/src/styles.css` consumes the tokens instead of hard-coded values.
 - **Acceptance criteria**
-  - [ ] No hard-coded colours, spacing, fonts or z-indices left in the DM-window styles of `apps/desktop` (checked by a small self-written test that scans the stylesheet; the player window's black background is excluded)
-  - [ ] Text/surface pairs of both variants meet WCAG AA (checked by a unit test over the token values)
-  - [ ] Primitives have component tests incl. keyboard navigation for `TreeList`; labels via i18n
-- **Notes:** From ADR-0011 (2026-11-18). Define the token values in a TS object and derive the CSS custom properties from it, so the WCAG contrast test can check the values directly. `packages/ui` needs `react` (already a workspace dependency, not a new one) and a component-test setup. Choosing fonts and an icon set is a dependency decision – propose candidates (OFL/CC0, bundled locally) to the DM first.
+  - [x] No hard-coded colours, spacing, fonts or z-indices left in the DM-window styles of `apps/desktop` (checked by a small self-written test that scans the stylesheet; the player window's black background is excluded)
+  - [x] Text/surface pairs of both variants meet WCAG AA (checked by a unit test over the token values)
+  - [x] Primitives have component tests incl. keyboard navigation for `TreeList`; labels via i18n
+- **Notes:** From ADR-0011 (2026-11-18). Define the token values in a TS object and derive the CSS custom properties from it, so the WCAG contrast test can check the values directly. `packages/ui` needs `react` (already a workspace dependency, not a new one) and a component-test setup. Choosing fonts and an icon set is a dependency decision – propose candidates (OFL/CC0, bundled locally) to the DM first. DM decisions (2026-11-18): system fonts for now (tokens only); Lucide (`lucide-react`, ISC) as the icon set – added with the first component that uses it (T-130); palette and tree look approved via a preview page. The player window keeps its own `player.css` outside the design system; the companion's styles move to tokens with its first real screen.
 
 ### T-130 DM window zone layout
 
