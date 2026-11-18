@@ -19,8 +19,8 @@ Use `/next-task` to start and `/finish-task` to finish.
 
 1. **Pick** the first task in `TASKS.md` with status `todo` whose dependencies are `done` (unless the DM named one). Set it to `in-progress`.
 2. **Branch** from `main`: `task/T-XXX-short-slug`.
-3. **Understand:** read the task, the referenced spec sections, ADRs and existing code. If the task is ambiguous, stop and ask (see "When to stop").
-4. **Plan:** write a short plan (approach, files touched, tests, risks) – it becomes the PR description. If the plan reveals the task is bigger than expected, split it in `TASKS.md` and ask.
+3. **Understand:** read the task, the referenced spec sections, ADRs and existing code. If the task touches UI, layout, CSS or UX, invoke `/ui-design` (or follow `.claude/skills/ui-design/SKILL.md`) before planning. If the task is ambiguous, stop and ask (see "When to stop").
+4. **Plan:** write a short plan (approach, files touched, tests, risks; for UI tasks the layout zone and `@dungeon-manager/ui` tokens/primitives) – it becomes the PR description. If the plan reveals the task is bigger than expected, split it in `TASKS.md` and ask.
 5. **Tests first for logic:** write failing tests for `core`/`schema`/`storage`/`protocol` behaviour before the implementation. For UI and rendering, add component/E2E/screenshot tests alongside.
 6. **Implement** the smallest change that satisfies the acceptance criteria. No drive-by refactors; note them as new tasks instead.
 7. **Verify:** run `pnpm check` (typecheck, lint, format, boundaries, unit + component tests with coverage) and the relevant E2E/visual tests. For Rust: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`.
@@ -28,7 +28,6 @@ Use `/next-task` to start and `/finish-task` to finish.
 9. **Open a PR** with the template below and set the task to `done` in `TASKS.md` (it becomes true with the merge).
 10. **Merge** the PR yourself (merge commit) once all required CI checks are green and the reviewer subagent's blocking findings are resolved. Do **not** merge while the PR contains an open question for the DM (deviation, dependency, security-relevant change) – ask and wait instead.
 11. **Feedback:** when the DM comments on a PR (merged or not), address each point and reply to it.
-12. **If the task touches UI, layout, CSS, or UX decisions, invoke `/ui-design`** (or follow `.claude/skills/ui-design/SKILL.md`) before writing component or stylesheet code.
 
 ## When to stop and ask the DM
 
