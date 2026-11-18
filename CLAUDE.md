@@ -39,6 +39,8 @@ Stop **before** acting and ask when:
 - the task **grows** clearly beyond its plan, or acceptance criteria are unclear or contradictory
 - anything touching **security** (LAN exposure, pairing, permissions) changes behaviour
 
+If **several related decisions** are open (a new feature area, unclear or contradictory acceptance criteria, a file-format or security design), work them out with the DM using `/topic-interviewer`. For a single deviation, use the structured proposal below.
+
 ### How to ask / propose a deviation
 
 Never deviate silently. Use this structure:
