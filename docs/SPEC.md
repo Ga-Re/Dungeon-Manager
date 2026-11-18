@@ -2,7 +2,7 @@
 
 > **What** gets built. For **how** it is built see [ARCHITECTURE.md](ARCHITECTURE.md) and the decisions in [adr/](adr/). Working rules for the coding agent are in [/CLAUDE.md](../CLAUDE.md).
 
-A tool for a Dungeon Master (DM) to plan campaigns and present them live at the table: maps, fog of war, spells, sound and light. Everything is controlled from a notebook; planning also works on the go from a phone.
+A tool for a Dungeon Master (DM) to plan campaigns and present them live at the table: maps, fog of war, spells, sound and light. Everything is controlled from a notebook; planning also works on the go in Obsidian or any Markdown tool.
 
 ---
 
@@ -13,7 +13,7 @@ A tool for a Dungeon Master (DM) to plan campaigns and present them live at the 
 | Play setting           | In person, at the table                                                                                                             |
 | Player output          | Table-top TV lying flat (player view fullscreen on a second display)                                                                |
 | Desktop app            | Tauri 2 + React + TypeScript + PixiJS (Windows, macOS, Linux)                                                                       |
-| DM phone app           | React Native / Expo + TypeScript (Android and iOS); works on the go and offline                                                     |
+| DM on the go           | No own app: Obsidian-compatible Markdown vault in the sync folder; DM mode of the local web app at the table (ADR-0013)             |
 | Players                | No phone required; paper character sheets are the norm. Optional player companion in the phone browser, local Wi-Fi, no app install |
 | Data sync              | A user-chosen folder that any cloud client syncs. The tool uses **no cloud APIs**                                                   |
 | Live link at the table | Local Wi-Fi; the notebook is the host; pairing via QR code                                                                          |
@@ -42,19 +42,17 @@ A tool for a Dungeon Master (DM) to plan campaigns and present them live at the 
 - Optional highlight of the active turn (glow ring around the token)
 - **Blackout / panic button:** switch the player view instantly to black or a pause image
 
-### 2.3 DM phone app (on the go)
+### 2.3 DM on the go and at the table (no own app)
 
-Primarily the **DM's planning tool on the go**. The UI is leaner than the desktop: same data, fewer tools, larger controls.
+There is no DM phone app (ADR-0013). Planning on the go happens in tools the DM already uses; remote control at the table is a DM mode of the local web app.
 
-1. **Planning on the go (main purpose), fully offline**
-   - Text editor for session notes, NPCs, places, quests: Markdown storage with a WYSIWYG view (toolbar formatting, no Markdown knowledge needed), links via `[[Name]]`
-   - Map preparation: import map, align grid, predefine fog rooms, roughly place assets, set note pins
-   - Scene assembly: map + sound preset + light preset + notes
-   - Encounter preparation: pick monsters, roll HP, check difficulty
-   - Fine work (drawing walls, triggers, effects) stays on the desktop
-   - Works with **previews** instead of originals (see ARCHITECTURE.md, storage)
-2. **Remote control at the table (secondary):** sound, light, fog reveal, scene switch, show handouts – via local Wi-Fi
-3. **DM screen at the table (secondary):** initiative, HP, stat blocks, dice and notes in hand while the notebook drives the TV
+1. **Planning on the go (main purpose), fully offline – in Obsidian or any Markdown tool**
+   - The campaign's wiki and notes (sessions, NPCs, places, quests) are an Obsidian-compatible vault in the sync folder (Markdown, YAML front matter, `[[Name]]` links); Dungeon Manager shows and uses them
+   - **Scene drafts from notes:** a note with scene front matter (map, sound, light, tokens) appears in Dungeon Manager as a scene draft
+   - Encounters can be drafted as notes
+   - Visual work (grid, rooms, walls, asset placement, triggers, effects) stays on the desktop
+2. **Remote control at the table (secondary):** sound, light, fog reveal, scene switch, show handouts – a DM mode of the web app on the local Wi-Fi, paired separately from players
+3. **DM screen at the table (secondary):** initiative, HP, stat blocks, dice and notes in the same DM mode
 
 ### 2.4 Players
 
@@ -216,7 +214,7 @@ A default per element type avoids configuring every single element.
 - **Soundboard / one-shots:** hotkeys for door creak, roar, sword hit, spells
 - **Sources:** own files plus **Tabletop Audio** tracks downloaded once into the library and used like own files – everything works offline at the table. No Spotify, no Syrinscape.
 - Optional automatic switch to combat music when initiative starts
-- Master volume and "mute all" from the phone at any time
+- Master volume and "mute all" from the DM remote (web app) at any time
 
 ---
 
@@ -298,7 +296,7 @@ Lamps are assigned to zones; scenes and effects address roles, not individual la
 ### 13.3 End
 
 1. **Close the session log:** review the automatic log, add DM notes; basis for the next recap
-2. **Snapshot & sync:** back up the campaign; the sync folder is updated so the phone has the current state on the go
+2. **Snapshot & sync:** back up the campaign; the sync folder is updated so notes are current in Obsidian on the go
 3. **Reset light & sound:** lamps to normal, fade out music
 4. Game state (fog, token positions, HP) is saved and offered at the next start
 
@@ -318,8 +316,8 @@ Lamps are assigned to zones; scenes and effects address roles, not individual la
 - **Offline-first:** everything works at the table without internet; folder sync runs in the background when connected
 - **Autosave:** scene and fog state saved regularly; a crash mid-session loses nothing
 - **Performance:** video maps and effects run smoothly on the TV (see budgets in ARCHITECTURE.md)
-- **Local network only:** companion and DM phone connect only on the local Wi-Fi; QR pairing with a one-time key so no stranger can control anything
-- **Accessibility:** large controls on the phone, colour-blind-friendly markers
+- **Local network only:** companion and DM remote connect only on the local Wi-Fi; QR pairing with a one-time key so no stranger can control anything
+- **Accessibility:** large controls in the web app on phones, colour-blind-friendly markers
 - **Legal:** 5e SRD content is CC-BY-4.0 – attribution required; bundled assets only CC0 or clearly licensed; respect Tabletop Audio's terms
 
 ---
@@ -343,9 +341,9 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 - Blackout button, autosave
 - Folder structure and file format from day one
 
-### Stage 2 – Planning on the phone & sound
+### Stage 2 – Planning on the go & sound
 
-- DM phone app: Markdown editor, wiki basics, map preparation, scene assembly
+- Obsidian vault for wiki and notes, scene drafts from notes
 - Folder sync with per-OS guide, conflict detection, previews
 - Sound: scene presets, layer mixer, soundboard, Tabletop Audio import
 - Animated maps (MP4/WebM)
@@ -353,7 +351,7 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 
 ### Stage 3 – Networked at the table
 
-- Wi-Fi pairing via QR: DM phone as remote and DM screen
+- Wi-Fi pairing via QR: DM remote and DM screen as a DM mode of the web app
 - Player companion in the browser: handouts, own status, notes & dice, move own token
 - Movement rules (configurable), DM lock
 - Session start assistant, intro screen, session end with snapshot
@@ -402,6 +400,6 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 ## 17. Open product questions
 
 - **Token mirroring:** test whether manual mirroring slows combat down
-- **Phone sync:** walk through each OS/provider once (Android + FolderSync/Syncthing, iOS + iCloud/OneDrive) and write the in-app guide from it
+- **Sync for Obsidian on the phone:** walk through each OS/provider once (iOS + iCloud/Obsidian Sync/OneDrive, Android + Syncthing/FolderSync) and write the in-app guide from it
 - **Camera:** sticker size, camera height, reflections on the TV glass (matte screen protector?)
 - **Tabletop Audio:** check terms for downloading and local use

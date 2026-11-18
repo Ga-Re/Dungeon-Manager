@@ -80,12 +80,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-008 Mobile app skeleton
 
-- **Status:** blocked · **Depends on:** T-001 · **Refs:** ADR-0003
+- **Status:** blocked · **Depends on:** T-001 · **Refs:** ADR-0003, ADR-0013
 - Expo app (dev build) in `apps/mobile` importing `core` and `i18n`; one screen.
 - **Acceptance criteria**
   - [ ] Runs on an Android emulator/device; iOS build steps documented
   - [ ] Imports a function from `packages/core` (proves workspace sharing works with Metro)
-- **Notes:** Deferred by the DM (2026-11-17): most players and the DM use iPhones; revisit when the phone app is due (stage 2).
+- **Notes:** Deferred by the DM (2026-11-17): most players and the DM use iPhones; revisit when the phone app is due (stage 2). Obsolete with ADR-0013 (no DM phone app); removed by T-149 once the ADR is accepted.
 
 ### T-009 Companion skeleton
 
@@ -110,6 +110,15 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] One implementation, used by desktop and companion; tests unchanged and green
 - **Notes:** Discovered during T-009; kept duplicated there to avoid a drive-by refactor.
+
+### T-149 Remove the mobile app placeholder
+
+- **Status:** todo · **Depends on:** – · **Refs:** ADR-0013, ARCHITECTURE §3
+- Delete `apps/mobile` and every reference to it (workspace, Turbo, dependency-cruiser, CI, scripts); remove the obsolete tasks T-008 and T-132.
+- **Acceptance criteria**
+  - [ ] `pnpm install`, `pnpm check` and CI pass without `apps/mobile`
+  - [ ] No remaining references to Expo/React Native in configs or docs except ADR history
+- **Notes:** From the DM decision (2026-11-18). Folder layout change: do it only after ADR-0013 is accepted.
 
 ---
 
@@ -250,7 +259,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Catalog lists all maps in the library with a preview, across campaigns
   - [ ] DM picks a map from the catalog for a new scene and when changing a scene's map
   - [ ] Deleting a scene leaves its map in the catalog
-- **Notes:** DM request (2026-11-17). Previews go to `library/.previews/` as ARCHITECTURE §6.5 already plans (shared with the phone); maps picked but not used (e.g. a cancelled map change) simply stay in the catalog.
+- **Notes:** DM request (2026-11-17). Previews go to `library/.previews/` as ARCHITECTURE §6.5 already plans (shared with the web app and handouts); maps picked but not used (e.g. a cancelled map change) simply stay in the catalog.
 
 ### T-125 Asset metadata: scale, name, origin
 
@@ -470,11 +479,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-132 Platform-neutral design tokens for mobile
 
-- **Status:** todo · **Depends on:** T-129 · **Refs:** ARCHITECTURE §4, §15, ADR-0011
+- **Status:** blocked · **Depends on:** T-129 · **Refs:** ARCHITECTURE §4, §15, ADR-0011, ADR-0013
 - `apps/mobile` cannot import `packages/ui`; provide the token values in a platform-neutral source (e.g. a TS/JSON file) from which the CSS tokens are generated, and consume it in Expo.
 - **Acceptance criteria**
   - [ ] Desktop CSS tokens and mobile theme come from one source
-- **Notes:** From ADR-0011. Do this when the mobile UI work starts.
+- **Notes:** From ADR-0011. Do this when the mobile UI work starts. Obsolete with ADR-0013 (no mobile app); removed by T-149 once the ADR is accepted.
 
 ### T-134 Sidecar files for map and asset data
 
@@ -516,7 +525,18 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ---
 
-## Stage 2 – Planning & sound
+## Stage 2 – Planning on the go & sound
+
+### T-150 Obsidian vault and scene drafts from notes
+
+- **Status:** todo · **Depends on:** T-103b, T-134 · **Refs:** ADR-0013, ADR-0006, ARCHITECTURE §6.7, SPEC 2.3
+- Decide and document where the vault lives (campaign folder or library root); storage ignores `.obsidian/` and similar tool folders and picks up note changes made elsewhere; a documented front-matter format for scene drafts (`type: scene`, map, sound, light, tokens) is validated with zod and offered as scene drafts in the DM window.
+- **Acceptance criteria**
+  - [ ] A note edited outside the app shows up in Dungeon Manager without restart
+  - [ ] A valid scene note becomes a scene draft; an invalid one shows an actionable hint (no crash)
+  - [ ] Front matter keys the app does not know survive a round trip (ADR-0006)
+  - [ ] Setup guide for Obsidian on iOS/Android incl. sync (SPEC 17)
+- **Notes:** From the DM planning interview (2026-11-18). New file format (scene front matter): DM approves the format before implementing.
 
 ### T-137 Handouts on the TV
 
@@ -545,6 +565,20 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] DM selects a region of a map and gets a fragment handout
   - [ ] Released fragments of a puzzle appear in their place; unreleased ones are never sent
 - **Notes:** From the DM planning interview (2026-11-18). A fragment must not leak the rest of the map (render only the cut region).
+
+---
+
+## Stage 3 – Networked at the table
+
+### T-151 DM remote as a mode of the web app
+
+- **Status:** todo · **Depends on:** T-102b · **Refs:** ADR-0013, ADR-0007, ARCHITECTURE §7, §13, SPEC 2.3
+- A `dm-remote` role in the companion web app: separate QR pairing on the desktop, revocable, with sound, light, fog reveal, scene switch and handouts; DM screen (initiative, HP, notes) in the same mode.
+- **Acceptance criteria**
+  - [ ] A player pairing can never obtain `dm-remote` rights (protocol/permission tests)
+  - [ ] The DM revokes a remote session from the desktop; it is disconnected immediately
+  - [ ] Every remote command goes through `canApply` and undo like local ones
+- **Notes:** From the DM decision (2026-11-18). Security-relevant (LAN pairing, DM-level data on a phone): propose the pairing and session design to the DM before implementing.
 
 ---
 
