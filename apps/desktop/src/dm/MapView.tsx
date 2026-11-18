@@ -143,6 +143,8 @@ export function MapView({
         setLoad("ready");
       },
       () => {
+        // A video that loaded although the renderer did not would otherwise play on, unseen.
+        releaseVideo(video);
         if (!cancelled) setLoad("error");
       },
     );

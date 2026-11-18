@@ -103,6 +103,18 @@ export async function createRenderer(
   const hideVideo = () => {
     if (video) video.style.visibility = "hidden";
   };
+  // One video pixel per map pixel; a stream may change resolution while playing (VP9 can).
+  const sizeVideo = (element: HTMLVideoElement) => {
+    element.style.width = `${String(element.videoWidth)}px`;
+    element.style.height = `${String(element.videoHeight)}px`;
+  };
+  const onVideoResize = () => {
+    if (!video) return;
+    gate.resized();
+    hideVideo();
+    sizeVideo(video);
+    requestDraw();
+  };
   const onContextLost = () => {
     gate.contextLost();
     hideVideo();
@@ -118,10 +130,17 @@ export async function createRenderer(
     if (frame !== null || destroyed) return;
     frame = requestAnimationFrame(() => {
       frame = null;
-      applyCamera();
-      app.render();
-      gate.drawn();
-      showVideo();
+      try {
+        applyCamera();
+        app.render();
+        gate.drawn();
+        showVideo();
+      } catch (error) {
+        // ADR-0010: on renderer errors the raw video must not stay visible.
+        gate.renderFailed();
+        hideVideo();
+        console.error("The renderer failed to draw a frame.", error);
+      }
       const done = waiting;
       waiting = [];
       done.forEach((resolve) => {
@@ -135,6 +154,7 @@ export async function createRenderer(
       if (image && video) {
         // An image map replaces a video map: hide it and make the canvas opaque again.
         hideVideo();
+        video.removeEventListener("resize", onVideoResize);
         video = null;
         app.renderer.background.color = background;
         app.renderer.background.alpha = 1;
@@ -152,7 +172,9 @@ export async function createRenderer(
     },
     setVideo(next) {
       hideVideo();
+      video?.removeEventListener("resize", onVideoResize);
       video = next;
+      next?.addEventListener("resize", onVideoResize);
       gate.newVideo();
       // A video map lies under the canvas, so the canvas must be see-through around the fog –
       // cleared to black: with premultiplied alpha, any other colour at alpha 0 would be added
@@ -163,24 +185,24 @@ export async function createRenderer(
         next.style.position = "absolute";
         next.style.left = "0";
         next.style.top = "0";
-        next.style.width = `${String(next.videoWidth)}px`;
-        next.style.height = `${String(next.videoHeight)}px`;
+        sizeVideo(next);
         next.style.transformOrigin = "0 0";
         next.style.visibility = "hidden";
       }
       requestDraw();
     },
     setFog(revealed, fogOptions) {
-      gate.fogSet();
+      // Build the new fog first: if that fails, the old fog stays in place and counts.
+      const next = revealed
+        ? drawFog(revealed, fogOptions?.opacity ?? 1)
+        : null;
       if (fog) {
         world.removeChild(fog);
         fog.destroy({ children: true });
-        fog = null;
       }
-      if (revealed) {
-        fog = drawFog(revealed, fogOptions?.opacity ?? 1);
-        world.addChild(fog);
-      }
+      fog = next;
+      if (fog) world.addChild(fog);
+      gate.fogSet();
       requestDraw();
     },
     setCamera(next) {
@@ -188,6 +210,7 @@ export async function createRenderer(
       requestDraw();
     },
     resize(next) {
+      if (next.width === size.width && next.height === size.height) return;
       size = next;
       gate.resized();
       hideVideo();
@@ -205,6 +228,7 @@ export async function createRenderer(
       destroyed = true;
       gate.destroyed();
       hideVideo();
+      video?.removeEventListener("resize", onVideoResize);
       options.canvas.removeEventListener("webglcontextlost", onContextLost);
       options.canvas.removeEventListener(
         "webglcontextrestored",

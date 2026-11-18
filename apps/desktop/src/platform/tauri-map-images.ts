@@ -7,6 +7,9 @@ export function libraryUrl(path: string): string {
   return convertFileSrc(path, "dmlib");
 }
 
+/** How long a video map may take to load its first frame. */
+const VIDEO_LOAD_TIMEOUT_MS = 30_000;
+
 /** Loads map images through the `dmlib` scheme and renders with PixiJS. */
 export function createTauriMapViewService(): MapViewService {
   return {
@@ -27,9 +30,14 @@ export function createTauriMapViewService(): MapViewService {
       video.preload = "auto";
       video.src = libraryUrl(path);
       await new Promise<void>((resolve, reject) => {
+        // A stalled source fires neither event; give up instead of loading forever.
+        const timeout = setTimeout(() => {
+          reject(new Error(`The video map ${path} did not load in time.`));
+        }, VIDEO_LOAD_TIMEOUT_MS);
         video.addEventListener(
           "loadeddata",
           () => {
+            clearTimeout(timeout);
             resolve();
           },
           { once: true },
@@ -37,12 +45,16 @@ export function createTauriMapViewService(): MapViewService {
         video.addEventListener(
           "error",
           () => {
+            clearTimeout(timeout);
             reject(new Error(`The video map ${path} could not be loaded.`));
           },
           { once: true },
         );
       });
-      void video.play().catch(() => undefined);
+      video.play().catch((error: unknown) => {
+        // The map then shows its first frame, still under its fog; worth knowing, not fatal.
+        console.warn(`The video map ${path} does not play.`, error);
+      });
       return video;
     },
     createRenderer: (canvas, size) =>

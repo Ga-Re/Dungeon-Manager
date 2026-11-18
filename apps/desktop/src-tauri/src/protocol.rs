@@ -8,7 +8,6 @@ use crate::commands::{DM_WINDOW, LibraryState};
 use crate::library;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
-use std::path::Path;
 use tauri::http::{Request, Response, StatusCode, header};
 use tauri::{Manager, Runtime, UriSchemeContext, UriSchemeResponder};
 
@@ -61,7 +60,8 @@ const MAX_CHUNK: u64 = 4 * 1024 * 1024;
 
 /// The byte range `[start, end]` (inclusive) to send for a `Range` header, capped at
 /// `MAX_CHUNK`, or `None` if the range cannot be satisfied (HTTP 416). Only single ranges of
-/// the form `bytes=a-b`, `bytes=a-` and `bytes=-n` are supported (all media players use them).
+/// the form `bytes=a-b`, `bytes=a-` and `bytes=-n` are supported (all media players use them);
+/// multiple ranges and malformed headers are answered with 416 rather than ignored.
 pub fn byte_range(range: &str, size: u64) -> Option<(u64, u64)> {
     let spec = range.trim().strip_prefix("bytes=")?;
     let (first, last) = spec.split_once('-')?;
@@ -79,11 +79,13 @@ pub fn byte_range(range: &str, size: u64) -> Option<(u64, u64)> {
     (start <= end && start < size).then(|| (start, end.min(start + MAX_CHUNK - 1)))
 }
 
-fn read_range(file: &Path, start: u64, end: u64) -> std::io::Result<Vec<u8>> {
-    let mut opened = File::open(file)?;
+fn read_range(opened: &mut File, start: u64, end: u64) -> std::io::Result<Vec<u8>> {
     opened.seek(SeekFrom::Start(start))?;
     let mut bytes = Vec::with_capacity(usize::try_from(end - start + 1).unwrap_or(0));
-    opened.take(end - start + 1).read_to_end(&mut bytes)?;
+    opened
+        .by_ref()
+        .take(end - start + 1)
+        .read_to_end(&mut bytes)?;
     Ok(bytes)
 }
 
@@ -123,10 +125,16 @@ fn respond<R: Runtime>(
             Err(_) => status(StatusCode::NOT_FOUND),
         };
     }
-    let Ok(size) = std::fs::metadata(&file).map(|meta| meta.len()) else {
+    // Size and bytes from the same open file, so they agree even if the file changes meanwhile.
+    let Ok(mut opened) = File::open(&file) else {
         return status(StatusCode::NOT_FOUND);
     };
-    // Media players always ask for ranges; without one the first chunk is sent the same way.
+    let Ok(size) = opened.metadata().map(|meta| meta.len()) else {
+        return status(StatusCode::NOT_FOUND);
+    };
+    // Media players always ask for ranges. Without one, HTTP would want the whole file (200),
+    // which a capped response cannot be – so the first chunk is sent as a range, which the
+    // webviews (WebKit, WebView2) accept.
     let Some((start, end)) = byte_range(range.unwrap_or("bytes=0-"), size) else {
         let mut refused = status(StatusCode::RANGE_NOT_SATISFIABLE);
         if let Ok(value) = format!("bytes */{size}").parse() {
@@ -134,7 +142,7 @@ fn respond<R: Runtime>(
         }
         return refused;
     };
-    match read_range(&file, start, end) {
+    match read_range(&mut opened, start, end) {
         Ok(bytes) => builder
             .status(StatusCode::PARTIAL_CONTENT)
             .header(header::ACCEPT_RANGES, "bytes")
@@ -218,7 +226,10 @@ mod tests {
     fn a_range_is_read_from_the_file() {
         let file = std::env::temp_dir().join(format!("dm-range-{}", std::process::id()));
         std::fs::write(&file, b"0123456789").unwrap();
-        assert_eq!(read_range(&file, 3, 6).unwrap(), b"3456");
+        let mut opened = File::open(&file).unwrap();
+        assert_eq!(read_range(&mut opened, 3, 6).unwrap(), b"3456");
+        drop(opened);
+        std::fs::remove_file(&file).unwrap();
     }
 
     #[test]

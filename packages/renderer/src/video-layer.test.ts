@@ -70,4 +70,14 @@ describe("video gate (fail closed, ADR-0010)", () => {
     gate.drawn();
     expect(gate.visible()).toBe(false);
   });
+
+  test("a failed draw hides the video until a draw succeeds", () => {
+    const gate = createVideoGate();
+    gate.fogSet();
+    gate.drawn();
+    gate.renderFailed();
+    expect(gate.visible()).toBe(false);
+    gate.drawn();
+    expect(gate.visible()).toBe(true);
+  });
 });

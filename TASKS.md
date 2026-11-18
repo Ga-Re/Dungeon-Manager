@@ -317,6 +317,14 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] A map larger than the texture limit is shown correctly (tiled) or with an actionable message
 - **Notes:** From the T-105a review.
 
+### T-128 Keep video maps in sync between DM window and TV
+
+- **Status:** todo · **Depends on:** T-105c · **Refs:** ADR-0010
+- The DM window and the TV each play the video map; their positions drift apart. Sync the player view's playback position to the DM window (or the other way round) within a tolerance.
+- **Acceptance criteria**
+  - [ ] Both views show the same moment of a video map within ~100 ms
+- **Notes:** From the T-105c review (ADR-0010 consequence).
+
 ### T-106 Grid overlay and 1-inch calibration
 
 - **Status:** todo · **Depends on:** T-105b · **Refs:** SPEC 2.2

@@ -20,6 +20,15 @@ pub struct ImportedAsset {
     pub hash: String,
 }
 
+/// MP4 major brands of playable videos. Other ISO-BMFF files (AVIF, HEIC images, QuickTime
+/// `qt  `, 3GP) also start with `ftyp` but are no MP4 videos.
+const MP4_BRANDS: [&[u8]; 8] = [
+    b"isom", b"iso2", b"iso5", b"iso6", b"mp41", b"mp42", b"avc1", b"dash",
+];
+
+/// How many leading bytes the format check looks at (enough for the WebM document type).
+const HEADER_BYTES: usize = 64;
+
 /// The map format by its leading bytes, so a renamed file of another type is refused: images
 /// (PNG, JPEG, WebP) and videos (MP4 with its `ftyp` box, WebM with its EBML header).
 fn map_extension(header: &[u8]) -> Option<&'static str> {
@@ -29,9 +38,13 @@ fn map_extension(header: &[u8]) -> Option<&'static str> {
         Some("jpg")
     } else if header.len() >= 12 && &header[..4] == b"RIFF" && &header[8..12] == b"WEBP" {
         Some("webp")
-    } else if header.len() >= 8 && &header[4..8] == b"ftyp" {
+    } else if header.len() >= 12 && &header[4..8] == b"ftyp" && MP4_BRANDS.contains(&&header[8..12])
+    {
         Some("mp4")
-    } else if header.starts_with(&[0x1A, 0x45, 0xDF, 0xA3]) {
+    } else if header.starts_with(&[0x1A, 0x45, 0xDF, 0xA3])
+        && header.windows(4).any(|window| window == b"webm")
+    {
+        // EBML is also Matroska (.mkv); only the WebM document type plays everywhere.
         Some("webm")
     } else {
         None
@@ -90,7 +103,7 @@ fn stage(source: &Path, staged: &Path) -> io::Result<(String, Vec<u8>)> {
         .create_new(true)
         .open(staged)?;
     let mut hasher = Sha256::new();
-    let mut header = Vec::with_capacity(12);
+    let mut header = Vec::with_capacity(HEADER_BYTES);
     let mut buffer = vec![0; 1 << 20];
     loop {
         let read = input.read(&mut buffer)?;
@@ -98,7 +111,7 @@ fn stage(source: &Path, staged: &Path) -> io::Result<(String, Vec<u8>)> {
             break;
         }
         let chunk = &buffer[..read];
-        let missing = 12usize.saturating_sub(header.len()).min(read);
+        let missing = HEADER_BYTES.saturating_sub(header.len()).min(read);
         header.extend_from_slice(&chunk[..missing]);
         hasher.update(chunk);
         output.write_all(chunk)?;
@@ -167,7 +180,22 @@ mod tests {
         assert_eq!(map_extension(&[0xFF, 0xD8, 0xFF, 0xE0]), Some("jpg"));
         assert_eq!(map_extension(WEBP), Some("webp"));
         assert_eq!(map_extension(b"\0\0\0\x20ftypisom"), Some("mp4"));
-        assert_eq!(map_extension(&[0x1A, 0x45, 0xDF, 0xA3, 0x9F]), Some("webm"));
+        assert_eq!(map_extension(b"\0\0\0\x20ftypmp42"), Some("mp4"));
+        // AVIF images and QuickTime files share the box but are no MP4 videos.
+        assert_eq!(map_extension(b"\0\0\0\x20ftypavif"), None);
+        assert_eq!(map_extension(b"\0\0\0\x14ftypqt  "), None);
+        let webm = [
+            &[0x1A, 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x82, 0x84][..],
+            b"webm",
+        ]
+        .concat();
+        assert_eq!(map_extension(&webm), Some("webm"));
+        let mkv = [
+            &[0x1A, 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x82, 0x88][..],
+            b"matroska",
+        ]
+        .concat();
+        assert_eq!(map_extension(&mkv), None);
         assert_eq!(map_extension(b"GIF89a"), None);
         assert_eq!(map_extension(b""), None);
     }

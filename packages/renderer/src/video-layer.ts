@@ -26,6 +26,8 @@ export function createVideoGate() {
   let contextLost = false;
   let destroyed = false;
   return {
+    // `setFog(null)` (the DM view: no fog) also counts as known. The player view must therefore
+    // always pass an array – `PlayerApp` does, starting with "everything covered".
     fogSet() {
       fogKnown = true;
     },
@@ -41,6 +43,10 @@ export function createVideoGate() {
     },
     contextRestored() {
       contextLost = false;
+    },
+    /** A draw failed: what is on screen is unknown, so the video hides until a good frame. */
+    renderFailed() {
+      drawnSafely = false;
     },
     drawn() {
       drawnSafely = fogKnown && !contextLost && !destroyed;
