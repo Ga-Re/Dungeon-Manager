@@ -36,22 +36,22 @@ Two independent channels:
 
 ## 2. Tech stack
 
-| Concern                | Choice                                                                                                                            |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Language               | TypeScript (strict) everywhere except the desktop backend (Rust)                                                                  |
-| Monorepo               | pnpm workspaces + Turborepo                                                                                                       |
-| Desktop shell          | Tauri 2                                                                                                                           |
-| Desktop / companion UI | React                                                                                                                             |
-| Rendering              | PixiJS (WebGL/WebGPU)                                                                                                             |
-| Rich text              | WYSIWYG Markdown editor (TipTap-based) on the desktop; on the go the DM uses Obsidian or any Markdown tool (ADR-0013)             |
-| Schemas & validation   | zod (shared between all apps; also generates JSON Schema for Rust-side checks if needed)                                          |
-| UI strings             | i18next; `de` first, `en` second                                                                                                  |
-| Backend (Rust)         | tokio, axum (HTTP + WebSocket), notify (file watching), serde, image (previews)                                                   |
-| Unit / component tests | Vitest + React Testing Library; Rust: `cargo test`                                                                                |
-| E2E                    | Playwright (web build of desktop UI with mocked Tauri IPC, and companion); WebdriverIO + tauri-driver smoke tests on the real app |
-| Visual regression      | Playwright screenshots of renderer fixtures                                                                                       |
-| Lint / format          | ESLint, Prettier, `rustfmt`, `clippy`                                                                                             |
-| Architecture checks    | dependency-cruiser                                                                                                                |
+| Concern                | Choice                                                                                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Language               | TypeScript (strict) everywhere except the desktop backend (Rust)                                                                                                                                 |
+| Monorepo               | pnpm workspaces + Turborepo                                                                                                                                                                      |
+| Desktop shell          | Tauri 2                                                                                                                                                                                          |
+| Desktop / companion UI | React                                                                                                                                                                                            |
+| Rendering              | PixiJS (WebGL/WebGPU)                                                                                                                                                                            |
+| Rich text              | WYSIWYG Markdown editor (TipTap-based) on the desktop; on the go the DM uses Obsidian or any Markdown tool (ADR-0013)                                                                            |
+| Schemas & validation   | zod (shared between all apps; also generates JSON Schema for Rust-side checks if needed)                                                                                                         |
+| UI strings             | i18next; `de` first, `en` second                                                                                                                                                                 |
+| Backend (Rust)         | tokio, axum (HTTP + WebSocket), notify (file watching), serde, image (previews)                                                                                                                  |
+| Unit / component tests | Vitest + React Testing Library; Rust: `cargo test`                                                                                                                                               |
+| E2E                    | Playwright (DM window as a browser build with in-memory platform services – `apps/desktop/e2e.html`, Vite `e2e` mode; and the companion); WebdriverIO + tauri-driver smoke tests on the real app |
+| Visual regression      | Playwright screenshots of renderer fixtures                                                                                                                                                      |
+| Lint / format          | ESLint, Prettier, `rustfmt`, `clippy`                                                                                                                                                            |
+| Architecture checks    | dependency-cruiser                                                                                                                                                                               |
 
 New dependencies require approval (see CLAUDE.md).
 
