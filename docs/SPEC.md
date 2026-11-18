@@ -199,7 +199,7 @@ A default per element type avoids configuring every single element.
 ### 8.2 Asset library
 
 - **One global library** for all campaigns
-- **Defined once, used everywhere:** scale (grid calibration, asset footprint), name, tags, origin/license, levels, walls, doors, lights, rooms, blockers and variants belong to the map or asset and apply in every campaign. A scene adds placed assets (e.g. trees, rocks and houses on a street map), door states and fog, and may override single walls, doors, rooms or lights. Later improvements to the global data apply everywhere immediately; overrides whose target is gone are flagged for the DM
+- **Defined once, used everywhere:** scale (grid calibration, asset footprint), name, tags, origin/license, levels, walls, doors, lights, rooms, blockers and variants belong to the map or asset and apply in every campaign. A scene adds placed assets (e.g. trees, rocks and houses on a street map), door states and fog, and may override single walls, doors, rooms or lights. Later improvements to the global data apply everywhere – a scene that is live on the TV takes them only after the DM confirms; overrides whose target is gone are flagged for the DM
 - Share single maps or assets as a `.dmmap` bundle (export/import)
 - Import own files, tag and search them
 - Bundled base pack of free assets (CC0)

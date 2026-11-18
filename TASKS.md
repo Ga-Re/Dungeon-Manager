@@ -379,7 +379,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Hovering a room in fog mode highlights it; a click reveals/hides it as one undo step
   - [ ] Room list with per-room reveal toggle
   - [ ] Room reveals and "reveal all" subtract hidden secret rooms: afterwards `revealed ∩ hiddenSecretRoom = ∅` and no token centred in it is projected (property test, incl. overlapping rooms)
-- **Notes:** Format per ADR-0012 (proposed; implement after it is accepted). Suggesting rooms from walls comes with T-141; reveal by trigger with the trigger zones (stage 5).
+- **Notes:** Format per ADR-0012 (accepted by the DM, 2026-11-18). Suggesting rooms from walls comes with T-141; reveal by trigger with the trigger zones (stage 5).
 
 ### T-109 Memory fog
 
@@ -485,9 +485,10 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Scene schema v2: migration `map → { asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v1 fixtures)
   - [ ] `resolveMap` applies overrides and reports orphaned ones (unit tests ≥ 80 %)
   - [ ] A level still used by scenes cannot be deleted, only archived; fog, tokens and released levels stay resolvable
+  - [ ] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open
   - [ ] `SessionState` carries the resolved map, `projectForViewer` takes it as input, and the existing projection property tests still pass
   - [ ] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (regression test); the catalog ignores sidecars and maps sidecar conflict copies back to their original
-- **Notes:** From the DM planning interview (2026-11-18). File format change: implement only after ADR-0012 is accepted. Open: should a global edit (e.g. a deleted wall) change a scene that is live on the TV right away, or only after DM confirmation?
+- **Notes:** From the DM planning interview (2026-11-18). ADR-0012 accepted by the DM (2026-11-18), incl. "global edits reach the live scene only after confirmation".
 
 ### T-135 Selectable scene transitions
 
