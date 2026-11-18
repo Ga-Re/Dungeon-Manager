@@ -51,7 +51,18 @@ export function FogPreview({
           )}
         />
       )}
-      {drawing?.kind === "brush" && (
+      {drawing?.kind === "brush" &&
+        drawing.points.length === 1 &&
+        drawing.points[0] && (
+          // A single click is a dab: a polyline of one point would draw nothing.
+          <circle
+            className="map-view-preview-dab"
+            cx={drawing.points[0].x}
+            cy={drawing.points[0].y}
+            r={brushWidth / 2}
+          />
+        )}
+      {drawing?.kind === "brush" && drawing.points.length > 1 && (
         <polyline
           className="map-view-preview-brush"
           points={points(drawing.points)}

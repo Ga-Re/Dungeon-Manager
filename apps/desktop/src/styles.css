@@ -86,6 +86,10 @@ button {
   fill: none;
 }
 
+.map-view-preview .map-view-preview-dab {
+  stroke: none;
+}
+
 .map-view-preview-first {
   fill: #fff;
 }

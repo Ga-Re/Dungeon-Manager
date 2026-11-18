@@ -40,7 +40,7 @@ export function FogToolbar({
   readonly onUndo: () => void;
   readonly onRedo: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <div role="group" aria-label={t("fog.toolbar")} className="fog-toolbar">
       <fieldset disabled={disabled}>
@@ -77,7 +77,10 @@ export function FogToolbar({
       </fieldset>
       {shape === "brush" && (
         <label>
-          {t("fog.brushSize", { cells: brushCells })}
+          {t("fog.brushSize", {
+            count: brushCells,
+            cells: brushCells.toLocaleString(i18n.language),
+          })}
           <input
             type="range"
             min={0.5}

@@ -439,4 +439,28 @@ describe("MapView", () => {
     expect(Math.round(Math.min(...xs))).toBe(180);
     expect(Math.round(Math.max(...ys))).toBe(420);
   });
+
+  test("a real double click (two clicks on one spot, then dblclick) adds one corner", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, { tool: "reveal", shape: "polygon", onArea });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    click(100, 100);
+    click(300, 100);
+    click(300, 300);
+    click(301, 300);
+    fireEvent.doubleClick(area());
+    expect(
+      (onArea.mock.calls[0]?.[0] as { outer: unknown[] }).outer,
+    ).toHaveLength(3);
+
+    // Only two distinct corners: nothing enclosed, no command.
+    click(100, 100);
+    click(300, 100);
+    click(300, 100);
+    fireEvent.doubleClick(area());
+    expect(onArea).toHaveBeenCalledTimes(1);
+  });
 });

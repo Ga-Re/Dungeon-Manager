@@ -1,4 +1,4 @@
-import { circleArea, strokeArea } from "@dungeon-manager/core";
+import { circleArea, ringArea, strokeArea } from "@dungeon-manager/core";
 import {
   screenToMap,
   type Camera,
@@ -9,6 +9,9 @@ import type { Polygon } from "@dungeon-manager/schema";
 
 /** How the DM marks an area to reveal or hide (SPEC 4). */
 export type FogShape = "rectangle" | "circle" | "polygon" | "brush";
+
+/** Polygons smaller than this (square map pixels) enclose nothing worth a command. */
+const MIN_POLYGON_AREA = 1;
 
 /** Smaller drags are taken as slips, not areas. */
 export const MIN_DRAG_PX = 4;
@@ -70,6 +73,7 @@ export function brushArea(
 export function polygonArea(
   points: readonly (readonly [number, number])[],
 ): Polygon | null {
-  if (points.length < 3) return null;
+  // Fewer than three corners, or all on one line: nothing enclosed, nothing to reveal.
+  if (points.length < 3 || ringArea(points) < MIN_POLYGON_AREA) return null;
   return { outer: points.map(([x, y]): [number, number] => [x, y]), holes: [] };
 }

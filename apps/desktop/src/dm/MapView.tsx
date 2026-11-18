@@ -45,6 +45,8 @@ export type MapTool = "pan" | "reveal" | "hide";
 const DM_FOG_OPACITY = 0.55;
 /** A click this close to the first corner closes a polygon. */
 const CLOSE_PX = 12;
+/** Clicks this close to the last corner add none (e.g. the clicks of a double click). */
+const SAME_SPOT_PX = 4;
 
 /** A drag or stroke in progress, in screen pixels of the view. */
 type Drawing =
@@ -102,6 +104,7 @@ export function MapView({
   useEffect(() => {
     setDrawing(null);
     setCorners([]);
+    setHover(null);
   }, [tool, shape]);
   const fogNow = useRef(fog);
   fogNow.current = fog;
@@ -282,6 +285,13 @@ export function MapView({
         return;
       }
     }
+    // A double click sends two clicks on one spot first: the second is no new corner.
+    const last = corners.at(-1);
+    if (last) {
+      const shown = mapToScreen(camera, view, { x: last[0], y: last[1] });
+      if (Math.hypot(shown.x - point.x, shown.y - point.y) <= SAME_SPOT_PX)
+        return;
+    }
     const mapped = screenToMap(camera, view, point);
     setCorners([...corners, [mapped.x, mapped.y]]);
   };
@@ -327,9 +337,12 @@ export function MapView({
     setDrawing(null);
     const view = sizeNow.current;
     if (!done || !camera || !view) return;
-    if (done.kind === "brush")
-      mark(brushArea(done.points, brushRadius, camera, view));
-    else mark(dragArea(done.shape, done.start, done.end, camera, view));
+    if (done.kind === "brush") {
+      const stroke = brushArea(done.points, brushRadius, camera, view);
+      if (!stroke)
+        console.warn("A brush stroke could not be turned into an area.");
+      mark(stroke);
+    } else mark(dragArea(done.shape, done.start, done.end, camera, view));
   };
   const onPointerCancel = () => {
     drag.current = null;
@@ -339,6 +352,7 @@ export function MapView({
     if (event.key === "Escape" && (drawing || corners.length > 0)) {
       setDrawing(null);
       setCorners([]);
+      setHover(null);
       return;
     }
     if (corners.length > 0 && event.key === "Enter") {

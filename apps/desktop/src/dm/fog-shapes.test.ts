@@ -64,6 +64,23 @@ describe("brushArea and polygonArea", () => {
     expect(Math.max(...xs)).toBeCloseTo(910, 0);
   });
 
+  test("a polygon with all corners on one line encloses nothing", () => {
+    expect(
+      polygonArea([
+        [0, 0],
+        [10, 0],
+        [10, 0],
+      ]),
+    ).toBeNull();
+    expect(
+      polygonArea([
+        [0, 0],
+        [5, 5],
+        [10, 10],
+      ]),
+    ).toBeNull();
+  });
+
   test("a polygon needs three corners", () => {
     expect(
       polygonArea([
@@ -74,14 +91,14 @@ describe("brushArea and polygonArea", () => {
     expect(
       polygonArea([
         [0, 0],
-        [1, 0],
-        [0, 1],
+        [10, 0],
+        [0, 10],
       ]),
     ).toEqual({
       outer: [
         [0, 0],
-        [1, 0],
-        [0, 1],
+        [10, 0],
+        [0, 10],
       ],
       holes: [],
     });

@@ -77,6 +77,26 @@ describe("strokeArea", () => {
     expect(loop && isInside([loop], [50, 50])).toBe(false);
   });
 
+  test("repeated pointer positions never cost the stroke its end (found in review)", () => {
+    for (const points of [
+      [
+        [0, 0],
+        [100, 0],
+        [100, 0],
+      ],
+      [
+        [0, 0],
+        [50, 0],
+        [100, 0],
+        [100, 0],
+      ],
+    ] as [number, number][][]) {
+      const stroke = strokeArea(points, 10);
+      expect(stroke && isInside([stroke], [100, 0])).toBe(true);
+      expect(stroke && isInside([stroke], [50, 0])).toBe(true);
+    }
+  });
+
   test("a stroke running back over itself keeps its far end (found by the property test)", () => {
     const stroke = strokeArea(
       [
@@ -138,7 +158,12 @@ describe("strokeArea", () => {
     );
     fc.assert(
       fc.property(
-        fc.array(point, { minLength: 1, maxLength: 30 }),
+        // Pointer streams repeat positions; doubling random points covers that.
+        fc
+          .array(fc.tuple(point, fc.boolean()), { minLength: 1, maxLength: 30 })
+          .map((entries) =>
+            entries.flatMap(([p, twice]) => (twice ? [p, p] : [p])),
+          ),
         fc.integer({ min: 2, max: 60 }),
         (points, radius) => {
           const stroke = strokeArea(points, radius);

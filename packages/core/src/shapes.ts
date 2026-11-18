@@ -3,6 +3,9 @@ import { union, type Geom } from "polyclip-ts";
 
 // Shapes the DM draws fog with (SPEC 4), in map pixels. Pure; never call polyclip's setPrecision.
 
+/** polyclip-ts's polygon: outer ring and holes, rings closed by repeating the first point. */
+type ClipPolygon = [number, number][][];
+
 /** Corners of the circle approximation: smooth enough on a 4K TV, cheap for the fog ops. */
 const CIRCLE_SEGMENTS = 48;
 
@@ -73,8 +76,14 @@ function segmentDistance(p: Point, a: Point, b: Point): number {
  * Douglas–Peucker: drops points that lie within `tolerance` of the line through their kept
  * neighbours. A capsule covers its whole segment, so fewer points lose no coverage.
  */
-function simplify(points: readonly Point[], tolerance: number): Point[] {
-  if (points.length < 3) return [...points];
+function simplify(input: readonly Point[], tolerance: number): Point[] {
+  // Repeated points first (pointer events without movement): they would make zero-length
+  // segments, and must never cost a kept point its place.
+  const points = input.filter((point, index) => {
+    const previous = input[index - 1];
+    return !previous || previous[0] !== point[0] || previous[1] !== point[1];
+  });
+  if (points.length < 3) return points;
   const keep = points.map(
     (_, index) => index === 0 || index === points.length - 1,
   );
@@ -97,17 +106,7 @@ function simplify(points: readonly Point[], tolerance: number): Point[] {
       pending.push([from, farthest], [farthest, to]);
     }
   }
-  return points.filter((point, index) => {
-    if (!keep[index]) return false;
-    const previous = points[index - 1];
-    // Repeated points would make zero-length segments.
-    return (
-      !previous ||
-      index === 0 ||
-      previous[0] !== point[0] ||
-      previous[1] !== point[1]
-    );
-  });
+  return points.filter((_, index) => keep[index]);
 }
 
 /**
@@ -116,7 +115,7 @@ function simplify(points: readonly Point[], tolerance: number): Point[] {
  * stroke is connected, so the result is one area (with holes where it encloses some) – one fog
  * command, one undo step. Measured on smooth strokes of up to 600 pointer events: ~30 ms on
  * average, under 100 ms at worst in CI-class hardware.
- * @returns `null` for an empty stroke or a non-positive radius
+ * @returns `null` for an empty stroke, a non-positive radius, or if no grid could unite it
  */
 export function strokeArea(
   points: readonly Point[],
@@ -134,6 +133,7 @@ export function strokeArea(
       // Try the next, coarser grid.
     }
   }
+  // core has no logger: the caller learns from `null` that even the coarsest grid failed.
   return null;
 }
 
@@ -170,10 +170,30 @@ function unite(
   }
   const [first] = geoms;
   if (!first) return null;
-  const [merged] = union(first);
+  // A connected stroke unites to one polygon; should snapping ever leave a sliver beside it,
+  // the largest polygon is the stroke.
+  const united: ClipPolygon[] = union(first);
+  const merged = united.reduce<ClipPolygon | null>(
+    (largest, polygon) =>
+      !largest || ringArea(polygon[0] ?? []) > ringArea(largest[0] ?? [])
+        ? polygon
+        : largest,
+    null,
+  );
   if (!merged) return null;
   const [outer = [], ...holes] = merged;
   return { outer: open(outer), holes: holes.map(open) };
+}
+
+/** Absolute area of a ring (shoelace formula). */
+export function ringArea(ring: readonly (readonly [number, number])[]): number {
+  let twice = 0;
+  for (let index = 0; index < ring.length; index++) {
+    const [x1, y1] = ring[index] ?? [0, 0];
+    const [x2, y2] = ring[(index + 1) % ring.length] ?? [0, 0];
+    twice += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(twice) / 2;
 }
 
 /** polyclip closes rings by repeating the first point; the schema keeps them open. */
