@@ -30,8 +30,6 @@ Pinned versions:
 
 `engineStrict` is on: `pnpm install` refuses to run with a Node version outside `engines` in `package.json`.
 
-Mobile toolchain (Android Studio / Xcode) setup is documented with task T-008.
-
 ## Checks
 
 ```bash

@@ -28,7 +28,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [x] `pnpm check` runs typecheck, lint, format check, dependency-cruiser
   - [x] A deliberate boundary violation (e.g. `core` importing `react`) fails `pnpm check` (proven by a test fixture or documented manual check)
-- **Notes:** From T-001 review: package `exports` point at `dist/`, so typecheck of dependents needs `dependsOn: ["^build"]` in Turbo (or a source export condition). `moduleResolution: Bundler` allows extensionless imports – fine for Vite/Vitest/Metro, not for running `dist/` directly with Node.
+- **Notes:** From T-001 review: package `exports` point at `dist/`, so typecheck of dependents needs `dependsOn: ["^build"]` in Turbo (or a source export condition). `moduleResolution: Bundler` allows extensionless imports – fine for Vite/Vitest, not for running `dist/` directly with Node.
 
 ### T-003 Test infrastructure
 
@@ -78,15 +78,6 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Written conclusion: budget met or not; if not, structured proposal (see CLAUDE.md)
 - **Notes:** This validates ADR-0002. Results may trigger a new ADR. Result (DM's MacBook Air M5, 4K TV at 60 Hz): 4K video as a texture misses the budget; an HTML video element under a transparent PixiJS canvas reaches 59.8 FPS (1.25 % missed refreshes in the worst-case scene) → ADR-0010, ARCHITECTURE §8/§11 updated. Reports in `docs/benchmarks/`.
 
-### T-008 Mobile app skeleton
-
-- **Status:** blocked · **Depends on:** T-001 · **Refs:** ADR-0003, ADR-0013
-- Expo app (dev build) in `apps/mobile` importing `core` and `i18n`; one screen.
-- **Acceptance criteria**
-  - [ ] Runs on an Android emulator/device; iOS build steps documented
-  - [ ] Imports a function from `packages/core` (proves workspace sharing works with Metro)
-- **Notes:** Deferred by the DM (2026-11-17): most players and the DM use iPhones; revisit when the phone app is due (stage 2). Obsolete with ADR-0013 (no DM phone app); removed by T-149.
-
 ### T-009 Companion skeleton
 
 - **Status:** done · **Depends on:** T-001 · **Refs:** ADR-0007
@@ -113,12 +104,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-149 Remove the mobile app placeholder
 
-- **Status:** todo · **Depends on:** – · **Refs:** ADR-0013, ARCHITECTURE §3
+- **Status:** done · **Depends on:** – · **Refs:** ADR-0013, ARCHITECTURE §3
 - Delete `apps/mobile` and every reference to it (workspace, Turbo, dependency-cruiser, CI, scripts); remove the obsolete tasks T-008 and T-132.
 - **Acceptance criteria**
-  - [ ] `pnpm install`, `pnpm check` and CI pass without `apps/mobile`
-  - [ ] No remaining references to Expo/React Native in configs or docs except ADR history
-- **Notes:** From the DM decision (2026-11-18). Folder layout change approved with ADR-0013 (DM, 2026-11-18).
+  - [x] `pnpm install`, `pnpm check` and CI pass without `apps/mobile`
+  - [x] No remaining references to Expo/React Native in configs or docs except ADR history
+- **Notes:** From the DM decision (2026-11-18). Folder layout change approved with ADR-0013 (DM, 2026-11-18). Expo stays in the dependency-cruiser deny lists for `core` and `ui` (and in ARCHITECTURE §4): removing it would loosen a boundary rule; only the mobile-specific rule and its fixtures were removed.
 
 ---
 
@@ -455,7 +446,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] No hard-coded colours, spacing, fonts or z-indices left in the DM-window styles of `apps/desktop` (checked by a small self-written test that scans the stylesheet; the player window's black background is excluded)
   - [ ] Text/surface pairs of both variants meet WCAG AA (checked by a unit test over the token values)
   - [ ] Primitives have component tests incl. keyboard navigation for `TreeList`; labels via i18n
-- **Notes:** From ADR-0011 (2026-11-18). Define the token values in a TS object and derive the CSS custom properties from it, so T-132 only has to consume them in Expo. `packages/ui` needs `react` (already a workspace dependency, not a new one) and a component-test setup. Choosing fonts and an icon set is a dependency decision – propose candidates (OFL/CC0, bundled locally) to the DM first.
+- **Notes:** From ADR-0011 (2026-11-18). Define the token values in a TS object and derive the CSS custom properties from it, so the WCAG contrast test can check the values directly. `packages/ui` needs `react` (already a workspace dependency, not a new one) and a component-test setup. Choosing fonts and an icon set is a dependency decision – propose candidates (OFL/CC0, bundled locally) to the DM first.
 
 ### T-130 DM window zone layout
 
@@ -476,14 +467,6 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Zoom/fit change the DM view transform, rotation turns the player view; component and E2E tests
   - [ ] No regression on the benchmark scene (ARCHITECTURE §11)
 - **Notes:** From ADR-0011.
-
-### T-132 Platform-neutral design tokens for mobile
-
-- **Status:** blocked · **Depends on:** T-129 · **Refs:** ARCHITECTURE §4, §15, ADR-0011, ADR-0013
-- `apps/mobile` cannot import `packages/ui`; provide the token values in a platform-neutral source (e.g. a TS/JSON file) from which the CSS tokens are generated, and consume it in Expo.
-- **Acceptance criteria**
-  - [ ] Desktop CSS tokens and mobile theme come from one source
-- **Notes:** From ADR-0011. Do this when the mobile UI work starts. Obsolete with ADR-0013 (no mobile app); removed by T-149.
 
 ### T-134 Sidecar files for map and asset data
 
