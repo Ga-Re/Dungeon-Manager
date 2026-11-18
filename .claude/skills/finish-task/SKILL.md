@@ -17,3 +17,4 @@ Finish the current task following CLAUDE.md. Do not skip steps.
 9. Open the PR with `gh pr create` using the PR template from CLAUDE.md, including the reviewer summary and any deviations/open questions.
 10. Wait for CI. When all required checks are green and no open question for the DM remains, merge the PR (merge commit). If CI fails, fix the root cause and push again – never weaken tests or gates.
 11. Report the PR link and the merge result.
+12. If any files in `packages/ui/`, `apps/desktop/src/`, or `apps/companion/src/` were modified, verify compliance with `.claude/skills/ui-design/SKILL.md` (no hardcoded style values outside tokens, proper Fusion 360 layout zone placement, all labels in `@dungeon-manager/i18n`).

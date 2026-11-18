@@ -423,6 +423,44 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Killing the app mid-session loses at most the last few seconds (E2E test with forced kill)
 
+### T-129 UI design tokens and base primitives
+
+- **Status:** todo · **Depends on:** – · **Refs:** ARCHITECTURE §15, ADR-0011
+- Token sheet in `packages/ui` (`--dm-surface-*`, `--dm-border-*`, `--dm-text-*`, `--dm-accent-*`, `--dm-space-*`, `--dm-font-*`, `--dm-z-*`) with a parchment and a dimmed "night" variant; base primitives `FloatingPanel`, `IconButton`, `TreeList` (connector lines, node markers, trailing actions, badges); `apps/desktop/src/styles.css` consumes the tokens instead of hard-coded values.
+- **Acceptance criteria**
+  - [ ] No hard-coded colours, spacing, fonts or z-indices left in the DM-window styles of `apps/desktop` (checked by a small self-written test that scans the stylesheet; the player window's black background is excluded)
+  - [ ] Text/surface pairs of both variants meet WCAG AA (checked by a unit test over the token values)
+  - [ ] Primitives have component tests incl. keyboard navigation for `TreeList`; labels via i18n
+- **Notes:** From ADR-0011 (2026-11-18). Define the token values in a TS object and derive the CSS custom properties from it, so T-132 only has to consume them in Expo. `packages/ui` needs `react` (already a workspace dependency, not a new one) and a component-test setup. Choosing fonts and an icon set is a dependency decision – propose candidates (OFL/CC0, bundled locally) to the DM first.
+
+### T-130 DM window zone layout
+
+- **Status:** todo · **Depends on:** T-129 · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
+- Map viewport fills the DM window; collapsible left data panel holds `LibraryPanel` and `CampaignPanel`; dark title bar (save, undo, redo, scene tabs) and parchment ribbon with mode tabs; floating scene browser top left. Player window unchanged.
+- **Acceptance criteria**
+  - [ ] The canvas stays full-window (100vw × 100vh) whether the data panel is open or closed; the panel overlays it (asserted in E2E via the canvas bounding box)
+  - [ ] Data panel toggles by button and keyboard shortcut
+  - [ ] Existing E2E flows pass with updated selectors; DM-window screenshot test added
+- **Notes:** From ADR-0011.
+
+### T-131 Fog tools in the ribbon and navigation dock
+
+- **Status:** todo · **Depends on:** T-130 · **Refs:** ARCHITECTURE §15, ADR-0011
+- Move `FogToolbar` into the ribbon's fog mode (tool groups with captions, active tool highlighted); bottom-centre dock with zoom and fit-to-screen for the DM view, the player-view rotation (SPEC 2.2) and player-feed status.
+- **Acceptance criteria**
+  - [ ] All fog tools reachable from the ribbon, with keyboard shortcuts as before
+  - [ ] Zoom/fit change the DM view transform, rotation turns the player view; component and E2E tests
+  - [ ] No regression on the benchmark scene (ARCHITECTURE §11)
+- **Notes:** From ADR-0011.
+
+### T-132 Platform-neutral design tokens for mobile
+
+- **Status:** todo · **Depends on:** T-129 · **Refs:** ARCHITECTURE §4, §15, ADR-0011
+- `apps/mobile` cannot import `packages/ui`; provide the token values in a platform-neutral source (e.g. a TS/JSON file) from which the CSS tokens are generated, and consume it in Expo.
+- **Acceptance criteria**
+  - [ ] Desktop CSS tokens and mobile theme come from one source
+- **Notes:** From ADR-0011. Do this when the mobile UI work starts.
+
 ### T-115 MVP end-to-end flow
 
 - **Status:** todo · **Depends on:** T-107 … T-114

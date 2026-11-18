@@ -28,6 +28,7 @@ Use `/next-task` to start and `/finish-task` to finish.
 9. **Open a PR** with the template below and set the task to `done` in `TASKS.md` (it becomes true with the merge).
 10. **Merge** the PR yourself (merge commit) once all required CI checks are green and the reviewer subagent's blocking findings are resolved. Do **not** merge while the PR contains an open question for the DM (deviation, dependency, security-relevant change) – ask and wait instead.
 11. **Feedback:** when the DM comments on a PR (merged or not), address each point and reply to it.
+12. **If the task touches UI, layout, CSS, or UX decisions, invoke `/ui-design`** (or follow `.claude/skills/ui-design/SKILL.md`) before writing component or stylesheet code.
 
 ## When to stop and ask the DM
 
@@ -63,6 +64,7 @@ If you see a **better solution** than the one specified, say so – even unasked
 - **Errors are handled, not swallowed.** User-visible errors are actionable and translated; logs are useful.
 - **Accessibility and i18n:** no hard-coded UI strings (use i18next, German first), keyboard support on desktop, sensible touch targets on mobile.
 - **Performance budgets** in ARCHITECTURE.md §11 are requirements. Renderer changes must not regress the benchmark scene.
+- **UI & Design consistency (`ui-design` skill).** All UI layouts, styling, and UX decisions must follow `.claude/skills/ui-design/SKILL.md` (Fusion 360 spatial canvas-first layout combined with the tactile parchment/fantasy theme). Shared design tokens and primitives belong in `@dungeon-manager/ui`. Always invoke the `ui-design` skill when making design decisions or modifying UI components/CSS.
 
 ## Public repository
 

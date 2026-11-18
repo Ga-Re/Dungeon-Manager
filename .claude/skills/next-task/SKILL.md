@@ -13,3 +13,5 @@ Start work on a task following CLAUDE.md.
 5. Write the plan: approach, files to touch, tests to add (unit/component/e2e/visual), risks, open questions.
 6. If anything triggers a "When to stop and ask" rule from CLAUDE.md, present the structured question now and wait.
 7. Otherwise show the plan briefly and start implementing: tests first for logic.
+8. Read `docs/SPEC.md` and `docs/ARCHITECTURE.md` sections referenced by the task, plus any ADRs it touches. If the task involves UI components, layout, styling, or UX flows, also read and apply `.claude/skills/ui-design/SKILL.md`.
+9. Propose a short implementation plan (files to create/modify, tests to write, and—for UI tasks—which Fusion 360 layout zone and `@dungeon-manager/ui` tokens/primitives will be used) and confirm with the user before writing code if the scope is non-trivial.
