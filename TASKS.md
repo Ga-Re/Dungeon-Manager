@@ -448,13 +448,30 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Primitives have component tests incl. keyboard navigation for `TreeList`; labels via i18n
 - **Notes:** From ADR-0011 (2026-11-18). Define the token values in a TS object and derive the CSS custom properties from it, so the WCAG contrast test can check the values directly. `packages/ui` needs `react` (already a workspace dependency, not a new one) and a component-test setup. Choosing fonts and an icon set is a dependency decision – propose candidates (OFL/CC0, bundled locally) to the DM first. DM decisions (2026-11-18): system fonts for now (tokens only); Lucide (`lucide-react`, ISC) as the icon set – added with the first component that uses it (T-130); palette and tree look approved via a preview page. The player window keeps its own `player.css` outside the design system; the companion's styles move to tokens with its first real screen.
 
+### T-130a DM window E2E harness
+
+- **Status:** done · **Depends on:** – · **Refs:** ARCHITECTURE §2, §12, ADR-0009
+- A web build of the DM window for Playwright: `apps/desktop/e2e.html` renders `DmApp` with in-memory platform services (library on `createMemoryFileSystem`, fake displays, a self-drawn map image) instead of Tauri. Built only in Vite's `e2e` mode, never part of the app build. First E2E flow: open the library, a campaign and a scene, and see the map canvas.
+- **Acceptance criteria**
+  - [x] `pnpm test:e2e` builds and serves the harness and runs the DM-window flow (locally and in CI)
+  - [x] The app build (`vite build`) contains no harness page or fake services
+- **Notes:** Split from T-130 (DM, 2026-11-18): T-130's E2E/screenshot criteria need it. Fakes sit at the platform-service level (`LibraryService`, `DisplayService`, `MapViewService`), not at the Tauri IPC level as ARCHITECTURE §2 describes; the Tauri adapters stay covered by their unit tests and the tauri-driver smoke test.
+
 ### T-130 DM window zone layout
 
-- **Status:** todo · **Depends on:** T-129 · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
-- Map viewport fills the DM window; collapsible left data panel holds `LibraryPanel` and `CampaignPanel`; dark title bar (save, undo, redo, scene tabs) and parchment ribbon with mode tabs; floating scene browser top left. Player window unchanged.
+- **Status:** todo · **Depends on:** T-129, T-130a · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
+- Map viewport fills the DM window; collapsible left data panel holds `LibraryPanel` and `CampaignPanel`; dark title bar (save status, undo, redo, scene tab, settings) and parchment ribbon with mode tabs; floating scene browser top left. Player window unchanged.
+- DM decisions (2026-11-18):
+  - Title bar shows a **save status** ("Gespeichert" / "Speichert …" / "Nicht gespeichert – erneut versuchen") instead of a save button (scenes already save on every change).
+  - Ribbon modes with content: **Szene** (change map, delete/close scene), **Nebel** (today's fog tools, reworked in T-131), **Anzeige** (choose display, open player view, rotate TV).
+  - **Scene browser** shows the open scene as a `TreeList` (map file and levels, fog areas); grows with tokens, rooms and notes later.
+  - **Settings** behind a gear icon in the title bar (popover): theme **follow the OS / light (parchment) / dark (night)**, stored per device (not in the sync folder, ARCHITECTURE §6.2).
+  - Data panel toggles with a button and **Cmd/Ctrl+B**.
+  - Icons from Lucide (`lucide-react`, approved by the DM).
 - **Acceptance criteria**
   - [ ] The canvas stays full-window (100vw × 100vh) whether the data panel is open or closed; the panel overlays it (asserted in E2E via the canvas bounding box)
-  - [ ] Data panel toggles by button and keyboard shortcut
+  - [ ] Data panel toggles by button and Cmd/Ctrl+B
+  - [ ] Theme setting (OS / light / dark) applies immediately and survives a restart
   - [ ] Existing E2E flows pass with updated selectors; DM-window screenshot test added
 - **Notes:** From ADR-0011.
 

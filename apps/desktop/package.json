@@ -8,6 +8,8 @@
     "dev": "tauri dev",
     "vite": "vite",
     "build": "vite build",
+    "build:e2e": "vite build --mode e2e",
+    "preview:e2e": "vite preview --mode e2e",
     "typecheck": "tsc -p tsconfig.json",
     "tauri": "tauri",
     "build:app": "tauri build --debug --no-bundle",
