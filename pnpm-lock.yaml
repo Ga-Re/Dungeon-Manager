@@ -450,19 +450,19 @@ importers:
       '@dungeon-manager/schema':
         specifier: workspace:*
         version: link:../schema
-      i18next:
-        specifier: 27.1.2
-        version: 27.1.2(typescript@6.0.3)
-      react-i18next:
-        specifier: 18.0.1
-        version: 18.0.1(@types/react@19.3.0)(i18next@27.1.2(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
     devDependencies:
       '@dungeon-manager/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/tsconfig
+      i18next:
+        specifier: 27.1.2
+        version: 27.1.2(typescript@6.0.3)
       react:
         specifier: 19.3.1
         version: 19.3.1
+      react-i18next:
+        specifier: 18.0.1
+        version: 18.0.1(@types/react@19.3.0)(i18next@27.1.2(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
 
   tooling/tsconfig: {}
 

@@ -24,14 +24,15 @@ describe("createI18n", () => {
 
     void second.changeLanguage("en");
 
-    expect(first.language).toBe("de");
+    expect(first.language).toBe(DEFAULT_LANGUAGE);
     expect(second.language).toBe("en");
   });
 
   it("does not escape interpolated values (React escapes rendered text)", () => {
     const i18n = createI18n();
-    i18n.addResource("de", "translation", "test.greeting", "Hallo {{name}}");
 
-    expect(i18n.t("test.greeting", { name: "<b>" })).toBe("Hallo <b>");
+    expect(
+      i18n.t("test.greeting", { defaultValue: "Hallo {{name}}", name: "<b>" }),
+    ).toBe("Hallo <b>");
   });
 });
