@@ -16,6 +16,9 @@ import { MapChangeChoice } from "./MapChangeChoice.js";
 import { MapView, type MapTool } from "./MapView.js";
 import type { FogShape } from "./fog-shapes.js";
 import { FogToolbar } from "./FogToolbar.js";
+import { SceneBrowser } from "./SceneBrowser.js";
+import { SceneTitle } from "./SceneTitle.js";
+import { ShellPortal } from "./shell/slots.js";
 import { useSceneSession } from "./useSceneSession.js";
 
 /** A rectangle polygon in map pixels. */
@@ -190,124 +193,137 @@ export function OpenScenePanel({
       aria-label={t("campaign.openScene", { name: scene.name })}
     >
       <p>{t("campaign.openScene", { name: scene.name })}</p>
-      <p>
-        {scene.map
-          ? t("campaign.map", { file: fileName(scene.map.asset.path) })
-          : t("campaign.noMap")}
-      </p>
-      {pendingMap ? (
-        <MapChangeChoice
-          file={fileName(pendingMap.path)}
+      <ShellPortal slot="titleScene">
+        <SceneTitle
+          name={scene.name}
           busy={busy}
-          onApply={(reset) => void applyMap(pendingMap, reset)}
-          onCancel={() => {
-            setPendingMap(null);
+          onClose={onClose}
+          canUndo={session.canUndo && !busy}
+          canRedo={session.canRedo && !busy}
+          onUndo={() => {
+            session.undo();
+          }}
+          onRedo={() => {
+            session.redo();
+          }}
+          saveFailed={session.saveFailed}
+          onRetrySave={() => {
+            session.retrySave();
           }}
         />
-      ) : (
-        <button
-          ref={changeMapButton}
-          type="button"
-          disabled={busy}
-          onClick={() => void changeMap()}
-        >
-          {scene.map ? t("campaign.changeMap") : t("campaign.chooseSceneMap")}
-        </button>
-      )}
-      {confirmingDelete ? (
-        <div
-          role="group"
-          aria-label={t("campaign.confirmDelete", { name: scene.name })}
-        >
-          <p>{t("campaign.confirmDelete", { name: scene.name })}</p>
-          <button
-            ref={confirmButton}
-            type="button"
-            disabled={busy}
-            onClick={() => void remove()}
-          >
-            {t("campaign.deleteConfirmed")}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setConfirmingDelete(false);
-            }}
-          >
-            {t("campaign.cancel")}
-          </button>
+      </ShellPortal>
+      <ShellPortal slot="ribbonScene">
+        <div className="dm-ribbon-group">
+          <p>
+            {scene.map
+              ? t("campaign.map", { file: fileName(scene.map.asset.path) })
+              : t("campaign.noMap")}
+          </p>
+          {pendingMap ? (
+            <MapChangeChoice
+              file={fileName(pendingMap.path)}
+              busy={busy}
+              onApply={(reset) => void applyMap(pendingMap, reset)}
+              onCancel={() => {
+                setPendingMap(null);
+              }}
+            />
+          ) : (
+            <button
+              ref={changeMapButton}
+              type="button"
+              disabled={busy}
+              onClick={() => void changeMap()}
+            >
+              {scene.map
+                ? t("campaign.changeMap")
+                : t("campaign.chooseSceneMap")}
+            </button>
+          )}
+          {confirmingDelete ? (
+            <div
+              role="group"
+              aria-label={t("campaign.confirmDelete", { name: scene.name })}
+            >
+              <p>{t("campaign.confirmDelete", { name: scene.name })}</p>
+              <button
+                ref={confirmButton}
+                type="button"
+                disabled={busy}
+                onClick={() => void remove()}
+              >
+                {t("campaign.deleteConfirmed")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingDelete(false);
+                }}
+              >
+                {t("campaign.cancel")}
+              </button>
+            </div>
+          ) : (
+            <button
+              ref={deleteButton}
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setConfirmingDelete(true);
+              }}
+            >
+              {t("campaign.deleteScene")}
+            </button>
+          )}
         </div>
-      ) : (
-        <button
-          ref={deleteButton}
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            setConfirmingDelete(true);
-          }}
-        >
-          {t("campaign.deleteScene")}
-        </button>
-      )}
-      <button type="button" disabled={busy} onClick={onClose}>
-        {t("campaign.closeScene")}
-      </button>
-      {notOnTv && <p role="alert">{t("player.notShown")}</p>}
-      {error && <p role="alert">{error}</p>}
-      {session.saveFailed && (
-        <div role="alert">
-          <p>{t("fog.saveFailed")}</p>
-          <button
-            type="button"
-            onClick={() => {
-              session.retrySave();
-            }}
-          >
-            {t("fog.retrySave")}
-          </button>
-        </div>
-      )}
+      </ShellPortal>
+      <ShellPortal slot="notices">
+        {notOnTv && <p role="alert">{t("player.notShown")}</p>}
+        {error && <p role="alert">{error}</p>}
+      </ShellPortal>
+      <ShellPortal slot="browser">
+        <SceneBrowser scene={scene} revealed={revealed} />
+      </ShellPortal>
       {scene.map && (
         <>
-          <FogToolbar
-            tool={tool}
-            onTool={setTool}
-            shape={shape}
-            onShape={setShape}
-            brushCells={brushCells}
-            onBrushCells={setBrushCells}
-            disabled={mapSize === null || notOnTv || busy}
-            onRevealAll={() => {
-              if (mapSize) fogCommand("fog.reveal", rectangle(mapSize));
-            }}
-            onCoverAll={() => {
-              if (mapSize) fogCommand("fog.hide", rectangle(mapSize));
-            }}
-            canUndo={session.canUndo && !busy}
-            canRedo={session.canRedo && !busy}
-            onUndo={() => {
-              session.undo();
-            }}
-            onRedo={() => {
-              session.redo();
-            }}
-          />
-          <MapView
-            key={`${scene.map.kind}:${scene.map.asset.path}`}
-            path={scene.map.asset.path}
-            kind={scene.map.kind}
-            label={scene.name}
-            fog={revealed}
-            tool={busy ? "pan" : tool}
-            shape={shape}
-            // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
-            brushRadius={(brushCells * scene.map.grid.cellSizePx) / 2}
-            onArea={(area, kind) => {
-              if (!busy)
-                fogCommand(kind === "reveal" ? "fog.reveal" : "fog.hide", area);
-            }}
-            onMapSize={setMapSize}
-          />
+          <ShellPortal slot="ribbonFog">
+            <FogToolbar
+              tool={tool}
+              onTool={setTool}
+              shape={shape}
+              onShape={setShape}
+              brushCells={brushCells}
+              onBrushCells={setBrushCells}
+              disabled={mapSize === null || notOnTv || busy}
+              onRevealAll={() => {
+                if (mapSize) fogCommand("fog.reveal", rectangle(mapSize));
+              }}
+              onCoverAll={() => {
+                if (mapSize) fogCommand("fog.hide", rectangle(mapSize));
+              }}
+            />
+          </ShellPortal>
+          <ShellPortal slot="canvas">
+            <MapView
+              key={`${scene.map.kind}:${scene.map.asset.path}`}
+              path={scene.map.asset.path}
+              kind={scene.map.kind}
+              label={scene.name}
+              fog={revealed}
+              tool={busy ? "pan" : tool}
+              shape={shape}
+              // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
+              brushRadius={(brushCells * scene.map.grid.cellSizePx) / 2}
+              onArea={(area, kind) => {
+                if (!busy)
+                  fogCommand(
+                    kind === "reveal" ? "fog.reveal" : "fog.hide",
+                    area,
+                  );
+              }}
+              onMapSize={setMapSize}
+            />
+          </ShellPortal>
         </>
       )}
     </div>

@@ -40,3 +40,50 @@ test("the DM window lists the displays for the player view", async ({
       .filter({ hasText: "Spieleransicht läuft auf Tisch-TV." }),
   ).toBeVisible();
 });
+
+test("the map fills the window whether the data panel is open or closed", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("button", { name: "Krypta", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error("no viewport");
+  const mapFillsWindow = async () => {
+    const box = await page.locator(".map-view-canvas canvas").boundingBox();
+    expect(box).toEqual({ x: 0, y: 0, ...viewport });
+  };
+  const panel = page.getByRole("complementary", { name: "Datenpanel" });
+
+  await expect(panel).toBeVisible();
+  await mapFillsWindow();
+  await page
+    .getByRole("button", { name: /Datenpanel ein- oder ausblenden/ })
+    .click();
+  await expect(panel).toBeHidden();
+  await mapFillsWindow();
+  await page.keyboard.press("ControlOrMeta+KeyB");
+  await expect(panel).toBeVisible();
+  await mapFillsWindow();
+});
+
+test("the theme chosen in the settings survives a restart", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-dm-theme", "parchment");
+
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("radio", { name: "Dunkel (Nacht)" }).check();
+  await expect(html).toHaveAttribute("data-dm-theme", "night");
+
+  await page.reload();
+  await expect(html).toHaveAttribute("data-dm-theme", "night");
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await expect(
+    page.getByRole("radio", { name: "Dunkel (Nacht)" }),
+  ).toBeChecked();
+});

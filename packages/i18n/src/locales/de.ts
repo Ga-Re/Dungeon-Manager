@@ -123,6 +123,37 @@ export const de = {
     heading: "Dungeon Manager für Spieler",
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",
   },
+  shell: {
+    dataPanel: "Datenpanel",
+    toggleDataPanel: "Datenpanel ein- oder ausblenden (⌘/Strg+B)",
+    modes: "Arbeitsbereich",
+    mode: {
+      scene: "Szene",
+      fog: "Nebel",
+      display: "Anzeige",
+    },
+    noScene: "Keine Szene geöffnet. Wähle im Datenpanel eine Szene.",
+    settings: "Einstellungen",
+    theme: {
+      label: "Darstellung",
+      system: "Wie das Betriebssystem",
+      light: "Hell (Pergament)",
+      dark: "Dunkel (Nacht)",
+    },
+    save: {
+      saved: "Gespeichert",
+      failed: "Nicht gespeichert",
+    },
+    browser: {
+      title: "Szene",
+      map: "Karte",
+      noMap: "Noch keine Karte",
+      levels: "Ebenen",
+      fog: "Nebel",
+      fogAreas_one: "{{count}} Bereich aufgedeckt",
+      fogAreas_other: "{{count}} Bereiche aufgedeckt",
+    },
+  },
   ui: {
     panel: {
       itemCount_one: "{{count}} Objekt",

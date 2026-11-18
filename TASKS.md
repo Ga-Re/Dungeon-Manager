@@ -459,7 +459,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-130 DM window zone layout
 
-- **Status:** todo · **Depends on:** T-129, T-130a · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
+- **Status:** in-progress · **Depends on:** T-129, T-130a · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
 - Map viewport fills the DM window; collapsible left data panel holds `LibraryPanel` and `CampaignPanel`; dark title bar (save status, undo, redo, scene tab, settings) and parchment ribbon with mode tabs; floating scene browser top left. Player window unchanged.
 - DM decisions (2026-11-18):
   - Title bar shows a **save status** ("Gespeichert" / "Speichert …" / "Nicht gespeichert – erneut versuchen") instead of a save button (scenes already save on every change).

@@ -27,6 +27,7 @@
     "@dungeon-manager/ui": "workspace:*",
     "@tauri-apps/api": "2.12.4",
     "i18next": "27.1.2",
+    "lucide-react": "1.68.0",
     "pixi.js": "8.22.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
