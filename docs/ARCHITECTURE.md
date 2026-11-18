@@ -20,11 +20,11 @@
                          └──────────────┬─────────────────────────────┬────────────────────┘
                                         │ WebSocket (LAN)             │ local folder
                ┌────────────────────────┴───────┐            ┌────────┴──────────┐
-               │ DM phone app (Expo)  [stage 2+] │            │ Cloud client      │
+               │ DM remote (browser)  [stage 3]  │            │ Cloud client      │
                │ Player companion (browser)[st.3]│            │ (Dropbox, iCloud…)│
                └─────────────────────────────────┘            └────────┬──────────┘
                                                                        │ sync
-                                                         DM phone app (offline planning)
+                                              Obsidian / Markdown tool (offline planning)
 ```
 
 Two independent channels:
@@ -36,24 +36,22 @@ Two independent channels:
 
 ## 2. Tech stack
 
-| Concern                | Choice                                                                                                                                                |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Language               | TypeScript (strict) everywhere except the desktop backend (Rust)                                                                                      |
-| Monorepo               | pnpm workspaces + Turborepo                                                                                                                           |
-| Desktop shell          | Tauri 2                                                                                                                                               |
-| Desktop / companion UI | React                                                                                                                                                 |
-| Rendering              | PixiJS (WebGL/WebGPU)                                                                                                                                 |
-| Mobile                 | React Native via Expo (dev builds, not Expo Go, because of native modules)                                                                            |
-| Mobile map view        | React Native Skia                                                                                                                                     |
-| Rich text              | WYSIWYG Markdown editor (TipTap-based; on mobile inside a WebView)                                                                                    |
-| Schemas & validation   | zod (shared between all apps; also generates JSON Schema for Rust-side checks if needed)                                                              |
-| UI strings             | i18next; `de` first, `en` second                                                                                                                      |
-| Backend (Rust)         | tokio, axum (HTTP + WebSocket), notify (file watching), serde, image (previews)                                                                       |
-| Unit / component tests | Vitest + React Testing Library; Rust: `cargo test`                                                                                                    |
-| E2E                    | Playwright (web build of desktop UI with mocked Tauri IPC, and companion); WebdriverIO + tauri-driver smoke tests on the real app; Maestro for mobile |
-| Visual regression      | Playwright screenshots of renderer fixtures                                                                                                           |
-| Lint / format          | ESLint, Prettier, `rustfmt`, `clippy`                                                                                                                 |
-| Architecture checks    | dependency-cruiser                                                                                                                                    |
+| Concern                | Choice                                                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Language               | TypeScript (strict) everywhere except the desktop backend (Rust)                                                                  |
+| Monorepo               | pnpm workspaces + Turborepo                                                                                                       |
+| Desktop shell          | Tauri 2                                                                                                                           |
+| Desktop / companion UI | React                                                                                                                             |
+| Rendering              | PixiJS (WebGL/WebGPU)                                                                                                             |
+| Rich text              | WYSIWYG Markdown editor (TipTap-based) on the desktop; on the go the DM uses Obsidian or any Markdown tool (ADR-0013)             |
+| Schemas & validation   | zod (shared between all apps; also generates JSON Schema for Rust-side checks if needed)                                          |
+| UI strings             | i18next; `de` first, `en` second                                                                                                  |
+| Backend (Rust)         | tokio, axum (HTTP + WebSocket), notify (file watching), serde, image (previews)                                                   |
+| Unit / component tests | Vitest + React Testing Library; Rust: `cargo test`                                                                                |
+| E2E                    | Playwright (web build of desktop UI with mocked Tauri IPC, and companion); WebdriverIO + tauri-driver smoke tests on the real app |
+| Visual regression      | Playwright screenshots of renderer fixtures                                                                                       |
+| Lint / format          | ESLint, Prettier, `rustfmt`, `clippy`                                                                                             |
+| Architecture checks    | dependency-cruiser                                                                                                                |
 
 New dependencies require approval (see CLAUDE.md).
 
@@ -73,7 +71,6 @@ New dependencies require approval (see CLAUDE.md).
 │   ├── desktop/
 │   │   ├── src/               # React UI (DM window, player window entry points)
 │   │   └── src-tauri/         # Rust backend
-│   ├── mobile/                # Expo app (DM phone)
 │   └── companion/             # React web app served by desktop over LAN
 ├── packages/
 │   ├── core/                  # pure domain logic, no I/O
@@ -105,7 +102,6 @@ Rules:
 
 - `core` is **pure**: deterministic functions, no clocks, no randomness without an injected source, no I/O.
 - Platform-specific code lives only in `apps/*` behind adapters (FS, network, clock, RNG, lights, camera).
-- `apps/mobile` must not import `renderer` or `ui` (web-only); it uses `core`, `schema`, `storage`, `protocol`, `i18n`.
 
 ---
 
@@ -120,7 +116,7 @@ apply(state: SessionState, command: Command, ctx: Ctx): { state: SessionState; e
 ```
 
 - `Ctx` provides injected time and RNG (deterministic tests).
-- **Permissions** are checked in `core` (`canApply(actor, command, state)`): DM, DM phone, player companion (per-player rights).
+- **Permissions** are checked in `core` (`canApply(actor, command, state)`): DM, DM remote (web app), player companion (per-player rights).
 - **Undo:** the desktop keeps a command history with inverse snapshots per scene.
 - **Session log** is derived from `DomainEvent`s.
 - **Visibility filtering** (`projectForViewer(state, viewer)`) is a pure function in `core`. The player window and every companion only ever receive the projected state – hidden data never leaves the desktop. It builds its output from an explicit allow-list with strict viewer schemas – never by parsing with the (loose, unknown-field-preserving) file schemas from `packages/schema` or by spreading state objects. Asset references in a projection are capabilities: a companion must never receive a reference that lets it fetch an un-fogged map or a level that has not been revealed (companions get fog-composited images, T-118).
@@ -150,7 +146,7 @@ All data lives in a **user-chosen folder**. If it sits inside a cloud-synced fol
 ├── library/                  # global asset library (all campaigns)
 │   ├── maps/  tokens/  assets/  sounds/  effects/
 │   │   └── castle.webp + castle.webp.dm.json   # sidecar per file (ADR-0012)
-│   └── .previews/            # generated by desktop for the phone
+│   └── .previews/            # generated by desktop for the web app and handouts
 ├── campaigns/<campaign-slug>/
 │   ├── campaign.json
 │   ├── wiki/                 # Obsidian-compatible Markdown + YAML front matter
@@ -179,9 +175,13 @@ Device-specific settings (light devices, cameras, TV calibration, window placeme
 
 Markdown with YAML front matter (`type`, `status`, `tags`, …) and `[[wiki links]]`; must remain readable and editable in Obsidian.
 
-### 6.5 Previews for the phone
+### 6.5 Previews
 
-Desktop generates downscaled images (and a still frame for video maps) into `library/.previews/`. The phone reads previews only; originals stay on the notebook.
+Desktop generates downscaled images (and a still frame for video maps) into `library/.previews/` for the catalog, the web app and handouts; originals stay on the notebook.
+
+### 6.7 Obsidian vault and scene drafts
+
+The DM plans on the go in Obsidian or any Markdown tool (ADR-0013). Storage ignores tool folders such as `.obsidian/`; the desktop watches notes and picks up external changes. Notes with scene front matter (`type: scene`, map, sound, light, tokens) are validated with zod and offered as scene drafts; invalid ones show an actionable hint, never a crash.
 
 ### 6.6 Backups
 
@@ -197,7 +197,7 @@ Desktop generates downscaled images (and a still frame for video maps) into `lib
 - Desktop backend runs HTTP + WebSocket bound to the local network interface only.
 - HTTP serves the built `apps/companion` bundle.
 - **Pairing:** QR code contains `http://<lan-ip>:<port>/?t=<one-time token>`. The token is exchanged for a session credential; tokens expire and can be revoked by the DM.
-- Roles: `dm` (desktop), `dm-remote` (phone), `player:<id>` (companion).
+- Roles: `dm` (desktop), `dm-remote` (DM mode of the web app, own pairing), `player:<id>` (companion).
 - Messages are defined and validated in `protocol` (zod). Every message has a `v` (protocol version). Clients send **commands**; the host validates permissions, applies them, and broadcasts **projected state patches** per viewer.
 - Clients are disposable: on reconnect they receive a full projected snapshot.
 
@@ -246,7 +246,7 @@ Measured on the reference notebook before each release (not in CI – CI runners
 | ------------------------------------------------------ | ------------------------------------------------- |
 | Player view frame rate, 4K video map + fog + 20 tokens | ≥ 60 FPS: ≤ 1 % of frames miss a display refresh¹ |
 | Scene switch with preloading                           | ≤ 1 s to first frame                              |
-| Command from phone/companion → visible on TV (LAN)     | ≤ 100 ms                                          |
+| Command from DM remote/companion → visible on TV (LAN) | ≤ 100 ms                                          |
 | Light effect trigger → lamp reacts (HA/WLED/Hue Ent.)  | ≤ 150 ms                                          |
 | Desktop cold start                                     | ≤ 3 s                                             |
 
@@ -258,12 +258,12 @@ A benchmark scene in `test-fixtures` plus a script that records frame times is p
 
 ## 12. Testing strategy
 
-| Layer     | Tool                                                                             | Required for                                                                  |
-| --------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Unit      | Vitest / `cargo test`                                                            | all logic in `core`, `schema`, `storage`, `protocol`; Rust drivers with fakes |
-| Component | Vitest + React Testing Library                                                   | every non-trivial React component                                             |
-| E2E       | Playwright (desktop web build + companion), tauri-driver smoke, Maestro (mobile) | every user-facing flow in the task's acceptance criteria                      |
-| Visual    | Playwright screenshots of renderer fixtures                                      | every renderer change                                                         |
+| Layer     | Tool                                                           | Required for                                                                  |
+| --------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Unit      | Vitest / `cargo test`                                          | all logic in `core`, `schema`, `storage`, `protocol`; Rust drivers with fakes |
+| Component | Vitest + React Testing Library                                 | every non-trivial React component                                             |
+| E2E       | Playwright (desktop web build + companion), tauri-driver smoke | every user-facing flow in the task's acceptance criteria                      |
+| Visual    | Playwright screenshots of renderer fixtures                    | every renderer change                                                         |
 
 - Coverage gate: **≥ 80 % lines/branches for `core`, `schema`, `storage`, `protocol`**. No fixed gate for UI.
 - Screenshot tests run in a pinned Docker image for deterministic rendering.
@@ -285,8 +285,7 @@ A benchmark scene in `test-fixtures` plus a script that records frame times is p
 ## 14. Platform notes
 
 - Linux: Tauri uses WebKitGTK; video playback depends on GStreamer codecs – document requirements.
-- iOS: builds need a Mac and an Apple Developer account; persistent folder access needs a small native module (security-scoped bookmarks).
-- Android: folder access via Storage Access Framework; most cloud apps don't keep folders in sync → in-app guide recommends a sync app.
+- Phones: no own app (ADR-0013). The web app runs in the phone browser; for Obsidian on the go the DM needs a sync that keeps the vault folder in sync (on Android most cloud apps don't → in-app guide recommends a sync app).
 
 ---
 
@@ -302,4 +301,4 @@ _Decided in ADR-0011; binding details in `.claude/skills/ui-design/SKILL.md`._
 - **Performance:** HUD elements over the canvas avoid costly effects (e.g. `backdrop-filter`) unless the benchmark scene (§11) shows no regression.
 - **Previews:** the player-view preview and the next-scene preview are floating HUD panels (layer 20) in the DM window. The player-view preview can additionally open as a separate window on an additional DM monitor; that window gets exactly what the TV gets (`PlayerViewMessage`, same permissions and fail-closed rules as the player window, §8) and shows no controls.
 - **Screenshot tests** of the DM window (zone layout) run in the pinned Docker image like the renderer goldens (§12), because the window contains the PixiJS canvas.
-- **Companion** reuses tokens and primitives with a single-column touch layout. **Mobile** cannot import `ui` (§4); a platform-neutral token source is a later follow-up.
+- **Companion** reuses tokens and primitives with a single-column touch layout. There is no mobile app (ADR-0013), so no platform-neutral token source is needed.
