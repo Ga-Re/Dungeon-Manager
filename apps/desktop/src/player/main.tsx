@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
-import { createI18n } from "../i18n.js";
+import { createI18n } from "@dungeon-manager/ui";
 import { createTauriMapViewService } from "../platform/tauri-map-images.js";
 import { createTauriPlayerFeedReceiver } from "../platform/tauri-player-feed.js";
 import "../styles.css";

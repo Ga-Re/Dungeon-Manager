@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, test } from "vitest";
-import { createI18n } from "../i18n.js";
+import { createI18n } from "@dungeon-manager/ui";
 import { LibraryError } from "../platform/library.js";
 import { CampaignPanel } from "./CampaignPanel.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";

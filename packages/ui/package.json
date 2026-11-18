@@ -16,10 +16,16 @@
   },
   "dependencies": {
     "@dungeon-manager/core": "workspace:*",
+    "@dungeon-manager/i18n": "workspace:*",
     "@dungeon-manager/schema": "workspace:*",
-    "@dungeon-manager/i18n": "workspace:*"
+    "i18next": "27.1.2",
+    "react-i18next": "18.0.1"
   },
   "devDependencies": {
-    "@dungeon-manager/tsconfig": "workspace:*"
+    "@dungeon-manager/tsconfig": "workspace:*",
+    "react": "19.3.1"
+  },
+  "peerDependencies": {
+    "react": "19.3.1"
   }
 }

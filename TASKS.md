@@ -97,18 +97,18 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-010 Upgrade to TypeScript 7
 
-- **Status:** todo · **Depends on:** T-002
+- **Status:** blocked · **Depends on:** T-002
 - T-001 pinned TypeScript 6.0.3 because typescript-eslint did not support TypeScript 7 yet (peer range `<6.1.0` as of 2026-11-16). Upgrade once typescript-eslint supports TS 7.
 - **Acceptance criteria**
   - [ ] `typescript` bumped to the current 7.x; `pnpm check` green
-- **Notes:** Discovered during T-001.
+- **Notes:** Discovered during T-001. Still blocked on 2026-11-18: typescript-eslint 8.73.0 supports `typescript >=4.8.4 <6.1.0`, while TypeScript 7.0.2 is current.
 
 ### T-011 Shared i18n setup for web apps
 
-- **Status:** todo · **Depends on:** T-009
+- **Status:** done · **Depends on:** T-009
 - `createI18n` exists twice (`apps/desktop/src/i18n.ts`, `apps/companion/src/i18n.ts`). Move it to a shared place (e.g. `packages/ui` once it has its first component) and use it from both apps.
 - **Acceptance criteria**
-  - [ ] One implementation, used by desktop and companion; tests unchanged and green
+  - [x] One implementation, used by desktop and companion; tests unchanged and green
 - **Notes:** Discovered during T-009; kept duplicated there to avoid a drive-by refactor.
 
 ### T-149 Remove the mobile app placeholder

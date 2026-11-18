@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { fakeMapService } from "../fake-renderer.test-data.js";
-import { createI18n } from "../i18n.js";
+import { createI18n } from "@dungeon-manager/ui";
 import type { PlayerFeedSender } from "../platform/player-feed.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { CampaignPanel } from "./CampaignPanel.js";

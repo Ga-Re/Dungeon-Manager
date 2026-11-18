@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, test } from "vitest";
-import { createI18n } from "../i18n.js";
+import { createI18n } from "@dungeon-manager/ui";
 import { LibraryError, type LibraryService } from "../platform/library.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { LibraryPanel } from "./LibraryPanel.js";

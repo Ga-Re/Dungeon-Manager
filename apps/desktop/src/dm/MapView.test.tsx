@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { StrictMode, type ComponentProps } from "react";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
-import { createI18n } from "../i18n.js";
+import { createI18n } from "@dungeon-manager/ui";
 import { fakeMapService } from "../fake-renderer.test-data.js";
 import type { MapViewService } from "../platform/map-images.js";
 import { MapView, MapViewContext } from "./MapView.js";
