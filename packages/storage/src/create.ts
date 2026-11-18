@@ -109,7 +109,7 @@ const placeholderGrid = () => ({ cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 });
 /**
  * The scene with `asset` as its map image. An existing map keeps its levels, and by default its
  * grid, fog and tokens (right for a corrected version of the same map); `reset` clears what no
- * longer fits. A scene without a map gets a single-level image map (`imageMap`).
+ * longer fits. A scene without a map gets a single-level map (`newMap`).
  */
 export function withMap(
   scene: Scene,
@@ -120,11 +120,11 @@ export function withMap(
   const map: MapSpec = scene.map
     ? {
         ...scene.map,
-        kind: "image",
+        kind: mapKind(asset.path),
         asset: { path: asset.path, hash: asset.hash },
         ...(reset.grid === true && { grid: placeholderGrid() }),
       }
-    : imageMap(asset, newLevel);
+    : newMap(asset, newLevel);
   const changed: Scene = { ...scene, map };
   if (reset.fog === true) changed.fog = { ...scene.fog, levels: {} };
   if (reset.tokens === true) {
@@ -166,13 +166,21 @@ function withoutTokenCombatants(
   };
 }
 
-/** A single-level image map with a placeholder grid (100 px per cell) until it is calibrated (T-106). */
-export function imageMap(
+/** Video maps (ADR-0010) by file extension; the import checks the content when copying. */
+export function mapKind(path: string): MapSpec["kind"] {
+  return /\.(mp4|webm)$/i.test(path) ? "video" : "image";
+}
+
+/**
+ * A single-level map (image or video, by file type) with a placeholder grid (100 px per cell)
+ * until it is calibrated (T-106).
+ */
+export function newMap(
   asset: AssetRef,
   level: { readonly id: string; readonly name: string },
 ): MapSpec {
   return {
-    kind: "image",
+    kind: mapKind(asset.path),
     asset: { path: asset.path, hash: asset.hash },
     grid: placeholderGrid(),
     levels: [{ id: level.id, name: level.name }],

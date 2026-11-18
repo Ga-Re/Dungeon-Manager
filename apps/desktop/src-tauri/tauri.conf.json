@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' dmlib: http://dmlib.localhost"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' dmlib: http://dmlib.localhost; media-src dmlib: http://dmlib.localhost"
     }
   },
   "bundle": {

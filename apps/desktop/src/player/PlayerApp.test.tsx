@@ -167,4 +167,30 @@ describe("PlayerApp", () => {
     });
     expect(feed.subscribed()).toBe(false);
   });
+
+  test("a video map goes under the canvas after its fog, and is released on change", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const scene = sceneWith("library/maps/fluss.webm");
+    feed.send({
+      v: 1,
+      scene: { ...scene, map: scene.map && { ...scene.map, kind: "video" } },
+      rotation: 0,
+    });
+    await waitFor(() => {
+      expect(maps.view.setVideo).toHaveBeenCalledWith(
+        expect.any(HTMLVideoElement),
+      );
+    });
+    const video = maps.view.setVideo.mock.calls.at(-1)?.[0];
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed);
+    expect(video?.isConnected).toBe(true);
+    expect(screen.getByRole("main").dataset["showing"]).toBe("map");
+
+    feed.send({ v: 1, scene: null, rotation: 0 });
+    expect(maps.view.setVideo).toHaveBeenLastCalledWith(null);
+    expect(video?.isConnected).toBe(false);
+  });
 });

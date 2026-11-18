@@ -9,14 +9,21 @@
         margin: 0;
         background: #000;
       }
+      #stage {
+        position: relative;
+        width: 640px;
+        height: 360px;
+        overflow: hidden;
+      }
       canvas {
-        display: block;
+        position: absolute;
+        inset: 0;
       }
     </style>
   </head>
   <body>
     <!-- Self-made page for the renderer screenshot tests (T-105a); built by build:harness. -->
-    <canvas width="640" height="360"></canvas>
+    <div id="stage"><canvas width="640" height="360"></canvas></div>
     <script src="./dist/renderer-harness.js"></script>
   </body>
 </html>

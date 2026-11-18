@@ -6,6 +6,7 @@ import {
   createScene,
   deleteScene,
   listScenes,
+  mapKind,
   withMap,
   isValidSlug,
   loadCampaign,
@@ -340,5 +341,32 @@ describe("deleteScene", () => {
       "Invalid scene id",
     );
     expect(fs.files().has("campaigns/mine/campaign.json")).toBe(true);
+  });
+});
+
+describe("mapKind", () => {
+  test("MP4 and WebM files are video maps, everything else images", () => {
+    expect(mapKind("library/maps/fluss.MP4")).toBe("video");
+    expect(mapKind("library/maps/fluss.webm")).toBe("video");
+    expect(mapKind("library/maps/hoehle.webp")).toBe("image");
+  });
+
+  test("a scene changed to a video map gets kind video", () => {
+    const scene = {
+      schemaVersion: 1 as const,
+      id: "s",
+      name: "S",
+      map: null,
+      tokens: [],
+      fog: { levels: {} },
+      initiative: null,
+    };
+    const asset = {
+      path: "library/maps/fluss.mp4",
+      hash: `sha256:${"d".repeat(64)}`,
+    };
+    expect(withMap(scene, asset, { id: "l", name: "L" }).map?.kind).toBe(
+      "video",
+    );
   });
 });

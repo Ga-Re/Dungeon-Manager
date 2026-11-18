@@ -64,11 +64,59 @@ function fogFor(scenario: string) {
   return null;
 }
 
+/** The video fixture (`pages/media/fixture-map.webm`, 320 × 200) and what is revealed of it. */
+const VIDEO = { width: 320, height: 200 };
+const VIDEO_REVEALED = [
+  { outer: rect(20, 20, 160, 120), holes: [] },
+  { outer: rect(180, 80, 120, 100), holes: [] },
+];
+
+/** Loads the fixture video, paused on its first frame, so screenshots are deterministic. */
+async function fixtureVideo(): Promise<HTMLVideoElement> {
+  const video = document.createElement("video");
+  video.muted = true;
+  video.preload = "auto";
+  video.src = "./media/fixture-map.webm";
+  await new Promise((resolve, reject) => {
+    video.addEventListener("loadeddata", resolve, { once: true });
+    video.addEventListener(
+      "error",
+      () => {
+        reject(new Error("video failed to load"));
+      },
+      { once: true },
+    );
+  });
+  return video;
+}
+
+/**
+ * Video maps (T-105c): "player-video" shows the video under opaque fog; "video-no-fog" never
+ * sets any fog, so the video must stay hidden (black) – the fail-closed rule of ADR-0010.
+ */
+async function videoScenario(scenario: string, canvas: HTMLCanvasElement) {
+  const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
+  const video = await fixtureVideo();
+  canvas.before(video);
+  if (scenario.startsWith("player-video")) renderer.setFog(VIDEO_REVEALED);
+  renderer.setVideo(video);
+  const rotation = scenario.endsWith("rotated") ? 90 : 0;
+  renderer.setCamera(fitCamera(VIDEO, view, rotation));
+  await renderer.drawn();
+  // One more frame: the browser composites the now visible video with the canvas.
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
 async function main() {
   const canvas = document.querySelector("canvas");
   if (!canvas) throw new Error("canvas missing");
-  const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
   const scenario = location.hash.slice(1);
+  if (scenario.includes("video")) {
+    await videoScenario(scenario, canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
+  const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
   // The player view always gets its fog with (never after) the map.
   const fog = fogFor(scenario);
   if (fog) renderer.setFog(fog.revealed, { opacity: fog.opacity });

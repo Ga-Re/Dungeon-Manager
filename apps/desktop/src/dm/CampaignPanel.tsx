@@ -1,7 +1,7 @@
 import type { AssetRef, Scene } from "@dungeon-manager/schema";
 import {
   createScene,
-  imageMap,
+  newMap,
   listScenes,
   loadScene,
 } from "@dungeon-manager/storage";
@@ -102,7 +102,7 @@ export function CampaignPanel({
         map:
           // The level id only has to be unique within this scene.
           pendingMap &&
-          imageMap(pendingMap, {
+          newMap(pendingMap, {
             id: newId(),
             name: t("campaign.defaultLevel"),
           }),

@@ -291,15 +291,23 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] The player window rejects messages that fail the viewer schema
 - **Notes:** Security-relevant (player window capability): DM confirmed the approach 2026-11-17; confirms the capability before merge.
 
-### T-105c Video maps and renderer benchmark
+### T-105c Video maps
 
-- **Status:** todo · **Depends on:** T-105b · **Refs:** ARCHITECTURE §8, §11, ADR-0010
-- Video maps (MP4/WebM) as a `<video>` element under the transparent canvas, sharing the camera; fail closed. Benchmark scene in `test-fixtures`; remove the T-007 spike.
+- **Status:** done · **Depends on:** T-105b · **Refs:** ARCHITECTURE §8, ADR-0010
+- Import MP4/WebM maps; the `dmlib` scheme streams them (HTTP Range). A `<video>` element under the transparent canvas follows the camera (CSS transform) in the DM and player views; fail closed.
 - **Acceptance criteria**
-  - [ ] Video map follows the camera; hidden until fog is drawn and on resize/context loss/teardown
+  - [x] Video map follows the camera; hidden until fog is drawn and on resize/context loss/teardown
+  - [x] MP4/WebM import detects the format by content; videos are served in ranges, never whole into memory
+- **Notes:** Split from T-105c (agent, 2026-11-17). From the T-105a review: the `dmlib` scheme reads whole files into memory per request; videos need streaming with HTTP Range support (and a `media-src` CSP entry).
+
+### T-105d Renderer benchmark and spike removal
+
+- **Status:** todo · **Depends on:** T-105c, T-108a · **Refs:** ARCHITECTURE §11, ADR-0010
+- Benchmark scene in `test-fixtures` (4K video map, realistic fog, 20 tokens once T-107 exists, DM window open, animated camera) with the frame statistics from the spike; remove the T-007 spike.
+- **Acceptance criteria**
   - [ ] Benchmark scene added to `test-fixtures`; ≤ 1 % missed refreshes at 4K/60 Hz on the reference notebook (DM measures)
   - [ ] Spike code removed; `pixi.js` only in `packages/renderer`
-- **Notes:** From the T-105a review: the `dmlib` scheme reads whole files into memory per request; videos need streaming with HTTP Range support (and a `media-src` CSP entry).
+- **Notes:** Judge video smoothness separately and investigate the hitches seen in the spike (ADR-0010).
 
 ### T-127 Maps larger than the GPU texture limit
 
@@ -308,6 +316,14 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] A map larger than the texture limit is shown correctly (tiled) or with an actionable message
 - **Notes:** From the T-105a review.
+
+### T-128 Keep video maps in sync between DM window and TV
+
+- **Status:** todo · **Depends on:** T-105c · **Refs:** ADR-0010
+- The DM window and the TV each play the video map; their positions drift apart. Sync the player view's playback position to the DM window (or the other way round) within a tolerance.
+- **Acceptance criteria**
+  - [ ] Both views show the same moment of a video map within ~100 ms
+- **Notes:** From the T-105c review (ADR-0010 consequence).
 
 ### T-106 Grid overlay and 1-inch calibration
 

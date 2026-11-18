@@ -242,7 +242,7 @@ pub async fn library_import_map(
         let source = picked
             .into_path()
             .map_err(|error| LibraryError::Io(error.to_string()))?;
-        import::import_image(&root, "library/maps", &source).map(Some)
+        import::import_map(&root, "library/maps", &source).map(Some)
     })
     .await
     .map_err(|error| LibraryError::Io(error.to_string()))?
