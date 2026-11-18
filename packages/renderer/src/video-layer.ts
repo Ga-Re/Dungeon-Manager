@@ -73,13 +73,14 @@ export function createVideoGate() {
   };
 }
 
-/** Whether two sizes have the same aspect ratio (within rounding of encoded frame sizes). */
+/** Whether two sizes have the same aspect ratio (within rounding of whole pixels). */
 export function sameAspect(
   a: { width: number; height: number },
   b: { width: number; height: number },
 ): boolean {
   if (a.height === 0 || b.height === 0) return false;
   const ratio = a.width / a.height / (b.width / b.height);
-  // 1 %: e.g. 1080 vs 1088 rows (codecs pad to multiples of 16); 16:9 vs 16:10 is 11 %.
-  return Math.abs(ratio - 1) < 0.01;
+  // 0.1 %: browsers report the display size (1080 rows, not the codec's padded 1088), so only
+  // rounding remains; any more would let fog and map drift apart (1 % ≈ 21 px on a 4K map).
+  return Math.abs(ratio - 1) < 0.001;
 }

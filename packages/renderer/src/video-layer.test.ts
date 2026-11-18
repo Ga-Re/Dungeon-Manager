@@ -97,13 +97,17 @@ describe("video gate (fail closed, ADR-0010)", () => {
   });
 });
 
-test("sameAspect allows encoder rounding, nothing more", () => {
+test("sameAspect allows pixel rounding, nothing more", () => {
   expect(
     sameAspect({ width: 3840, height: 2160 }, { width: 1920, height: 1080 }),
   ).toBe(true);
   expect(
-    sameAspect({ width: 1920, height: 1080 }, { width: 1920, height: 1088 }),
+    sameAspect({ width: 1280, height: 720 }, { width: 1281, height: 720 }),
   ).toBe(true);
+  // 8 rows more (a codec's padding) already shifts the map by ~0.7 %: not the same.
+  expect(
+    sameAspect({ width: 1920, height: 1080 }, { width: 1920, height: 1088 }),
+  ).toBe(false);
   expect(
     sameAspect({ width: 1920, height: 1080 }, { width: 1080, height: 1080 }),
   ).toBe(false);
