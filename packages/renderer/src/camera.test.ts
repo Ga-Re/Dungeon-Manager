@@ -3,6 +3,7 @@ import {
   fitCamera,
   panBy,
   rotateBy,
+  mapToScreen,
   screenToMap,
   zoomAt,
   type Camera,
@@ -109,5 +110,24 @@ describe("rotateBy", () => {
     const camera: Camera = { centerX: 1, centerY: 2, zoom: 3, rotation: 270 };
     expect(rotateBy(camera, 90)).toEqual({ ...camera, rotation: 0 });
     expect(rotateBy(camera, -90).rotation).toBe(180);
+  });
+});
+
+describe("mapToScreen", () => {
+  test("is the inverse of screenToMap, in every rotation", () => {
+    for (const rotation of [0, 90, 180, 270] as const) {
+      const camera: Camera = {
+        centerX: 321,
+        centerY: 123,
+        zoom: 1.7,
+        rotation,
+      };
+      const screen = { x: 77, y: 444 };
+      close(
+        mapToScreen(camera, view, screenToMap(camera, view, screen)),
+        screen.x,
+        screen.y,
+      );
+    }
   });
 });

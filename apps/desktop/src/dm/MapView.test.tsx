@@ -318,4 +318,149 @@ describe("MapView", () => {
     expect(video?.isConnected).toBe(false);
     expect(video?.hasAttribute("src")).toBe(false);
   });
+
+  const ready = async () => {
+    await waitFor(() => {
+      expect(area().dataset["tool"]).toBeDefined();
+    });
+  };
+  const click = (x: number, y: number) => {
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: x,
+      clientY: y,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+  };
+
+  test("the circle tool draws from the centre outwards", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, { tool: "reveal", shape: "circle", onArea });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    // Fitted: zoom 0.5, view centre (400, 200) shows map point (800, 400).
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 400,
+      clientY: 200,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(area(), { clientX: 430, clientY: 240, pointerId: 1 });
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    const [circle, tool] = onArea.mock.calls[0] as [
+      { outer: [number, number][] },
+      string,
+    ];
+    expect(tool).toBe("reveal");
+    // 50 screen pixels = 100 map pixels around map point (800, 400).
+    for (const [x, y] of circle.outer)
+      expect(Math.hypot(x - 800, y - 400)).toBeCloseTo(100, 6);
+  });
+
+  test("the polygon tool: clicked corners, closed by Enter, the first corner or a double click", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, { tool: "hide", shape: "polygon", onArea });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    await ready();
+
+    click(100, 100);
+    click(300, 100);
+    click(300, 300);
+    click(100, 300);
+    fireEvent.keyDown(area(), { key: "Backspace" });
+    fireEvent.keyDown(area(), { key: "Enter" });
+    expect(onArea).toHaveBeenCalledTimes(1);
+    expect(onArea.mock.calls[0]).toEqual([
+      {
+        outer: [
+          [200, 200],
+          [600, 200],
+          [600, 600],
+        ],
+        holes: [],
+      },
+      "hide",
+    ]);
+
+    click(100, 100);
+    click(300, 100);
+    click(300, 300);
+    click(104, 103); // close to the first corner: closes
+    expect(onArea).toHaveBeenCalledTimes(2);
+    expect(
+      (onArea.mock.calls[1]?.[0] as { outer: unknown[] }).outer,
+    ).toHaveLength(3);
+
+    click(100, 100);
+    click(300, 100);
+    click(300, 300);
+    fireEvent.doubleClick(area());
+    expect(onArea).toHaveBeenCalledTimes(3);
+
+    click(100, 100);
+    click(300, 100);
+    fireEvent.keyDown(area(), { key: "Escape" });
+    fireEvent.keyDown(area(), { key: "Enter" });
+    expect(onArea).toHaveBeenCalledTimes(3);
+  });
+
+  test("a brush stroke is one area along the stroke", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, {
+      tool: "reveal",
+      shape: "brush",
+      brushRadius: 20,
+      onArea,
+    });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(area(), { clientX: 200, clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(area(), { clientX: 200, clientY: 200, pointerId: 1 });
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    expect(onArea).toHaveBeenCalledTimes(1);
+    const [stroke] = onArea.mock.calls[0] as [{ outer: [number, number][] }];
+    const xs = stroke.outer.map(([x]) => x);
+    const ys = stroke.outer.map(([, y]) => y);
+    // Screen (100,100)→(200,200) is map (200,200)→(400,400), plus the 20 px radius.
+    expect(Math.round(Math.min(...xs))).toBe(180);
+    expect(Math.round(Math.max(...ys))).toBe(420);
+  });
+
+  test("a real double click (two clicks on one spot, then dblclick) adds one corner", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, { tool: "reveal", shape: "polygon", onArea });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    click(100, 100);
+    click(300, 100);
+    click(300, 300);
+    click(301, 300);
+    fireEvent.doubleClick(area());
+    expect(
+      (onArea.mock.calls[0]?.[0] as { outer: unknown[] }).outer,
+    ).toHaveLength(3);
+
+    // Only two distinct corners: nothing enclosed, no command.
+    click(100, 100);
+    click(300, 100);
+    click(300, 100);
+    fireEvent.doubleClick(area());
+    expect(onArea).toHaveBeenCalledTimes(1);
+  });
 });

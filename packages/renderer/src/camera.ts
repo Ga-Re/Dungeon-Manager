@@ -62,6 +62,17 @@ export function screenToMap(camera: Camera, view: Size, point: Point): Point {
   return { x: camera.centerX + offset.x, y: camera.centerY + offset.y };
 }
 
+/** Where a map point appears in the view (the inverse of `screenToMap`). */
+export function mapToScreen(camera: Camera, view: Size, point: Point): Point {
+  const angle = radians(camera.rotation);
+  const dx = (point.x - camera.centerX) * camera.zoom;
+  const dy = (point.y - camera.centerY) * camera.zoom;
+  return {
+    x: view.width / 2 + dx * Math.cos(angle) - dy * Math.sin(angle),
+    y: view.height / 2 + dx * Math.sin(angle) + dy * Math.cos(angle),
+  };
+}
+
 /** Zooms by `factor` keeping the map point under `anchor` (e.g. the cursor) in place. */
 export function zoomAt(
   camera: Camera,

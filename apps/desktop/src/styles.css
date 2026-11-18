@@ -50,19 +50,48 @@ button {
   cursor: crosshair;
 }
 
-.map-view-selection {
+.map-view-preview {
   position: absolute;
+  inset: 0;
   z-index: 1;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  border: 2px dashed #fff;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
 }
 
-.map-view-selection-reveal {
-  background: rgba(255, 255, 255, 0.2);
+.map-view-preview-reveal {
+  fill: rgba(255, 255, 255, 0.2);
 }
 
-.map-view-selection-hide {
-  background: rgba(0, 0, 0, 0.45);
+.map-view-preview-hide {
+  fill: rgba(0, 0, 0, 0.45);
+}
+
+.map-view-preview .map-view-preview-brush {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-dasharray: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.map-view-preview-hide .map-view-preview-brush {
+  stroke: rgba(0, 0, 0, 0.5);
+}
+
+.map-view-preview .map-view-preview-polygon {
+  fill: none;
+}
+
+.map-view-preview .map-view-preview-dab {
+  stroke: none;
+}
+
+.map-view-preview-first {
+  fill: #fff;
 }
 
 .map-view-canvas:focus-visible {

@@ -216,7 +216,7 @@ describe("editing the fog", () => {
       mapped,
     );
     fireEvent.click(await enabled("Alles aufdecken"));
-    const radio = screen.getByRole("radio", { name: "Aufdecken (Rechteck)" });
+    const radio = screen.getByRole("radio", { name: "Aufdecken" });
     fireEvent.keyDown(radio, { key: "z", ctrlKey: true });
     expect(tv.shown.at(-1)?.fog["ground"]?.revealed ?? []).toHaveLength(0);
   });

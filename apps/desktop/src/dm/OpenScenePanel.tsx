@@ -14,6 +14,7 @@ import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
 import { MapChangeChoice } from "./MapChangeChoice.js";
 import { MapView, type MapTool } from "./MapView.js";
+import type { FogShape } from "./fog-shapes.js";
 import { FogToolbar } from "./FogToolbar.js";
 import { useSceneSession } from "./useSceneSession.js";
 
@@ -78,6 +79,8 @@ export function OpenScenePanel({
   const session = useSceneSession(service, slug, opened);
   const { scene, notOnTv } = session;
   const [tool, setTool] = useState<MapTool>("pan");
+  const [shape, setShape] = useState<FogShape>("rectangle");
+  const [brushCells, setBrushCells] = useState(1);
   const [mapSize, setMapSize] = useState<Size | null>(null);
   const levelId = scene.map?.levels[0]?.id;
   const revealed =
@@ -269,6 +272,10 @@ export function OpenScenePanel({
           <FogToolbar
             tool={tool}
             onTool={setTool}
+            shape={shape}
+            onShape={setShape}
+            brushCells={brushCells}
+            onBrushCells={setBrushCells}
             disabled={mapSize === null || notOnTv || busy}
             onRevealAll={() => {
               if (mapSize) fogCommand("fog.reveal", rectangle(mapSize));
@@ -292,6 +299,9 @@ export function OpenScenePanel({
             label={scene.name}
             fog={revealed}
             tool={busy ? "pan" : tool}
+            shape={shape}
+            // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
+            brushRadius={(brushCells * scene.map.grid.cellSizePx) / 2}
             onArea={(area, kind) => {
               if (!busy)
                 fogCommand(kind === "reveal" ? "fog.reveal" : "fog.hide", area);
