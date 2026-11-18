@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import { CompanionApp } from "./CompanionApp.js";
-import { createI18n } from "./i18n.js";
+import { createI18n } from "@dungeon-manager/ui";
 import "./styles.css";
 
 const i18n = createI18n();

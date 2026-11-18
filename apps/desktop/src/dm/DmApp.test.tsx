@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, test, vi } from "vitest";
-import { createI18n } from "../i18n.js";
+import { createI18n } from "@dungeon-manager/ui";
 import {
   DisplayError,
   type Display,

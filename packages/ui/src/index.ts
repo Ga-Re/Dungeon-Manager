@@ -1,2 +1,1 @@
-// Placeholder entry point; real code arrives with later tasks (see TASKS.md).
-export {};
+export { createI18n } from "./i18n.js";

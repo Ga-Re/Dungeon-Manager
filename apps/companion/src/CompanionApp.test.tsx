@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { expect, test } from "vitest";
 import { CompanionApp } from "./CompanionApp.js";
-import { createI18n } from "./i18n.js";
+import { createI18n } from "@dungeon-manager/ui";
 
 test("shows the placeholder in German by default", () => {
   render(
