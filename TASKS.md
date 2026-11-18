@@ -28,7 +28,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [x] `pnpm check` runs typecheck, lint, format check, dependency-cruiser
   - [x] A deliberate boundary violation (e.g. `core` importing `react`) fails `pnpm check` (proven by a test fixture or documented manual check)
-- **Notes:** From T-001 review: package `exports` point at `dist/`, so typecheck of dependents needs `dependsOn: ["^build"]` in Turbo (or a source export condition). `moduleResolution: Bundler` allows extensionless imports – fine for Vite/Vitest/Metro, not for running `dist/` directly with Node.
+- **Notes:** From T-001 review: package `exports` point at `dist/`, so typecheck of dependents needs `dependsOn: ["^build"]` in Turbo (or a source export condition). `moduleResolution: Bundler` allows extensionless imports – fine for Vite/Vitest, not for running `dist/` directly with Node.
 
 ### T-003 Test infrastructure
 
@@ -446,7 +446,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] No hard-coded colours, spacing, fonts or z-indices left in the DM-window styles of `apps/desktop` (checked by a small self-written test that scans the stylesheet; the player window's black background is excluded)
   - [ ] Text/surface pairs of both variants meet WCAG AA (checked by a unit test over the token values)
   - [ ] Primitives have component tests incl. keyboard navigation for `TreeList`; labels via i18n
-- **Notes:** From ADR-0011 (2026-11-18). Define the token values in a TS object and derive the CSS custom properties from it, so other consumers can share them later. `packages/ui` needs `react` (already a workspace dependency, not a new one) and a component-test setup. Choosing fonts and an icon set is a dependency decision – propose candidates (OFL/CC0, bundled locally) to the DM first.
+- **Notes:** From ADR-0011 (2026-11-18). Define the token values in a TS object and derive the CSS custom properties from it, so the WCAG contrast test can check the values directly. `packages/ui` needs `react` (already a workspace dependency, not a new one) and a component-test setup. Choosing fonts and an icon set is a dependency decision – propose candidates (OFL/CC0, bundled locally) to the DM first.
 
 ### T-130 DM window zone layout
 
