@@ -123,6 +123,12 @@ export const de = {
     heading: "Dungeon Manager für Spieler",
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",
   },
+  ui: {
+    panel: {
+      itemCount_one: "{{count}} Objekt",
+      itemCount_other: "{{count}} Objekte",
+    },
+  },
   player: {
     notShown:
       "Die Szene kann nicht auf dem TV gezeigt werden (ist die Kampagnendatei lesbar?). Der TV bleibt schwarz.",

@@ -8,11 +8,17 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    },
+    "./styles/*.css": "./styles/*.css"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "gen:tokens": "tsc -p tsconfig.build.json && node scripts/generate-tokens.js"
   },
   "dependencies": {
     "@dungeon-manager/core": "workspace:*",
@@ -21,6 +27,7 @@
   },
   "devDependencies": {
     "@dungeon-manager/tsconfig": "workspace:*",
+    "@types/react": "19.3.0",
     "i18next": "27.1.2",
     "react": "19.3.1",
     "react-i18next": "18.0.1"

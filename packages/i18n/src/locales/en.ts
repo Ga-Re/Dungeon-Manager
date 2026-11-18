@@ -121,6 +121,12 @@ export const en: Messages = {
     heading: "Dungeon Manager for players",
     placeholder: "Soon you can join the game table here.",
   },
+  ui: {
+    panel: {
+      itemCount_one: "{{count}} item",
+      itemCount_other: "{{count}} items",
+    },
+  },
   player: {
     notShown:
       "The scene cannot be shown on the TV (is the campaign file readable?). The TV stays black.",

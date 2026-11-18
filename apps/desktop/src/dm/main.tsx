@@ -9,7 +9,9 @@ import {
 import { createTauriLibraryService } from "../platform/tauri-library.js";
 import { createTauriMapViewService } from "../platform/tauri-map-images.js";
 import { createTauriPlayerFeedSender } from "../platform/tauri-player-feed.js";
-import "../styles.css";
+import "@dungeon-manager/ui/styles/tokens.css";
+import "@dungeon-manager/ui/styles/components.css";
+import "../dm.css";
 import { DmApp } from "./DmApp.js";
 import { MapViewContext } from "./MapView.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
