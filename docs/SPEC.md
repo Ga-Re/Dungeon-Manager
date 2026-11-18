@@ -96,14 +96,18 @@ Primarily the **DM's planning tool on the go**. The UI is leaner than the deskto
 
 - Zoom and pan in the DM view; locked scale in the player view
 - Preload the next scene so large video maps switch without stutter
-- Crossfade on map change
+- **Scene transitions** selectable per change: crossfade (default), through black, instant; duration in the settings. Later: themed transitions (e.g. door sound and fade when leaving a house, snowflakes blending over when moving from a snowstorm into a cave)
 
 ---
 
 ## 4. Fog of war
 
-- **Manual reveal:** brush, rectangle, polygon, or whole predefined rooms with one click
-- **Dynamic vision:** walls block line of sight; each player token sees only its surroundings; respects light sources, darkvision and torch radius
+- **Manual reveal:** brush, rectangle, polygon, circle, or whole predefined rooms – by clicking the room on the map, from the room list in the scene browser, or by a trigger zone
+- **Three tiers:** unexplored (black for players, tinted see-through for the DM), explored memory (dimmed, no current movement), active vision (fully lit, with the light's colour)
+- **Soft fades and soft edges** for fog changes; can be switched off in the settings (performance)
+- **Dynamic vision:** walls, closed doors and asset blockers stop line of sight and light (2D raycasting); the TV shows the union of what all player tokens see; respects light sources, darkvision and torch radius
+- **Light model:** brightness per scene (day / dusk / dark), bright and dim radius per light (5e), darkvision in greyscale, coloured and flickering light
+- **Secret rooms** stay hidden on "reveal all" and when neighbouring rooms are revealed, until the DM reveals them explicitly; their contents are never sent to the TV or companions before that
 - **Memory fog:** visited areas stay dimly visible, but current movement inside them is hidden
 - Fog per level
 - Per map: how player movement behaves in fog
@@ -183,7 +187,11 @@ A default per element type avoids configuring every single element.
 ### 8.1 Editor
 
 - **Place assets:** furniture, chests, traps, decor via drag & drop; scale, rotate, mirror, z-order
-- **Walls, doors, light:** draw sight lines, doors (open/closed/locked/secret), windows, light sources with radius and colour
+- **Walls, doors, light:** draw sight lines, doors (open/closed/locked/secret), windows, light sources with radius and colour. The DM opens and closes a door with one click. Secret doors look like walls to players and are marked for the DM; once discovered they become normal doors in that scene
+- **Automatic walls:** from VTT import, from drawn rooms (outer edges become walls, shared edges become openings) and as a suggestion from image analysis (edges/colours, always reviewed by the DM); everything runs locally
+- **Rooms and areas:** suggested from closed wall regions and drawn or adjusted freely; may overlap (a clearing inside a forest); secret rooms
+- **Asset blockers:** an asset's sight blocker is generated from its alpha channel and editable (e.g. only the trunk of a tree). Blocker types: blocks sight and light, one-way (cliff, gallery), partial sight (bushes: dimmed instead of hidden)
+- **Interiors:** an asset (e.g. a house) can have variants such as exterior (roof) and interior on the same footprint, with their own walls, doors and rooms; switching crossfades. Trigger per asset: DM click, a token entering, a token coming within a set distance – each optionally with DM confirmation. While an interior is active, the TV shows it to everyone
 - **Draw new maps:** rooms, tiles, terrain brush (floor, water, grass)
 - **Trigger zones:** areas that fire when a token enters: sound, light, text message to the DM, reveal trap, switch scene
 - Grid alignment: overlay and fit the grid to the imported map's grid
@@ -191,6 +199,8 @@ A default per element type avoids configuring every single element.
 ### 8.2 Asset library
 
 - **One global library** for all campaigns
+- **Defined once, used everywhere:** scale (grid calibration, asset footprint), name, tags, origin/license, levels, walls, doors, lights, rooms, blockers and variants belong to the map or asset and apply in every campaign. A scene adds placed assets (e.g. trees, rocks and houses on a street map), door states and fog, and may override single walls, doors, rooms or lights. Later improvements to the global data apply everywhere immediately; overrides whose target is gone are flagged for the DM
+- Share single maps or assets as a `.dmmap` bundle (export/import)
 - Import own files, tag and search them
 - Bundled base pack of free assets (CC0)
 - Import whole asset packs as folders (e.g. Forgotten Adventures) with automatic categorisation by folder structure
@@ -256,7 +266,9 @@ Lamps are assigned to zones; scenes and effects address roles, not individual la
 
 - **Session planner:** scenes bundle map, sound, light, fog state and notes; available in the scene bar during play
 - **Wiki / lore:** NPCs, places, factions, quests, items; linked, with relationships and status (e.g. "alive / dead", "quest open / done")
-- **Handouts:** letters, images, NPC portraits, maps shown large on the TV and in the companion
+- **Handouts:** letters, images, NPC portraits, items and maps shown large on the TV and in the companion. Images live in the global library; the handout (title, text, released or not) belongs to the campaign
+  - **Presentation:** shown and hidden with an animation (unfolding with a paper rustle), on a single side or mirrored for several table sides, and rotatable by the DM; items and portraits in a frame
+  - **Generator:** text on paper templates (note, letter, wanted poster, parchment), map fragments cut from a library map with torn edges, ageing and details (stains, burnt edges, folds, seal, signature), puzzles of several fragments found one by one and assembled on the TV. Stored as a recipe and rendered when shown, so it stays editable
 - **Session log:** events and combat log captured automatically, plus DM notes; produces a recap for the next session
 
 ---
@@ -322,7 +334,9 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 
 - Desktop app with DM view and player view on the table TV
 - Image map import, grid calibration, view rotation
-- Manual fog and memory fog
+- Manual fog and memory fog, predefined rooms
+- Global map data: scale, metadata, levels and rooms defined once per map (sidecar files)
+- Selectable scene transitions
 - Digital tokens moved by the DM
 - Initiative tracker with HP and conditions
 - Basic per-element visibility
@@ -335,7 +349,7 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 - Folder sync with per-OS guide, conflict detection, previews
 - Sound: scene presets, layer mixer, soundboard, Tabletop Audio import
 - Animated maps (MP4/WebM)
-- Handouts on the TV
+- Handouts on the TV, handout generator
 
 ### Stage 3 – Networked at the table
 
@@ -354,7 +368,8 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 ### Stage 5 – Editor, vision & spells
 
 - Draw walls, doors, light sources
-- Dynamic vision with darkvision; fog behaviour per map
+- Dynamic vision (raycasting) with light model and darkvision; fog behaviour per map
+- Automatic walls (rooms, image analysis), asset blockers, scene overrides, interiors
 - UVTT import, multiple levels
 - Asset placement, asset library and pack import
 - Spells: areas, animations, persistent effects, light coupling
@@ -366,7 +381,8 @@ Monorepo, tooling, CI, app skeletons, performance spike (see TASKS.md).
 - Full wiki/lore (relationships, status), session log with recap
 - Monster stat blocks (SRD + homebrew), dice & log
 - Calendar, generators, player aids, pause screen
-- Trash, campaign export with assets
+- Trash, campaign export with assets, `.dmmap` export/import
+- Themed scene transitions
 - Draw own maps (terrain brush, tiles)
 
 ### Stage 7 – Camera detection (optional)
