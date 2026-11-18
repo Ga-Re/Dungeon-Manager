@@ -26,7 +26,19 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   // Specs that load the companion use relative URLs; file:// fixtures are unaffected.
   use: { baseURL: COMPANION_URL },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // WebGL through SwiftShader, as in the visual tests: CI runners have no GPU, and the
+        // DM window renders maps with PixiJS.
+        launchOptions: {
+          args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+        },
+      },
+    },
+  ],
   webServer: [
     // The companion is tested as its production build, served like the desktop backend will.
     {

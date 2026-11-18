@@ -12,7 +12,7 @@ export function createConfig(rootDir) {
     globalIgnores([
       "**/dist/",
       // Build output of the DM-window E2E harness (T-130a).
-      "apps/desktop/dist-e2e/",
+      "**/dist-e2e/",
       "**/coverage/",
       "**/.turbo/",
       "**/target/",

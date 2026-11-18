@@ -16,9 +16,10 @@ test("the DM opens a campaign and a scene and sees its map", async ({
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("button", { name: "Krypta", exact: true }).click();
 
-  const canvas = page.locator(".map-view-canvas canvas");
-  await expect(canvas).toBeVisible();
-  const box = await canvas.boundingBox();
+  // "Einpassen" is enabled only once the renderer has drawn the map; a load error shows an alert.
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  const box = await page.locator(".map-view-canvas canvas").boundingBox();
   expect(box?.width).toBeGreaterThan(0);
   expect(box?.height).toBeGreaterThan(0);
 });
@@ -33,7 +34,9 @@ test("the DM window lists the displays for the player view", async ({
   });
   await expect(displays).toHaveValue("tv");
   await page.getByRole("button", { name: "Spieleransicht öffnen" }).click();
-  await expect(page.getByRole("status").first()).toHaveText(
-    "Spieleransicht läuft auf Tisch-TV.",
-  );
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Spieleransicht läuft auf Tisch-TV." }),
+  ).toBeVisible();
 });
