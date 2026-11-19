@@ -137,20 +137,27 @@ export const HUD = {
   "row-selected": { rgb: [70, 56, 26], alpha: 0.9 },
 } as const;
 
-/** Values shared by both themes: spacing (4/8 px grid), type, radii, layering, map overlays. */
+/**
+ * Values shared by both themes: spacing (a 4/8 grid in quarter rems of the base size), type,
+ * radii, layering, map overlays. `ui-base-size` is the DM window's root size (T-162); other apps
+ * using these tokens keep their own root size.
+ */
 const SHARED: Record<string, string> = {
-  "space-1": "4px",
-  "space-2": "8px",
-  "space-3": "12px",
-  "space-4": "16px",
-  "space-5": "24px",
-  "space-6": "32px",
+  // Sizes scale with the DM window's base size (T-162): rem, set from `ui-base-size` × the
+  // DM's interface size. Hairlines and radii stay in px.
+  "ui-base-size": "14px",
+  "space-1": "0.25rem",
+  "space-2": "0.5rem",
+  "space-3": "0.75rem",
+  "space-4": "1rem",
+  "space-5": "1.5rem",
+  "space-6": "2rem",
   // System fonts for now (DM decision 2026-11-18); real faces later by changing these only.
   // One family for labels and headings (ADR-0015); captions are small uppercase.
   "font-ui": 'system-ui, -apple-system, "Segoe UI", sans-serif',
   "font-heading": 'system-ui, -apple-system, "Segoe UI", sans-serif',
   "font-mono": "ui-monospace, Menlo, Consolas, monospace",
-  "font-size-xs": "0.75rem",
+  "font-size-xs": "max(10px, 0.75rem)",
   "font-size-sm": "0.875rem",
   "font-size-md": "1rem",
   "font-size-lg": "1.125rem",

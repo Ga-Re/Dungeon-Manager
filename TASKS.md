@@ -558,16 +558,25 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Component + E2E tests, screenshot
 - **Notes:** Missing scenes in a session show as "(fehlt)"; an invalid session file (e.g. a duplicate scene after a hand edit) shows an actionable "kann nicht gelesen werden" entry; new sessions get fresh ids (`createSession` overwrites like `createScene`). Sub-scenes (T-152) hang under their scene, not under the session (DM-approved proposal, 2026-11-19).
 
+### T-162 Compact interface and interface size setting
+
+- **Status:** done · **Depends on:** T-160b · **Refs:** ADR-0015, ARCHITECTURE §15
+- DM feedback (2026-11-19): the design is too massive – the title bar and the ribbon are too tall, the type too large. DM decision: compact by default, plus an interface size setting 90 / 100 / 110 / 125 % per device (in the gear popover until T-155 moves it into the settings dialog). The map has its own zoom and is not affected.
+- **Acceptance criteria**
+  - [x] Sizes in rem from one base size (`--dm-ui-base-size` 14px × `--dm-ui-scale`); hairlines and radii stay in px; title bar and ribbon visibly lower
+  - [x] Interface size setting applies at once, survives a restart, never scales the map canvas (unit, component and E2E tests)
+  - [x] Screenshot golden updated
+
 ### T-161 Campaign, session and scene notes as Markdown
 
 - **Status:** todo · **Depends on:** T-160b · **Refs:** ADR-0013, ADR-0006, ADR-0005, T-150
 - DM request (2026-11-19): campaign notes, session notes and scene notes, linked to `.md` files so they can be filled remotely (Obsidian or similar; Notion only via files in the synced folder – no cloud APIs, ADR-0005/0013).
-- DM decision (2026-11-19): fixed places plus free links – `notes/campaign.md`, `notes/sessions/<id>.md`, `notes/scenes/<id>.md` (created by the app on demand), and any other `.md` in the vault can be linked as well.
+- DM decisions (2026-11-19): fixed places plus free links – `campaigns/<slug>/notes/campaign.md`, `notes/sessions/<id>.md`, `notes/scenes/<id>.md` inside the campaign folder (created by the app on demand); any other `.md` is linked through an optional `notes: ["<path relative to the campaign folder>", …]` list in campaign.json, a session or a scene file (unknown to older readers, kept by them).
 - **Acceptance criteria**
   - [ ] Notes open from the browser/details panel (read view first); edits made elsewhere show up without restart
   - [ ] Linking an existing `.md`; unknown front matter survives a round trip (ADR-0006)
   - [ ] Tests for paths, linking and missing files
-- **Notes:** File layout change: propose the link field and where `notes/` lives (campaign folder or vault root, T-150) to the DM first.
+- **Notes:** Format approved by the DM (2026-11-19). T-150 decides whether Obsidian opens the campaign folder or the library root as its vault; both work with these paths.
 
 ### T-155 Settings dialog
 

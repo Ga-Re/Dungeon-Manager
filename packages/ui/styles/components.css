@@ -56,7 +56,7 @@
 
 .dm-icon-button-labelled {
   flex-direction: column;
-  min-width: 56px;
+  min-width: 3.5rem;
   padding: var(--dm-space-1) var(--dm-space-2);
 }
 
@@ -65,8 +65,8 @@
 }
 
 .dm-icon-button-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .dm-icon-button-label {
@@ -77,8 +77,8 @@
 
 /* Ribbon tools get large icons, as in CAD ribbons. */
 .dm-ribbon-group-tools .dm-icon-button-labelled .dm-icon-button-icon svg {
-  width: 28px;
-  height: 28px;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 /* Explicit text colour: the button may sit on the title bar, whose text colour differs from the
@@ -108,13 +108,13 @@
 /* TreeList – outline-tree guides: a parent's vertical line drops from the centre of its toggle
    box and stops at its last child's junction. Every child draws its own segment of that line plus
    a stub to its toggle box (folders) or icon (leaves); the gold dot marks the junction.
-   Row height 30px → junction at 15px; the line centre is 8px from the row's left edge at every depth. */
+   Sizes in rem of the DM window's base size (T-162): row height 1.875rem → junction at half of it; the line centre sits on the toggle box's centre at every depth and scale. */
 .dm-tree {
-  --tree-guide-x: 7px;
+  --tree-guide-x: calc(1px + 0.375rem);
   --tree-line: 2px;
-  --tree-indent: 26px;
-  --tree-junction-y: 15px;
-  --tree-dot: 6px;
+  --tree-indent: 1.625rem;
+  --tree-junction-y: 0.9375rem;
+  --tree-dot: max(5px, 0.375rem);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -165,7 +165,7 @@
   display: flex;
   align-items: center;
   gap: var(--dm-space-2);
-  height: 30px;
+  height: 1.875rem;
   padding: 0 var(--dm-space-2) 0 1px;
   border-radius: var(--dm-radius-md);
   border: 1px solid transparent;
@@ -195,7 +195,7 @@
   content: "";
   position: absolute;
   left: calc(var(--tree-guide-x) - 1px);
-  top: calc(var(--tree-junction-y) + 5px);
+  top: calc(var(--tree-junction-y) + 0.375rem - 1px);
   bottom: -1px;
   width: var(--tree-line);
   background: var(--dm-border-strong);
@@ -212,8 +212,8 @@
 }
 
 .dm-tree-toggle {
-  width: 12px;
-  height: 12px;
+  width: 0.75rem;
+  height: 0.75rem;
   flex: none;
   display: inline-grid;
   place-items: center;
@@ -225,8 +225,8 @@
 }
 
 .dm-tree-toggle svg {
-  width: 8px;
-  height: 8px;
+  width: 0.5rem;
+  height: 0.5rem;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -240,8 +240,8 @@
 }
 
 .dm-tree-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
 }
 
 .dm-tree-label {
@@ -317,9 +317,9 @@
     linear-gradient(45deg, transparent 50%, var(--dm-text-secondary) 50%),
     linear-gradient(135deg, var(--dm-text-secondary) 50%, transparent 50%);
   background-position:
-    calc(100% - 14px) 55%,
-    calc(100% - 9px) 55%;
-  background-size: 5px 5px;
+    calc(100% - 0.875rem) 55%,
+    calc(100% - 0.5625rem) 55%;
+  background-size: 0.3125rem 0.3125rem;
   background-repeat: no-repeat;
 }
 
@@ -407,8 +407,8 @@
 }
 
 .dm-menu-chevron {
-  width: 8px;
-  height: 8px;
+  width: 0.5rem;
+  height: 0.5rem;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.5;
@@ -462,8 +462,8 @@
 }
 
 .dm-menu-item-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 1rem;
+  height: 1rem;
 }
 
 /* RibbonGroup – tools in a row, caption centred below, thin divider to the next group. */
@@ -484,7 +484,7 @@
   display: flex;
   align-items: center;
   gap: var(--dm-space-2);
-  min-height: 3rem;
+  min-height: 2.5rem;
 }
 
 /* The caption menu button reads like the plain caption. */
@@ -520,10 +520,10 @@
   padding: var(--dm-space-1) var(--dm-space-2) var(--dm-space-2);
 }
 
-/* TreeList, compact variant: disclosure chevrons, no guides, a 16px indent per level. */
+/* TreeList, compact variant: disclosure chevrons, no guides, a 1rem indent per level. */
 .dm-tree-compact {
-  --tree-indent: 16px;
-  --tree-toggle-size: 12px;
+  --tree-indent: 1rem;
+  --tree-toggle-size: 0.75rem;
 }
 
 .dm-tree-compact .dm-tree-group > .dm-tree-item::before,
@@ -534,7 +534,7 @@
 }
 
 .dm-tree-compact .dm-tree-row {
-  height: 26px;
+  height: 1.625rem;
 }
 
 .dm-tree-compact .dm-tree-toggle {
@@ -544,8 +544,8 @@
 }
 
 .dm-tree-compact .dm-tree-toggle svg {
-  width: 10px;
-  height: 10px;
+  width: 0.625rem;
+  height: 0.625rem;
   stroke-width: 1.5;
 }
 
@@ -573,7 +573,7 @@
   display: flex;
   align-items: center;
   gap: var(--dm-space-1);
-  min-height: 26px;
+  min-height: 1.625rem;
   padding: 0 var(--dm-space-1);
   background: var(--dm-surface-panel);
   color: var(--dm-text-secondary);
@@ -595,8 +595,8 @@
 .dm-hud-fold {
   display: inline-grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--dm-radius-sm);
@@ -614,8 +614,8 @@
 }
 
 .dm-hud-grip svg {
-  width: 8px;
-  height: 12px;
+  width: 0.5rem;
+  height: 0.75rem;
   fill: currentColor;
 }
 
@@ -624,8 +624,8 @@
 }
 
 .dm-hud-fold svg {
-  width: 10px;
-  height: 10px;
+  width: 0.625rem;
+  height: 0.625rem;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.5;
