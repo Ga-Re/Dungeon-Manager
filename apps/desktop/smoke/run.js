@@ -214,8 +214,14 @@ async function main() {
     // Creating a scene through the UI goes through the real Rust write path.
     await clickXPath(
       sessionPath,
-      "the campaign button",
-      "//button[text()='Smoke-Kampagne']",
+      "the campaign in the browser",
+      "//button[normalize-space()='Smoke-Kampagne']",
+    );
+    await showRibbonMode(sessionPath, "Szene");
+    await clickXPath(
+      sessionPath,
+      "the new-scene tool",
+      "//button[normalize-space()='Neue Szene …']",
     );
     const sceneName = await waitFor("the scene name field", () =>
       findElement(
@@ -232,11 +238,7 @@ async function main() {
       "the create-scene button",
       "//button[text()='Szene anlegen']",
     );
-    await clickXPath(
-      sessionPath,
-      "the new scene",
-      "//button[text()='Smoke-Szene']",
-    );
+    // A new scene opens right away.
     await waitFor("the opened scene", async () =>
       (await pageText()).includes("Geöffnete Szene: Smoke-Szene"),
     );
@@ -308,8 +310,8 @@ async function main() {
     );
     await clickXPath(
       sessionPath,
-      "the map scene",
-      "//button[text()='Karten-Szene']",
+      "the map scene in the browser",
+      "//li[@role='treeitem']//span[contains(@class,'dm-tree-label') and text()='Karten-Szene']",
     );
     await waitFor("the map to load", async () => {
       const text = await pageText();

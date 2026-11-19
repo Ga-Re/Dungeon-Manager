@@ -38,10 +38,25 @@ function renderCampaign(library: ReturnType<typeof fakeLibraryService>) {
   );
 }
 
-const sceneNames = async () =>
-  within(await screen.findByRole("list", { name: "Szenen" }))
-    .getAllByRole("listitem")
-    .map((item) => item.textContent);
+/** Names of the scenes in the browser tree (level 2, under the campaign). */
+const sceneNames = () =>
+  within(screen.getByRole("tree", { name: "Szenen" }))
+    .getAllByRole("treeitem")
+    .filter((item) => item.getAttribute("aria-level") === "2")
+    .map((item) => item.querySelector(".dm-tree-label")?.textContent);
+
+/** Clicks a scene in the browser tree, which opens it. */
+async function openScene(name: string) {
+  fireEvent.click(
+    await screen.findByText(name, { selector: ".dm-tree-label" }),
+  );
+}
+
+/** "Neue Szene …" in the ribbon: the popover with name and map. */
+function askForNewScene() {
+  fireEvent.click(screen.getByRole("button", { name: "Neue Szene …" }));
+  return within(screen.getByRole("group", { name: "Neue Szene …" }));
+}
 
 /** "Szene ▾" → "Szene löschen …" in the ribbon. */
 function askToDelete() {
@@ -57,31 +72,44 @@ describe("CampaignPanel", () => {
       "campaigns/mine/scenes/c.json": { placeholder: true },
     });
     renderCampaign(library);
-    expect(await sceneNames()).toEqual([
-      "c (noch nicht heruntergeladen)",
-      "Eingang",
-      "Zwergenhalle",
-    ]);
+    await waitFor(() => {
+      expect(sceneNames()).toEqual([
+        "c (noch nicht heruntergeladen)",
+        "Eingang",
+        "Zwergenhalle",
+      ]);
+    });
+    expect(screen.getByText("Die verlorene Mine")).toBeTruthy();
   });
 
-  test("creates a scene, then opens and closes it", async () => {
+  test("creates a scene from the ribbon, which opens it, then closes it", async () => {
     const library = fakeLibraryService("/lib");
     renderCampaign(library);
     expect(
       await screen.findByText("Noch keine Szenen in dieser Kampagne."),
     ).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Name der neuen Szene"), {
-      target: { value: "Eingang" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Szene anlegen" }));
-    expect(await sceneNames()).toEqual(["Eingang"]);
+    const popover = askForNewScene();
+    const field = popover.getByLabelText("Name der neuen Szene");
+    expect(document.activeElement).toBe(field);
+    fireEvent.change(field, { target: { value: "Eingang" } });
+    fireEvent.click(popover.getByRole("button", { name: "Szene anlegen" }));
+    expect(await screen.findByText("Geöffnete Szene: Eingang")).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Neue Szene …" })).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Neue Szene …" }),
+    );
+    expect(sceneNames()).toEqual(["Eingang"]);
     expect(library.fs.files().has("campaigns/mine/scenes/new-1.json")).toBe(
       true,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Eingang" }));
-    expect(screen.getByText("Geöffnete Szene: Eingang")).toBeTruthy();
+    // The open scene shows its content in the tree and is selected.
+    expect(
+      screen
+        .getByRole("treeitem", { name: "Eingang" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(await screen.findByRole("treeitem", { name: "Nebel" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Szene schließen" }));
     expect(screen.queryByText("Geöffnete Szene: Eingang")).toBeNull();
   });
@@ -98,11 +126,11 @@ describe("CampaignPanel", () => {
     // Another campaign's scenes do not concern this panel.
     library.emit(["campaigns/other/scenes/y.json"]);
     await new Promise((resolve) => setTimeout(resolve, RELOAD_DELAY_MS + 100));
-    expect(screen.queryByRole("button", { name: "Neue Szene" })).toBeNull();
+    expect(screen.queryByRole("treeitem", { name: "Neue Szene" })).toBeNull();
 
     library.emit(["campaigns/mine/scenes/x.json"]);
     expect(
-      await screen.findByRole("button", { name: "Neue Szene" }),
+      await screen.findByRole("treeitem", { name: "Neue Szene" }),
     ).toBeTruthy();
   });
 
@@ -111,14 +139,17 @@ describe("CampaignPanel", () => {
     library.fs.writeAtomic = () =>
       Promise.reject(new Error("Datenträger voll"));
     renderCampaign(library);
-    const field = await screen.findByLabelText<HTMLInputElement>(
+    await screen.findByText("Noch keine Szenen in dieser Kampagne.");
+    const popover = askForNewScene();
+    const field = popover.getByLabelText<HTMLInputElement>(
       "Name der neuen Szene",
     );
     fireEvent.change(field, { target: { value: "Eingang" } });
-    fireEvent.click(screen.getByRole("button", { name: "Szene anlegen" }));
+    fireEvent.click(popover.getByRole("button", { name: "Szene anlegen" }));
+    // Next to the field, in the popover that stays open.
     expect(
-      await screen.findByText("Das hat nicht geklappt: Datenträger voll"),
-    ).toBeTruthy();
+      await popover.findByText("Das hat nicht geklappt: Datenträger voll"),
+    ).toHaveProperty("role", "alert");
     expect(field.value).toBe("Eingang");
   });
 
@@ -130,23 +161,19 @@ describe("CampaignPanel", () => {
     };
     library.service.importMap.mockResolvedValue(asset);
     renderCampaign(library);
+    await screen.findByText("Noch keine Szenen in dieser Kampagne.");
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Karte wählen …" }),
-    );
+    const popover = askForNewScene();
+    fireEvent.click(popover.getByRole("button", { name: "Karte wählen …" }));
     expect(
-      await screen.findByText("Karte für die neue Szene: hoehle.webp"),
+      await popover.findByText("Karte für die neue Szene: hoehle.webp"),
     ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Name der neuen Szene"), {
+    fireEvent.change(popover.getByLabelText("Name der neuen Szene"), {
       target: { value: "Höhle" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Szene anlegen" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Höhle" }));
+    fireEvent.click(popover.getByRole("button", { name: "Szene anlegen" }));
 
-    expect(screen.getByText("Karte: hoehle.webp")).toBeTruthy();
-    expect(
-      screen.getByText("Die neue Szene bekommt noch keine Karte."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Karte: hoehle.webp")).toBeTruthy();
     const saved = JSON.parse(
       library.fs.files().get("campaigns/mine/scenes/new-1.json") ?? "{}",
     ) as { map: unknown };
@@ -164,8 +191,9 @@ describe("CampaignPanel", () => {
       new LibraryError("unsupportedFile", "/Users/dm/notes.txt"),
     );
     renderCampaign(library);
+    await screen.findByText("Noch keine Szenen in dieser Kampagne.");
     fireEvent.click(
-      await screen.findByRole("button", { name: "Karte wählen …" }),
+      askForNewScene().getByRole("button", { name: "Karte wählen …" }),
     );
     expect(
       await screen.findByText(
@@ -212,7 +240,7 @@ describe("CampaignPanel", () => {
         fog: unknown;
       };
 
-    fireEvent.click(await screen.findByRole("button", { name: "Höhle" }));
+    await openScene("Höhle");
     expect(screen.getByText("Karte: alt.webp")).toBeTruthy();
 
     // Cancelling changes nothing.
@@ -252,7 +280,7 @@ describe("CampaignPanel", () => {
       hash: `sha256:${"b".repeat(64)}`,
     });
     renderCampaign(library);
-    fireEvent.click(await screen.findByRole("button", { name: "Leer" }));
+    await openScene("Leer");
     fireEvent.click(
       screen.getByRole("button", { name: "Karte für diese Szene wählen …" }),
     );
@@ -264,7 +292,7 @@ describe("CampaignPanel", () => {
       "campaigns/mine/scenes/a.json": sceneFile("a", "Eingang"),
     });
     renderCampaign(library);
-    fireEvent.click(await screen.findByRole("button", { name: "Eingang" }));
+    await openScene("Eingang");
 
     askToDelete();
     expect(document.activeElement?.textContent).toBe("Ja, löschen");
@@ -298,12 +326,75 @@ describe("CampaignPanel", () => {
     });
     library.fs.moveToTrash = () => Promise.reject(new Error("Gesperrt"));
     renderCampaign(library);
-    fireEvent.click(await screen.findByRole("button", { name: "Eingang" }));
+    await openScene("Eingang");
     askToDelete();
     fireEvent.click(screen.getByRole("button", { name: "Ja, löschen" }));
     expect(
       await screen.findByText("Das hat nicht geklappt: Gesperrt"),
     ).toHaveProperty("role", "alert");
     expect(screen.getByText("Geöffnete Szene: Eingang")).toBeTruthy();
+  });
+
+  test("creates a scene from the context menu of the tree, also by keyboard", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/scenes/a.json": sceneFile("a", "Eingang"),
+    });
+    renderCampaign(library);
+    const scene = await screen.findByRole("treeitem", { name: "Eingang" });
+
+    fireEvent.contextMenu(screen.getByText("Die verlorene Mine"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Neue Szene …" }));
+    let popover = within(screen.getByRole("group", { name: "Neue Szene …" }));
+    // Escape closes it and gives focus back to the item it came from.
+    fireEvent.keyDown(popover.getByLabelText("Name der neuen Szene"), {
+      key: "Escape",
+    });
+    expect(screen.queryByRole("group", { name: "Neue Szene …" })).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole("treeitem", { name: "Die verlorene Mine" }),
+    );
+
+    scene.focus();
+    fireEvent.keyDown(scene, { key: "F10", shiftKey: true });
+    const command = screen.getByRole("menuitem", { name: "Neue Szene …" });
+    expect(document.activeElement).toBe(command);
+    fireEvent.click(command);
+    popover = within(screen.getByRole("group", { name: "Neue Szene …" }));
+    fireEvent.change(popover.getByLabelText("Name der neuen Szene"), {
+      target: { value: "Gruft" },
+    });
+    fireEvent.click(popover.getByRole("button", { name: "Szene anlegen" }));
+    expect(await screen.findByText("Geöffnete Szene: Gruft")).toBeTruthy();
+  });
+
+  test("offers commands only on the campaign and its scenes, named after the item", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/scenes/a.json": sceneFile("a", "Eingang"),
+    });
+    renderCampaign(library);
+    await openScene("Eingang");
+    fireEvent.contextMenu(
+      await screen.findByText("Nebel", { selector: ".dm-tree-label" }),
+    );
+    expect(screen.queryByRole("menu")).toBeNull();
+    fireEvent.contextMenu(
+      screen.getByText("Eingang", { selector: ".dm-tree-label" }),
+    );
+    expect(
+      screen.getByRole("menu", { name: "Befehle für „Eingang“" }),
+    ).toBeTruthy();
+  });
+
+  test("opening the scene menu closes the delete confirmation", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/scenes/a.json": sceneFile("a", "Eingang"),
+    });
+    renderCampaign(library);
+    await openScene("Eingang");
+    askToDelete();
+    expect(screen.getByRole("button", { name: "Ja, löschen" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Szene" }));
+    expect(screen.queryByRole("button", { name: "Ja, löschen" })).toBeNull();
+    expect(screen.getByRole("menu", { name: "Szene" })).toBeTruthy();
   });
 });

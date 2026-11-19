@@ -297,14 +297,16 @@ describe("editing the fog", () => {
         </PlayerFeedContext>
       </I18nextProvider>,
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Höhle" }));
+    fireEvent.click(
+      await screen.findByText("Höhle", { selector: ".dm-tree-label" }),
+    );
     // The list reloads (as after the watcher reports a save) while the save is still pending,
     // so its copy of the scene is the old one.
     library.fs.writeAtomic = () => new Promise(() => undefined);
     fireEvent.click(await enabled("Alles aufdecken"));
     library.emit(["campaigns/mine/scenes/s.json"]);
     await new Promise((resolve) => setTimeout(resolve, RELOAD_DELAY_MS + 100));
-    fireEvent.click(screen.getByRole("button", { name: "Höhle" }));
+    fireEvent.click(screen.getByText("Höhle", { selector: ".dm-tree-label" }));
     expect(tv.shown.at(-1)?.fog["ground"]?.revealed).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Rückgängig" })).toHaveProperty(
       "disabled",

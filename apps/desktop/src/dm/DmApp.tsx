@@ -103,11 +103,8 @@ export function DmApp({
   return (
     <main>
       <h1 className="visually-hidden">{t("dm.heading")}</h1>
-      <DmShell
-        storage={storage}
-        root={root}
-        dataPanel={<LibraryPanel service={libraryService} newId={newId} />}
-      >
+      <DmShell storage={storage} root={root}>
+        <LibraryPanel service={libraryService} newId={newId} />
         <ShellPortal slot="ribbonDisplay">
           <RibbonGroup
             caption={t("shell.groups.playerView")}

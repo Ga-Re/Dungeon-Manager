@@ -44,14 +44,11 @@ function isPanelShortcut(event: globalThis.KeyboardEvent): boolean {
  * with `ShellPortal`.
  */
 export function DmShell({
-  dataPanel,
   children,
   storage,
   root,
 }: {
-  /** Library and campaign, shown in the collapsible left panel. */
-  readonly dataPanel: ReactNode;
-  /** Content that only portals into slots (e.g. display controls). */
+  /** Content that only portals into slots (library, campaign, display controls). */
   readonly children?: ReactNode;
   /** Device-local storage for settings (the webview's `localStorage`). */
   readonly storage: Storage | undefined;
@@ -82,6 +79,8 @@ export function DmShell({
       "ribbonDisplay",
       "canvas",
       "browser",
+      "dataPanel",
+      "settings",
       "notices",
     ];
     for (const name of names) {
@@ -187,6 +186,7 @@ export function DmShell({
                     </label>
                   ))}
                 </fieldset>
+                <div ref={slotRefs.settings} className="dm-settings-more" />
               </Popover>
             </div>
           </header>
@@ -240,7 +240,7 @@ export function DmShell({
               className="dm-datapanel"
               hidden={!panelOpen}
             >
-              {dataPanel}
+              <div ref={slotRefs.dataPanel} />
             </aside>
             <div ref={slotRefs.browser} className="dm-browser" />
           </div>

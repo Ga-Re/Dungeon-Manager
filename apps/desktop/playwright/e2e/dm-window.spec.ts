@@ -11,10 +11,12 @@ test("the DM opens a campaign and a scene and sees its map", async ({
   await expect(
     page.getByRole("heading", { name: "Spielleitung" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Einstellungen" }).click();
   await expect(page.getByText("Ordner: /Bibliothek (E2E)")).toBeVisible();
+  await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
-  await page.getByRole("button", { name: "Krypta", exact: true }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
 
   // "Einpassen" is enabled only once the renderer has drawn the map; a load error shows an alert.
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
@@ -46,7 +48,7 @@ test("the map fills the window whether the data panel is open or closed", async 
 }) => {
   await page.goto(HARNESS);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
-  await page.getByRole("button", { name: "Krypta", exact: true }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
 
   const viewport = page.viewportSize();
@@ -93,7 +95,7 @@ test("ribbon commands work from the keyboard: menu, confirmation popover", async
 }) => {
   await page.goto(HARNESS);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
-  await page.getByRole("button", { name: "Krypta", exact: true }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
   await page.getByRole("tab", { name: "Szene" }).click();
 
   const sceneMenu = page.getByRole("button", { name: "Szene", exact: true });
@@ -111,4 +113,27 @@ test("ribbon commands work from the keyboard: menu, confirmation popover", async
   await page.keyboard.press("Escape");
   await expect(confirm).toHaveCount(0);
   await expect(sceneMenu).toBeFocused();
+});
+
+test("the DM creates a scene from the browser's context menu, by keyboard", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  const campaign = page.getByRole("treeitem", { name: "Fluch der Krypta" });
+  await campaign.focus();
+  await page.keyboard.press("Shift+F10");
+  await expect(
+    page.getByRole("menuitem", { name: "Neue Szene …" }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  const field = page.getByLabel("Name der neuen Szene");
+  await expect(field).toBeFocused();
+  await field.fill("Grabkammer");
+  await page.keyboard.press("Enter");
+
+  await expect(
+    page.getByRole("treeitem", { name: "Grabkammer" }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByText("Szene „Grabkammer“ angelegt.")).toBeVisible();
 });

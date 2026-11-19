@@ -84,30 +84,57 @@ describe("LibraryPanel", () => {
     expect(library.service.currentRoot).toHaveBeenCalledTimes(2);
   });
 
-  test("creates a campaign by name and opens it", async () => {
+  test("creates a campaign from the browser header and opens it", async () => {
     const library = fakeLibraryService("/lib");
     renderPanel(library.service);
 
-    fireEvent.change(await screen.findByLabelText("Name der neuen Kampagne"), {
-      target: { value: "Fluch über Größenwahn" },
-    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Kampagne wählen" }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Neue Kampagne …" }));
+    const field = screen.getByLabelText("Name der neuen Kampagne");
+    expect(document.activeElement).toBe(field);
+    fireEvent.change(field, { target: { value: "Fluch über Größenwahn" } });
     fireEvent.click(screen.getByRole("button", { name: "Kampagne anlegen" }));
 
     expect(
-      await screen.findByRole("heading", {
-        name: "Kampagne: Fluch über Größenwahn",
-      }),
+      await screen.findByRole("treeitem", { name: "Fluch über Größenwahn" }),
     ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Fluch über Größenwahn" }),
+    ).toHaveProperty("ariaHasPopup", "menu");
+    expect(screen.queryByLabelText("Name der neuen Kampagne")).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Fluch über Größenwahn" }),
+    );
     expect(
       library.fs
         .files()
         .has("campaigns/fluch-ueber-groessenwahn/campaign.json"),
     ).toBe(true);
     expect(
-      screen.getByRole("button", { name: "Fluch über Größenwahn" }).ariaPressed,
-    ).toBe("true");
-    expect(
       screen.getByText("Kampagne „Fluch über Größenwahn“ angelegt."),
+    ).toBeTruthy();
+  });
+
+  test("switches campaigns from the list and from the header menu", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/campaign.json": campaignFile("Die verlorene Mine"),
+      "campaigns/crypt/campaign.json": campaignFile("Fluch der Krypta"),
+    });
+    renderPanel(library.service);
+    expect(await screen.findByText("Wähle eine Kampagne:")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Fluch der Krypta" }));
+    expect(
+      await screen.findByRole("treeitem", { name: "Fluch der Krypta" }),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Fluch der Krypta" }));
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Die verlorene Mine" }),
+    );
+    expect(
+      await screen.findByRole("treeitem", { name: "Die verlorene Mine" }),
     ).toBeTruthy();
   });
 

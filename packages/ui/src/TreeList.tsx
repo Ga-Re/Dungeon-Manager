@@ -40,6 +40,13 @@ export interface TreeListProps {
    * tab stop, and offer the same actions to keyboard users elsewhere (e.g. the ribbon).
    */
   renderActions?: ((node: TreeNode) => ReactNode) | undefined;
+  /**
+   * Right-click on an item, or Shift+F10 / the context-menu key on the focused one. `point` is
+   * where to open the menu (the pointer, or below the item's row); `item` gets focus back.
+   */
+  onItemContextMenu?:
+    | ((id: string, point: { x: number; y: number }, item: HTMLElement) => void)
+    | undefined;
   className?: string | undefined;
 }
 
@@ -91,6 +98,7 @@ export function TreeList({
   expandedIds,
   onExpandedChange,
   renderActions,
+  onItemContextMenu,
   className,
 }: TreeListProps) {
   const idPrefix = useId();
@@ -155,6 +163,20 @@ export function TreeList({
   function onKeyDown(event: KeyboardEvent<HTMLLIElement>, node: TreeNode) {
     // Items are nested, so ignore key presses bubbling up from a child item.
     if (event.target !== event.currentTarget) return;
+    if (
+      onItemContextMenu &&
+      (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey))
+    ) {
+      event.preventDefault();
+      const row = event.currentTarget.querySelector(".dm-tree-row");
+      const box = (row ?? event.currentTarget).getBoundingClientRect();
+      onItemContextMenu(
+        node.id,
+        { x: box.left, y: box.bottom },
+        event.currentTarget,
+      );
+      return;
+    }
     const index = position.get(node.id) ?? 0;
     const isOpen = node.children !== undefined && expanded.has(node.id);
     let next: string | undefined;
@@ -214,6 +236,14 @@ export function TreeList({
           onKeyDown={(event) => {
             onKeyDown(event, node);
           }}
+          // The context-menu key also fires `contextmenu` on the focused item (on keyup in
+          // WebView2): our menu already opened on keydown, so keep the webview's own away.
+          onContextMenu={
+            onItemContextMenu &&
+            ((event) => {
+              if (event.target === event.currentTarget) event.preventDefault();
+            })
+          }
           onFocus={(event) => {
             if (event.target === event.currentTarget) setFocusedId(node.id);
           }}
@@ -224,6 +254,20 @@ export function TreeList({
               moveFocus(node.id);
               onSelect?.(node.id);
             }}
+            onContextMenu={
+              onItemContextMenu &&
+              ((event) => {
+                event.preventDefault();
+                const item = elements.current.get(node.id);
+                if (!item) return;
+                moveFocus(node.id);
+                onItemContextMenu(
+                  node.id,
+                  { x: event.clientX, y: event.clientY },
+                  item,
+                );
+              })
+            }
           >
             {isFolder && (
               <span

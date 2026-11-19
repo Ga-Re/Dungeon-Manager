@@ -491,19 +491,39 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-130c Campaign and scenes in the scene browser, catalogue data panel
 
-- **Status:** todo · **Depends on:** T-130b · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
+- **Status:** done · **Depends on:** T-130b · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
 - DM decisions (2026-11-19):
   - **Scene browser** shows one campaign: its header is the campaign name with ▾ to switch or create a campaign; the tree lists its scenes, the open scene expands into its content (map, levels, fog). Clicking a scene opens it.
   - **New scene:** from the ribbon (Szene mode) or by right-clicking the campaign or a scene in the browser; both open a small Fusion-style popover (name, optional map). Right-clicking a scene will also offer a sub-scene once T-152 exists.
-  - **New campaign:** on macOS from the native menu bar (Tauri menu, e.g. "Ablage → Neue Kampagne"); on Windows from a menu button in the title bar.
   - **Data panel** becomes the map and asset catalogue scaffold: header "Katalog" with "Karte importieren", groups Karten / Token / Assets with empty hints; T-124 fills it. Folds in and out as before.
   - **Library folder** is chosen in the settings popover (gear).
 - **Acceptance criteria**
-  - [ ] Campaign switch, new campaign and new scene work from browser, context menu, ribbon and menu (component + E2E tests); the context menu is keyboard reachable (Shift+F10 / context-menu key)
-  - [ ] Data panel shows the catalogue scaffold; the library folder can be changed in the settings
-  - [ ] Native macOS menu command reaches the DM window (Rust test or smoke test); Windows menu button covered by a component test
-  - [ ] Smoke test, E2E and screenshot updated
-- **Notes:** From the T-130b review: opening a group menu while that group's popover is open draws both on top of each other – close the popover when the menu opens.
+  - [x] Campaign switch and new campaign from the browser header, new scene from the context menu and the ribbon (component + E2E tests); the context menu is keyboard reachable (Shift+F10 / context-menu key)
+  - [x] Data panel shows the catalogue scaffold; the library folder can be changed in the settings
+  - [x] Smoke test, E2E and screenshot updated
+- **Notes:** Split (DM, 2026-11-19): native menus moved to T-130d. The T-130b review note (a group menu opened over its group's popover) is fixed here: the menu closes the popover when it opens.
+
+### T-153 Welcome dialog with recent campaigns
+
+- **Status:** todo · **Depends on:** T-130c · **Refs:** ARCHITECTURE §6.2, §15, ADR-0011
+- On every start the DM window shows a welcome dialog, similar to Inkscape/Illustrator (DM request, 2026-11-19).
+- DM decisions (2026-11-19):
+  - **List + actions:** recently edited campaigns with name, last opened scene and date; buttons "Neue Kampagne", "Andere Kampagne öffnen …" and the library folder. Previews/tiles come once T-124 produces previews.
+  - Choosing a campaign opens it **with its last open scene**; the dialog appears on every start and can be opened again from the app menu (T-130d).
+  - "Recently edited" is stored **per device** (webview storage in OS app data, like the theme; not in the sync folder, no file format change).
+- **Acceptance criteria**
+  - [ ] Dialog lists recent campaigns, most recent first; missing or unreadable campaigns are shown as such and can be removed from the list
+  - [ ] Choosing one opens the campaign and its last scene; new campaign and other campaign work from the dialog
+  - [ ] Keyboard and screen-reader accessible modal (focus trap, Escape closes into the empty window); component + E2E tests, screenshot
+
+### T-130d App menu: macOS menu bar, Windows menu button
+
+- **Status:** todo · **Depends on:** T-130c · **Refs:** ARCHITECTURE §15, ADR-0011
+- **New campaign** (and later more app commands such as the welcome dialog of T-153) on macOS from the native menu bar (Tauri menu, e.g. "Ablage → Neue Kampagne"); on Windows from a menu button in the title bar (DM decision, 2026-11-19).
+- **Acceptance criteria**
+  - [ ] Native macOS menu command reaches the DM window (Rust test or smoke test)
+  - [ ] Windows menu button covered by a component test; menu labels translated
+- **Notes:** From the T-130c review: context menus and popovers opened at a point are not yet kept inside the viewport (a low tree item with Shift+F10 can push the new-scene form off-screen) – clamp them when the menus are built here.
 
 ### T-152 Sub-scenes
 

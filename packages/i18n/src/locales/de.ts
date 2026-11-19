@@ -31,6 +31,10 @@ export const de = {
     newCampaignName: "Name der neuen Kampagne",
     createCampaign: "Kampagne anlegen",
     campaignCreated: "Kampagne „{{name}}“ angelegt.",
+    browserTitle: "Kampagne",
+    chooseCampaign: "Kampagne wählen",
+    chooseCampaignHint: "Wähle eine Kampagne:",
+    newCampaign: "Neue Kampagne …",
     campaign: {
       notAvailable: "{{slug}} (noch nicht heruntergeladen)",
       invalid: "{{slug}} (kann nicht gelesen werden)",
@@ -45,12 +49,13 @@ export const de = {
     },
   },
   campaign: {
-    heading: "Kampagne: {{name}}",
     loading: "Szenen werden geladen …",
     scenes: "Szenen",
     noScenes: "Noch keine Szenen in dieser Kampagne.",
     newSceneName: "Name der neuen Szene",
     createScene: "Szene anlegen",
+    newScene: "Neue Szene …",
+    commands: "Befehle für „{{name}}“",
     sceneCreated: "Szene „{{name}}“ angelegt.",
     openScene: "Geöffnete Szene: {{name}}",
     importMap: "Karte wählen …",
@@ -81,6 +86,22 @@ export const de = {
     scene: {
       notAvailable: "{{id}} (noch nicht heruntergeladen)",
       invalid: "{{id}} (kann nicht gelesen werden)",
+    },
+  },
+  catalog: {
+    title: "Katalog",
+    noLibrary: "Wähle zuerst in den Einstellungen einen Bibliotheksordner.",
+    importMap: "Karte importieren …",
+    mapImported: "„{{file}}“ liegt jetzt in der Bibliothek.",
+    groups: {
+      maps: "Karten",
+      tokens: "Token",
+      assets: "Assets",
+    },
+    empty: {
+      maps: "Die Kartenübersicht folgt. Importierte Karten liegen schon in der Bibliothek.",
+      tokens: "Noch keine Token.",
+      assets: "Noch keine Assets.",
     },
   },
   mapView: {
@@ -126,6 +147,7 @@ export const de = {
   },
   shell: {
     groups: {
+      create: "Neu",
       scene: "Szene",
       playerView: "Spieleransicht",
     },
@@ -137,7 +159,7 @@ export const de = {
       fog: "Nebel",
       display: "Anzeige",
     },
-    noScene: "Keine Szene geöffnet. Wähle im Datenpanel eine Szene.",
+    noScene: "Keine Szene geöffnet. Wähle im Browser eine Szene.",
     settings: "Einstellungen",
     theme: {
       label: "Darstellung",
@@ -151,7 +173,6 @@ export const de = {
       failed: "Nicht gespeichert",
     },
     browser: {
-      title: "Szene",
       map: "Karte",
       noMap: "Noch keine Karte",
       levels: "Ebenen",

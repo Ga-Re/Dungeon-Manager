@@ -9,6 +9,8 @@ export type ShellSlot =
   | "ribbonDisplay"
   | "canvas"
   | "browser"
+  | "dataPanel"
+  | "settings"
   | "notices";
 
 /** The slot elements of the surrounding shell; `null` outside a shell. */

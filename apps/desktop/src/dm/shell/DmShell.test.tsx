@@ -30,11 +30,13 @@ function setup() {
   const root = document.createElement("html");
   render(
     <I18nextProvider i18n={createI18n()}>
-      <DmShell
-        storage={storage}
-        root={root}
-        dataPanel={<p>Bibliotheksinhalt</p>}
-      >
+      <DmShell storage={storage} root={root}>
+        <ShellPortal slot="dataPanel">
+          <p>Bibliotheksinhalt</p>
+        </ShellPortal>
+        <ShellPortal slot="settings">
+          <p>Bibliotheksordner</p>
+        </ShellPortal>
         <ShellPortal slot="canvas">
           <div data-testid="map" />
         </ShellPortal>
@@ -63,6 +65,14 @@ describe("DmShell", () => {
     setup();
     expect(screen.getByTestId("map").closest(".dm-canvas")).not.toBeNull();
     expect(within(panel()).getByText("Bibliotheksinhalt")).toBeTruthy();
+    // Settings content only exists while the popover is open.
+    expect(screen.queryByText("Bibliotheksordner")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    expect(
+      within(screen.getByRole("group", { name: "Einstellungen" })).getByText(
+        "Bibliotheksordner",
+      ),
+    ).toBeTruthy();
   });
 
   it("toggles the data panel with its button", () => {
