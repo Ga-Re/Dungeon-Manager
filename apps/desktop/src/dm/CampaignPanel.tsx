@@ -30,6 +30,7 @@ import {
   createSession,
   deleteSession,
   loadCampaign,
+  loadSession,
   newMap,
   saveSession,
 } from "@dungeon-manager/storage";
@@ -51,7 +52,7 @@ import { OpenScenePanel } from "./OpenScenePanel.js";
 import { addScene, moveScene, removeScene } from "./session-ops.js";
 import { AddToSessionForm, ConfirmForm, SessionForm } from "./SessionForms.js";
 import { ShellPortal } from "./shell/slots.js";
-import { GROUP, parseTreeId, sceneNodeId } from "./tree-ids.js";
+import { GROUP, parseTreeId, sceneNodeId, sessionNodeId } from "./tree-ids.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
 
 type Loaded<T> =
@@ -231,6 +232,16 @@ export function CampaignPanel({
     ),
   ].sort();
 
+  // A selected scene that moved (removed from or added to a session) is shown at a place it
+  // still has.
+  const selectedNodeId = (() => {
+    if (!inspected) return openNodeId;
+    const item = parseTreeId(inspected);
+    if (item.kind !== "scene") return inspected;
+    const places = placesOf(item.sceneId);
+    return places.includes(inspected) ? inspected : (places[0] ?? null);
+  })();
+
   const campaignTree = buildCampaignTree(t, {
     name,
     scenes,
@@ -252,8 +263,19 @@ export function CampaignPanel({
     sessionId: string,
     change: (session: Session) => Session,
   ): Promise<string | null> => {
-    const session = sessionById(sessionId);
-    if (!session) return t("shell.tree.session.invalid", { id: sessionId });
+    // From the file, not the list in memory: another device (or a quick second command) may
+    // have changed it since the last read, and saving would undo that.
+    const loaded = await loadSession(service.fs, slug, sessionId).catch(
+      () => null,
+    );
+    if (loaded?.status !== "ok")
+      return t(
+        loaded?.status === "notAvailable"
+          ? "shell.tree.session.notAvailable"
+          : "shell.tree.session.invalid",
+        { id: sessionId },
+      );
+    const session = loaded.value;
     try {
       const changed = change(session);
       if (changed !== session) await saveSession(service.fs, slug, changed);
@@ -285,16 +307,18 @@ export function CampaignPanel({
           // The level id only has to be unique within this scene.
           map && newMap(map, { id: newId(), name: t("campaign.defaultLevel") }),
       });
-      if (target) {
-        const problem = await changeSession(target, (session) =>
-          addScene(session, scene.id),
-        );
-        if (problem) setNotice(problem);
-      }
+      const problem = target
+        ? await changeSession(target, (session) => addScene(session, scene.id))
+        : null;
       closeDialog(dialog?.origin);
-      setNotice(t("campaign.sceneCreated", { name: scene.name }));
+      // The scene exists either way; say so, and why it is not in the session if that failed.
+      setNotice(
+        problem
+          ? t("campaign.sceneCreatedNotAdded", { name: scene.name, problem })
+          : t("campaign.sceneCreated", { name: scene.name }),
+      );
       const place = sceneNodeId(
-        target ? { sessionId: target } : "unsorted",
+        target && !problem ? { sessionId: target } : "unsorted",
         scene.id,
       );
       setOpenScene(scene);
@@ -320,7 +344,7 @@ export function CampaignPanel({
       });
       closeDialog(dialog?.origin);
       setNotice(t("campaign.sessionCreated", { name: session.name }));
-      setInspected(`session:${session.id}`);
+      setInspected(sessionNodeId(session.id));
       await reloadSessions();
       return null;
     } catch (error) {
@@ -357,7 +381,24 @@ export function CampaignPanel({
     if (item.kind === "group" && item.id === GROUP.sessions)
       return [newSession];
     if (item.kind === "group" && item.id === GROUP.unsorted) return [newScene];
-    if (item.kind === "session" && sessionById(item.sessionId))
+    if (item.kind === "missing")
+      return [
+        {
+          id: "removeFromSession",
+          label: t("campaign.removeFromSession"),
+          icon: <ListMinus />,
+        },
+      ];
+    if (item.kind === "session" && !sessionById(item.sessionId))
+      // Unreadable: it can still go to the trash (that needs no parsing).
+      return [
+        {
+          id: "deleteSession",
+          label: t("campaign.deleteSession"),
+          icon: <Trash2 />,
+        },
+      ];
+    if (item.kind === "session")
       return [
         newScene,
         {
@@ -415,7 +456,7 @@ export function CampaignPanel({
     const origin: Origin = { from: "context", at: request.at };
     const item = parseTreeId(request.treeId);
     const sessionOfItem =
-      item.kind === "session"
+      item.kind === "session" || item.kind === "missing"
         ? item.sessionId
         : item.kind === "scene" && item.slot !== "unsorted"
           ? item.slot.sessionId
@@ -455,7 +496,7 @@ export function CampaignPanel({
           );
         return;
       case "removeFromSession":
-        if (item.kind === "scene" && sessionOfItem)
+        if ((item.kind === "scene" || item.kind === "missing") && sessionOfItem)
           report(
             changeSession(sessionOfItem, (session) =>
               removeScene(session, item.sceneId),
@@ -473,7 +514,7 @@ export function CampaignPanel({
         t("campaign.sessionDeleted", { name: session?.name ?? sessionId }),
       );
       setInspected((current) =>
-        current === `session:${sessionId}` ? null : current,
+        current === sessionNodeId(sessionId) ? null : current,
       );
     } catch (error) {
       setNotice(describeLibraryError(t, error));
@@ -522,7 +563,7 @@ export function CampaignPanel({
               name: session?.name ?? current.sessionId,
             })}
             confirmLabel={t("campaign.deleteConfirmed")}
-            onConfirm={() => void removeSession(current.sessionId)}
+            onConfirm={() => removeSession(current.sessionId)}
             onCancel={() => {
               closeDialog(current.origin);
             }}
@@ -579,7 +620,7 @@ export function CampaignPanel({
         label={t("shell.tree.browserTitle")}
         variant="compact"
         nodes={[campaignTree]}
-        selectedId={inspected ?? openNodeId}
+        selectedId={selectedNodeId}
         onSelect={(id) => {
           setInspected(id);
           open(id);

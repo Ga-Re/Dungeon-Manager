@@ -7,7 +7,7 @@ import {
 } from "./campaign-data.js";
 import type { Details } from "./DetailsPanel.js";
 import { fileName } from "./file-name.js";
-import { parseTreeId } from "./tree-ids.js";
+import { GROUP, parseTreeId } from "./tree-ids.js";
 
 /** What the details panel can describe (T-159, T-160b). */
 export interface DetailsData {
@@ -40,7 +40,7 @@ export function describeItem(
     case "campaign":
       return campaignDetails(t, data, "shell.details.campaign");
     case "group":
-      return item.id === "group:settings"
+      return item.id === GROUP.settings
         ? campaignDetails(t, data, "shell.tree.settings")
         : null;
     case "session": {
@@ -167,6 +167,7 @@ export function describeItem(
         ],
       };
     }
+    case "missing":
     case "other":
       return null;
   }

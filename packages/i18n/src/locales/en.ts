@@ -49,6 +49,8 @@ export const en: Messages = {
     },
   },
   campaign: {
+    sceneCreatedNotAdded:
+      "Scene “{{name}}” created, but not added to the session: {{problem}}",
     newSession: "New session …",
     editSession: "Edit session …",
     deleteSession: "Delete session …",
@@ -66,7 +68,6 @@ export const en: Messages = {
     sessionCreated: "Session “{{name}}” created.",
     sessionDeleted: "Session “{{name}}” is in the campaign's trash.",
     loading: "Loading scenes …",
-    scenes: "Scenes",
     noScenes: "No scenes in this campaign yet.",
     newSceneName: "Name of the new scene",
     createScene: "Create scene",
@@ -240,7 +241,6 @@ export const en: Messages = {
       fold: "Fold or unfold the browser",
       switchCampaign: "Switch campaign",
       settings: "Campaign settings",
-      scenes: "Scenes",
       noScenes: "No scenes yet",
       maps: "Maps",
       noMaps: "No maps yet",

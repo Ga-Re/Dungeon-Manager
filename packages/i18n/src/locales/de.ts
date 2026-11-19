@@ -49,6 +49,8 @@ export const de = {
     },
   },
   campaign: {
+    sceneCreatedNotAdded:
+      "Szene „{{name}}“ angelegt, aber nicht zur Session hinzugefügt: {{problem}}",
     newSession: "Neue Session …",
     editSession: "Session bearbeiten …",
     deleteSession: "Session löschen …",
@@ -67,7 +69,6 @@ export const de = {
     sessionCreated: "Session „{{name}}“ angelegt.",
     sessionDeleted: "Session „{{name}}“ ist im Papierkorb der Kampagne.",
     loading: "Szenen werden geladen …",
-    scenes: "Szenen",
     noScenes: "Noch keine Szenen in dieser Kampagne.",
     newSceneName: "Name der neuen Szene",
     createScene: "Szene anlegen",
@@ -243,7 +244,6 @@ export const de = {
       fold: "Browser ein- oder ausklappen",
       switchCampaign: "Kampagne wechseln",
       settings: "Kampagneneinstellungen",
-      scenes: "Szenen",
       noScenes: "Noch keine Szenen",
       maps: "Karten",
       noMaps: "Noch keine Karten",

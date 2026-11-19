@@ -43,7 +43,13 @@ export type TreeItem =
   | { readonly kind: "session"; readonly sessionId: string }
   | { readonly kind: "map"; readonly path: string }
   | { readonly kind: "player"; readonly playerId: string }
-  /** Anything else: a missing scene, the open scene's content. */
+  /** A scene a session names but that does not exist (yet). */
+  | {
+      readonly kind: "missing";
+      readonly sessionId: string;
+      readonly sceneId: string;
+    }
+  /** Anything else: the open scene's content. */
   | { readonly kind: "other" };
 
 export function parseTreeId(id: string): TreeItem {
@@ -56,6 +62,9 @@ export function parseTreeId(id: string): TreeItem {
       slot: scene[1] === UNSORTED_KEY ? "unsorted" : { sessionId: scene[1] },
       sceneId: scene[2],
     };
+  const missing = /^missing:([^/]+)\/(.+)$/.exec(id);
+  if (missing?.[1] !== undefined && missing[2] !== undefined)
+    return { kind: "missing", sessionId: missing[1], sceneId: missing[2] };
   if (id.startsWith("session:"))
     return { kind: "session", sessionId: id.slice("session:".length) };
   if (id.startsWith("map:"))

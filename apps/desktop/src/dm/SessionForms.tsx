@@ -138,16 +138,28 @@ export function ConfirmForm({
 }: {
   readonly question: string;
   readonly confirmLabel: string;
-  readonly onConfirm: () => void;
+  readonly onConfirm: () => Promise<void>;
   readonly onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const confirm = useFocusOnMount<HTMLButtonElement>();
+  // A double click must not run the command twice.
+  const [busy, setBusy] = useState(false);
   return (
     <div>
       <p>{question}</p>
       <div className="dm-popover-actions">
-        <button ref={confirm} type="button" onClick={onConfirm}>
+        <button
+          ref={confirm}
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void onConfirm().finally(() => {
+              setBusy(false);
+            });
+          }}
+        >
           {confirmLabel}
         </button>
         <button type="button" onClick={onCancel}>

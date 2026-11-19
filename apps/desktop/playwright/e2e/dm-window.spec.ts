@@ -319,6 +319,9 @@ test("the DM plans a session and adds a scene to it from the browser", async ({
   await scene.focus();
   await page.keyboard.press("Shift+F10");
   await page.getByRole("menuitem", { name: "Zu Session hinzufügen …" }).click();
+  await page.getByLabel("Session", { exact: true }).selectOption({
+    label: "Spielabend 1",
+  });
   await page.getByRole("button", { name: "Hinzufügen" }).click();
   await expect(
     session.getByRole("treeitem", { name: "Krypta", exact: true }),

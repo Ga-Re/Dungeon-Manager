@@ -770,5 +770,92 @@ describe("CampaignPanel", () => {
         await screen.findByText("bad (kann nicht gelesen werden)"),
       ).toBeTruthy();
     });
+
+    test("a scene in two sessions shows its content only where it was opened", async () => {
+      const library = fakeLibraryService("/lib", {
+        "campaigns/mine/scenes/a.json": sceneFile("a", "Krypta"),
+        "campaigns/mine/sessions/s1.json": sessionFile("s1", "Session 1", [
+          "a",
+        ]),
+        "campaigns/mine/sessions/s2.json": sessionFile("s2", "Session 2", [
+          "a",
+        ]),
+      });
+      renderCampaign(library);
+      await waitFor(() => {
+        expect(sessionScenes("Session 2")).toEqual(["Krypta"]);
+      });
+      const second = within(
+        screen.getByRole("treeitem", { name: "Session 2" }),
+      );
+      fireEvent.click(
+        second.getByText("Krypta", { selector: ".dm-tree-label" }),
+      );
+      await waitFor(() => {
+        expect(second.getAllByRole("treeitem", { name: "Nebel" })).toHaveLength(
+          1,
+        );
+      });
+      expect(
+        within(screen.getByRole("treeitem", { name: "Session 1" })).queryByRole(
+          "treeitem",
+          { name: "Nebel" },
+        ),
+      ).toBeNull();
+    });
+
+    test("says so when a new scene cannot be added to its session, and keeps it", async () => {
+      const library = fakeLibraryService("/lib", {
+        "campaigns/mine/sessions/s1.json": sessionFile("s1", "Session 1", []),
+      });
+      renderCampaign(library);
+      await screen.findByRole("treeitem", { name: "Session 1" });
+      command("Session 1", "Neue Szene …");
+      const write = library.fs.writeAtomic.bind(library.fs);
+      library.fs.writeAtomic = (path, text) =>
+        path.includes("/sessions/")
+          ? Promise.reject(new Error("Gesperrt"))
+          : write(path, text);
+      const popover = within(
+        screen.getByRole("group", { name: "Neue Szene …" }),
+      );
+      fireEvent.change(popover.getByLabelText("Name der neuen Szene"), {
+        target: { value: "Taverne" },
+      });
+      fireEvent.click(popover.getByRole("button", { name: "Szene anlegen" }));
+      expect(
+        await screen.findByText(
+          "Szene „Taverne“ angelegt, aber nicht zur Session hinzugefügt: Das hat nicht geklappt: Gesperrt",
+        ),
+      ).toBeTruthy();
+      expect(
+        (await screen.findByRole("treeitem", { name: "Taverne" })).getAttribute(
+          "aria-selected",
+        ),
+      ).toBe("true");
+      expect(sceneNames()).toEqual(["Taverne"]);
+    });
+
+    test("removes a missing scene from its session and deletes an unreadable session", async () => {
+      const library = fakeLibraryService("/lib", {
+        "campaigns/mine/sessions/s1.json": sessionFile("s1", "Session 1", [
+          "gone",
+        ]),
+        "campaigns/mine/sessions/bad.json": "{",
+      });
+      renderCampaign(library);
+      await screen.findByText("gone (fehlt)", { selector: ".dm-tree-label" });
+      command("gone (fehlt)", "Aus Session entfernen");
+      await waitFor(() => {
+        expect(savedIds(library, "s1")).toEqual([]);
+      });
+      command("bad (kann nicht gelesen werden)", "Session löschen …");
+      fireEvent.click(screen.getByRole("button", { name: "Ja, löschen" }));
+      await waitFor(() => {
+        expect(library.fs.files().has("campaigns/mine/sessions/bad.json")).toBe(
+          false,
+        );
+      });
+    });
   });
 });

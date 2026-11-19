@@ -61,6 +61,10 @@ describe("tree ids", () => {
     });
     expect(parseTreeId("campaign")).toEqual({ kind: "campaign" });
     expect(parseTreeId("content:fog")).toEqual({ kind: "other" });
-    expect(parseTreeId("missing:s-1/x")).toEqual({ kind: "other" });
+    expect(parseTreeId("missing:s-1/x")).toEqual({
+      kind: "missing",
+      sessionId: "s-1",
+      sceneId: "x",
+    });
   });
 });

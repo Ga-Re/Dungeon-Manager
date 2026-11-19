@@ -5,6 +5,7 @@ import {
   createCampaign,
   createMemoryFileSystem,
   createScene,
+  createSession,
   ensureLibraryLayout,
   newMap,
 } from "@dungeon-manager/storage";
@@ -17,7 +18,7 @@ export const E2E_LIBRARY_ROOT = "/Bibliothek (E2E)";
 
 const MAP_PATH = "library/maps/krypta.png";
 
-/** A library with one campaign and one scene that has a map. */
+/** A library with one campaign, one scene that has a map and one (still empty) session. */
 export async function createE2eLibrary(): Promise<LibraryService> {
   const fs = createMemoryFileSystem();
   await ensureLibraryLayout(fs);
@@ -32,6 +33,11 @@ export async function createE2eLibrary(): Promise<LibraryService> {
       { path: MAP_PATH, hash: `sha256:${"0".repeat(64)}` },
       { id: "e2e-level", name: "Ebene 1" },
     ),
+  });
+  await createSession(fs, slug, {
+    id: "e2e-session",
+    name: "Vorbereitung",
+    date: "2026-11-28",
   });
   return {
     fs,
