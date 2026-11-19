@@ -20,7 +20,8 @@ export interface MenuItem {
   icon?: ReactNode;
   /**
    * One of a set of choices (T-164): `true` for the current one. Such items are announced as
-   * radio items with their state and show a check mark.
+   * radio items with their state and show a check mark. Every item of the set passes `true` or
+   * `false`; leaving it out makes a plain command.
    */
   checked?: boolean | undefined;
   disabled?: boolean | undefined;
