@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { idSchema } from "./common.js";
+import { idSchema, noteLinksSchema } from "./common.js";
 import {
   fogStateSchema,
   initiativeStateSchema,
@@ -28,6 +28,7 @@ export const campaignSchema = z.looseObject({
   players: z.array(playerSchema),
   /** Default player visibility per element type (SPEC §6); missing types are visible. */
   visibilityDefaults: visibilityRulesSchema,
+  notes: noteLinksSchema,
 });
 
 /** `campaigns/<slug>/scenes/<id>.json`. */
@@ -39,6 +40,7 @@ export const sceneSchema = z.looseObject({
   tokens: z.array(tokenSchema),
   fog: fogStateSchema,
   initiative: initiativeStateSchema.nullable(),
+  notes: noteLinksSchema,
 });
 
 /** A calendar day as `YYYY-MM-DD` that really exists (no 30 February). */
@@ -65,6 +67,7 @@ export const sessionSchema = z.looseObject({
   sceneIds: z
     .array(idSchema)
     .refine((ids) => new Set(ids).size === ids.length, "Duplicate scene"),
+  notes: noteLinksSchema,
 });
 
 export type Campaign = z.infer<typeof campaignSchema>;

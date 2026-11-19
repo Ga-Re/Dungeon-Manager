@@ -567,15 +567,23 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Interface size setting applies at once, survives a restart, never scales the map canvas (unit, component and E2E tests)
   - [x] Screenshot golden updated
 
-### T-161 Campaign, session and scene notes as Markdown
+### T-161a Note files and links: schema and storage
 
-- **Status:** todo · **Depends on:** T-160b · **Refs:** ADR-0013, ADR-0006, ADR-0005, T-150
+- **Status:** done · **Depends on:** T-160b · **Refs:** ADR-0006, ADR-0013, ARCHITECTURE §6.2
+- DM-approved format (2026-11-19): fixed notes `campaigns/<slug>/notes/campaign.md`, `notes/sessions/<id>.md`, `notes/scenes/<id>.md`; an optional `notes: ["<path relative to the campaign folder>", …]` list in campaign.json, session and scene files for any other `.md`.
+- **Acceptance criteria**
+  - [x] Note path schema (inside the campaign folder, `.md`, no tool folders) and the optional `notes` list on campaign, session and scene; tests
+  - [x] Storage: fixed note paths, read, create on demand without overwriting, link/unlink, list who has a note; tests
+
+### T-161b Notes in the browser and details panel
+
+- **Status:** todo · **Depends on:** T-161a · **Refs:** ADR-0013, ADR-0006, ADR-0005, T-150
 - DM request (2026-11-19): campaign notes, session notes and scene notes, linked to `.md` files so they can be filled remotely (Obsidian or similar; Notion only via files in the synced folder – no cloud APIs, ADR-0005/0013).
 - DM decisions (2026-11-19): fixed places plus free links – `campaigns/<slug>/notes/campaign.md`, `notes/sessions/<id>.md`, `notes/scenes/<id>.md` inside the campaign folder (created by the app on demand); any other `.md` is linked through an optional `notes: ["<path relative to the campaign folder>", …]` list in campaign.json, a session or a scene file (unknown to older readers, kept by them).
 - **Acceptance criteria**
   - [ ] Notes open from the browser/details panel (read view first); edits made elsewhere show up without restart
   - [ ] Linking an existing `.md`; unknown front matter survives a round trip (ADR-0006)
-  - [ ] Tests for paths, linking and missing files
+  - [ ] Component + E2E tests for opening, creating, linking and missing notes
 - **Notes:** Format approved by the DM (2026-11-19). T-150 decides whether Obsidian opens the campaign folder or the library root as its vault; both work with these paths.
 
 ### T-155 Settings dialog

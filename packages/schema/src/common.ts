@@ -17,6 +17,29 @@ export const idSchema = z
   .string()
   .regex(/^[A-Za-z0-9_-]{1,64}$/, "must be 1–64 letters, digits, '-' or '_'");
 
+/**
+ * A Markdown note linked from a campaign, session or scene (T-161): a path relative to the
+ * campaign folder, inside it (no `..`, not absolute, no backslashes or drive letters), ending
+ * in `.md`, and never in a tool folder such as `.obsidian/`. Spaces and umlauts are fine.
+ */
+export const notePathSchema = z
+  .string()
+  .max(512)
+  .refine((path) => {
+    if (!path.endsWith(".md") || /[\\:]/.test(path)) return false;
+    const segments = path.split("/");
+    return segments.every(
+      (segment) =>
+        segment !== "" &&
+        segment !== "." &&
+        segment !== ".." &&
+        !segment.startsWith("."),
+    );
+  }, "Not a note path inside the campaign folder");
+
+/** Notes linked from a document (T-161); the fixed note of the document needs no entry. */
+export const noteLinksSchema = z.array(notePathSchema).optional();
+
 /** A grid cell in game coordinates (ARCHITECTURE §5.2); map pixels are a rendering concern. */
 export const gridCellSchema = z.looseObject({
   col: z.number().int().nonnegative(),
