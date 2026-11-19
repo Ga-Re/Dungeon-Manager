@@ -114,6 +114,9 @@ export function TreeList({
   );
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const elements = useRef(new Map<string, HTMLLIElement>());
+  // When the context-menu key last opened a menu: its own `contextmenu` event follows shortly
+  // after on some platforms, none on others, so only a recent one is swallowed.
+  const openedByKey = useRef(Number.NEGATIVE_INFINITY);
 
   const tree = useMemo(() => indexTree(nodes), [nodes]);
   const expanded = useMemo(
@@ -174,6 +177,11 @@ export function TreeList({
       (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey))
     ) {
       event.preventDefault();
+      // Only the context-menu key fires a `contextmenu` event afterwards.
+      openedByKey.current =
+        event.key === "ContextMenu"
+          ? event.timeStamp
+          : Number.NEGATIVE_INFINITY;
       const row = event.currentTarget.querySelector(".dm-tree-row");
       const box = (row ?? event.currentTarget).getBoundingClientRect();
       onItemContextMenu(
@@ -242,12 +250,28 @@ export function TreeList({
           onKeyDown={(event) => {
             onKeyDown(event, node);
           }}
-          // The context-menu key also fires `contextmenu` on the focused item (on keyup in
-          // WebView2): our menu already opened on keydown, so keep the webview's own away.
+          // Right-click anywhere on the item line (rows can be narrower than the tree); clicks
+          // inside nested items belong to them. The context-menu key also fires `contextmenu`
+          // (on keyup in WebView2) after our menu opened on keydown: that one is only swallowed.
           onContextMenu={
             onItemContextMenu &&
             ((event) => {
-              if (event.target === event.currentTarget) event.preventDefault();
+              if (
+                !(event.target instanceof Element) ||
+                event.target.closest(".dm-tree-item") !== event.currentTarget
+              )
+                return;
+              event.preventDefault();
+              if (event.timeStamp - openedByKey.current < 1000) {
+                openedByKey.current = Number.NEGATIVE_INFINITY;
+                return;
+              }
+              moveFocus(node.id);
+              onItemContextMenu(
+                node.id,
+                { x: event.clientX, y: event.clientY },
+                event.currentTarget,
+              );
             })
           }
           // The whole item line selects, also beside a row that is narrower than the tree; clicks
@@ -265,23 +289,7 @@ export function TreeList({
             if (event.target === event.currentTarget) setFocusedId(node.id);
           }}
         >
-          <div
-            className="dm-tree-row"
-            onContextMenu={
-              onItemContextMenu &&
-              ((event) => {
-                event.preventDefault();
-                const item = elements.current.get(node.id);
-                if (!item) return;
-                moveFocus(node.id);
-                onItemContextMenu(
-                  node.id,
-                  { x: event.clientX, y: event.clientY },
-                  item,
-                );
-              })
-            }
-          >
+          <div className="dm-tree-row">
             {isFolder && (
               <span
                 className="dm-tree-toggle"

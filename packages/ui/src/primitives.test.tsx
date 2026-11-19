@@ -160,6 +160,25 @@ describe("TreeList", () => {
     expect(onItemContextMenu).toHaveBeenCalledTimes(3);
   });
 
+  it("opens the context menu beside a narrow row and swallows the key's own contextmenu", () => {
+    const onItemContextMenu =
+      vi.fn<NonNullable<TreeListProps["onItemContextMenu"]>>();
+    render(
+      <TreeList
+        label="Szene"
+        nodes={nodes}
+        onItemContextMenu={onItemContextMenu}
+      />,
+    );
+    // On the item line itself, not on its row.
+    fireEvent.contextMenu(item("Grabkammer"), { clientX: 5, clientY: 6 });
+    expect(onItemContextMenu).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(item("Grabkammer"), { key: "ContextMenu" });
+    expect(onItemContextMenu).toHaveBeenCalledTimes(2);
+    fireEvent.contextMenu(item("Grabkammer"));
+    expect(onItemContextMenu).toHaveBeenCalledTimes(2);
+  });
+
   it("selects an item on click", () => {
     const onSelect = vi.fn();
     render(
