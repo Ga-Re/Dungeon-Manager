@@ -220,6 +220,7 @@ export const de = {
     settingsClose: "Einstellungen schließen",
     settingsCategories: "Kategorien",
     settingsCategory: {
+      fog: "Nebel & Animation",
       appearance: "Darstellung",
       library: "Bibliothek",
       layout: "Werkzeugfenster",
@@ -227,6 +228,12 @@ export const de = {
     uiScale: {
       label: "Größe der Oberfläche",
       percent: "{{percent}} %",
+    },
+    fogLook: {
+      label: "Nebel",
+      softEdges: "Weiche Kanten",
+      softEdgesHint:
+        "Der Nebel läuft an den Rändern aufgedeckter Bereiche sanft aus – auf diesem Gerät und dem TV. Er zeigt dabei nie mehr als mit harten Kanten.",
     },
     layout: {
       hint: "Browser und Eigenschaften kehren an ihre Standardplätze zurück und werden ausgeklappt.",

@@ -1,6 +1,7 @@
 import type { Polygon } from "@dungeon-manager/schema";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import type { Camera, Size } from "./camera.js";
+import { softFogAlpha } from "./soft-mask.js";
 import { createVideoGate, cssTransform, sameAspect } from "./video-layer.js";
 
 /** An image the browser has loaded (or drawn), ready to become the map texture. */
@@ -9,6 +10,11 @@ export type MapImage = HTMLImageElement | HTMLCanvasElement | ImageBitmap;
 export interface FogOptions {
   /** 1 for players (opaque, the default); less for the DM, who must see what lies beneath. */
   readonly opacity?: number;
+  /**
+   * Width of the soft edge in map pixels (T-136a); 0 or none draws hard edges. The softening
+   * lies inside the revealed area, so it never shows more than the hard fog would.
+   */
+  readonly softEdge?: number;
 }
 
 export interface RendererOptions {
@@ -78,6 +84,15 @@ export async function createRenderer(
   app.stage.addChild(world);
   let map: Sprite | null = null;
   let fog: Container | null = null;
+  // The last fog asked for: rebuilt when the map changes, as soft edges follow the map's size.
+  let fogInput: {
+    readonly revealed: readonly Polygon[];
+    readonly options: FogOptions;
+  } | null = null;
+  let mapSize: Size | null = null;
+  // What the current fog was built from: an equal request (the player view gets the whole
+  // scene with every message, also for a rotation) keeps it instead of rebuilding.
+  let fogBuiltFrom: string | null = null;
   let size = options.size;
   let camera: Camera | null = null;
   let frame: number | null = null;
@@ -123,6 +138,22 @@ export async function createRenderer(
   options.canvas.addEventListener("webglcontextlost", onContextLost);
   options.canvas.addEventListener("webglcontextrestored", onContextRestored);
 
+  const applyFog = () => {
+    const key = fogInput ? JSON.stringify([fogInput, mapSize]) : null;
+    if (key !== null && key === fogBuiltFrom && fog) return;
+    // Build the new fog first: if that fails, the old fog stays in place and counts.
+    const next = fogInput
+      ? drawFog(fogInput.revealed, fogInput.options, mapSize)
+      : null;
+    if (fog) {
+      world.removeChild(fog);
+      fog.destroy({ children: true, texture: true, textureSource: true });
+    }
+    fog = next;
+    fogBuiltFrom = key;
+    if (fog) world.addChild(fog);
+  };
+
   const requestDraw = () => {
     if (frame !== null || destroyed) return;
     frame = requestAnimationFrame(() => {
@@ -165,6 +196,12 @@ export async function createRenderer(
         map = new Sprite(Texture.from(image, true));
         world.addChildAt(map, 0);
       }
+      mapSize = map
+        ? { width: map.width, height: map.height }
+        : video
+          ? videoSize
+          : null;
+      if (fogInput) applyFog();
       requestDraw();
     },
     setVideo(next) {
@@ -188,20 +225,14 @@ export async function createRenderer(
         next.style.objectFit = "fill";
         next.style.transformOrigin = "0 0";
         next.style.visibility = "hidden";
-      }
+        mapSize = videoSize;
+      } else if (!map) mapSize = null;
+      if (fogInput) applyFog();
       requestDraw();
     },
     setFog(revealed, fogOptions) {
-      // Build the new fog first: if that fails, the old fog stays in place and counts.
-      const next = revealed
-        ? drawFog(revealed, fogOptions?.opacity ?? 1)
-        : null;
-      if (fog) {
-        world.removeChild(fog);
-        fog.destroy({ children: true });
-      }
-      fog = next;
-      if (fog) world.addChild(fog);
+      fogInput = revealed ? { revealed, options: fogOptions ?? {} } : null;
+      applyFog();
       gate.fogSet();
       requestDraw();
     },
@@ -261,7 +292,7 @@ const flat = (ring: readonly (readonly [number, number])[]) =>
  * nested shapes (an island revealed inside a hidden hole), touching corners and overlaps are all
  * drawn correctly – no hole ever has to fit inside one shared outer shape.
  */
-function drawFog(revealed: readonly Polygon[], opacity: number): Container {
+function drawHardFog(revealed: readonly Polygon[], opacity: number): Container {
   const layer = new Container();
   const cover = new Graphics()
     .rect(-FOG_EXTENT, -FOG_EXTENT, 2 * FOG_EXTENT, 2 * FOG_EXTENT)
@@ -273,5 +304,93 @@ function drawFog(revealed: readonly Polygon[], opacity: number): Container {
   }
   layer.addChild(cover, open);
   cover.setMask({ mask: open, inverse: true });
+  return layer;
+}
+
+/**
+ * Longest side of the soft mask in texels: enough for an edge, cheap to compute (about 13 ms
+ * for the soft mask itself at 1024², measured in Node; plus rasterizing and one upload).
+ */
+const SOFT_MASK_SIDE = 1024;
+
+/**
+ * Soft fog over the map (T-136a): the revealed polygons rasterized into a small mask, softened
+ * inside the revealed area (`softFogAlpha`) and stretched over the map with linear filtering.
+ */
+function drawSoftFog(
+  revealed: readonly Polygon[],
+  map: Size,
+  softEdge: number,
+  opacity: number,
+): Sprite {
+  const texel = Math.max(1, Math.max(map.width, map.height) / SOFT_MASK_SIDE);
+  const width = Math.ceil(map.width / texel);
+  const height = Math.ceil(map.height / texel);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("No 2D canvas for the soft fog mask.");
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = "#fff";
+  // Each polygon is its own path (even-odd cuts only its own holes); paths add up.
+  for (const polygon of revealed) {
+    context.beginPath();
+    for (const ring of [polygon.outer, ...polygon.holes]) {
+      ring.forEach(([x, y], index) => {
+        if (index === 0) context.moveTo(x / texel, y / texel);
+        else context.lineTo(x / texel, y / texel);
+      });
+      context.closePath();
+    }
+    context.fill("evenodd");
+  }
+  const pixels = context.getImageData(0, 0, width, height);
+  // Only fully covered texels count as revealed: anti-aliased edges stay hidden.
+  const mask = new Uint8Array(width * height);
+  for (let index = 0; index < mask.length; index++)
+    mask[index] = pixels.data[index * 4] === 255 ? 255 : 0;
+  const alpha = softFogAlpha(
+    { width, height, data: mask },
+    // At least 2 texels, so there is a blur at all.
+    Math.max(2, Math.round(softEdge / texel)),
+  );
+  for (let index = 0; index < alpha.length; index++) {
+    pixels.data[index * 4] = 0;
+    pixels.data[index * 4 + 1] = 0;
+    pixels.data[index * 4 + 2] = 0;
+    pixels.data[index * 4 + 3] = Math.round((alpha[index] ?? 255) * opacity);
+  }
+  context.putImageData(pixels, 0, 0);
+  const sprite = new Sprite(Texture.from(canvas));
+  sprite.scale.set(texel);
+  return sprite;
+}
+
+/**
+ * The fog layer. Soft edges need the map's size; without it (fog set before the map) the fog is
+ * hard until the map arrives. The player view keeps the exact hard fog underneath the soft
+ * one, so the result never shows more than the hard polygons. The see-through DM view gets the
+ * soft layer alone, as two see-through layers would darken the hidden area.
+ */
+function drawFog(
+  revealed: readonly Polygon[],
+  options: FogOptions,
+  map: Size | null,
+): Container {
+  const opacity = options.opacity ?? 1;
+  const softEdge = options.softEdge ?? 0;
+  // A map without size yet (e.g. a video before its metadata) gets hard fog for now.
+  if (softEdge <= 0 || !map || map.width <= 0 || map.height <= 0)
+    return drawHardFog(revealed, opacity);
+  const soft = drawSoftFog(revealed, map, softEdge, opacity);
+  if (opacity < 1) {
+    const layer = new Container();
+    layer.addChild(soft);
+    return layer;
+  }
+  const layer = drawHardFog(revealed, opacity);
+  layer.addChild(soft);
   return layer;
 }

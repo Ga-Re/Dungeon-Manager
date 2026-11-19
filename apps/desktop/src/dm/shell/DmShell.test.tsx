@@ -222,6 +222,17 @@ describe("DmShell", () => {
     expect(panel().hidden).toBe(false);
   });
 
+  it("switches soft fog edges in the settings and remembers it per device", () => {
+    const { storage } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Nebel & Animation" }));
+    const soft = screen.getByRole("switch", { name: "Weiche Kanten" });
+    expect((soft as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(soft);
+    expect((soft as HTMLInputElement).checked).toBe(false);
+    expect(storage.getItem("dm.fog.softEdges")).toBe("off");
+  });
+
   it("switches settings categories with the arrow keys", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
@@ -229,9 +240,12 @@ describe("DmShell", () => {
     expect(appearance.getAttribute("aria-selected")).toBe("true");
     appearance.focus();
     fireEvent.keyDown(appearance, { key: "ArrowDown" });
+    const fog = screen.getByRole("tab", { name: "Nebel & Animation" });
+    expect(fog.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(fog);
+    fireEvent.keyDown(fog, { key: "ArrowDown" });
     const library = screen.getByRole("tab", { name: "Bibliothek" });
     expect(library.getAttribute("aria-selected")).toBe("true");
-    expect(document.activeElement).toBe(library);
     fireEvent.keyDown(library, { key: "End" });
     expect(
       screen

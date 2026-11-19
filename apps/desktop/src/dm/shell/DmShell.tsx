@@ -20,6 +20,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { ShellSlotsContext, type ShellSlot } from "./slots.js";
 import { HudLayoutContext, useHudLayoutStore } from "./hud-layout.js";
+import { SoftEdgesContext } from "./fog-look.js";
+import { readSoftEdges, saveSoftEdges } from "../../fog-settings.js";
 import { SettingsDialog, type SettingsCategory } from "./SettingsDialog.js";
 import { THEME_SETTINGS, useThemeSetting } from "./theme.js";
 import { UI_SCALES, useUiScale } from "./ui-scale.js";
@@ -93,6 +95,7 @@ export function DmShell({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useThemeSetting(storage, root);
   const [uiScale, setUiScale] = useUiScale(storage, root);
+  const [softEdges, setSoftEdges] = useState(() => readSoftEdges(storage));
   const hudLayout = useHudLayoutStore(storage);
   const [slots, setSlots] = useState<Partial<Record<ShellSlot, HTMLElement>>>(
     {},
@@ -220,6 +223,28 @@ export function DmShell({
             </div>
           </fieldset>
         </>
+      ),
+    },
+    {
+      id: "fog",
+      label: t("shell.settingsCategory.fog"),
+      content: (
+        <fieldset className="dm-settings-group">
+          <legend>{t("shell.fogLook.label")}</legend>
+          <label>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={softEdges}
+              onChange={(event) => {
+                setSoftEdges(event.target.checked);
+                saveSoftEdges(storage, event.target.checked);
+              }}
+            />
+            {t("shell.fogLook.softEdges")}
+          </label>
+          <p className="dm-settings-hint">{t("shell.fogLook.softEdgesHint")}</p>
+        </fieldset>
       ),
     },
     {
@@ -386,7 +411,10 @@ export function DmShell({
             </div>
           </div>
           {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
-          <div className="dm-shell-content">{children}</div>
+          <div className="dm-shell-content">
+            {/* Context passes through portals: what the children render gets it too. */}
+            <SoftEdgesContext value={softEdges}>{children}</SoftEdgesContext>
+          </div>
         </div>
       </HudLayoutContext>
     </ShellSlotsContext>

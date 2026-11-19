@@ -9,7 +9,7 @@ import {
 } from "@dungeon-manager/storage";
 import { IconButton, Popover, RibbonGroup } from "@dungeon-manager/ui";
 import { ImagePlus, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
@@ -21,6 +21,8 @@ import { FogToolbar } from "./FogToolbar.js";
 import { SceneTitle } from "./SceneTitle.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useSceneSession } from "./useSceneSession.js";
+import { softEdgeWidth } from "../fog-settings.js";
+import { SoftEdgesContext } from "./shell/fog-look.js";
 
 /** A rectangle polygon in map pixels. */
 const rectangle = (size: Size): Polygon => ({
@@ -79,6 +81,7 @@ export function OpenScenePanel({
   readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const softEdges = useContext(SoftEdgesContext);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
@@ -350,6 +353,7 @@ export function OpenScenePanel({
               shape={shape}
               // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
               brushRadius={(brushCells * scene.map.grid.cellSizePx) / 2}
+              softEdge={softEdgeWidth(scene.map.grid.cellSizePx, softEdges)}
               onArea={(area, kind) => {
                 if (!busy)
                   fogCommand(
