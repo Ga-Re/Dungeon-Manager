@@ -121,6 +121,7 @@ export function MapView({
     setDrawing(null);
     setCorners([]);
     setHover(null);
+    setPointer(null);
   }, [tool, shape]);
   const fogNow = useRef(fog);
   fogNow.current = fog;
@@ -338,7 +339,8 @@ export function MapView({
   };
   const onPointerMove = (event: PointerEvent) => {
     const point = local(event);
-    if (brushing) setPointer(point);
+    // Touch has no hover: the outline would only sit under the finger.
+    if (brushing && event.pointerType !== "touch") setPointer(point);
     if (drawing?.kind === "drag") {
       setDrawing({ ...drawing, end: point });
       return;

@@ -690,7 +690,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Status:** done · **Depends on:** T-131 · **Refs:** SPEC §4, ADR-0011
 - The rectangle tool marks a rectangle with slightly rounded corners (a quarter grid cell, like the soft fog edge; at most half its shorter side), in the preview too. The brush shows its outline at the pointer – while hovering over the map and while painting – at the size it paints (DM request, 2026-11-19).
 - **Acceptance criteria**
-  - [x] The rectangle's area and preview have rounded corners, also with the view turned (unit + component tests)
+  - [x] The rectangle's area and preview have rounded corners; the area also with the view turned (unit + component tests; the preview is drawn in screen space)
   - [x] The brush outline follows the pointer at the brush's size and goes when the pointer leaves the map (component test)
 
 ### T-169 Flaky focus check in the welcome dialog test
