@@ -157,7 +157,8 @@ async function videoScenario(scenario: string, canvas: HTMLCanvasElement) {
 
 /**
  * "fade-fail-closed" (T-136b): fades from the nested fog to the plain one (soft edges on) and
- * captures frames along the way. `data-violations` counts pixels that show the map although
+ * captures frames along the way; then starts the same hide again and swaps in a map of the same
+ * size, after which the plain fog must be there at once. `data-violations` counts pixels that show the map although
  * the hard fog covers them before and after (must be none), `data-between` pixels on their way
  * between both states (must be some, or nothing faded).
  */
@@ -191,6 +192,18 @@ async function fadeFailClosedScenario(canvas: HTMLCanvasElement) {
     }
     await new Promise((resolve) => setTimeout(resolve, 30));
   }
+  // A new map of the same size mid-hide (the island in the pool): its fog is there at once,
+  // not frozen half-way.
+  renderer.setFog(REVEALED_NESTED, { opacity: 1, softEdge: SOFT_EDGE });
+  await renderer.drawn();
+  renderer.setFog(REVEALED, { opacity: 1, softEdge: SOFT_EDGE, fade: 400 });
+  await renderer.drawn();
+  renderer.setMap(drawFixtureMap());
+  await renderer.drawn();
+  await renderer.drawn();
+  const settled = capture(canvas);
+  for (let index = 0; index < settled.length; index += 4)
+    if (hidden(after, index) && !hidden(settled, index)) violations++;
   document.body.dataset["violations"] = String(violations);
   document.body.dataset["between"] = String(between);
 }

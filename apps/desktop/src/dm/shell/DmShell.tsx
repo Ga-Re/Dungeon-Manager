@@ -251,10 +251,11 @@ export function DmShell({
             {t("shell.fogLook.softEdges")}
           </label>
           <p className="dm-settings-hint">{t("shell.fogLook.softEdgesHint")}</p>
-          <label className="dm-settings-range">
-            {t("shell.fogLook.fade")}
+          <div className="dm-settings-range">
+            <span id={`${idPrefix}-fade`}>{t("shell.fogLook.fade")}</span>
             <input
               type="range"
+              aria-labelledby={`${idPrefix}-fade`}
               min={0}
               max={FADE_MAX_SECONDS}
               step={FADE_STEP_SECONDS}
@@ -268,10 +269,10 @@ export function DmShell({
                 saveFadeSeconds(storage, fadeSeconds);
               }}
             />
-            <output>
+            <output aria-hidden="true">
               {t("shell.fogLook.seconds", { seconds: fogLook.fadeSeconds })}
             </output>
-          </label>
+          </div>
           <p className="dm-settings-hint">{t("shell.fogLook.fadeHint")}</p>
         </fieldset>
       ),

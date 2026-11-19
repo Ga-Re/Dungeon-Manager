@@ -48,7 +48,8 @@ describe("fog settings", () => {
     saveFadeSeconds(storage, 0);
     expect(readFadeSeconds(storage)).toBe(0);
     saveFadeSeconds(storage, 1.234);
-    expect(readFadeSeconds(storage)).toBeCloseTo(1.25);
+    expect(readFadeSeconds(storage)).toBe(1.25);
+    expect(storage.getItem("dm.fog.fadeSeconds")).toBe("1.25");
     saveFadeSeconds(storage, 9);
     expect(readFadeSeconds(storage)).toBe(3);
     expect(readFadeSeconds(memoryStorage({ "dm.fog.fadeSeconds": "x" }))).toBe(

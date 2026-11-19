@@ -47,7 +47,10 @@ function fadeSecondsOf(value: string | null): number {
   const seconds = Number(value);
   if (!Number.isFinite(seconds)) return DEFAULT_FADE_SECONDS;
   const clamped = Math.min(FADE_MAX_SECONDS, Math.max(0, seconds));
-  return Math.round(clamped / FADE_STEP_SECONDS) * FADE_STEP_SECONDS;
+  // Two decimals: 1.25, not 1.2500000000000002.
+  return Number(
+    (Math.round(clamped / FADE_STEP_SECONDS) * FADE_STEP_SECONDS).toFixed(2),
+  );
 }
 
 /** The fade duration on this device in seconds (0.65 s unless chosen). */
