@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ContextMenu } from "./ContextMenu.js";
 import { Menu, type MenuItem } from "./Menu.js";
 import { Popover } from "./Popover.js";
 import { RibbonGroup } from "./RibbonGroup.js";
@@ -179,5 +180,77 @@ describe("RibbonGroup", () => {
     fireEvent.click(menuButton());
     fireEvent.click(item("Umbenennen"));
     expect(onSelect).toHaveBeenCalledWith("rename");
+  });
+});
+
+describe("ContextMenu", () => {
+  function setup(onSelect = vi.fn(), onClose = vi.fn()) {
+    const owner = document.createElement("button");
+    document.body.append(owner);
+    render(
+      <ContextMenu
+        at={{ x: 40, y: 60 }}
+        label="Szene"
+        items={ITEMS}
+        onSelect={onSelect}
+        onClose={onClose}
+        returnFocus={owner}
+      />,
+    );
+    return { owner, onSelect, onClose };
+  }
+
+  it("opens at the point with focus on the first item", () => {
+    setup();
+    const menu = screen.getByRole("menu", { name: "Szene" });
+    expect(menu.style.position).toBe("fixed");
+    expect(menu.style.left).toBe("40px");
+    expect(menu.style.top).toBe("60px");
+    expect(document.activeElement).toBe(item("Umbenennen"));
+  });
+
+  it("returns focus to its owner on a choice and on Escape", () => {
+    const { owner, onSelect, onClose } = setup();
+    fireEvent.click(item("Löschen …"));
+    expect(onSelect).toHaveBeenCalledWith("delete");
+    expect(onClose).toHaveBeenCalled();
+    expect(document.activeElement).toBe(owner);
+    item("Umbenennen").focus();
+    fireEvent.keyDown(item("Umbenennen"), { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(document.activeElement).toBe(owner);
+  });
+
+  it("renders nothing without a point", () => {
+    render(
+      <ContextMenu
+        at={null}
+        label="Szene"
+        items={ITEMS}
+        onSelect={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+});
+
+describe("Popover at a point", () => {
+  it("is placed at the viewport point", () => {
+    render(
+      <Popover
+        open
+        anchor={{ current: null }}
+        label="Neue Szene"
+        at={{ x: 12, y: 34 }}
+        onClose={vi.fn()}
+      >
+        <p>Inhalt</p>
+      </Popover>,
+    );
+    const group = screen.getByRole("group", { name: "Neue Szene" });
+    expect(group.className).toContain("dm-popover-at");
+    expect(group.style.left).toBe("12px");
+    expect(group.style.top).toBe("34px");
   });
 });

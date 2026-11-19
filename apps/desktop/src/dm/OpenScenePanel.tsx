@@ -18,7 +18,6 @@ import { MapChangeChoice } from "./MapChangeChoice.js";
 import { MapView, type MapTool } from "./MapView.js";
 import type { FogShape } from "./fog-shapes.js";
 import { FogToolbar } from "./FogToolbar.js";
-import { SceneBrowser } from "./SceneBrowser.js";
 import { SceneTitle } from "./SceneTitle.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useSceneSession } from "./useSceneSession.js";
@@ -64,6 +63,7 @@ export function OpenScenePanel({
   slug,
   scene: opened,
   newId,
+  onSceneChange,
   onChanged,
   onDeleted,
   onClose,
@@ -72,6 +72,8 @@ export function OpenScenePanel({
   readonly slug: string;
   readonly scene: Scene;
   readonly newId: () => string;
+  /** The scene as edited and the shown level's revealed fog, after every change (browser tree). */
+  readonly onSceneChange?: (scene: Scene, revealed: readonly Polygon[]) => void;
   readonly onChanged: (scene: Scene) => void;
   readonly onDeleted: (scene: Scene) => void;
   readonly onClose: () => void;
@@ -92,6 +94,13 @@ export function OpenScenePanel({
     (levelId === undefined ? undefined : scene.fog.levels[levelId]?.revealed) ??
     NOTHING_REVEALED;
   const mapPath = scene.map?.asset.path;
+  const reportScene = useRef(onSceneChange);
+  useEffect(() => {
+    reportScene.current = onSceneChange;
+  });
+  useEffect(() => {
+    reportScene.current?.(scene, revealed);
+  }, [scene, revealed]);
   // A new map is measured again; until then "reveal all" has no size to use.
   useEffect(() => {
     setMapSize(null);
@@ -194,7 +203,9 @@ export function OpenScenePanel({
       role="region"
       aria-label={t("campaign.openScene", { name: scene.name })}
     >
-      <p>{t("campaign.openScene", { name: scene.name })}</p>
+      <p className="visually-hidden">
+        {t("campaign.openScene", { name: scene.name })}
+      </p>
       <ShellPortal slot="titleScene">
         <SceneTitle
           name={scene.name}
@@ -302,9 +313,6 @@ export function OpenScenePanel({
       <ShellPortal slot="notices">
         {notOnTv && <p role="alert">{t("player.notShown")}</p>}
         {error && <p role="alert">{error}</p>}
-      </ShellPortal>
-      <ShellPortal slot="browser">
-        <SceneBrowser scene={scene} revealed={revealed} />
       </ShellPortal>
       {scene.map && (
         <>

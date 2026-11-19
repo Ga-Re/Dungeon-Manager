@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import type { MenuPoint } from "./ContextMenu.js";
 
 /** Props of {@link Popover}. */
 export interface PopoverProps {
@@ -12,6 +13,8 @@ export interface PopoverProps {
   label: string;
   /** Which edge of the positioned parent the popover lines up with. */
   align?: "start" | "end" | undefined;
+  /** Open at a viewport point instead (e.g. where a context menu was), ignoring `align`. */
+  at?: MenuPoint | undefined;
   id?: string | undefined;
   className?: string | undefined;
   children: ReactNode;
@@ -28,6 +31,7 @@ export function Popover({
   anchor,
   label,
   align = "end",
+  at,
   id,
   className,
   children,
@@ -79,9 +83,14 @@ export function Popover({
       id={id}
       role="group"
       aria-label={label}
-      className={["dm-popover", `dm-popover-${align}`, className ?? ""]
+      className={[
+        "dm-popover",
+        at ? "dm-popover-at" : `dm-popover-${align}`,
+        className ?? "",
+      ]
         .filter(Boolean)
         .join(" ")}
+      style={at && { left: at.x, top: at.y }}
     >
       {children}
     </div>

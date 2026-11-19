@@ -32,6 +32,10 @@ export const en: Messages = {
     newCampaignName: "Name of the new campaign",
     createCampaign: "Create campaign",
     campaignCreated: "Campaign “{{name}}” created.",
+    browserTitle: "Campaign",
+    chooseCampaign: "Choose campaign",
+    chooseCampaignHint: "Choose a campaign:",
+    newCampaign: "New campaign …",
     campaign: {
       notAvailable: "{{slug}} (not downloaded yet)",
       invalid: "{{slug}} (cannot be read)",
@@ -45,12 +49,13 @@ export const en: Messages = {
     },
   },
   campaign: {
-    heading: "Campaign: {{name}}",
     loading: "Loading scenes …",
     scenes: "Scenes",
     noScenes: "No scenes in this campaign yet.",
     newSceneName: "Name of the new scene",
     createScene: "Create scene",
+    newScene: "New scene …",
+    commands: "Commands for “{{name}}”",
     sceneCreated: "Scene “{{name}}” created.",
     openScene: "Open scene: {{name}}",
     importMap: "Choose map …",
@@ -81,6 +86,21 @@ export const en: Messages = {
     scene: {
       notAvailable: "{{id}} (not downloaded yet)",
       invalid: "{{id}} (cannot be read)",
+    },
+  },
+  catalog: {
+    title: "Catalogue",
+    importMap: "Import map …",
+    mapImported: "“{{file}}” is now in the library.",
+    groups: {
+      maps: "Maps",
+      tokens: "Tokens",
+      assets: "Assets",
+    },
+    empty: {
+      maps: "The map overview is coming. Imported maps are already in the library.",
+      tokens: "No tokens yet.",
+      assets: "No assets yet.",
     },
   },
   mapView: {
@@ -124,6 +144,7 @@ export const en: Messages = {
   },
   shell: {
     groups: {
+      create: "New",
       scene: "Scene",
       playerView: "Player view",
     },
@@ -135,7 +156,7 @@ export const en: Messages = {
       fog: "Fog",
       display: "Display",
     },
-    noScene: "No scene is open. Choose a scene in the data panel.",
+    noScene: "No scene is open. Choose a scene in the browser.",
     settings: "Settings",
     theme: {
       label: "Appearance",
@@ -149,7 +170,6 @@ export const en: Messages = {
       failed: "Not saved",
     },
     browser: {
-      title: "Scene",
       map: "Map",
       noMap: "No map yet",
       levels: "Levels",

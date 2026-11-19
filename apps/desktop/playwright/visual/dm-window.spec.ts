@@ -32,7 +32,7 @@ async function openHarness(page: Page) {
 test("zone layout with an open scene", async ({ page }) => {
   await openHarness(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
-  await page.getByRole("button", { name: "Krypta", exact: true }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
   await page.evaluate(() => document.fonts.ready);
 

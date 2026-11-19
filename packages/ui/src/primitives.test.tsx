@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { FloatingPanel } from "./FloatingPanel.js";
 import { createI18n } from "./i18n.js";
 import { IconButton } from "./IconButton.js";
-import { TreeList, type TreeNode } from "./TreeList.js";
+import { TreeList, type TreeListProps, type TreeNode } from "./TreeList.js";
 
 function renderWithI18n(ui: ReactElement, language: "de" | "en" = "de") {
   return render(
@@ -128,6 +128,36 @@ describe("TreeList", () => {
     expect(item("Krypta").getAttribute("aria-expanded")).toBe("true");
     expect(item("Grabkammer").hasAttribute("aria-expanded")).toBe(false);
     expect(screen.getByText("4K")).toBeTruthy();
+  });
+
+  it("asks for a context menu on right-click and on Shift+F10 / the context-menu key", () => {
+    const onItemContextMenu =
+      vi.fn<NonNullable<TreeListProps["onItemContextMenu"]>>();
+    render(
+      <TreeList
+        label="Szene"
+        nodes={nodes}
+        onItemContextMenu={onItemContextMenu}
+      />,
+    );
+    fireEvent.contextMenu(screen.getByText("Grabkammer"), {
+      clientX: 30,
+      clientY: 40,
+    });
+    expect(onItemContextMenu).toHaveBeenLastCalledWith(
+      "chamber",
+      { x: 30, y: 40 },
+      item("Grabkammer"),
+    );
+    expect(document.activeElement).toBe(item("Grabkammer"));
+    fireEvent.keyDown(item("Krypta"), { key: "F10", shiftKey: true });
+    const [id, point, owner] = onItemContextMenu.mock.lastCall ?? [];
+    expect(id).toBe("crypt");
+    // Below the row, where jsdom (no layout) puts every box: at the origin.
+    expect(point).toEqual({ x: 0, y: 0 });
+    expect(owner).toBe(item("Krypta"));
+    fireEvent.keyDown(item("Krypta"), { key: "ContextMenu" });
+    expect(onItemContextMenu).toHaveBeenCalledTimes(3);
   });
 
   it("selects an item on click", () => {

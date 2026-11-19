@@ -1,22 +1,7 @@
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-  type Ref,
-} from "react";
+import { useId, useRef, useState, type KeyboardEvent, type Ref } from "react";
+import { MenuList, type MenuItem } from "./MenuList.js";
 
-/** One command of a {@link Menu}. */
-export interface MenuItem {
-  id: string;
-  /** Translated, user-visible name of the command. */
-  label: string;
-  /** Decorative icon in front of the label. */
-  icon?: ReactNode;
-  disabled?: boolean | undefined;
-}
+export type { MenuItem } from "./MenuList.js";
 
 /** Props of {@link Menu}. */
 export interface MenuProps {
@@ -49,93 +34,19 @@ export function Menu({
   className,
 }: MenuProps) {
   const id = useId();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<"first" | "last" | null>(null);
   const button = useRef<HTMLButtonElement | null>(null);
-  const menu = useRef<HTMLDivElement>(null);
-  const entries = useRef<(HTMLButtonElement | null)[]>([]);
-  // Which item gets focus once the menu has rendered.
-  const [initial, setInitial] = useState<"first" | "last">("first");
-
-  useEffect(() => {
-    if (!open) return;
-    const list = entries.current.filter(
-      (entry): entry is HTMLButtonElement => entry !== null,
-    );
-    (initial === "first" ? list[0] : list.at(-1))?.focus();
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (
-        target instanceof Node &&
-        !menu.current?.contains(target) &&
-        !button.current?.contains(target)
-      )
-        setOpen(false);
-    };
-    window.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      window.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, [open, initial]);
-
-  const openAt = (where: "first" | "last") => {
-    setInitial(where);
-    setOpen(true);
-  };
 
   const closeToButton = () => {
-    setOpen(false);
+    setOpen(null);
     button.current?.focus();
   };
 
   const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      openAt(event.key === "ArrowDown" ? "first" : "last");
+      setOpen(event.key === "ArrowDown" ? "first" : "last");
     }
-  };
-
-  const onMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const list = entries.current.filter(
-      (entry): entry is HTMLButtonElement => entry !== null,
-    );
-    const index = list.findIndex(
-      (entry) => entry === entry.ownerDocument.activeElement,
-    );
-    const focus = (next: number) => {
-      list[(next + list.length) % list.length]?.focus();
-    };
-    switch (event.key) {
-      case "ArrowDown":
-        focus(index + 1);
-        break;
-      case "ArrowUp":
-        focus(index - 1);
-        break;
-      case "Home":
-        focus(0);
-        break;
-      case "End":
-        focus(list.length - 1);
-        break;
-      case "Escape":
-        closeToButton();
-        break;
-      case "Tab":
-        // From the button, the browser's own Tab then reaches the control after the menu;
-        // the focused item is about to leave the DOM.
-        button.current?.focus();
-        setOpen(false);
-        return;
-      default:
-        return;
-    }
-    event.preventDefault();
-  };
-
-  const choose = (item: MenuItem) => {
-    if (item.disabled) return;
-    closeToButton();
-    onSelect(item.id);
   };
 
   return (
@@ -148,11 +59,10 @@ export function Menu({
         type="button"
         className="dm-menu-button"
         aria-haspopup="menu"
-        aria-expanded={open}
+        aria-expanded={open !== null}
         aria-controls={open ? `${id}-menu` : undefined}
         onClick={() => {
-          if (open) setOpen(false);
-          else openAt("first");
+          setOpen((current) => (current ? null : "first"));
         }}
         onKeyDown={onButtonKeyDown}
       >
@@ -162,38 +72,22 @@ export function Menu({
         </svg>
       </button>
       {open && (
-        <div
-          ref={menu}
+        <MenuList
           id={`${id}-menu`}
-          role="menu"
-          aria-label={label}
-          className="dm-menu-list"
-          onKeyDown={onMenuKeyDown}
-        >
-          {items.map((item, index) => (
-            <button
-              key={item.id}
-              ref={(element) => {
-                entries.current[index] = element;
-              }}
-              type="button"
-              role="menuitem"
-              tabIndex={-1}
-              aria-disabled={item.disabled === true ? true : undefined}
-              className="dm-menu-item"
-              onClick={() => {
-                choose(item);
-              }}
-            >
-              {item.icon !== undefined && (
-                <span className="dm-menu-item-icon" aria-hidden="true">
-                  {item.icon}
-                </span>
-              )}
-              {item.label}
-            </button>
-          ))}
-        </div>
+          label={label}
+          items={items}
+          initial={open}
+          owner={button}
+          onChoose={(item) => {
+            closeToButton();
+            onSelect(item.id);
+          }}
+          onDismiss={(reason) => {
+            // Tab and Escape leave from the button; a press outside keeps focus where it went.
+            if (reason === "outside") setOpen(null);
+            else closeToButton();
+          }}
+        />
       )}
     </span>
   );

@@ -368,6 +368,10 @@
   right: 0;
 }
 
+.dm-popover-at {
+  position: fixed;
+}
+
 /* Menu */
 .dm-menu {
   position: relative;
