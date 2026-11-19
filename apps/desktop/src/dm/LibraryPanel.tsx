@@ -414,6 +414,8 @@ export function LibraryPanel({
                   : null
               }
               onSceneOpen={(scene) => {
+                // Used once: a later remount of this campaign must not jump back to it.
+                setPendingScene(null);
                 if (root === null) return;
                 const campaign = { root, slug: selectedCampaign.slug };
                 setRecent((list) =>
@@ -429,6 +431,7 @@ export function LibraryPanel({
         onClose={() => {
           setWelcomeOpen(false);
         }}
+        returnFocus={campaignMenu}
         library={welcomeLibrary}
         choosing={choosing}
         notice={notice}
@@ -439,6 +442,8 @@ export function LibraryPanel({
           setRecent((list) => forgetCampaign(list, { root, slug }));
         }}
         onCreate={async (name) => {
+          // The form shows only this attempt's message, not an older one.
+          setNotice("");
           const created = await create(name);
           if (created) setWelcomeOpen(false);
           return created;

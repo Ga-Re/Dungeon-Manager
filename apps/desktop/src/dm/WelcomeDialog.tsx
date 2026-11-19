@@ -1,6 +1,6 @@
 import { Dialog } from "@dungeon-manager/ui";
 import { BookOpen, FolderOpen, FolderPlus, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { NameForm } from "./NameForm.js";
 
@@ -41,6 +41,7 @@ type View = "start" | "new" | "other";
 export function WelcomeDialog({
   open,
   onClose,
+  returnFocus,
   library,
   choosing,
   notice,
@@ -51,6 +52,8 @@ export function WelcomeDialog({
 }: {
   readonly open: boolean;
   readonly onClose: () => void;
+  /** Gets focus back when the dialog closes (the browser's campaign menu). */
+  readonly returnFocus: RefObject<HTMLElement | null>;
   readonly library: WelcomeLibrary;
   /** The folder dialog is open. */
   readonly choosing: boolean;
@@ -236,6 +239,8 @@ export function WelcomeDialog({
                       title={t("welcome.forget", { name: campaign.name })}
                       onClick={() => {
                         onForget(campaign.slug);
+                        // The row and its button go: keep the keyboard on the list's heading.
+                        heading.current?.focus();
                       }}
                     >
                       <X aria-hidden="true" />
@@ -257,6 +262,7 @@ export function WelcomeDialog({
       title={t("welcome.title")}
       closeLabel={t("welcome.close")}
       initialFocus={firstAction}
+      returnFocus={returnFocus}
       className="dm-welcome-dialog"
     >
       <div className="dm-welcome-layout">

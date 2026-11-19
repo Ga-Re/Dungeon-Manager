@@ -57,6 +57,7 @@ export function readRecent(storage: Storage | undefined): RecentCampaign[] {
   }
 }
 
+/** Stores the list on this device; a storage that refuses it is ignored. */
 export function saveRecent(
   storage: Storage | undefined,
   list: readonly RecentCampaign[],
@@ -108,6 +109,7 @@ export function recordScene(
   );
 }
 
+/** The list without `campaign`, e.g. one that is gone from its library. */
 export function forgetCampaign(
   list: readonly RecentCampaign[],
   campaign: CampaignRef,

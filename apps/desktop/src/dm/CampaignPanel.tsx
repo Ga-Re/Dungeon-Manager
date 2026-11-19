@@ -511,15 +511,17 @@ export function CampaignPanel({
     setOpenScene(entry.scene);
   };
 
-  // The last scene opens once, when both lists are first read; a scene that is gone is skipped.
+  // The last scene opens once, when the scenes are read and the sessions are read or failed (it
+  // then goes under "Ohne Session"); a scene that is gone is skipped.
   const pendingScene = useRef(initialSceneId);
+  const sessionsSettled = sessionsState.status !== "loading";
   useEffect(() => {
     const sceneId = pendingScene.current;
-    if (!sceneId || !scenes || !sessions) return;
+    if (!sceneId || !scenes || !sessionsSettled) return;
     pendingScene.current = null;
     const scene = scenes.find((each) => each.id === sceneId)?.scene;
     if (!scene) return;
-    const session = sessions.find((each) =>
+    const session = (sessions ?? []).find((each) =>
       each.session?.sceneIds.includes(sceneId),
     );
     const place = sceneNodeId(
@@ -529,7 +531,7 @@ export function CampaignPanel({
     setOpenScene(scene);
     setOpenAt(place);
     setInspected(place);
-  }, [scenes, sessions]);
+  }, [scenes, sessions, sessionsSettled]);
 
   const sceneOpened = useRef(onSceneOpen);
   useEffect(() => {

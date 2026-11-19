@@ -170,6 +170,9 @@ describe("WelcomeDialog", () => {
     );
 
     expect(within(dialog()).queryByText("Alte Kampagne")).toBeNull();
+    expect(document.activeElement).toBe(
+      within(dialog()).getByRole("heading", { name: "Zuletzt bearbeitet" }),
+    );
     expect(readRecent(storage).map((each) => each.slug)).toEqual(["mine"]);
   });
 
