@@ -111,7 +111,22 @@ async function clickXPath(sessionPath, description, xpath) {
   const element = await waitFor(description, () =>
     findElement(sessionPath, xpath, "xpath"),
   );
-  await command("POST", `${sessionPath}/element/${element}/click`, {});
+  try {
+    await command("POST", `${sessionPath}/element/${element}/click`, {});
+  } catch (error) {
+    throw new Error(`Clicking ${description} failed: ${error.message}`, {
+      cause: error,
+    });
+  }
+}
+
+/** Shows a ribbon mode (T-130): its tools are hidden while another mode is active. */
+async function showRibbonMode(sessionPath, name) {
+  await clickXPath(
+    sessionPath,
+    `the ribbon mode "${name}"`,
+    `//button[@role='tab' and text()='${name}']`,
+  );
 }
 
 async function main() {
@@ -230,6 +245,7 @@ async function main() {
       throw new Error(`Unexpected scene files: ${scenes.join(", ")}`);
 
     // Deleting goes through the real trash command: the file moves, nothing is removed.
+    await showRibbonMode(sessionPath, "Szene");
     await clickXPath(
       sessionPath,
       "the delete button",
@@ -315,18 +331,19 @@ async function main() {
     const revealedAreas = () =>
       JSON.parse(readFileSync(sceneFile, "utf8")).fog.levels.ground?.revealed
         .length ?? 0;
+    await showRibbonMode(sessionPath, "Nebel");
     await clickXPath(
       sessionPath,
       "reveal all",
       "//button[text()='Alles aufdecken']",
     );
     await waitFor("the revealed fog on disk", () => revealedAreas() === 1);
-    await clickXPath(sessionPath, "undo", "//button[text()='Rückgängig']");
+    await clickXPath(sessionPath, "undo", "//button[@aria-label='Rückgängig']");
     await waitFor("the undone fog on disk", () => revealedAreas() === 0);
     await clickXPath(
       sessionPath,
       "redo",
-      "//button[text()='Wiederherstellen']",
+      "//button[@aria-label='Wiederherstellen']",
     );
     await waitFor("the redone fog on disk", () => revealedAreas() === 1);
 
