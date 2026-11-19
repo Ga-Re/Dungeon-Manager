@@ -151,7 +151,7 @@ All data lives in a **user-chosen folder**. If it sits inside a cloud-synced fol
 │   ├── campaign.json
 │   ├── wiki/                 # Obsidian-compatible Markdown + YAML front matter
 │   ├── sessions/             # one JSON file per session: name, date, ordered scene ids (T-160)
-│   ├── notes/                # campaign, session and scene notes as Markdown (T-161; location vs. vault root with T-150)
+│   ├── notes/                # campaign.md, sessions/<id>.md, scenes/<id>.md – fixed notes (T-161)
 │   ├── scenes/               # one JSON file per scene
 │   ├── encounters/
 │   ├── snapshots/            # ZIP per session
@@ -160,6 +160,8 @@ All data lives in a **user-chosen folder**. If it sits inside a cloud-synced fol
 ```
 
 Device-specific settings (light devices, cameras, TV calibration, window placement) live in the OS app-data directory, **not** in the sync folder.
+
+Notes (T-161): every campaign, session and scene has a fixed Markdown note in `notes/`, created on demand with the title as a heading and never overwritten. Any other `.md` inside the campaign folder can be linked through an optional `notes` list (paths relative to the campaign folder, validated: inside the folder, `.md`, no tool folders) in `campaign.json`, a session or a scene file. The app reads notes as they are, so their front matter and links survive (ADR-0006).
 
 ### 6.3 File rules
 
