@@ -501,7 +501,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Campaign switch and new campaign from the browser header, new scene from the context menu and the ribbon (component + E2E tests); the context menu is keyboard reachable (Shift+F10 / context-menu key)
   - [x] Data panel shows the catalogue scaffold; the library folder can be changed in the settings
   - [x] Smoke test, E2E and screenshot updated
-- **Notes:** From the T-130b review: opening a group menu while that group's popover is open draws both on top of each other – close the popover when the menu opens. Split (DM, 2026-11-19): native menus moved to T-130d.
+- **Notes:** Split (DM, 2026-11-19): native menus moved to T-130d. The T-130b review note (a group menu opened over its group's popover) is fixed here: the menu closes the popover when it opens.
 
 ### T-153 Welcome dialog with recent campaigns
 
@@ -523,6 +523,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Native macOS menu command reaches the DM window (Rust test or smoke test)
   - [ ] Windows menu button covered by a component test; menu labels translated
+- **Notes:** From the T-130c review: context menus and popovers opened at a point are not yet kept inside the viewport (a low tree item with Shift+F10 can push the new-scene form off-screen) – clamp them when the menus are built here.
 
 ### T-152 Sub-scenes
 

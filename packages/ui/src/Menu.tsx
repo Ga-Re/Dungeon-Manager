@@ -12,6 +12,8 @@ export interface MenuProps {
   onSelect: (id: string) => void;
   /** The menu button, e.g. to return focus to it after a follow-up step. */
   buttonRef?: Ref<HTMLButtonElement> | undefined;
+  /** The menu is opening, e.g. to close a popover of the same group first. */
+  onOpen?: (() => void) | undefined;
   className?: string | undefined;
 }
 
@@ -31,11 +33,17 @@ export function Menu({
   items,
   onSelect,
   buttonRef,
+  onOpen,
   className,
 }: MenuProps) {
   const id = useId();
   const [open, setOpen] = useState<"first" | "last" | null>(null);
   const button = useRef<HTMLButtonElement | null>(null);
+
+  const openAt = (where: "first" | "last") => {
+    onOpen?.();
+    setOpen(where);
+  };
 
   const closeToButton = () => {
     setOpen(null);
@@ -45,7 +53,7 @@ export function Menu({
   const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      setOpen(event.key === "ArrowDown" ? "first" : "last");
+      openAt(event.key === "ArrowDown" ? "first" : "last");
     }
   };
 
@@ -62,7 +70,8 @@ export function Menu({
         aria-expanded={open !== null}
         aria-controls={open ? `${id}-menu` : undefined}
         onClick={() => {
-          setOpen((current) => (current ? null : "first"));
+          if (open) setOpen(null);
+          else openAt("first");
         }}
         onKeyDown={onButtonKeyDown}
       >

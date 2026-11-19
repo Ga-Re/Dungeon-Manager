@@ -90,6 +90,7 @@ export const en: Messages = {
   },
   catalog: {
     title: "Catalogue",
+    noLibrary: "Choose a library folder in the settings first.",
     importMap: "Import map …",
     mapImported: "“{{file}}” is now in the library.",
     groups: {

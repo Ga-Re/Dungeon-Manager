@@ -236,6 +236,14 @@ export function TreeList({
           onKeyDown={(event) => {
             onKeyDown(event, node);
           }}
+          // The context-menu key also fires `contextmenu` on the focused item (on keyup in
+          // WebView2): our menu already opened on keydown, so keep the webview's own away.
+          onContextMenu={
+            onItemContextMenu &&
+            ((event) => {
+              if (event.target === event.currentTarget) event.preventDefault();
+            })
+          }
           onFocus={(event) => {
             if (event.target === event.currentTarget) setFocusedId(node.id);
           }}

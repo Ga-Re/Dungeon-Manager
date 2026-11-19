@@ -11,6 +11,7 @@ export interface RibbonGroupProps {
         readonly items: readonly MenuItem[];
         readonly onSelect: (id: string) => void;
         readonly buttonRef?: Ref<HTMLButtonElement> | undefined;
+        readonly onOpen?: (() => void) | undefined;
       }
     | undefined;
   /** The group's tools, usually labelled `IconButton`s. */
@@ -28,6 +29,7 @@ export function RibbonGroup({ caption, menu, children }: RibbonGroupProps) {
           items={menu.items}
           onSelect={menu.onSelect}
           buttonRef={menu.buttonRef}
+          onOpen={menu.onOpen}
           className="dm-ribbon-group-caption"
         />
       ) : (

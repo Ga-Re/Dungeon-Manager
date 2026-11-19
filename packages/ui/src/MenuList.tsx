@@ -58,13 +58,13 @@ export function MenuList({
     dismiss.current = onDismiss;
   });
 
-  const enabledEntries = () =>
+  const focusableEntries = () =>
     entries.current.filter(
       (entry): entry is HTMLButtonElement => entry !== null,
     );
 
   useEffect(() => {
-    const list = enabledEntries();
+    const list = focusableEntries();
     (initial === "first" ? list[0] : list.at(-1))?.focus();
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
@@ -83,7 +83,7 @@ export function MenuList({
   }, []);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const list = enabledEntries();
+    const list = focusableEntries();
     const index = list.findIndex(
       (entry) => entry === entry.ownerDocument.activeElement,
     );

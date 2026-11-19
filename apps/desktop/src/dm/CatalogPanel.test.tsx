@@ -54,5 +54,10 @@ describe("CatalogPanel", () => {
   test("cannot import without a library folder", () => {
     renderCatalog(false);
     expect(importButton()).toHaveProperty("disabled", true);
+    expect(
+      screen.getByText(
+        "Wähle zuerst in den Einstellungen einen Bibliotheksordner.",
+      ),
+    ).toBeTruthy();
   });
 });

@@ -143,6 +143,8 @@ export function LibraryPanel({
       const slug = await createCampaign(service.fs, { id: newId(), name });
       await show(() => service.currentRoot());
       setSelected(slug);
+      // The popover with the focused field closes: focus back on the menu it came from.
+      campaignMenu.current?.focus();
       setCreating(false);
       setNotice(t("library.campaignCreated", { name: name.trim() }));
       return true;

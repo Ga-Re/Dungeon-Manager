@@ -90,6 +90,7 @@ export const de = {
   },
   catalog: {
     title: "Katalog",
+    noLibrary: "Wähle zuerst in den Einstellungen einen Bibliotheksordner.",
     importMap: "Karte importieren …",
     mapImported: "„{{file}}“ liegt jetzt in der Bibliothek.",
     groups: {

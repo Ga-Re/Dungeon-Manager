@@ -49,6 +49,7 @@ export function CatalogPanel({
           onClick={() => void importMap()}
         />
       </header>
+      {!ready && <p className="dm-catalog-notice">{t("catalog.noLibrary")}</p>}
       {GROUPS.map((group) => (
         <section key={group} className="dm-catalog-group">
           <h3>{t(`catalog.groups.${group}`)}</h3>

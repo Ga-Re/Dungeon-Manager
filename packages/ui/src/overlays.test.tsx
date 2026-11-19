@@ -53,6 +53,19 @@ describe("Menu", () => {
     expect(document.activeElement).toBe(menuButton());
   });
 
+  it("tells its owner when it opens, by click and by arrow key", () => {
+    const onOpen = vi.fn();
+    render(
+      <Menu label="Szene" items={ITEMS} onSelect={vi.fn()} onOpen={onOpen} />,
+    );
+    fireEvent.click(menuButton());
+    expect(onOpen).toHaveBeenCalledOnce();
+    fireEvent.click(menuButton());
+    expect(onOpen).toHaveBeenCalledOnce();
+    fireEvent.keyDown(menuButton(), { key: "ArrowUp" });
+    expect(onOpen).toHaveBeenCalledTimes(2);
+  });
+
   it("ignores disabled items", () => {
     const onSelect = vi.fn();
     render(<Menu label="Szene" items={ITEMS} onSelect={onSelect} />);

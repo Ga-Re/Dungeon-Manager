@@ -242,6 +242,12 @@ export function OpenScenePanel({
               setConfirmingDelete(true);
             },
             buttonRef: sceneMenuButton,
+            // The group's popovers sit where the menu opens; one at a time.
+            onOpen: () => {
+              if (busy) return;
+              setConfirmingDelete(false);
+              setPendingMap(null);
+            },
           }}
         >
           <IconButton

@@ -15,7 +15,7 @@ import {
   listScenes,
   loadScene,
 } from "@dungeon-manager/storage";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
@@ -68,10 +68,11 @@ type NewSceneOrigin =
   | { readonly from: "ribbon" }
   | { readonly from: "context"; readonly at: MenuPoint };
 
-/** An open context menu: its point and the tree item that gets focus back. */
+/** An open context menu: its point, the tree item that gets focus back, and its name. */
 interface ContextRequest {
   readonly at: MenuPoint;
   readonly item: HTMLElement;
+  readonly name: string;
 }
 
 /**
@@ -104,6 +105,7 @@ export function CampaignPanel({
   const newSceneButton = useRef<HTMLButtonElement>(null);
   const contextItem = useRef<HTMLElement | null>(null);
   const latest = useRef(0);
+  const ribbonPopoverId = useId();
 
   const reload = useCallback(async () => {
     const request = ++latest.current;
@@ -140,14 +142,18 @@ export function CampaignPanel({
           // The level id only has to be unique within this scene.
           map && newMap(map, { id: newId(), name: t("campaign.defaultLevel") }),
       });
+      // The popover with the focused form goes away: focus back where it was asked for.
+      (newScene?.from === "context"
+        ? contextItem.current
+        : newSceneButton.current
+      )?.focus();
       setNewScene(null);
       setNotice(t("campaign.sceneCreated", { name: scene.name }));
       setOpenScene(scene);
       await reload();
-      return true;
+      return null;
     } catch (error) {
-      setNotice(describeLibraryError(t, error));
-      return false;
+      return describeLibraryError(t, error);
     }
   };
 
@@ -166,20 +172,19 @@ export function CampaignPanel({
     state.status === "ready"
       ? state.scenes.map((entry): TreeNode => {
           const isOpen = openScene?.id === entry.id;
+          // Until the newly opened scene reports itself, `live` is still the previous one.
+          const current = isOpen && live?.scene.id === entry.id ? live : null;
           return {
             id: sceneNode(entry.id),
             label: entry.scene
-              ? isOpen && live
-                ? live.scene.name
-                : entry.scene.name
+              ? (current?.scene.name ?? entry.scene.name)
               : t(`campaign.scene.${entry.problem ?? "invalid"}`, {
                   id: entry.id,
                 }),
             icon: <ScrollText />,
-            children:
-              isOpen && live
-                ? sceneContentNodes(t, live.scene, live.revealed)
-                : undefined,
+            children: current
+              ? sceneContentNodes(t, current.scene, current.revealed)
+              : undefined,
           };
         })
       : [];
@@ -200,8 +205,15 @@ export function CampaignPanel({
         ]}
         selectedId={openScene ? sceneNode(openScene.id) : null}
         onSelect={open}
-        onItemContextMenu={(_id, at, item) => {
-          setContext({ at, item });
+        onItemContextMenu={(id, at, item) => {
+          // Only the campaign and its scenes have commands; the open scene's content not yet.
+          if (id === CAMPAIGN_NODE) setContext({ at, item, name });
+          else if (id.startsWith(SCENE_PREFIX) && state.status === "ready") {
+            const entry = state.scenes.find(
+              (each) => sceneNode(each.id) === id,
+            );
+            if (entry?.scene) setContext({ at, item, name: entry.scene.name });
+          }
         }}
       />
       {state.status === "loading" && <p>{t("campaign.loading")}</p>}
@@ -213,7 +225,7 @@ export function CampaignPanel({
       )}
       <ContextMenu
         at={context?.at ?? null}
-        label={t("campaign.commands", { name })}
+        label={t("campaign.commands", { name: context?.name ?? name })}
         items={[
           { id: "newScene", label: t("campaign.newScene"), icon: <FilePlus /> },
         ]}
@@ -245,6 +257,10 @@ export function CampaignPanel({
             showLabel
             icon={<FilePlus />}
             label={t("campaign.newScene")}
+            aria-expanded={newScene?.from === "ribbon"}
+            aria-controls={
+              newScene?.from === "ribbon" ? ribbonPopoverId : undefined
+            }
             onClick={() => {
               setNewScene((current) =>
                 current?.from === "ribbon" ? null : { from: "ribbon" },
@@ -252,6 +268,7 @@ export function CampaignPanel({
             }}
           />
           <Popover
+            id={ribbonPopoverId}
             open={newScene?.from === "ribbon"}
             anchor={newSceneButton}
             label={t("campaign.newScene")}

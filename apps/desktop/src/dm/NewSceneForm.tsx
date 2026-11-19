@@ -14,8 +14,11 @@ export function NewSceneForm({
   onCreate,
 }: {
   readonly service: LibraryService;
-  /** Resolves to whether the scene was created (the popover then closes). */
-  readonly onCreate: (name: string, map: AssetRef | null) => Promise<boolean>;
+  /** Resolves to `null` once the scene exists (the popover then closes), else why not. */
+  readonly onCreate: (
+    name: string,
+    map: AssetRef | null,
+  ) => Promise<string | null>;
 }) {
   const { t } = useTranslation();
   const inputId = useId();
@@ -49,7 +52,7 @@ export function NewSceneForm({
     if (name.trim() === "" || busy) return;
     setBusy(true);
     try {
-      await onCreate(name, map);
+      setProblem((await onCreate(name, map)) ?? "");
     } finally {
       setBusy(false);
     }

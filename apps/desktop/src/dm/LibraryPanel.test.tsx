@@ -104,6 +104,9 @@ describe("LibraryPanel", () => {
       screen.getByRole("button", { name: "Fluch über Größenwahn" }),
     ).toHaveProperty("ariaHasPopup", "menu");
     expect(screen.queryByLabelText("Name der neuen Kampagne")).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Fluch über Größenwahn" }),
+    );
     expect(
       library.fs
         .files()
