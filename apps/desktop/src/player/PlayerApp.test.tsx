@@ -94,9 +94,9 @@ describe("PlayerApp", () => {
       maps.view.setFog.mock.invocationCallOrder.at(-1) ?? Infinity;
     const mapOrder =
       maps.view.setMap.mock.invocationCallOrder.at(-1) ?? -Infinity;
-    // Soft edges are on by default: 0.4 of the 100 px cell.
+    // Soft edges are on by default: 0.25 of the 100 px cell.
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
-      softEdge: 40,
+      softEdge: 25,
     });
     expect(fogOrder).toBeLessThan(mapOrder);
     expect(maps.service.loadImage).toHaveBeenCalledWith("library/maps/a.png");
@@ -193,9 +193,9 @@ describe("PlayerApp", () => {
       );
     });
     const video = maps.view.setVideo.mock.calls.at(-1)?.[0];
-    // Soft edges are on by default: 0.4 of the 100 px cell.
+    // Soft edges are on by default: 0.25 of the 100 px cell.
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
-      softEdge: 40,
+      softEdge: 25,
     });
     expect(video?.isConnected).toBe(true);
     expect(screen.getByRole("main").dataset["showing"]).toBe("map");
@@ -212,7 +212,7 @@ describe("PlayerApp", () => {
     });
     feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
-      softEdge: 40,
+      softEdge: 25,
     });
 
     window.dispatchEvent(

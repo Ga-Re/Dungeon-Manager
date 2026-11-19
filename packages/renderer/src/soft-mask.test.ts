@@ -84,8 +84,20 @@ describe("softFogAlpha", () => {
     expect(row.some((value) => value > 0 && value < 255)).toBe(true);
   });
 
-  it("fogs a revealed area too small for its soft edge completely", () => {
-    const alpha = softFogAlpha(room(20, 4), 4);
+  it("keeps a one-cell corridor open at the default edge width", () => {
+    // A 100 px cell is 25 texels on a 4096 px map; the default edge is 0.25 cells ≈ 6 texels.
+    const alpha = softFogAlpha(room(60, 25), 6);
+    const row = Array.from(
+      { length: 25 },
+      (_, x) => alpha[30 * 60 + 17 + x] ?? 255,
+    );
+    expect(row[12]).toBe(0);
+    // More than half of the corridor shows the map at least half.
+    expect(row.filter((value) => value < 128).length).toBeGreaterThan(12);
+  });
+
+  it("fogs a revealed area narrower than its soft edge completely", () => {
+    const alpha = softFogAlpha(room(20, 2), 4);
     expect([...alpha].every((value) => value === 255)).toBe(true);
   });
 

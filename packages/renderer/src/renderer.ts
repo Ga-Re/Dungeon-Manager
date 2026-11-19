@@ -90,6 +90,9 @@ export async function createRenderer(
     readonly options: FogOptions;
   } | null = null;
   let mapSize: Size | null = null;
+  // What the current fog was built from: an equal request (the player view gets the whole
+  // scene with every message, also for a rotation) keeps it instead of rebuilding.
+  let fogBuiltFrom: string | null = null;
   let size = options.size;
   let camera: Camera | null = null;
   let frame: number | null = null;
@@ -136,6 +139,8 @@ export async function createRenderer(
   options.canvas.addEventListener("webglcontextrestored", onContextRestored);
 
   const applyFog = () => {
+    const key = fogInput ? JSON.stringify([fogInput, mapSize]) : null;
+    if (key !== null && key === fogBuiltFrom && fog) return;
     // Build the new fog first: if that fails, the old fog stays in place and counts.
     const next = fogInput
       ? drawFog(fogInput.revealed, fogInput.options, mapSize)
@@ -145,6 +150,7 @@ export async function createRenderer(
       fog.destroy({ children: true, texture: true, textureSource: true });
     }
     fog = next;
+    fogBuiltFrom = key;
     if (fog) world.addChild(fog);
   };
 
@@ -190,7 +196,11 @@ export async function createRenderer(
         map = new Sprite(Texture.from(image, true));
         world.addChildAt(map, 0);
       }
-      mapSize = map ? { width: map.width, height: map.height } : null;
+      mapSize = map
+        ? { width: map.width, height: map.height }
+        : video
+          ? videoSize
+          : null;
       if (fogInput) applyFog();
       requestDraw();
     },
@@ -297,7 +307,10 @@ function drawHardFog(revealed: readonly Polygon[], opacity: number): Container {
   return layer;
 }
 
-/** Longest side of the soft mask in texels: enough for an edge, cheap to compute (≈ 15 ms). */
+/**
+ * Longest side of the soft mask in texels: enough for an edge, cheap to compute (about 13 ms
+ * for the soft mask itself at 1024², measured in Node; plus rasterizing and one upload).
+ */
 const SOFT_MASK_SIDE = 1024;
 
 /**
@@ -340,7 +353,8 @@ function drawSoftFog(
     mask[index] = pixels.data[index * 4] === 255 ? 255 : 0;
   const alpha = softFogAlpha(
     { width, height, data: mask },
-    Math.max(1, Math.round(softEdge / texel)),
+    // At least 2 texels, so there is a blur at all.
+    Math.max(2, Math.round(softEdge / texel)),
   );
   for (let index = 0; index < alpha.length; index++) {
     pixels.data[index * 4] = 0;
@@ -367,7 +381,9 @@ function drawFog(
 ): Container {
   const opacity = options.opacity ?? 1;
   const softEdge = options.softEdge ?? 0;
-  if (softEdge <= 0 || !map) return drawHardFog(revealed, opacity);
+  // A map without size yet (e.g. a video before its metadata) gets hard fog for now.
+  if (softEdge <= 0 || !map || map.width <= 0 || map.height <= 0)
+    return drawHardFog(revealed, opacity);
   const soft = drawSoftFog(revealed, map, softEdge, opacity);
   if (opacity < 1) {
     const layer = new Container();

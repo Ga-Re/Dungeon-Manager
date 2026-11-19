@@ -656,6 +656,14 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Implementation hint:** if a real-time blur misses the budget, use a precomputed soft mask.
 - **Notes:** From the DM planning interview (2026-11-18).
 
+### T-165 Free the fog's GPU geometry on rebuild
+
+- **Status:** todo · **Depends on:** T-136a · **Refs:** ARCHITECTURE §8, §11
+- From the T-136a review: `Graphics.destroy(options)` with an options object does not destroy the owned `GraphicsContext`, so the hard fog's geometry probably stays in PixiJS's context system after each rebuild (pre-existing; fog now rebuilds also on map changes). `context: true` together with `texture: true` would destroy `Texture.WHITE`, so it needs care.
+- **Acceptance criteria**
+  - [ ] Rebuilding the fog many times does not grow GPU/context memory (test against PixiJS's context system or a long-run measurement)
+  - [ ] Shared textures (`Texture.WHITE`) survive
+
 ### T-136b Soft fog fades
 
 - **Status:** todo · **Depends on:** T-136a · **Refs:** SPEC 4, ARCHITECTURE §8, §11

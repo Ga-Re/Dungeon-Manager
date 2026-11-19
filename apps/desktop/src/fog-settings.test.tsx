@@ -36,7 +36,7 @@ describe("fog settings", () => {
   });
 
   it("makes the edge a share of a grid cell, or none when off", () => {
-    expect(softEdgeWidth(100, true)).toBe(40);
+    expect(softEdgeWidth(100, true)).toBe(25);
     expect(softEdgeWidth(100, false)).toBe(0);
   });
 

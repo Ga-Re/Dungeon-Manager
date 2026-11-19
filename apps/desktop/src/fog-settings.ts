@@ -4,8 +4,11 @@
 
 const SOFT_EDGES_KEY = "dm.fog.softEdges";
 
-/** Width of the soft fog edge as a share of a grid cell: soft, but walls stay readable. */
-export const SOFT_EDGE_CELLS = 0.4;
+/**
+ * Width of the soft fog edge as a share of a grid cell, from the hard edge inwards: soft, while
+ * a revealed one-cell corridor or door stays open in its middle.
+ */
+export const SOFT_EDGE_CELLS = 0.25;
 
 /** Soft edges on unless switched off on this device (DM request: no hard edges). */
 export function readSoftEdges(storage: Storage | undefined): boolean {

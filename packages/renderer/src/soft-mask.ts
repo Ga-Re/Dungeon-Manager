@@ -82,21 +82,25 @@ function blurLines(input: Uint8Array, lines: Lines, radius: number) {
 }
 
 /**
- * The fog's alpha per texel (255 = opaque) with soft edges `radius` texels wide. The revealed
- * area is shrunk by `radius + 1` before it is blurred by `radius`, so the softening lies inside
- * it: every hidden texel and every texel next to one stays fully fogged, also after linear
- * filtering on screen (fail-closed, ARCHITECTURE §8).
+ * The fog's alpha per texel (255 = opaque) with a soft edge about `width` texels wide, measured
+ * from the hard edge into the revealed area. The area is shrunk by half the width plus one
+ * texel before it is blurred by half the width, so the whole softening lies inside it: every
+ * hidden texel and every texel next to one stays fully fogged, also after linear filtering on
+ * screen (fail-closed, ARCHITECTURE §8).
  */
-export function softFogAlpha(mask: Mask, radius: number): Uint8Array {
-  // Square erosion by radius + 1, then a square box blur by radius: both separable.
+export function softFogAlpha(mask: Mask, width: number): Uint8Array {
+  // Square erosion by blur + 1, then a square box blur: both separable. The fog thins out from
+  // 1 to 2·blur + 1 texels inside the hard edge.
+  const blur = Math.floor(width / 2);
+  const shrink = blur + 1;
   const rows = rowsOf(mask.width, mask.height);
   const columns = columnsOf(mask.width, mask.height);
   const eroded = erodeLines(
-    erodeLines(mask.data, rows, radius + 1),
+    erodeLines(mask.data, rows, shrink),
     columns,
-    radius + 1,
+    shrink,
   );
-  const blurred = blurLines(blurLines(eroded, rows, radius), columns, radius);
+  const blurred = blurLines(blurLines(eroded, rows, blur), columns, blur);
   const alpha = new Uint8Array(blurred.length);
   for (let index = 0; index < blurred.length; index++) {
     const open = (blurred[index] ?? 0) / 255;
