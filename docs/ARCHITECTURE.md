@@ -292,7 +292,7 @@ A benchmark scene in `test-fixtures` plus a script that records frame times is p
 
 ## 15. UI shell & design system
 
-_Decided in ADR-0011, ADR-0014 (docked zones) and ADR-0015 (themes) and ADR-0016 (sizes in rem, Proposed); binding details in `.claude/skills/ui-design/SKILL.md`._
+_Decided in ADR-0011, ADR-0014 (docked zones), ADR-0015 (themes) and ADR-0016 (sizes in rem, Proposed); binding details in `.claude/skills/ui-design/SKILL.md`._
 
 - **DM window zones (ADR-0014):** a full-width title bar; below it the data panel (catalogue) as a full-height left column that folds away with Cmd/Ctrl+B; the ribbon grouped by workflow mode right of it; the map canvas fills exactly the remaining area, so fit, zoom and centring need no insets. Floating over the map: the scene browser (top left of the map area), the navigation/display dock (bottom centre), notices, context menus and popovers. Features are placed in a zone; nothing else resizes the canvas, and the renderer follows the canvas size when the panel folds or the window resizes.
 - **Player window:** unchanged – chrome-free fullscreen, no design-system UI.
