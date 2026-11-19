@@ -7,6 +7,8 @@ import {
   withMap,
   type MapReset,
 } from "@dungeon-manager/storage";
+import { IconButton, Popover, RibbonGroup } from "@dungeon-manager/ui";
+import { ImagePlus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
@@ -126,14 +128,14 @@ export function OpenScenePanel({
       changeMapButton.current?.focus();
     choosing.current = pendingMap !== null;
   }, [pendingMap]);
-  const deleteButton = useRef<HTMLButtonElement>(null);
+  const sceneMenuButton = useRef<HTMLButtonElement>(null);
   const confirmButton = useRef<HTMLButtonElement>(null);
   const asked = useRef(false);
 
   // Keyboard focus follows the confirmation step instead of falling back to the page.
   useEffect(() => {
     if (confirmingDelete) confirmButton.current?.focus();
-    else if (asked.current) deleteButton.current?.focus();
+    else if (asked.current) sceneMenuButton.current?.focus();
     asked.current = confirmingDelete || asked.current;
   }, [confirmingDelete]);
 
@@ -214,39 +216,69 @@ export function OpenScenePanel({
         />
       </ShellPortal>
       <ShellPortal slot="ribbonScene">
-        <div className="dm-ribbon-group">
-          <p>
+        <RibbonGroup
+          caption={t("shell.groups.scene")}
+          menu={{
+            items: [
+              {
+                id: "delete",
+                label: t("campaign.deleteScene"),
+                icon: <Trash2 />,
+                disabled: busy,
+              },
+            ],
+            onSelect: () => {
+              setConfirmingDelete(true);
+            },
+            buttonRef: sceneMenuButton,
+          }}
+        >
+          <IconButton
+            ref={changeMapButton}
+            showLabel
+            icon={<ImagePlus />}
+            label={
+              scene.map ? t("campaign.changeMap") : t("campaign.chooseSceneMap")
+            }
+            disabled={busy}
+            onClick={() => void changeMap()}
+          />
+          <p className="dm-ribbon-meta">
             {scene.map
               ? t("campaign.map", { file: fileName(scene.map.asset.path) })
               : t("campaign.noMap")}
           </p>
-          {pendingMap ? (
-            <MapChangeChoice
-              file={fileName(pendingMap.path)}
-              busy={busy}
-              onApply={(reset) => void applyMap(pendingMap, reset)}
-              onCancel={() => {
-                setPendingMap(null);
-              }}
-            />
-          ) : (
-            <button
-              ref={changeMapButton}
-              type="button"
-              disabled={busy}
-              onClick={() => void changeMap()}
-            >
-              {scene.map
-                ? t("campaign.changeMap")
-                : t("campaign.chooseSceneMap")}
-            </button>
-          )}
-          {confirmingDelete ? (
-            <div
-              role="group"
-              aria-label={t("campaign.confirmDelete", { name: scene.name })}
-            >
-              <p>{t("campaign.confirmDelete", { name: scene.name })}</p>
+          <Popover
+            open={pendingMap !== null}
+            onClose={() => {
+              if (!busy) setPendingMap(null);
+            }}
+            anchor={changeMapButton}
+            label={t("campaign.mapChange.title")}
+            align="start"
+          >
+            {pendingMap && (
+              <MapChangeChoice
+                file={fileName(pendingMap.path)}
+                busy={busy}
+                onApply={(reset) => void applyMap(pendingMap, reset)}
+                onCancel={() => {
+                  setPendingMap(null);
+                }}
+              />
+            )}
+          </Popover>
+          <Popover
+            open={confirmingDelete}
+            onClose={() => {
+              setConfirmingDelete(false);
+            }}
+            anchor={sceneMenuButton}
+            label={t("campaign.confirmDelete", { name: scene.name })}
+            align="start"
+          >
+            <p>{t("campaign.confirmDelete", { name: scene.name })}</p>
+            <div className="dm-popover-actions">
               <button
                 ref={confirmButton}
                 type="button"
@@ -264,19 +296,8 @@ export function OpenScenePanel({
                 {t("campaign.cancel")}
               </button>
             </div>
-          ) : (
-            <button
-              ref={deleteButton}
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setConfirmingDelete(true);
-              }}
-            >
-              {t("campaign.deleteScene")}
-            </button>
-          )}
-        </div>
+          </Popover>
+        </RibbonGroup>
       </ShellPortal>
       <ShellPortal slot="notices">
         {notOnTv && <p role="alert">{t("player.notShown")}</p>}

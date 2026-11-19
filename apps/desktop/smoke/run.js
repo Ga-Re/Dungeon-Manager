@@ -248,8 +248,13 @@ async function main() {
     await showRibbonMode(sessionPath, "Szene");
     await clickXPath(
       sessionPath,
-      "the delete button",
-      "//button[text()='Szene löschen …']",
+      "the scene menu",
+      "//button[@aria-haspopup='menu' and normalize-space()='Szene']",
+    );
+    await clickXPath(
+      sessionPath,
+      "the delete command",
+      "//button[@role='menuitem' and normalize-space()='Szene löschen …']",
     );
     await clickXPath(
       sessionPath,

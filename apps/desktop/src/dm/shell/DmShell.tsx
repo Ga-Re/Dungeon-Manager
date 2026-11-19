@@ -1,4 +1,4 @@
-import { IconButton } from "@dungeon-manager/ui";
+import { IconButton, Popover } from "@dungeon-manager/ui";
 import { PanelLeft, Settings } from "lucide-react";
 import {
   useCallback,
@@ -68,7 +68,6 @@ export function DmShell({
   );
   const tabs = useRef(new Map<Mode, HTMLButtonElement>());
   const settingsButton = useRef<HTMLButtonElement>(null);
-  const settingsPanel = useRef<HTMLDivElement>(null);
   const panelButton = useRef<HTMLButtonElement>(null);
   const dataPanelRef = useRef<HTMLElement>(null);
   const idPrefix = useId();
@@ -117,37 +116,6 @@ export function DmShell({
     };
   }, [togglePanel]);
 
-  // The settings popover closes on Escape and on a click outside it.
-  useEffect(() => {
-    if (!settingsOpen) return;
-    // Only when focus is in the popover or on the gear: elsewhere Escape belongs to the map.
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      const target = event.target as Node;
-      if (
-        !settingsPanel.current?.contains(target) &&
-        !settingsButton.current?.contains(target)
-      )
-        return;
-      setSettingsOpen(false);
-      settingsButton.current?.focus();
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (
-        !settingsPanel.current?.contains(target) &&
-        !settingsButton.current?.contains(target)
-      )
-        setSettingsOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, [settingsOpen]);
-
   const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const index = MODES.indexOf(mode);
     const next =
@@ -164,7 +132,10 @@ export function DmShell({
 
   return (
     <ShellSlotsContext value={slots}>
-      <div className="dm-shell" data-panel={panelOpen ? "open" : "closed"}>
+      <div
+        className="dm-shell dm-ui"
+        data-panel={panelOpen ? "open" : "closed"}
+      >
         <div ref={slotRefs.canvas} className="dm-canvas">
           <p className="dm-canvas-empty">{t("shell.noScene")}</p>
         </div>
@@ -191,30 +162,32 @@ export function DmShell({
                   setSettingsOpen((open) => !open);
                 }}
               />
-              {settingsOpen && (
-                <div
-                  ref={settingsPanel}
-                  id={`${idPrefix}-settings`}
-                  className="dm-popover"
-                >
-                  <fieldset className="dm-settings-group">
-                    <legend>{t("shell.theme.label")}</legend>
-                    {THEME_SETTINGS.map((each) => (
-                      <label key={each}>
-                        <input
-                          type="radio"
-                          name={`${idPrefix}-theme`}
-                          checked={theme === each}
-                          onChange={() => {
-                            setTheme(each);
-                          }}
-                        />
-                        {t(`shell.theme.${each}`)}
-                      </label>
-                    ))}
-                  </fieldset>
-                </div>
-              )}
+              <Popover
+                open={settingsOpen}
+                onClose={() => {
+                  setSettingsOpen(false);
+                }}
+                anchor={settingsButton}
+                label={t("shell.settings")}
+                id={`${idPrefix}-settings`}
+              >
+                <fieldset className="dm-settings-group">
+                  <legend>{t("shell.theme.label")}</legend>
+                  {THEME_SETTINGS.map((each) => (
+                    <label key={each}>
+                      <input
+                        type="radio"
+                        name={`${idPrefix}-theme`}
+                        checked={theme === each}
+                        onChange={() => {
+                          setTheme(each);
+                        }}
+                      />
+                      {t(`shell.theme.${each}`)}
+                    </label>
+                  ))}
+                </fieldset>
+              </Popover>
             </div>
           </header>
           <div className="dm-ribbon">

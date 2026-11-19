@@ -477,23 +477,45 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-130b Fusion-style look of the DM window
 
-- **Status:** todo · **Depends on:** T-130 · **Refs:** ARCHITECTURE §15, ADR-0011, `.claude/skills/ui-design/SKILL.md`
-- Make the zones from T-130 look and work like the Fusion 360 reference the DM gave (2026-11-19); layout zones stay as they are.
+- **Status:** done · **Depends on:** T-130 · **Refs:** ARCHITECTURE §15, ADR-0011, `.claude/skills/ui-design/SKILL.md`
+- Make the zones from T-130 look like the Fusion 360 reference the DM gave (2026-11-19); layout zones and panel contents stay as they are (contents move in T-130c).
 - DM decisions (2026-11-19):
-  - **Data panel** stays an overlay that can be folded in and out (ADR-0011 unchanged); it becomes the **map and asset catalogue** (library), shown as compact cards/rows with icon, title and short description and a header with actions.
-  - **Scene browser** stays a tree floating over the map, compact header ("Szene"), visibility toggles per entry.
-  - **Ribbon:** tool groups with large icons over a short label and a group caption with ▾ below (dropdown for less frequent tools), replacing the plain text buttons and native selects.
-  - Form controls (buttons, inputs, selects) styled from tokens in `@dungeon-manager/ui`.
+  - **Ribbon:** tool groups with large icons over a short label and a group caption below; a caption with ▾ opens a dropdown for less frequent tools. Replaces the plain text buttons and native selects in the ribbon.
+  - **Form controls** (buttons, text fields, selects) styled from tokens in `@dungeon-manager/ui`.
+  - **Scene browser:** compact header; visibility (eye) toggles come with T-110, not here.
+  - New `@dungeon-manager/ui` primitives **Popover** and **Menu** (menu button / dropdown), reused by T-130c.
 - **Acceptance criteria**
-  - [ ] Ribbon modes use icon tool groups with captions; keyboard reachable, labels translated
-  - [ ] Data panel shows the library as a catalogue; folds in/out as before
-  - [ ] No native-looking controls left in the DM window; tokens only
-  - [ ] Screenshot golden updated; component tests for new primitives
-- **Notes:** Where campaign and scene management lives once the data panel is the catalogue is to be settled in the plan (ask the DM). Dock (reference #8) stays in T-131; a right-click/radial menu (reference #6) is not planned yet.
+  - [x] The Szene and Anzeige modes use icon tool groups with captions; keyboard reachable (Menu follows the WAI-ARIA menu button pattern), labels translated. Nebel gets its tool groups with the fog rework in T-131.
+  - [x] No native-looking buttons, fields or selects left in the DM window; tokens only (`findHardCodedValues`)
+  - [x] Component tests for Popover, Menu and the ribbon group; smoke test and E2E selectors updated; screenshot golden updated
+
+### T-130c Campaign and scenes in the scene browser, catalogue data panel
+
+- **Status:** todo · **Depends on:** T-130b · **Refs:** ARCHITECTURE §15, ADR-0011, SPEC 2.1
+- DM decisions (2026-11-19):
+  - **Scene browser** shows one campaign: its header is the campaign name with ▾ to switch or create a campaign; the tree lists its scenes, the open scene expands into its content (map, levels, fog). Clicking a scene opens it.
+  - **New scene:** from the ribbon (Szene mode) or by right-clicking the campaign or a scene in the browser; both open a small Fusion-style popover (name, optional map). Right-clicking a scene will also offer a sub-scene once T-152 exists.
+  - **New campaign:** on macOS from the native menu bar (Tauri menu, e.g. "Ablage → Neue Kampagne"); on Windows from a menu button in the title bar.
+  - **Data panel** becomes the map and asset catalogue scaffold: header "Katalog" with "Karte importieren", groups Karten / Token / Assets with empty hints; T-124 fills it. Folds in and out as before.
+  - **Library folder** is chosen in the settings popover (gear).
+- **Acceptance criteria**
+  - [ ] Campaign switch, new campaign and new scene work from browser, context menu, ribbon and menu (component + E2E tests); the context menu is keyboard reachable (Shift+F10 / context-menu key)
+  - [ ] Data panel shows the catalogue scaffold; the library folder can be changed in the settings
+  - [ ] Native macOS menu command reaches the DM window (Rust test or smoke test); Windows menu button covered by a component test
+  - [ ] Smoke test, E2E and screenshot updated
+
+### T-152 Sub-scenes
+
+- **Status:** todo · **Depends on:** T-130c · **Refs:** SPEC 2.1, ARCHITECTURE §6
+- A scene can have sub-scenes (e.g. "Krypta › Geheimkammer"), created by right-clicking a scene in the scene browser and shown nested under it.
+- **Acceptance criteria**
+  - [ ] Scene schema gains an optional parent scene reference, with a migration and schema tests
+  - [ ] Browser shows sub-scenes nested; deleting a scene with sub-scenes asks what happens to them
+- **Notes:** DM request (2026-11-19). File format change: propose the schema field, migration and delete behaviour to the DM before implementing.
 
 ### T-131 Fog tools in the ribbon and navigation dock
 
-- **Status:** todo · **Depends on:** T-130b · **Refs:** ARCHITECTURE §15, ADR-0011
+- **Status:** todo · **Depends on:** T-130c · **Refs:** ARCHITECTURE §15, ADR-0011
 - Move `FogToolbar` into the ribbon's fog mode (tool groups with captions, active tool highlighted); bottom-centre dock with zoom and fit-to-screen for the DM view, the player-view rotation (SPEC 2.2) and player-feed status.
 - **Acceptance criteria**
   - [ ] All fog tools reachable from the ribbon, with keyboard shortcuts as before

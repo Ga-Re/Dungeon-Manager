@@ -1,6 +1,9 @@
 export { FloatingPanel, type FloatingPanelProps } from "./FloatingPanel.js";
 export { createI18n } from "./i18n.js";
 export { IconButton, type IconButtonProps } from "./IconButton.js";
+export { Menu, type MenuItem, type MenuProps } from "./Menu.js";
+export { Popover, type PopoverProps } from "./Popover.js";
+export { RibbonGroup, type RibbonGroupProps } from "./RibbonGroup.js";
 export {
   COLOR_PAIRS,
   THEMES,

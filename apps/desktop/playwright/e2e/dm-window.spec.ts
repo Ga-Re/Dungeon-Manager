@@ -87,3 +87,28 @@ test("the theme chosen in the settings survives a restart", async ({
     page.getByRole("radio", { name: "Dunkel (Nacht)" }),
   ).toBeChecked();
 });
+
+test("ribbon commands work from the keyboard: menu, confirmation popover", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("button", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Szene" }).click();
+
+  const sceneMenu = page.getByRole("button", { name: "Szene", exact: true });
+  await sceneMenu.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(
+    page.getByRole("menuitem", { name: "Szene löschen …" }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  const confirm = page.getByRole("group", { name: /wirklich löschen/ });
+  await expect(confirm).toBeVisible();
+  await expect(
+    confirm.getByRole("button", { name: "Ja, löschen" }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(confirm).toHaveCount(0);
+  await expect(sceneMenu).toBeFocused();
+});

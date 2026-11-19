@@ -43,6 +43,12 @@ const sceneNames = async () =>
     .getAllByRole("listitem")
     .map((item) => item.textContent);
 
+/** "Szene ▾" → "Szene löschen …" in the ribbon. */
+function askToDelete() {
+  fireEvent.click(screen.getByRole("button", { name: "Szene" }));
+  fireEvent.click(screen.getByRole("menuitem", { name: "Szene löschen …" }));
+}
+
 describe("CampaignPanel", () => {
   test("lists the scenes by name, including unreadable ones", async () => {
     const library = fakeLibraryService("/lib", {
@@ -260,13 +266,16 @@ describe("CampaignPanel", () => {
     renderCampaign(library);
     fireEvent.click(await screen.findByRole("button", { name: "Eingang" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Szene löschen …" }));
+    askToDelete();
     expect(document.activeElement?.textContent).toBe("Ja, löschen");
     fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
-    expect(document.activeElement?.textContent).toBe("Szene löschen …");
+    // Back on the menu button the command came from.
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Szene" }),
+    );
     expect(library.fs.files().has("campaigns/mine/scenes/a.json")).toBe(true);
 
-    fireEvent.click(screen.getByRole("button", { name: "Szene löschen …" }));
+    askToDelete();
     fireEvent.click(screen.getByRole("button", { name: "Ja, löschen" }));
 
     expect(
@@ -290,7 +299,7 @@ describe("CampaignPanel", () => {
     library.fs.moveToTrash = () => Promise.reject(new Error("Gesperrt"));
     renderCampaign(library);
     fireEvent.click(await screen.findByRole("button", { name: "Eingang" }));
-    fireEvent.click(screen.getByRole("button", { name: "Szene löschen …" }));
+    askToDelete();
     fireEvent.click(screen.getByRole("button", { name: "Ja, löschen" }));
     expect(
       await screen.findByText("Das hat nicht geklappt: Gesperrt"),

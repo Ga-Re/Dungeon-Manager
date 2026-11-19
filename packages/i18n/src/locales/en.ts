@@ -69,6 +69,7 @@ export const en: Messages = {
     cancel: "Cancel",
     sceneDeleted: "Scene “{{name}}” is in the campaign's trash.",
     mapChange: {
+      title: "Change map",
       question:
         "New map: {{file}}. What should happen to the current setup? Anything not ticked is kept.",
       fog: "Reset fog (cover everything again)",
@@ -122,6 +123,10 @@ export const en: Messages = {
     placeholder: "Soon you can join the game table here.",
   },
   shell: {
+    groups: {
+      scene: "Scene",
+      playerView: "Player view",
+    },
     dataPanel: "Data panel",
     toggleDataPanel: "Show or hide the data panel (⌘/Ctrl+B)",
     modes: "Workspace",
