@@ -68,6 +68,7 @@ export function MapView({
   shape = "rectangle",
   brushRadius = 50,
   softEdge = 0,
+  fade = 0,
   onArea,
   onMapSize,
 }: {
@@ -84,6 +85,8 @@ export function MapView({
   readonly brushRadius?: number;
   /** Soft fog edge in map pixels (T-136a); 0 draws hard edges. */
   readonly softEdge?: number;
+  /** How long fog changes fade, in milliseconds (T-136b); 0 switches at once. */
+  readonly fade?: number;
   /** An area the DM marked with the reveal or hide tool, in map pixels. */
   readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
   readonly onMapSize?: (size: Size) => void;
@@ -221,8 +224,15 @@ export function MapView({
     if (camera) renderer.current?.setCamera(camera);
   }, [camera]);
 
+  // The fade duration applies to the next change; changing it alone redraws nothing.
+  const fadeNow = useRef(fade);
+  fadeNow.current = fade;
   useEffect(() => {
-    renderer.current?.setFog(fog, { opacity: DM_FOG_OPACITY, softEdge });
+    renderer.current?.setFog(fog, {
+      opacity: DM_FOG_OPACITY,
+      softEdge,
+      fade: fadeNow.current,
+    });
   }, [fog, softEdge]);
 
   // Functional updates: event handlers (also the native wheel listener) never see a stale camera.

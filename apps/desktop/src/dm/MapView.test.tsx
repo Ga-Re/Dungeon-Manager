@@ -203,6 +203,36 @@ describe("MapView", () => {
     expect(wheel.defaultPrevented).toBe(true);
   });
 
+  test("fades fog changes and draws soft edges as asked (T-136)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const { rerender } = renderView(fake.service, {
+      fog: [],
+      softEdge: 25,
+      fade: 650,
+    });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    const revealed = [
+      {
+        outer: [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ] as [number, number][],
+        holes: [],
+      },
+    ];
+    rerender(
+      tree(fake.service, undefined, { fog: revealed, softEdge: 25, fade: 650 }),
+    );
+    expect(fake.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      opacity: 0.55,
+      softEdge: 25,
+      fade: 650,
+    });
+  });
+
   test("the reveal tool turns a dragged rectangle into a map area", async () => {
     const fake = fakeMapService(() => Promise.resolve(image));
     const onArea = vi.fn();

@@ -155,10 +155,68 @@ async function videoScenario(scenario: string, canvas: HTMLCanvasElement) {
   await new Promise((resolve) => requestAnimationFrame(resolve));
 }
 
+/**
+ * "fade-fail-closed" (T-136b): fades from the nested fog to the plain one (soft edges on) and
+ * captures frames along the way; then starts the same hide again and swaps in a map of the same
+ * size, after which the plain fog must be there at once. `data-violations` counts pixels that show the map although
+ * the hard fog covers them before and after (must be none), `data-between` pixels on their way
+ * between both states (must be some, or nothing faded).
+ */
+async function fadeFailClosedScenario(canvas: HTMLCanvasElement) {
+  const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
+  renderer.setFog(REVEALED_NESTED, { opacity: 1 });
+  renderer.setMap(drawFixtureMap());
+  renderer.setCamera(cameraFor("zoomed"));
+  await renderer.drawn();
+  const before = capture(canvas);
+  renderer.setFog(REVEALED, { opacity: 1 });
+  await renderer.drawn();
+  const after = capture(canvas);
+  renderer.setFog(REVEALED_NESTED, { opacity: 1, softEdge: SOFT_EDGE });
+  await renderer.drawn();
+  renderer.setFog(REVEALED, { opacity: 1, softEdge: SOFT_EDGE, fade: 400 });
+  const hidden = (pixels: Uint8ClampedArray, index: number) =>
+    pixels[index] === 0 && pixels[index + 1] === 0 && pixels[index + 2] === 0;
+  let violations = 0;
+  let between = 0;
+  for (let frame = 0; frame < 12; frame++) {
+    await renderer.drawn();
+    const pixels = capture(canvas);
+    for (let index = 0; index < pixels.length; index += 4) {
+      const shown = !hidden(pixels, index);
+      if (hidden(before, index) && hidden(after, index) && shown) violations++;
+      const value = pixels[index] ?? 0;
+      const low = Math.min(before[index] ?? 0, after[index] ?? 0);
+      const high = Math.max(before[index] ?? 0, after[index] ?? 0);
+      if (high - low > 40 && value > low + 10 && value < high - 10) between++;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  }
+  // A new map of the same size mid-hide (the island in the pool): its fog is there at once,
+  // not frozen half-way.
+  renderer.setFog(REVEALED_NESTED, { opacity: 1, softEdge: SOFT_EDGE });
+  await renderer.drawn();
+  renderer.setFog(REVEALED, { opacity: 1, softEdge: SOFT_EDGE, fade: 400 });
+  await renderer.drawn();
+  renderer.setMap(drawFixtureMap());
+  await renderer.drawn();
+  await renderer.drawn();
+  const settled = capture(canvas);
+  for (let index = 0; index < settled.length; index += 4)
+    if (hidden(after, index) && !hidden(settled, index)) violations++;
+  document.body.dataset["violations"] = String(violations);
+  document.body.dataset["between"] = String(between);
+}
+
 async function main() {
   const canvas = document.querySelector("canvas");
   if (!canvas) throw new Error("canvas missing");
   const scenario = location.hash.slice(1);
+  if (scenario === "fade-fail-closed") {
+    await fadeFailClosedScenario(canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
   if (scenario === "fail-closed") {
     await failClosedScenario(canvas);
     document.body.dataset["ready"] = "true";

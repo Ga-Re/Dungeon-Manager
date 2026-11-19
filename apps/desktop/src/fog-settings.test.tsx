@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { memoryStorage } from "./dm/memory-storage.test-data.js";
 import {
-  onSoftEdgesChange,
+  onFogLookChange,
+  readFadeSeconds,
   readSoftEdges,
+  saveFadeSeconds,
   saveSoftEdges,
   softEdgeWidth,
 } from "./fog-settings.js";
@@ -40,21 +42,47 @@ describe("fog settings", () => {
     expect(softEdgeWidth(100, false)).toBe(0);
   });
 
+  it("keeps the fade duration within 0 to 3 s on the slider's steps", () => {
+    const storage = memoryStorage();
+    expect(readFadeSeconds(storage)).toBe(0.65);
+    saveFadeSeconds(storage, 0);
+    expect(readFadeSeconds(storage)).toBe(0);
+    saveFadeSeconds(storage, 1.234);
+    expect(readFadeSeconds(storage)).toBe(1.25);
+    expect(storage.getItem("dm.fog.fadeSeconds")).toBe("1.25");
+    saveFadeSeconds(storage, 9);
+    expect(readFadeSeconds(storage)).toBe(3);
+    expect(readFadeSeconds(memoryStorage({ "dm.fog.fadeSeconds": "x" }))).toBe(
+      0.65,
+    );
+    expect(readFadeSeconds(memoryStorage({ "dm.fog.fadeSeconds": "-2" }))).toBe(
+      0,
+    );
+  });
+
   it("hears a change made in the other window", () => {
+    const storage = memoryStorage();
     const listener = vi.fn();
-    const stop = onSoftEdgesChange(listener);
+    const stop = onFogLookChange(storage, listener);
+    storage.setItem("dm.fog.softEdges", "off");
     window.dispatchEvent(
       new StorageEvent("storage", { key: "dm.fog.softEdges", newValue: "off" }),
+    );
+    storage.setItem("dm.fog.fadeSeconds", "2");
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "dm.fog.fadeSeconds", newValue: "2" }),
     );
     window.dispatchEvent(
       new StorageEvent("storage", { key: "dm.theme", newValue: "light" }),
     );
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith(false);
+    expect(listener.mock.calls).toEqual([
+      [{ softEdges: false, fadeSeconds: 0.65 }],
+      [{ softEdges: false, fadeSeconds: 2 }],
+    ]);
     stop();
     window.dispatchEvent(
       new StorageEvent("storage", { key: "dm.fog.softEdges", newValue: "on" }),
     );
-    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });

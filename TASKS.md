@@ -666,13 +666,14 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-136b Soft fog fades
 
-- **Status:** todo · **Depends on:** T-136a · **Refs:** SPEC 4, ARCHITECTURE §8, §11
+- **Status:** done · **Depends on:** T-136a · **Refs:** SPEC 4, ARCHITECTURE §8, §11
 - Fog changes fade in/out instead of popping. A **transition duration** slider 0–3 s (0 = off, default ~0.65 s ease-out) in "Nebel & Animation", per device. Moved ahead of T-109; memory fog gets its fade when it arrives.
 - DM decision (2026-11-19): hiding fades too (the area stays visible on the TV for the fade's duration, fading out); the first fog of a scene and a new map never fade (fail-closed).
 - **Acceptance criteria**
-  - [ ] Fades for manual reveals/hides and room reveals; duration 0 = current hard behaviour
-  - [ ] A pixel that is fogged before and after a change never shows the map during the fade
+  - [x] Fades for manual reveals/hides and room reveals; duration 0 = current hard behaviour
+  - [x] A pixel that is fogged before and after a change never shows the map during the fade
   - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11 (≤ 1 % missed refreshes at 60 Hz), measured by the DM on the reference notebook
+- **Notes:** The benchmark criterion stays open until the DM has measured it on the reference notebook (it needs the TV; CI has no usable GPU).
 
 ### T-130d App menu: macOS menu bar, Windows menu button
 

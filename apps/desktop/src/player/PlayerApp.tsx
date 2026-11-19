@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
 import type { PlayerFeedReceiver } from "../platform/player-feed.js";
 import {
-  onSoftEdgesChange,
-  readSoftEdges,
+  onFogLookChange,
+  readFogLook,
   softEdgeWidth,
 } from "../fog-settings.js";
 import { deviceStorage } from "../dm/shell/theme.js";
@@ -42,7 +42,7 @@ export function PlayerApp({
     let message: PlayerViewMessage | null = null;
     let mapSize: Size | null = null;
     let video: HTMLVideoElement | null = null;
-    let softEdges = readSoftEdges(storage);
+    let look = readFogLook(storage);
     // Removes the current map, image or video, at once.
     const clearMap = (view: Renderer) => {
       view.setMap(null);
@@ -66,28 +66,42 @@ export function PlayerApp({
       }
     };
 
-    const applyFog = (view: Renderer, shown: PlayerViewMessage) => {
+    // `fades`: the change happens within the same scene and map (never for a new one).
+    const applyFog = (
+      view: Renderer,
+      shown: PlayerViewMessage,
+      fades: boolean,
+    ) => {
       const map = shown.scene?.map ?? null;
       const level = map?.levels[0]?.id;
       view.setFog(
         level === undefined ? [] : (shown.scene?.fog[level]?.revealed ?? []),
-        { softEdge: map ? softEdgeWidth(map.grid.cellSizePx, softEdges) : 0 },
+        {
+          softEdge: map
+            ? softEdgeWidth(map.grid.cellSizePx, look.softEdges)
+            : 0,
+          fade: fades ? look.fadeSeconds * 1000 : 0,
+        },
       );
     };
-    // The DM switched soft edges in the settings: redraw the fog as it is, at once.
-    const stopSettings = onSoftEdgesChange((on) => {
-      softEdges = on;
-      if (renderer && message) applyFog(renderer, message);
+    // The DM changed the fog's look in the settings: redraw the fog as it is.
+    const stopSettings = onFogLookChange(storage, (next) => {
+      look = next;
+      if (renderer && message) applyFog(renderer, message, true);
     });
 
     const show = (next: PlayerViewMessage) => {
       const previousPath = message?.scene?.map?.asset.path;
+      const sameScene =
+        message?.scene != null &&
+        message.scene.id === next.scene?.id &&
+        previousPath === next.scene.map?.asset.path;
       message = next;
       const view = renderer;
       if (!view) return;
       const map = next.scene?.map ?? null;
       // Fog first: everything not revealed on the shown level stays covered.
-      applyFog(view, next);
+      applyFog(view, next, sameScene);
       if (!map) {
         // Also cancels a map still loading for the previous scene.
         loading++;

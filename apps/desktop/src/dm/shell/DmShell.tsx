@@ -20,8 +20,14 @@ import {
 import { useTranslation } from "react-i18next";
 import { ShellSlotsContext, type ShellSlot } from "./slots.js";
 import { HudLayoutContext, useHudLayoutStore } from "./hud-layout.js";
-import { SoftEdgesContext } from "./fog-look.js";
-import { readSoftEdges, saveSoftEdges } from "../../fog-settings.js";
+import { FogLookContext } from "./fog-look.js";
+import {
+  FADE_MAX_SECONDS,
+  FADE_STEP_SECONDS,
+  readFogLook,
+  saveFadeSeconds,
+  saveSoftEdges,
+} from "../../fog-settings.js";
 import { SettingsDialog, type SettingsCategory } from "./SettingsDialog.js";
 import { THEME_SETTINGS, useThemeSetting } from "./theme.js";
 import { UI_SCALES, useUiScale } from "./ui-scale.js";
@@ -95,7 +101,7 @@ export function DmShell({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useThemeSetting(storage, root);
   const [uiScale, setUiScale] = useUiScale(storage, root);
-  const [softEdges, setSoftEdges] = useState(() => readSoftEdges(storage));
+  const [fogLook, setFogLook] = useState(() => readFogLook(storage));
   const hudLayout = useHudLayoutStore(storage);
   const [slots, setSlots] = useState<Partial<Record<ShellSlot, HTMLElement>>>(
     {},
@@ -235,15 +241,39 @@ export function DmShell({
             <input
               type="checkbox"
               role="switch"
-              checked={softEdges}
+              checked={fogLook.softEdges}
               onChange={(event) => {
-                setSoftEdges(event.target.checked);
-                saveSoftEdges(storage, event.target.checked);
+                const softEdges = event.target.checked;
+                setFogLook((look) => ({ ...look, softEdges }));
+                saveSoftEdges(storage, softEdges);
               }}
             />
             {t("shell.fogLook.softEdges")}
           </label>
           <p className="dm-settings-hint">{t("shell.fogLook.softEdgesHint")}</p>
+          <div className="dm-settings-range">
+            <span id={`${idPrefix}-fade`}>{t("shell.fogLook.fade")}</span>
+            <input
+              type="range"
+              aria-labelledby={`${idPrefix}-fade`}
+              min={0}
+              max={FADE_MAX_SECONDS}
+              step={FADE_STEP_SECONDS}
+              value={fogLook.fadeSeconds}
+              aria-valuetext={t("shell.fogLook.seconds", {
+                seconds: fogLook.fadeSeconds,
+              })}
+              onChange={(event) => {
+                const fadeSeconds = Number(event.target.value);
+                setFogLook((look) => ({ ...look, fadeSeconds }));
+                saveFadeSeconds(storage, fadeSeconds);
+              }}
+            />
+            <output aria-hidden="true">
+              {t("shell.fogLook.seconds", { seconds: fogLook.fadeSeconds })}
+            </output>
+          </div>
+          <p className="dm-settings-hint">{t("shell.fogLook.fadeHint")}</p>
         </fieldset>
       ),
     },
@@ -413,7 +443,7 @@ export function DmShell({
           {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
           <div className="dm-shell-content">
             {/* Context passes through portals: what the children render gets it too. */}
-            <SoftEdgesContext value={softEdges}>{children}</SoftEdgesContext>
+            <FogLookContext value={fogLook}>{children}</FogLookContext>
           </div>
         </div>
       </HudLayoutContext>

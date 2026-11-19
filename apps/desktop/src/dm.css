@@ -1179,3 +1179,23 @@ button.dm-welcome-campaign:hover {
 .dm-welcome-notice:empty {
   display: none;
 }
+
+/* Fade duration slider (T-136b): label, slider and the value in one row. */
+.dm-settings-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dm-space-2);
+  font-size: var(--dm-font-size-sm);
+}
+
+.dm-settings-range input[type="range"] {
+  width: 12rem;
+  accent-color: var(--dm-accent);
+}
+
+.dm-settings-range output {
+  min-width: 3.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--dm-text-secondary);
+}
