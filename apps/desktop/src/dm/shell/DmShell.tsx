@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { ShellSlotsContext, type ShellSlot } from "./slots.js";
+import { HudLayoutContext, useHudLayoutStore } from "./hud-layout.js";
 import { THEME_SETTINGS, useThemeSetting } from "./theme.js";
 
 const MODES = ["scene", "fog", "display"] as const;
@@ -61,6 +62,7 @@ export function DmShell({
   const [mode, setMode] = useState<Mode>("display");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useThemeSetting(storage, root);
+  const hudLayout = useHudLayoutStore(storage);
   const [slots, setSlots] = useState<Partial<Record<ShellSlot, HTMLElement>>>(
     {},
   );
@@ -132,125 +134,138 @@ export function DmShell({
 
   return (
     <ShellSlotsContext value={slots}>
-      <div
-        className="dm-shell dm-ui"
-        data-panel={panelOpen ? "open" : "closed"}
-      >
-        <header className="dm-titlebar">
-          <IconButton
-            ref={panelButton}
-            icon={<PanelLeft />}
-            label={t("shell.toggleDataPanel")}
-            pressed={panelOpen}
-            aria-controls={`${idPrefix}-panel`}
-            onClick={togglePanel}
-          />
-          <span className="dm-app-name">{t("app.title")}</span>
-          <div ref={slotRefs.titleScene} className="dm-titlebar-scene" />
-          <div className="dm-settings">
-            <IconButton
-              ref={settingsButton}
-              icon={<Settings />}
-              label={t("shell.settings")}
-              aria-expanded={settingsOpen}
-              aria-controls={`${idPrefix}-settings`}
-              onClick={() => {
-                setSettingsOpen((open) => !open);
-              }}
-            />
-            <Popover
-              open={settingsOpen}
-              onClose={() => {
-                setSettingsOpen(false);
-              }}
-              anchor={settingsButton}
-              label={t("shell.settings")}
-              id={`${idPrefix}-settings`}
-            >
-              <fieldset className="dm-settings-group">
-                <legend>{t("shell.theme.label")}</legend>
-                {THEME_SETTINGS.map((each) => (
-                  <label key={each}>
-                    <input
-                      type="radio"
-                      name={`${idPrefix}-theme`}
-                      checked={theme === each}
-                      onChange={() => {
-                        setTheme(each);
-                      }}
-                    />
-                    {t(`shell.theme.${each}`)}
-                  </label>
-                ))}
-              </fieldset>
-              <div ref={slotRefs.settings} className="dm-settings-more" />
-            </Popover>
-          </div>
-        </header>
-        <aside
-          ref={dataPanelRef}
-          id={`${idPrefix}-panel`}
-          aria-label={t("shell.dataPanel")}
-          className="dm-datapanel"
-          hidden={!panelOpen}
+      <HudLayoutContext value={hudLayout}>
+        <div
+          className="dm-shell dm-ui"
+          data-panel={panelOpen ? "open" : "closed"}
         >
-          <div ref={slotRefs.dataPanel} />
-        </aside>
-        <div className="dm-main">
-          <div className="dm-ribbon">
-            <div
-              role="tablist"
-              aria-label={t("shell.modes")}
-              className="dm-ribbon-tabs"
-            >
+          <header className="dm-titlebar">
+            <IconButton
+              ref={panelButton}
+              icon={<PanelLeft />}
+              label={t("shell.toggleDataPanel")}
+              pressed={panelOpen}
+              aria-controls={`${idPrefix}-panel`}
+              onClick={togglePanel}
+            />
+            <span className="dm-app-name">{t("app.title")}</span>
+            <div ref={slotRefs.titleScene} className="dm-titlebar-scene" />
+            <div className="dm-settings">
+              <IconButton
+                ref={settingsButton}
+                icon={<Settings />}
+                label={t("shell.settings")}
+                aria-expanded={settingsOpen}
+                aria-controls={`${idPrefix}-settings`}
+                onClick={() => {
+                  setSettingsOpen((open) => !open);
+                }}
+              />
+              <Popover
+                open={settingsOpen}
+                onClose={() => {
+                  setSettingsOpen(false);
+                }}
+                anchor={settingsButton}
+                label={t("shell.settings")}
+                id={`${idPrefix}-settings`}
+              >
+                <fieldset className="dm-settings-group">
+                  <legend>{t("shell.theme.label")}</legend>
+                  {THEME_SETTINGS.map((each) => (
+                    <label key={each}>
+                      <input
+                        type="radio"
+                        name={`${idPrefix}-theme`}
+                        checked={theme === each}
+                        onChange={() => {
+                          setTheme(each);
+                        }}
+                      />
+                      {t(`shell.theme.${each}`)}
+                    </label>
+                  ))}
+                </fieldset>
+                <fieldset className="dm-settings-group dm-settings-more">
+                  <legend>{t("shell.layout.label")}</legend>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hudLayout.reset();
+                    }}
+                  >
+                    {t("shell.layout.reset")}
+                  </button>
+                </fieldset>
+                <div ref={slotRefs.settings} className="dm-settings-more" />
+              </Popover>
+            </div>
+          </header>
+          <aside
+            ref={dataPanelRef}
+            id={`${idPrefix}-panel`}
+            aria-label={t("shell.dataPanel")}
+            className="dm-datapanel"
+            hidden={!panelOpen}
+          >
+            <div ref={slotRefs.dataPanel} />
+          </aside>
+          <div className="dm-main">
+            <div className="dm-ribbon">
+              <div
+                role="tablist"
+                aria-label={t("shell.modes")}
+                className="dm-ribbon-tabs"
+              >
+                {MODES.map((each) => (
+                  <button
+                    key={each}
+                    ref={(element) => {
+                      if (element) tabs.current.set(each, element);
+                      else tabs.current.delete(each);
+                    }}
+                    type="button"
+                    role="tab"
+                    id={`${idPrefix}-tab-${each}`}
+                    aria-selected={mode === each}
+                    aria-controls={`${idPrefix}-mode-${each}`}
+                    tabIndex={mode === each ? 0 : -1}
+                    className="dm-ribbon-tab"
+                    onClick={() => {
+                      setMode(each);
+                    }}
+                    onKeyDown={onTabKeyDown}
+                  >
+                    {t(`shell.mode.${each}`)}
+                  </button>
+                ))}
+              </div>
               {MODES.map((each) => (
-                <button
+                <div
                   key={each}
-                  ref={(element) => {
-                    if (element) tabs.current.set(each, element);
-                    else tabs.current.delete(each);
-                  }}
-                  type="button"
-                  role="tab"
-                  id={`${idPrefix}-tab-${each}`}
-                  aria-selected={mode === each}
-                  aria-controls={`${idPrefix}-mode-${each}`}
-                  tabIndex={mode === each ? 0 : -1}
-                  className="dm-ribbon-tab"
-                  onClick={() => {
-                    setMode(each);
-                  }}
-                  onKeyDown={onTabKeyDown}
-                >
-                  {t(`shell.mode.${each}`)}
-                </button>
+                  ref={slotRefs[MODE_SLOT[each]]}
+                  id={`${idPrefix}-mode-${each}`}
+                  role="tabpanel"
+                  aria-labelledby={`${idPrefix}-tab-${each}`}
+                  hidden={mode !== each}
+                  className="dm-ribbon-panel"
+                  data-empty={t("shell.noScene")}
+                />
               ))}
             </div>
-            {MODES.map((each) => (
-              <div
-                key={each}
-                ref={slotRefs[MODE_SLOT[each]]}
-                id={`${idPrefix}-mode-${each}`}
-                role="tabpanel"
-                aria-labelledby={`${idPrefix}-tab-${each}`}
-                hidden={mode !== each}
-                className="dm-ribbon-panel"
-                data-empty={t("shell.noScene")}
-              />
-            ))}
-          </div>
-          {/* The map area: the canvas fills it, HUD parts float over it (ADR-0014). */}
-          <div className="dm-stage">
-            <div ref={slotRefs.canvas} className="dm-canvas">
-              <p className="dm-canvas-empty">{t("shell.noScene")}</p>
+            {/* The map area: the canvas fills it, HUD parts float over it (ADR-0014). */}
+            <div className="dm-stage">
+              <div ref={slotRefs.canvas} className="dm-canvas">
+                <p className="dm-canvas-empty">{t("shell.noScene")}</p>
+              </div>
+              <div ref={slotRefs.browser} className="dm-browser" />
+              <div ref={slotRefs.notices} className="dm-notices" />
             </div>
-            <div ref={slotRefs.browser} className="dm-browser" />
-            <div ref={slotRefs.notices} className="dm-notices" />
           </div>
+          {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
+          <div className="dm-shell-content">{children}</div>
         </div>
-        {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
-        <div className="dm-shell-content">{children}</div>
-      </div>
+      </HudLayoutContext>
     </ShellSlotsContext>
   );
 }

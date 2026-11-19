@@ -144,6 +144,10 @@ export const en: Messages = {
     placeholder: "Soon you can join the game table here.",
   },
   shell: {
+    layout: {
+      label: "Tool windows",
+      reset: "Reset positions",
+    },
     groups: {
       create: "New",
       scene: "Scene",
@@ -169,6 +173,23 @@ export const en: Messages = {
       saved: "Saved",
       saving: "Saving…",
       failed: "Not saved",
+    },
+    tree: {
+      browserTitle: "Browser",
+      move: "Move browser (arrow keys)",
+      collapse: "Collapse browser",
+      expand: "Expand browser",
+      switchCampaign: "Switch campaign",
+      settings: "Campaign settings",
+      scenes: "Scenes",
+      maps: "Maps",
+      noMaps: "No maps yet",
+      players: "Players & characters",
+      noPlayers: "No players yet",
+      handouts: "Handouts & clues",
+      noHandouts: "No handouts yet",
+      notes: "Notes",
+      noNotes: "No notes yet",
     },
     browser: {
       map: "Map",

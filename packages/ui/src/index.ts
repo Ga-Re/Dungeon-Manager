@@ -1,5 +1,6 @@
 export { FloatingPanel, type FloatingPanelProps } from "./FloatingPanel.js";
 export { createI18n } from "./i18n.js";
+export { HudPanel, type HudPanelProps, type HudPlacement } from "./HudPanel.js";
 export { IconButton, type IconButtonProps } from "./IconButton.js";
 export {
   ContextMenu,
@@ -11,6 +12,7 @@ export { Popover, type PopoverProps } from "./Popover.js";
 export { RibbonGroup, type RibbonGroupProps } from "./RibbonGroup.js";
 export {
   COLOR_PAIRS,
+  HUD,
   THEMES,
   contrastRatio,
   tokensToCss,

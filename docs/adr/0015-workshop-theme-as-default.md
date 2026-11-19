@@ -1,6 +1,6 @@
 # ADR-0015: Dark "workshop" theme as default, reduced parchment as the light theme
 
-- **Status:** Proposed
+- **Status:** Accepted (DM, 2026-11-19)
 - **Date:** 2026-11-19
 - **Deciders:** DM (product owner), agent
 - **Supersedes:** in ADR-0011, the "Readability first" palette rule (light parchment panels as default), the night variant, and the typography rule of its "Design references" (serif panel and section headings; all-caps only for group captions). Zones (ADR-0014), tokens, layering and the other restrained styling rules of ADR-0011 stay in force.

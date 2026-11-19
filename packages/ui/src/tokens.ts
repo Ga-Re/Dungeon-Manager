@@ -125,6 +125,18 @@ const SHADOWS: Record<ThemeName, string> = {
   parchment: "0 2px 8px rgb(30 22 10 / 0.14)",
 };
 
+/**
+ * Tool windows over the map (browser, details; ADR-0015): light text on dark translucent row
+ * chips in both themes, so they read the same over any map. Tested against a white map.
+ */
+export const HUD = {
+  text: "#eef0f3",
+  "text-muted": "#c3c9d2",
+  row: { rgb: [24, 28, 34], alpha: 0.78 },
+  "row-hover": { rgb: [44, 50, 60], alpha: 0.88 },
+  "row-selected": { rgb: [70, 56, 26], alpha: 0.9 },
+} as const;
+
 /** Values shared by both themes: spacing (4/8 px grid), type, radii, layering, map overlays. */
 const SHARED: Record<string, string> = {
   "space-1": "4px",
@@ -155,6 +167,14 @@ const SHARED: Record<string, string> = {
   "z-chrome": "30",
   "z-popover": "40",
   "z-modal": "50",
+  ...Object.fromEntries(
+    Object.entries(HUD).map(([name, value]) => [
+      `hud-${name}`,
+      typeof value === "string"
+        ? value
+        : `rgb(${value.rgb.join(" ")} / ${String(value.alpha)})`,
+    ]),
+  ),
   // Drawn over the map itself, so independent of the theme.
   "overlay-line": "#ffffff",
   "overlay-reveal-fill": "rgb(255 255 255 / 0.2)",

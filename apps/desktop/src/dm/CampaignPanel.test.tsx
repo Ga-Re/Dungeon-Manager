@@ -38,11 +38,11 @@ function renderCampaign(library: ReturnType<typeof fakeLibraryService>) {
   );
 }
 
-/** Names of the scenes in the browser tree (level 2, under the campaign). */
+/** Names of the scenes in the browser tree (campaign › Szenen › scene). */
 const sceneNames = () =>
-  within(screen.getByRole("tree", { name: "Szenen" }))
-    .getAllByRole("treeitem")
-    .filter((item) => item.getAttribute("aria-level") === "2")
+  within(screen.getByRole("treeitem", { name: "Szenen" }))
+    .queryAllByRole("treeitem")
+    .filter((item) => item.getAttribute("aria-level") === "3")
     .map((item) => item.querySelector(".dm-tree-label")?.textContent);
 
 /** Clicks a scene in the browser tree, which opens it. */
@@ -396,5 +396,63 @@ describe("CampaignPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Szene" }));
     expect(screen.queryByRole("button", { name: "Ja, löschen" })).toBeNull();
     expect(screen.getByRole("menu", { name: "Szene" })).toBeTruthy();
+  });
+
+  test("shows the campaign's groups: settings, scenes, maps, players, handouts, notes", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/campaign.json": JSON.stringify({
+        schemaVersion: 1,
+        id: "c",
+        name: "Die verlorene Mine",
+        players: [{ id: "p1", name: "Anna", characterName: "Mira" }],
+        visibilityDefaults: {},
+      }),
+      "campaigns/mine/scenes/a.json": JSON.stringify({
+        ...JSON.parse(sceneFile("a", "Höhle")),
+        map: {
+          kind: "image",
+          asset: {
+            path: "library/maps/hoehle.webp",
+            hash: `sha256:${"a".repeat(64)}`,
+          },
+          grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },
+          levels: [{ id: "ground", name: "Unten" }],
+        },
+      }),
+    });
+    renderCampaign(library);
+    const groups = await waitFor(() => {
+      const items = screen
+        .getAllByRole("treeitem")
+        .filter((item) => item.getAttribute("aria-level") === "2")
+        .map((item) => item.querySelector(".dm-tree-label")?.textContent);
+      expect(items).toHaveLength(6);
+      return items;
+    });
+    expect(groups).toEqual([
+      "Kampagneneinstellungen",
+      "Szenen",
+      "Karten",
+      "Spieler & Charaktere",
+      "Handouts & Hinweise",
+      "Notizen",
+    ]);
+    expect(
+      await screen.findByRole("treeitem", { name: "hoehle.webp" }),
+    ).toBeTruthy();
+    expect(await screen.findByRole("treeitem", { name: "Anna" })).toBeTruthy();
+    expect(screen.getByText("Mira")).toBeTruthy();
+    expect(screen.getByText("Noch keine Notizen")).toBeTruthy();
+    expect(screen.getByText("Noch keine Handouts")).toBeTruthy();
+  });
+
+  test("offers a new scene on the scenes group too", async () => {
+    renderCampaign(fakeLibraryService("/lib"));
+    fireEvent.contextMenu(
+      await screen.findByText("Szenen", { selector: ".dm-tree-label" }),
+    );
+    expect(
+      screen.getByRole("menu", { name: "Befehle für „Szenen“" }),
+    ).toBeTruthy();
   });
 });

@@ -519,3 +519,161 @@
 .dm-panel-compact .dm-panel-body {
   padding: var(--dm-space-1) var(--dm-space-2) var(--dm-space-2);
 }
+
+/* TreeList, compact variant: disclosure chevrons, no guides, a 16px indent per level. */
+.dm-tree-compact {
+  --tree-indent: 16px;
+  --tree-toggle-size: 12px;
+}
+
+.dm-tree-compact .dm-tree-group > .dm-tree-item::before,
+.dm-tree-compact .dm-tree-group > .dm-tree-item::after,
+.dm-tree-compact .dm-tree-group > .dm-tree-item > .dm-tree-row::before,
+.dm-tree-compact .dm-tree-item[aria-expanded="true"] > .dm-tree-row::after {
+  content: none;
+}
+
+.dm-tree-compact .dm-tree-row {
+  height: 26px;
+}
+
+.dm-tree-compact .dm-tree-toggle {
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+.dm-tree-compact .dm-tree-toggle svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 1.5;
+}
+
+/* Leaves line up with folder labels: the chevron's width plus the gap. */
+.dm-tree-compact .dm-tree-row > .dm-tree-icon:first-child,
+.dm-tree-compact .dm-tree-row > .dm-tree-label:first-child {
+  margin-left: calc(var(--tree-toggle-size) + var(--dm-space-2));
+}
+
+/* HudPanel – a tool window over the map: header bar, transparent body (ADR-0015). Text in the
+   body sits on translucent row chips, so it stays readable over light and dark maps. */
+.dm-hud {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  width: 18rem;
+  max-height: calc(100% - 2 * var(--dm-space-3));
+  pointer-events: auto;
+}
+
+.dm-hud-head {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-1);
+  min-height: 26px;
+  padding: 0 var(--dm-space-1);
+  background: var(--dm-surface-panel);
+  color: var(--dm-text-secondary);
+  border: 1px solid var(--dm-border-subtle);
+  border-radius: var(--dm-radius-sm);
+  box-shadow: var(--dm-shadow-panel);
+}
+
+.dm-hud-title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--dm-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dm-hud-grip,
+.dm-hud-fold {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--dm-radius-sm);
+  background: transparent;
+  color: inherit;
+}
+
+.dm-hud-grip {
+  cursor: grab;
+  touch-action: none;
+}
+
+.dm-hud-grip:active {
+  cursor: grabbing;
+}
+
+.dm-hud-grip svg {
+  width: 8px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.dm-hud-fold {
+  cursor: pointer;
+}
+
+.dm-hud-fold svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.dm-hud-grip:hover,
+.dm-hud-fold:hover {
+  background: var(--dm-surface-raised);
+  color: var(--dm-text-primary);
+}
+
+.dm-hud-grip:focus-visible,
+.dm-hud-fold:focus-visible {
+  outline: var(--dm-focus-width) solid var(--dm-focus);
+  outline-offset: 1px;
+}
+
+.dm-hud-body {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--dm-space-1) 0;
+  color: var(--dm-hud-text);
+}
+
+.dm-hud-body[hidden] {
+  display: none;
+}
+
+.dm-hud .dm-tree-row {
+  width: fit-content;
+  max-width: 100%;
+  background: var(--dm-hud-row);
+  border-color: transparent;
+}
+
+.dm-hud .dm-tree-icon,
+.dm-hud .dm-tree-meta {
+  color: var(--dm-hud-text-muted);
+}
+
+.dm-hud .dm-tree-item[aria-selected="true"] > .dm-tree-row {
+  background: var(--dm-hud-row-selected);
+  border-color: var(--dm-accent);
+}
+
+.dm-hud .dm-tree-row:hover {
+  background: var(--dm-hud-row-hover);
+}
+
+/* Rows are as wide as their content: labels only shrink (and truncate) at the panel's width. */
+.dm-hud .dm-tree-label {
+  flex: 0 1 auto;
+}
