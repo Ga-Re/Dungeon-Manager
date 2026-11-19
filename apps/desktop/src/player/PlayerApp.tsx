@@ -100,12 +100,11 @@ export function PlayerApp({
     const show = (next: PlayerViewMessage) => {
       const previousPath = mediaOf(message?.scene?.map)?.path;
       const media = mediaOf(next.scene?.map);
-      const path = media?.path;
       // Another level is another floor: its fog appears at once, like a new scene's.
       const sameScene =
         message?.scene != null &&
         message.scene.id === next.scene?.id &&
-        previousPath === path &&
+        previousPath === media?.path &&
         message.scene.map?.currentLevelId === next.scene.map?.currentLevelId;
       message = next;
       const view = renderer;
@@ -113,7 +112,7 @@ export function PlayerApp({
       const map = next.scene?.map ?? null;
       // Fog first: everything not revealed on the shown level stays covered.
       applyFog(view, next, sameScene);
-      if (!map || !media || path === undefined) {
+      if (!map || !media) {
         // Also cancels a map still loading for the previous scene.
         loading++;
         mapSize = null;
@@ -121,7 +120,7 @@ export function PlayerApp({
         mark("none");
         return;
       }
-      if (path === previousPath && mapSize) {
+      if (media.path === previousPath && mapSize) {
         fit();
         return;
       }
@@ -131,22 +130,24 @@ export function PlayerApp({
       mapSize = null;
       const request = ++loading;
       const loaded =
-        media.kind === "video" ? maps.loadVideo(path) : maps.loadImage(path);
+        media.kind === "video"
+          ? maps.loadVideo(media.path)
+          : maps.loadImage(media.path);
       loaded.then(
-        (media) => {
+        (shown) => {
           if (!active || request !== loading) {
-            if (media instanceof HTMLVideoElement) releaseVideo(media);
+            if (shown instanceof HTMLVideoElement) releaseVideo(shown);
             return;
           }
-          if (media instanceof HTMLVideoElement) {
+          if (shown instanceof HTMLVideoElement) {
             // Under the canvas; the renderer shows it only once the fog is drawn (ADR-0010).
-            video = media;
-            canvas.before(media);
-            mapSize = { width: media.videoWidth, height: media.videoHeight };
-            view.setVideo(media);
+            video = shown;
+            canvas.before(shown);
+            mapSize = { width: shown.videoWidth, height: shown.videoHeight };
+            view.setVideo(shown);
           } else {
-            mapSize = { width: media.width, height: media.height };
-            view.setMap(media);
+            mapSize = { width: shown.width, height: shown.height };
+            view.setMap(shown);
           }
           mark("map");
           fit();

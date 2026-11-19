@@ -108,11 +108,12 @@ function applyChange(state: SessionState, command: Command): Change {
     case "level.show": {
       if (!scene.map) return "noMap";
       if (!hasLevel(scene, command.levelId)) return "unknownLevel";
-      // Already on the TV: nothing changes, nothing to undo (T-118c).
-      if (scene.table?.levelId === command.levelId)
-        return { state, events: [] };
+      const { current, released } = tableLevels(scene);
+      // Already on the TV (also the first level, shown without `table`): nothing changes,
+      // nothing to undo (T-118c).
+      if (current === command.levelId) return { state, events: [] };
       // What was shown so far stays released – also the first level, shown without `table`.
-      const shown = new Set([...tableLevels(scene).released, command.levelId]);
+      const shown = new Set([...released, command.levelId]);
       return {
         state: withScene(state, {
           table: { levelId: command.levelId, shownLevelIds: [...shown] },

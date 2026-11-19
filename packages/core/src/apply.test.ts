@@ -737,6 +737,12 @@ describe("level.show", () => {
     });
   });
 
+  test("showing the level already on the TV changes nothing, also without `table`", () => {
+    const first = apply(state, { type: "level.show", levelId: "ground" }, ctx);
+    expect(first).toEqual({ ok: true, state, events: [] });
+    expect(ok(first).state).toBe(state);
+  });
+
   test("rejects unknown levels and scenes without a map", () => {
     expect(apply(state, { type: "level.show", levelId: "roof" }, ctx)).toEqual({
       ok: false,

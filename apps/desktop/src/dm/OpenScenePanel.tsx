@@ -91,7 +91,10 @@ export function OpenScenePanel({
   readonly slug: string;
   readonly scene: Scene;
   readonly newId: () => string;
-  /** The scene as edited and the shown level's revealed fog, after every change (browser tree). */
+  /**
+   * The scene as edited and the revealed fog of the level the DM works on (T-118c), after every
+   * change (browser tree).
+   */
   readonly onSceneChange?: (scene: Scene, revealed: readonly Polygon[]) => void;
   readonly onChanged: (scene: Scene) => void;
   readonly onDeleted: (scene: Scene) => void;

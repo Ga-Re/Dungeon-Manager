@@ -57,8 +57,13 @@ function renderScene(opened: Scene) {
     rotate: vi.fn(),
     rotation: 0,
   };
-  const maps = fakeMapService(() =>
-    Promise.resolve({ width: 1000, height: 500 } as unknown as MapImage),
+  // The cellar's own image has another size than the tower's map.
+  const maps = fakeMapService((path) =>
+    Promise.resolve(
+      (path.endsWith("keller.png")
+        ? { width: 800, height: 600 }
+        : { width: 1000, height: 500 }) as unknown as MapImage,
+    ),
   );
   render(
     <I18nextProvider i18n={createI18n("de")}>
@@ -145,6 +150,13 @@ describe("level switcher", () => {
     await waitFor(() => {
       expect(saved().fog.levels["cellar"]?.revealed).toHaveLength(1);
     });
+    // "Reveal all" covers the cellar's own image, not the tower's map.
+    expect(
+      Math.max(
+        ...(saved().fog.levels["cellar"]?.revealed[0]?.outer.map(([x]) => x) ??
+          []),
+      ),
+    ).toBe(800);
     expect(shown.at(-1)?.map?.currentLevelId).toBe("ground");
     expect(JSON.stringify(shown)).not.toContain("Keller");
 
@@ -164,5 +176,27 @@ describe("level switcher", () => {
     // Undo puts the TV back on the ground floor.
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     expect(shown.at(-1)?.map?.currentLevelId).toBe("ground");
+
+    // Back to the ground floor: the tower's map again, at its size.
+    fireEvent.click(screen.getByRole("button", { name: "Keller" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Erdgeschoss" }));
+    await waitFor(() => {
+      expect(maps.service.loadImage).toHaveBeenLastCalledWith(
+        "library/maps/turm.png",
+      );
+    });
+    await waitFor(() => {
+      expect(revealAll).toHaveProperty("disabled", false);
+    });
+    fireEvent.click(revealAll);
+    await waitFor(() => {
+      expect(
+        Math.max(
+          ...(saved().fog.levels["ground"]?.revealed[0]?.outer.map(
+            ([x]) => x,
+          ) ?? []),
+        ),
+      ).toBe(1000);
+    });
   });
 });

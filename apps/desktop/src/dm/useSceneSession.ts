@@ -149,7 +149,8 @@ export function useSceneSession(
       if (!current) return false;
       const result = execute(current, history, command, ctx);
       if (!result.ok) return false;
-      commit(result.state, result.history);
+      // A command that changes nothing (e.g. showing the level already on the TV) writes nothing.
+      if (result.state !== current) commit(result.state, result.history);
       return true;
     },
     undo() {
