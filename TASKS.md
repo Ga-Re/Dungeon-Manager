@@ -556,7 +556,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Browser: Sessions group with sessions and their scenes in order, "Ohne Session"; create/rename/delete a session, add/remove/reorder scenes (context menu + keyboard)
   - [ ] Component + E2E tests, screenshot
-- **Notes:** Missing scenes in a session show as "(fehlt)". Sub-scenes (T-152) hang under their scene, not under the session (DM-approved proposal, 2026-11-19).
+- **Notes:** Missing scenes in a session show as "(fehlt)"; an invalid session file (e.g. a duplicate scene after a hand edit) shows an actionable "kann nicht gelesen werden" entry; new sessions get fresh ids (`createSession` overwrites like `createScene`). Sub-scenes (T-152) hang under their scene, not under the session (DM-approved proposal, 2026-11-19).
 
 ### T-161 Campaign, session and scene notes as Markdown
 

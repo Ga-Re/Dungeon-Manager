@@ -151,6 +151,7 @@ All data lives in a **user-chosen folder**. If it sits inside a cloud-synced fol
 │   ├── campaign.json
 │   ├── wiki/                 # Obsidian-compatible Markdown + YAML front matter
 │   ├── sessions/             # one JSON file per session: name, date, ordered scene ids (T-160)
+│   ├── notes/                # campaign, session and scene notes as Markdown (T-161; location vs. vault root with T-150)
 │   ├── scenes/               # one JSON file per scene
 │   ├── encounters/
 │   ├── snapshots/            # ZIP per session

@@ -36,6 +36,18 @@ describe("session document (T-160)", () => {
     ).toBe(false);
   });
 
+  it("accepts a real leap day only", () => {
+    expect(
+      sessionSchema.safeParse({ ...session, date: "2024-02-29" }).success,
+    ).toBe(true);
+    expect(
+      sessionSchema.safeParse({ ...session, date: "2025-02-29" }).success,
+    ).toBe(false);
+    expect(
+      sessionSchema.safeParse({ ...session, date: "2100-02-29" }).success,
+    ).toBe(false);
+  });
+
   it.each([
     ["an empty name", { name: "" }],
     ["a date that is not YYYY-MM-DD", { date: "28.11.2026" }],

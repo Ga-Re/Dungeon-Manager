@@ -202,8 +202,11 @@ export function newMap(
 
 /**
  * Moves a scene file into the campaign's trash and takes it out of every session that lists it
- * (sessions without it are not rewritten). Unreadable sessions are left alone; they show the
- * scene as missing. @returns its path in the trash. @throws on unsafe input
+ * (sessions without it are not rewritten). Updating the sessions is best effort: the scene is
+ * already gone, so a session that cannot be read, listed or written keeps the id and shows it
+ * as missing. A session whose file name differs from its `id` (renamed by hand) is skipped, so
+ * it never overwrites another session's file (ARCHITECTURE §6.3).
+ * @returns its path in the trash. @throws on unsafe input or when the trash move fails
  */
 export async function deleteScene(
   fs: FileSystem,
@@ -213,15 +216,22 @@ export async function deleteScene(
   if (!isValidSlug(slug)) throw new Error(`Invalid campaign slug: ${slug}`);
   if (!isValidFileId(sceneId)) throw new Error(`Invalid scene id: ${sceneId}`);
   const trashed = await fs.moveToTrash(sceneFile(slug, sceneId));
-  const { sessionIds } = await listSessions(fs, slug);
+  const sessionIds = await listSessions(fs, slug).then(
+    (listed) => listed.sessionIds,
+    () => [],
+  );
   for (const id of sessionIds) {
     const loaded = await loadSession(fs, slug, id);
-    if (loaded.status !== "ok" || !loaded.value.sceneIds.includes(sceneId))
+    if (
+      loaded.status !== "ok" ||
+      loaded.value.id !== id ||
+      !loaded.value.sceneIds.includes(sceneId)
+    )
       continue;
     await saveSession(fs, slug, {
       ...loaded.value,
       sceneIds: loaded.value.sceneIds.filter((each) => each !== sceneId),
-    });
+    }).catch(() => undefined);
   }
   return trashed;
 }

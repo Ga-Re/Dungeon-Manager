@@ -126,4 +126,68 @@ describe("session files (T-160)", () => {
     // Sessions without the scene are not rewritten (no needless sync traffic).
     expect(fs.files().get("campaigns/mine/sessions/s-3.json")).toBe(before);
   });
+
+  test("deleting a scene leaves unreadable, renamed and conflicting sessions as they are", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/sessions/broken.json": "{",
+      "campaigns/mine/sessions/future.json": JSON.stringify({
+        ...session,
+        id: "future",
+        schemaVersion: 99,
+      }),
+      // Renamed by hand: the file name no longer matches the id inside.
+      "campaigns/mine/sessions/renamed.json": JSON.stringify({
+        ...session,
+        id: "s-1",
+      }),
+      "campaigns/mine/sessions/s-1.json": JSON.stringify({
+        ...session,
+        sceneIds: ["b"],
+      }),
+      "campaigns/mine/sessions/s-2 (conflicted copy).json": JSON.stringify({
+        ...session,
+        id: "s-2",
+      }),
+    });
+    await createScene(fs, "mine", { id: "a", name: "Krypta" });
+    const before = new Map(fs.files());
+
+    await deleteScene(fs, "mine", "a");
+
+    for (const name of [
+      "broken.json",
+      "future.json",
+      "renamed.json",
+      "s-1.json",
+      "s-2 (conflicted copy).json",
+    ]) {
+      const path = `campaigns/mine/sessions/${name}`;
+      expect(fs.files().get(path)).toBe(before.get(path));
+    }
+  });
+
+  test("deleting a scene keeps unknown session fields and still succeeds when a session cannot be written", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/sessions/s-1.json": JSON.stringify({
+        ...session,
+        mood: "düster",
+      }),
+    });
+    await createScene(fs, "mine", { id: "a", name: "Krypta" });
+    await deleteScene(fs, "mine", "a");
+    expect(await loadSession(fs, "mine", "s-1")).toEqual({
+      status: "ok",
+      value: { ...session, sceneIds: ["b"], mood: "düster" },
+    });
+
+    await createScene(fs, "mine", { id: "b", name: "Gruft" });
+    fs.writeAtomic = () => Promise.reject(new Error("Datenträger voll"));
+    await expect(deleteScene(fs, "mine", "b")).resolves.toMatch(/\.trash/);
+  });
+
+  test("deleteSession rejects an unsafe id", async () => {
+    await expect(
+      deleteSession(createMemoryFileSystem(), "mine", "../x"),
+    ).rejects.toThrow(/Invalid session id/);
+  });
 });
