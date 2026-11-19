@@ -203,6 +203,37 @@ describe("MapView", () => {
     expect(wheel.defaultPrevented).toBe(true);
   });
 
+  test("the dock's buttons zoom around the view's centre and fit the map again (T-131)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    renderView(fake.service);
+    await waitFor(() => {
+      expect(fake.camera()?.zoom).toBe(0.5);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Vergrößern" }));
+    const zoomed = fake.camera()?.zoom ?? 0;
+    expect(zoomed).toBeGreaterThan(0.5);
+    // Around the centre: the map's centre stays where it was.
+    expect(fake.camera()).toMatchObject({ centerX: 800, centerY: 400 });
+    fireEvent.click(screen.getByRole("button", { name: "Verkleinern" }));
+    expect(fake.camera()?.zoom).toBeCloseTo(0.5);
+    fireEvent.click(screen.getByRole("button", { name: "Vergrößern" }));
+    fireEvent.click(screen.getByRole("button", { name: "Einpassen" }));
+    expect(fake.camera()).toEqual({
+      centerX: 800,
+      centerY: 400,
+      zoom: 0.5,
+      rotation: 0,
+    });
+  });
+
+  test("shows the drawing tool's instructions while it is active (T-131)", () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    renderView(fake.service, { tool: "reveal", shape: "polygon" });
+    expect(
+      screen.getByText(/Klicken setzt Punkte; Doppelklick, Enter/),
+    ).toBeTruthy();
+  });
+
   test("fades fog changes and draws soft edges as asked (T-136)", async () => {
     const fake = fakeMapService(() => Promise.resolve(image));
     const { rerender } = renderView(fake.service, {

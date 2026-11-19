@@ -1,14 +1,36 @@
+import { IconButton, RibbonGroup } from "@dungeon-manager/ui";
+import {
+  Brush,
+  Circle,
+  CloudFog,
+  Eye,
+  EyeOff,
+  Hand,
+  Pentagon,
+  ScanEye,
+  Square,
+} from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { FogShape } from "./fog-shapes.js";
 import type { MapTool } from "./MapView.js";
 
-const TOOLS: readonly MapTool[] = ["pan", "reveal", "hide"];
-const SHAPES: readonly FogShape[] = ["rectangle", "circle", "polygon", "brush"];
+const TOOLS: readonly { id: MapTool; icon: ReactNode }[] = [
+  { id: "pan", icon: <Hand /> },
+  { id: "reveal", icon: <Eye /> },
+  { id: "hide", icon: <EyeOff /> },
+];
+const SHAPES: readonly { id: FogShape; icon: ReactNode }[] = [
+  { id: "rectangle", icon: <Square /> },
+  { id: "circle", icon: <Circle /> },
+  { id: "polygon", icon: <Pentagon /> },
+  { id: "brush", icon: <Brush /> },
+];
 
 /**
- * Fog tools for the open scene (SPEC 4): what dragging does, reveal/cover all (undo/redo are in
- * the title bar).
- * A labelled group; Tab moves between the controls.
+ * Fog tools for the open scene (SPEC 4) as ribbon groups (T-131): what dragging on the map
+ * does, its shape, and the whole map at once (undo/redo are in the title bar). The active tool
+ * and shape are pressed toggle buttons; Tab moves between them.
  */
 export function FogToolbar({
   tool,
@@ -35,64 +57,72 @@ export function FogToolbar({
 }) {
   const { t, i18n } = useTranslation();
   return (
-    <div role="group" aria-label={t("fog.toolbar")} className="fog-toolbar">
-      <fieldset disabled={disabled}>
-        <legend>{t("fog.tool")}</legend>
+    <>
+      <RibbonGroup caption={t("fog.tool")}>
         {TOOLS.map((each) => (
-          <label key={each}>
-            <input
-              type="radio"
-              name="fog-tool"
-              checked={tool === each}
-              onChange={() => {
-                onTool(each);
-              }}
-            />
-            {t(`fog.tools.${each}`)}
-          </label>
-        ))}
-      </fieldset>
-      <fieldset disabled={disabled || tool === "pan"}>
-        <legend>{t("fog.shape")}</legend>
-        {SHAPES.map((each) => (
-          <label key={each}>
-            <input
-              type="radio"
-              name="fog-shape"
-              checked={shape === each}
-              onChange={() => {
-                onShape(each);
-              }}
-            />
-            {t(`fog.shapes.${each}`)}
-          </label>
-        ))}
-      </fieldset>
-      {shape === "brush" && (
-        <label>
-          {t("fog.brushSize", {
-            count: brushCells,
-            cells: brushCells.toLocaleString(i18n.language),
-          })}
-          <input
-            type="range"
-            min={0.5}
-            max={6}
-            step={0.5}
-            value={brushCells}
-            disabled={disabled || tool === "pan"}
-            onChange={(event) => {
-              onBrushCells(Number(event.target.value));
+          <IconButton
+            key={each.id}
+            showLabel
+            icon={each.icon}
+            label={t(`fog.tools.${each.id}`)}
+            pressed={tool === each.id}
+            disabled={disabled}
+            onClick={() => {
+              onTool(each.id);
             }}
           />
-        </label>
-      )}
-      <button type="button" disabled={disabled} onClick={onRevealAll}>
-        {t("fog.revealAll")}
-      </button>
-      <button type="button" disabled={disabled} onClick={onCoverAll}>
-        {t("fog.coverAll")}
-      </button>
-    </div>
+        ))}
+      </RibbonGroup>
+      <RibbonGroup caption={t("fog.shape")}>
+        {SHAPES.map((each) => (
+          <IconButton
+            key={each.id}
+            showLabel
+            icon={each.icon}
+            label={t(`fog.shapes.${each.id}`)}
+            pressed={shape === each.id}
+            disabled={disabled || tool === "pan"}
+            onClick={() => {
+              onShape(each.id);
+            }}
+          />
+        ))}
+        {shape === "brush" && (
+          <label className="dm-ribbon-field">
+            {t("fog.brushSize", {
+              count: brushCells,
+              cells: brushCells.toLocaleString(i18n.language),
+            })}
+            <input
+              type="range"
+              min={0.5}
+              max={6}
+              step={0.5}
+              value={brushCells}
+              disabled={disabled || tool === "pan"}
+              onChange={(event) => {
+                onBrushCells(Number(event.target.value));
+              }}
+            />
+          </label>
+        )}
+      </RibbonGroup>
+      <RibbonGroup caption={t("fog.wholeMap")}>
+        <IconButton
+          showLabel
+          icon={<ScanEye />}
+          label={t("fog.revealAll")}
+          disabled={disabled}
+          onClick={onRevealAll}
+        />
+        <IconButton
+          showLabel
+          icon={<CloudFog />}
+          label={t("fog.coverAll")}
+          disabled={disabled}
+          onClick={onCoverAll}
+        />
+      </RibbonGroup>
+    </>
   );
 }

@@ -143,6 +143,7 @@ export function DmShell({
       "settings",
       "details",
       "notices",
+      "dock",
     ];
     for (const name of names) {
       refs[name] = (element) => {
@@ -541,7 +542,16 @@ export function DmShell({
               </div>
               <div ref={slotRefs.browser} className="dm-browser" />
               <div ref={slotRefs.details} className="dm-details" />
-              <div ref={slotRefs.notices} className="dm-notices" />
+              {/* Bottom centre (T-131): notices stack right above the navigation dock. */}
+              <div className="dm-stage-bottom">
+                <div ref={slotRefs.notices} className="dm-notices" />
+                <div
+                  ref={slotRefs.dock}
+                  role="toolbar"
+                  aria-label={t("shell.dock")}
+                  className="dm-dock"
+                />
+              </div>
             </div>
           </div>
           {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}

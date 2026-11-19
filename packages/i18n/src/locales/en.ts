@@ -182,10 +182,12 @@ export const en: Messages = {
       "The map could not be loaded. Is the file still in the library and downloaded?",
     fit: "Fit",
     rotate: "Rotate",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
   },
   fog: {
     toolbar: "Fog",
-    tool: "Dragging on the map",
+    tool: "Tool",
     tools: {
       pan: "Move",
       reveal: "Reveal",
@@ -194,12 +196,20 @@ export const en: Messages = {
     shape: "Shape",
     shapes: {
       rectangle: "Rectangle",
-      circle: "Circle (from the centre)",
-      polygon: "Polygon (click; double-click, Enter or the first point closes)",
+      circle: "Circle",
+      polygon: "Polygon",
       brush: "Brush",
     },
     brushSize_one: "Brush size: {{cells}} cell",
     brushSize_other: "Brush size: {{cells}} cells",
+    shapeHints: {
+      rectangle: "Drag: reveal or cover a rectangle.",
+      circle: "Drag: a circle from its centre.",
+      polygon:
+        "Click to set points; double-click, Enter or the first point closes, Backspace removes the last one, Escape cancels.",
+      brush: "Drag to paint with the brush.",
+    },
+    wholeMap: "Whole map",
     revealAll: "Reveal all",
     coverAll: "Cover all",
     undo: "Undo",
@@ -273,6 +283,7 @@ export const en: Messages = {
       zoom: "Zoom",
       fullscreen: "Enter Full Screen",
     },
+    dock: "View and TV",
     workspace: {
       label: "Workspace",
       mapForge: "Map Forge",

@@ -210,14 +210,22 @@ describe("editing the fog", () => {
     return button;
   };
 
-  test("undo keys still work while a tool radio button has focus", async () => {
+  test("undo keys still work while a fog tool or the brush size has focus", async () => {
     const { tv } = renderScene(
       { "campaigns/mine/campaign.json": campaign },
       mapped,
     );
     fireEvent.click(await enabled("Alles aufdecken"));
-    const radio = screen.getByRole("radio", { name: "Aufdecken" });
-    fireEvent.keyDown(radio, { key: "z", ctrlKey: true });
+    const tool = screen.getByRole("button", { name: "Aufdecken" });
+    fireEvent.click(tool);
+    expect(tool.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.keyDown(tool, { key: "z", ctrlKey: true });
+    expect(tv.shown.at(-1)?.fog["ground"]?.revealed ?? []).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Alles aufdecken" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pinsel" }));
+    const size = screen.getByRole("slider", { name: /Pinselgröße/ });
+    fireEvent.keyDown(size, { key: "z", ctrlKey: true });
     expect(tv.shown.at(-1)?.fog["ground"]?.revealed ?? []).toHaveLength(0);
   });
 

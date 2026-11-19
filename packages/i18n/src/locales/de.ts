@@ -183,10 +183,12 @@ export const de = {
       "Die Karte konnte nicht geladen werden. Ist die Datei noch in der Bibliothek und heruntergeladen?",
     fit: "Einpassen",
     rotate: "Drehen",
+    zoomIn: "Vergrößern",
+    zoomOut: "Verkleinern",
   },
   fog: {
     toolbar: "Nebel",
-    tool: "Ziehen auf der Karte",
+    tool: "Werkzeug",
     tools: {
       pan: "Verschieben",
       reveal: "Aufdecken",
@@ -195,13 +197,20 @@ export const de = {
     shape: "Form",
     shapes: {
       rectangle: "Rechteck",
-      circle: "Kreis (aus der Mitte)",
-      polygon:
-        "Polygon (klicken; Doppelklick, Enter oder erster Punkt schließt)",
+      circle: "Kreis",
+      polygon: "Polygon",
       brush: "Pinsel",
     },
     brushSize_one: "Pinselgröße: {{cells}} Feld",
     brushSize_other: "Pinselgröße: {{cells}} Felder",
+    shapeHints: {
+      rectangle: "Ziehen: Rechteck aufdecken oder verdecken.",
+      circle: "Ziehen: Kreis aus der Mitte.",
+      polygon:
+        "Klicken setzt Punkte; Doppelklick, Enter oder der erste Punkt schließt, Rücktaste nimmt den letzten zurück, Escape bricht ab.",
+      brush: "Ziehen malt mit dem Pinsel.",
+    },
+    wholeMap: "Ganze Karte",
     revealAll: "Alles aufdecken",
     coverAll: "Alles verdecken",
     undo: "Rückgängig",
@@ -276,6 +285,7 @@ export const de = {
       zoom: "Zoomen",
       fullscreen: "Vollbild",
     },
+    dock: "Ansicht und TV",
     workspace: {
       label: "Arbeitsbereich",
       mapForge: "Map Forge",

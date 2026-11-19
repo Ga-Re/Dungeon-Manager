@@ -172,17 +172,21 @@ export function DmApp({
                 />
               </>
             )}
-            {playerFeed && (
+          </RibbonGroup>
+        </ShellPortal>
+        {/* The TV in the dock (T-131): its rotation and what happened to the player view. */}
+        <ShellPortal slot="dock">
+          {playerFeed && (
+            <div className="dm-dock-group dm-dock-tv">
               <IconButton
-                showLabel
                 icon={<RotateCw />}
                 label={t("dm.rotateTv", { degrees: rotation })}
                 onClick={rotateTv}
               />
-            )}
-          </RibbonGroup>
+            </div>
+          )}
           {/* Always rendered: screen readers only announce changes to an existing live region. */}
-          <p role="status" className="dm-ribbon-meta">
+          <p role="status" className="dm-dock-status">
             {notice}
           </p>
         </ShellPortal>

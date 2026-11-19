@@ -20,6 +20,9 @@ import {
   type PointerEvent,
 } from "react";
 import type { Polygon } from "@dungeon-manager/schema";
+import { IconButton } from "@dungeon-manager/ui";
+import { RotateCw, Scan, ZoomIn, ZoomOut } from "lucide-react";
+import { ShellPortal } from "./shell/slots.js";
 import { useTranslation } from "react-i18next";
 import { FogPreview } from "./FogPreview.js";
 import {
@@ -439,25 +442,60 @@ export function MapView({
           />
         )}
       </div>
-      <div className="map-view-dock">
-        <p id="map-view-help" className="map-view-help">
-          {t("mapView.help")}
-        </p>
+      {/* What the keys and the drawing tool do; visible while a tool draws (T-131). */}
+      <p
+        id="map-view-help"
+        className={tool === "pan" ? "visually-hidden" : "map-view-hint"}
+      >
+        {tool === "pan" ? t("mapView.help") : t(`fog.shapeHints.${shape}`)}
+      </p>
+      <ShellPortal slot="notices">
         {load === "loading" && <p>{t("mapView.loading")}</p>}
         {load === "error" && <p role="alert">{t("mapView.error")}</p>}
-        <button type="button" disabled={load !== "ready"} onClick={fit}>
-          {t("mapView.fit")}
-        </button>
-        <button
-          type="button"
-          disabled={load !== "ready"}
-          onClick={() => {
-            change((current) => rotateBy(current, 90));
-          }}
-        >
-          {t("mapView.rotate")}
-        </button>
-      </div>
+      </ShellPortal>
+      {/* Navigation of the DM's view in the dock (T-131): its keys are +, −, 0 and R. */}
+      <ShellPortal slot="dock">
+        <div className="dm-dock-group">
+          <IconButton
+            icon={<ZoomOut />}
+            label={t("mapView.zoomOut")}
+            aria-keyshortcuts="-"
+            disabled={load !== "ready"}
+            onClick={() => {
+              change((current, view) =>
+                zoomAt(current, 1 / KEY_ZOOM, centre(view), view),
+              );
+            }}
+          />
+          <IconButton
+            icon={<Scan />}
+            label={t("mapView.fit")}
+            aria-keyshortcuts="0"
+            disabled={load !== "ready"}
+            onClick={fit}
+          />
+          <IconButton
+            icon={<ZoomIn />}
+            label={t("mapView.zoomIn")}
+            aria-keyshortcuts="+"
+            disabled={load !== "ready"}
+            onClick={() => {
+              change((current, view) =>
+                zoomAt(current, KEY_ZOOM, centre(view), view),
+              );
+            }}
+          />
+          <IconButton
+            icon={<RotateCw />}
+            label={t("mapView.rotate")}
+            aria-keyshortcuts="R"
+            disabled={load !== "ready"}
+            onClick={() => {
+              change((current) => rotateBy(current, 90));
+            }}
+          />
+        </div>
+      </ShellPortal>
     </div>
   );
 }

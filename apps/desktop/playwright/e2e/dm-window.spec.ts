@@ -537,3 +537,63 @@ test("the title bar's menu button opens the welcome dialog again and starts a ne
     page.getByRole("treeitem", { name: "Zweite Runde" }),
   ).toBeVisible();
 });
+
+test("the ribbon keeps one height in every tab and workspace, so the map never moves (T-131)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  const ribbon = page.locator(".dm-ribbon");
+  const height = async () => (await ribbon.boundingBox())?.height ?? 0;
+  const first = await height();
+
+  for (const tab of ["Szene", "Nebel", "Anzeige"]) {
+    await page.getByRole("tab", { name: tab }).click();
+    expect(await height()).toBeCloseTo(first, 0);
+  }
+  await page.getByRole("tab", { name: "Nebel" }).click();
+  await page.getByRole("button", { name: "Aufdecken", exact: true }).click();
+  await page.getByRole("button", { name: "Pinsel" }).click();
+  await expect(page.getByRole("slider", { name: /Pinselgröße/ })).toBeVisible();
+  expect(await height()).toBeCloseTo(first, 0);
+
+  const workspace = page
+    .getByRole("group", { name: "Arbeitsbereich" })
+    .getByRole("button");
+  await workspace.click();
+  await page.getByRole("menuitem", { name: "Map Forge" }).click();
+  expect(await height()).toBeCloseTo(first, 0);
+});
+
+test("the dock zooms and fits the DM's view of the map (T-131)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  const dock = page.getByRole("toolbar", { name: "Ansicht und TV" });
+  const fit = dock.getByRole("button", { name: "Einpassen" });
+  await expect(fit).toBeEnabled();
+  // The camera the renderer got last (noted by the E2E harness).
+  const camera = async () =>
+    JSON.parse(
+      (await page.locator("body").getAttribute("data-e2e-camera")) ?? "null",
+    ) as { zoom: number; rotation: number } | null;
+  const fitted = await camera();
+  expect(fitted?.zoom).toBeGreaterThan(0);
+
+  await dock.getByRole("button", { name: "Vergrößern" }).click();
+  await expect
+    .poll(async () => (await camera())?.zoom)
+    .toBeGreaterThan(fitted?.zoom ?? 0);
+  await fit.click();
+  await expect
+    .poll(async () => (await camera())?.zoom)
+    .toBeCloseTo(fitted?.zoom ?? 0, 5);
+
+  await dock.getByRole("button", { name: "Drehen" }).click();
+  await expect.poll(async () => (await camera())?.rotation).toBe(90);
+});
