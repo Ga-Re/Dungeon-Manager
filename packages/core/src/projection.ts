@@ -86,15 +86,18 @@ export function projectForViewer(
 
 /**
  * The events `viewer` may learn of (ARCHITECTURE §5.1), for the session log shown to players
- * and any event broadcast. Judged against `stateAfter`, the state after all of `events`: an
+ * and any event broadcast. `events` and `stateAfter` must be the result of ONE `apply`: an
  * event passes only when its subject shows in `projectForViewer(stateAfter, viewer)`, with no
- * more detail than that projection gives.
+ * more detail than that projection gives. Judging older events against a later state would
+ * leak what was hidden at the time (a hidden token's path, HP while hidden), so a log keeps the
+ * projected events and never projects its history again.
  *
- * - `token.moved`: when the token is visible and would be visible standing at the move's
- *   target too (a step through fog stays hidden); without `from`, whose level is not known.
+ * - `token.moved`: when the token is visible where it moved to; without `from`, which may lie
+ *   in fog and whose level is not known.
  * - Fog changes pass; the projected state shows the same fog.
  * - `initiative.combatantAdded`, `initiative.turnStarted`: when the combatant is listed.
- * - `hp.changed`: exact or coarse HP, as the listed combatant's HP show.
+ * - `hp.changed`: exact or coarse HP, as the listed combatant's HP show. A change within the
+ *   same coarse state still passes: that a creature was hit is seen at the table anyway.
  * - `visibility.changed` and `initiative.combatantRemoved` never pass: the first is the DM's
  *   setup, the second concerns a combatant no longer in the state to judge it by.
  */
@@ -108,9 +111,6 @@ export function projectEvents(
   const listed = new Map(
     view.initiative?.combatants.map((combatant) => [combatant.id, combatant]),
   );
-  const tokens = new Map(
-    stateAfter.scene.tokens.map((token) => [token.id, token]),
-  );
   const maxHp = new Map(
     stateAfter.scene.initiative?.combatants.map((combatant) => [
       combatant.id,
@@ -121,10 +121,8 @@ export function projectEvents(
     const { at } = event;
     switch (event.type) {
       case "token.moved": {
-        const token = tokens.get(event.tokenId);
-        if (!token || !visibleTokens.has(token.id)) return null;
-        const there = { ...token, position: event.to, levelId: event.levelId };
-        if (!isTokenVisible(stateAfter, there, viewer)) return null;
+        // In one `apply` the move's target is where the token now stands.
+        if (!visibleTokens.has(event.tokenId)) return null;
         return {
           at,
           type: event.type,

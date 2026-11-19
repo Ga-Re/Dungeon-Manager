@@ -21,15 +21,18 @@ function run(start: SessionState, ...commands: Command[]) {
   return { state: end, events };
 }
 
-/** Events of `commands` after `setup`, projected for `viewer`. */
+/** Events of `commands` after `setup`, each command's projected against its own result. */
 function projected(
   setup: readonly Command[],
   commands: readonly Command[],
   viewer: Viewer = { kind: "table" },
 ) {
-  const before = run(state, ...setup).state;
-  const after = run(before, ...commands);
-  return projectEvents(after.events, after.state, viewer);
+  let current = run(state, ...setup).state;
+  return commands.flatMap((command) => {
+    const after = run(current, command);
+    current = after.state;
+    return projectEvents(after.events, after.state, viewer);
+  });
 }
 
 // Cells are 100 px: the goblin stands at (1, 1), centre (150, 150).
@@ -78,6 +81,30 @@ describe("projectEvents", () => {
   test("drops moves of hidden tokens and of tokens ending in fog", () => {
     expect(projected([revealAll, hideGoblin], [moveGoblin(2, 1)])).toEqual([]);
     expect(projected([revealAll], [moveGoblin(8, 8)])).toEqual([]);
+  });
+
+  test("keeps a hidden token's path hidden after it is shown", () => {
+    const showGoblin: Command = {
+      type: "visibility.set",
+      target: { kind: "token", tokenId: "token-goblin" },
+      elementType: "token",
+      visibility: null,
+    };
+    expect(
+      projected(
+        [revealAll, hideGoblin],
+        [moveGoblin(2, 1), moveGoblin(3, 3), showGoblin],
+      ),
+    ).toEqual([]);
+  });
+
+  test("keeps HP hidden at the time hidden after they are shown", () => {
+    expect(
+      projected(
+        [revealAll, addGoblin, showHp("hidden")],
+        [hurtGoblin, hurtGoblin, showHp("visible")],
+      ),
+    ).toEqual([]);
   });
 
   test("drops a step through fog even when the token ends up visible", () => {

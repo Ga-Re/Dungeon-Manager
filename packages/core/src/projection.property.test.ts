@@ -16,7 +16,6 @@ import {
   projectEvents,
   projectForViewer,
   type Command,
-  type DomainEvent,
   type SessionState,
   type Viewer,
 } from "./index.js";
@@ -422,95 +421,78 @@ const scenario = fc.record({
   commands: fc.array(command, { maxLength: 16 }),
 });
 
-/** Applies the commands that are valid, collecting their events; rejected ones are skipped. */
-function play(start: SessionState, commands: readonly Command[]) {
-  const events: DomainEvent[] = [];
-  let current = start;
-  for (const next of commands) {
+/**
+ * Applies the commands that are valid (rejected ones are skipped) and projects each one's events
+ * against its own result, as the host does after every `apply`.
+ */
+function play(spec: Spec, commands: readonly Command[]) {
+  let current = build(spec);
+  return commands.flatMap((next) => {
     const result = apply(current, next, ctx);
-    if (!result.ok) continue;
-    events.push(...result.events);
+    if (!result.ok) return [];
     current = result.state;
-  }
-  return { state: current, events };
-}
-
-/** The state with one token moved to `to` – what a viewer would see of it standing there. */
-function withTokenAt(
-  state: SessionState,
-  tokenId: string,
-  to: { col: number; row: number },
-  levelId: string,
-): SessionState {
-  return {
-    ...state,
-    scene: {
-      ...state.scene,
-      tokens: state.scene.tokens.map((token) =>
-        token.id === tokenId ? { ...token, position: to, levelId } : token,
-      ),
-    },
-  };
+    return [
+      {
+        state: result.state,
+        view: projectForViewer(result.state, spec.viewer),
+        events: projectEvents(result.events, result.state, spec.viewer),
+      },
+    ];
+  });
 }
 
 describe("projectEvents (property-based)", () => {
   test("mentions only tokens and combatants the projected state shows", () => {
     fc.assert(
       fc.property(scenario, ({ spec, commands }) => {
-        const { state, events } = play(build(spec), commands);
-        const view = projectForViewer(state, spec.viewer);
-        const tokens = new Set(view.tokens.map((token) => token.id));
-        const listed = new Set(
-          view.initiative?.combatants.map((combatant) => combatant.id) ?? [],
-        );
-        for (const event of projectEvents(events, state, spec.viewer)) {
-          if ("tokenId" in event) expect(tokens).toContain(event.tokenId);
-          if ("combatantId" in event)
-            expect(listed).toContain(event.combatantId);
+        for (const { view, events } of play(spec, commands)) {
+          const tokens = new Set(view.tokens.map((token) => token.id));
+          const listed = new Set(
+            view.initiative?.combatants.map((combatant) => combatant.id) ?? [],
+          );
+          for (const event of events) {
+            if ("tokenId" in event) expect(tokens).toContain(event.tokenId);
+            if ("combatantId" in event)
+              expect(listed).toContain(event.combatantId);
+          }
         }
       }),
       runs,
     );
   });
 
-  test("shows a move only where the token would be visible", () => {
+  test("shows a move only where the projected state shows the token", () => {
     fc.assert(
       fc.property(scenario, ({ spec, commands }) => {
-        const { state, events } = play(build(spec), commands);
-        for (const event of projectEvents(events, state, spec.viewer)) {
-          if (event.type !== "token.moved") continue;
-          const there = withTokenAt(
-            state,
-            event.tokenId,
-            event.to,
-            event.levelId,
-          );
-          expect(
-            projectForViewer(there, spec.viewer).tokens.map((t) => t.id),
-          ).toContain(event.tokenId);
-        }
+        for (const { view, events } of play(spec, commands))
+          for (const event of events) {
+            if (event.type !== "token.moved") continue;
+            const token = view.tokens.find(({ id }) => id === event.tokenId);
+            expect(
+              token && { to: token.position, levelId: token.levelId },
+            ).toEqual({ to: event.to, levelId: event.levelId });
+          }
       }),
       runs,
     );
   });
 
-  test("shows HP numbers or states only as the projected state does", () => {
+  test("shows exactly the HP numbers or state the projected state shows", () => {
     fc.assert(
       fc.property(scenario, ({ spec, commands }) => {
-        const { state, events } = play(build(spec), commands);
-        const combatants = new Map(
-          projectForViewer(state, spec.viewer).initiative?.combatants.map(
-            (combatant) => [combatant.id, combatant],
-          ),
-        );
-        for (const event of projectEvents(events, state, spec.viewer)) {
-          if (event.type !== "hp.changed") continue;
-          const shown = combatants.get(event.combatantId);
-          expect(event.hp !== undefined).toBe(shown?.hp !== undefined);
-          expect(event.hpState !== undefined).toBe(
-            shown?.hpState !== undefined,
-          );
-        }
+        for (const { view, events } of play(spec, commands))
+          for (const event of events) {
+            if (event.type !== "hp.changed") continue;
+            const shown = view.initiative?.combatants.find(
+              ({ id }) => id === event.combatantId,
+            );
+            expect("hp" in event ? event.hp : undefined).toEqual(
+              shown?.hp && { current: shown.hp.current, temp: shown.hp.temp },
+            );
+            expect("hpState" in event ? event.hpState : undefined).toEqual(
+              shown?.hpState,
+            );
+          }
       }),
       runs,
     );
@@ -519,8 +501,7 @@ describe("projectEvents (property-based)", () => {
   test("never contains names, visibility settings or removed combatants", () => {
     fc.assert(
       fc.property(scenario, ({ spec, commands }) => {
-        const { state, events } = play(build(spec), commands);
-        const projected = projectEvents(events, state, spec.viewer);
+        const projected = play(spec, commands).flatMap(({ events }) => events);
         expect(JSON.stringify(projected)).not.toContain("Secret Name");
         expect(projected.map((event) => event.type)).not.toContain(
           "visibility.changed",

@@ -95,11 +95,27 @@ export const viewerSceneSchema = z.strictObject({
 
 const viewerEventBase = { at: z.number() };
 
+/** HP after a change: exact when visible to this viewer, else the coarse state – never both. */
+const viewerHpChangedSchema = z.union([
+  z.strictObject({
+    ...viewerEventBase,
+    type: z.literal("hp.changed"),
+    combatantId: idSchema,
+    hp: z.strictObject({ current: z.number().int(), temp: z.number().int() }),
+  }),
+  z.strictObject({
+    ...viewerEventBase,
+    type: z.literal("hp.changed"),
+    combatantId: idSchema,
+    hpState: approximateHpSchema,
+  }),
+]);
+
 /**
  * A session event as a viewer receives it: the output of `projectEvents` in core. Only events
  * about what the viewer's projected state shows, with no more detail than it (T-117).
  */
-export const viewerEventSchema = z.discriminatedUnion("type", [
+export const viewerEventSchema = z.union([
   z.strictObject({
     ...viewerEventBase,
     type: z.literal("token.moved"),
@@ -128,17 +144,7 @@ export const viewerEventSchema = z.discriminatedUnion("type", [
     round: z.number().int(),
     combatantId: idSchema,
   }),
-  z.strictObject({
-    ...viewerEventBase,
-    type: z.literal("hp.changed"),
-    combatantId: idSchema,
-    /** Exact HP after the change, only when visible to this viewer. */
-    hp: z
-      .strictObject({ current: z.number().int(), temp: z.number().int() })
-      .optional(),
-    /** Coarse HP state after the change, when HP are "approximate" for this viewer. */
-    hpState: approximateHpSchema.optional(),
-  }),
+  viewerHpChangedSchema,
 ]);
 
 export type ApproximateHp = z.infer<typeof approximateHpSchema>;
