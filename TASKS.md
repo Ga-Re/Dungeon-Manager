@@ -600,12 +600,13 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-155 Settings dialog
 
-- **Status:** todo · **Depends on:** T-157 (after T-158/T-159 by DM priority, 2026-11-19) · **Refs:** ADR-0011 (layer 50), ARCHITECTURE §6.2, §15
+- **Status:** done · **Depends on:** T-157 (after T-158/T-159 by DM priority, 2026-11-19) · **Refs:** ADR-0011 (layer 50), ARCHITECTURE §6.2, §15
 - DM request (2026-11-19): a full settings window for all global settings. DM decision: a large dialog inside the DM window with categories on the left (Darstellung, Bibliothek, Nebel & Animation, Spieleransicht, …) and their settings on the right; opened from the gear, Cmd/Ctrl+, and later the app menu (T-130d). The gear popover's theme and library folder move into it.
 - **Acceptance criteria**
-  - [ ] Modal dialog with focus trap, Escape closes, categories keyboard navigable; translated
-  - [ ] Theme and library folder work from the dialog; a settings registry makes adding a category a small change (component tests)
-  - [ ] E2E and screenshot
+  - [x] Modal dialog with focus trap, Escape closes, categories keyboard navigable; translated
+  - [x] Theme and library folder work from the dialog; a settings registry makes adding a category a small change (component tests)
+  - [x] E2E and screenshot
+- Nebel & Animation and Spieleransicht have no settings yet; they join with T-136 and the player-view settings.
 
 ### T-153 Welcome dialog with recent campaigns
 

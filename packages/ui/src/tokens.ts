@@ -182,6 +182,8 @@ const SHARED: Record<string, string> = {
         : `rgb(${value.rgb.join(" ")} / ${String(value.alpha)})`,
     ]),
   ),
+  // Behind a modal dialog, in both themes.
+  backdrop: "rgb(0 0 0 / 0.5)",
   // Drawn over the map itself, so independent of the theme.
   "overlay-line": "#ffffff",
   "overlay-reveal-fill": "rgb(255 255 255 / 0.2)",

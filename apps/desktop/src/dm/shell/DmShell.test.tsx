@@ -65,11 +65,12 @@ describe("DmShell", () => {
     setup();
     expect(screen.getByTestId("map").closest(".dm-canvas")).not.toBeNull();
     expect(within(panel()).getByText("Bibliotheksinhalt")).toBeTruthy();
-    // Settings content only exists while the popover is open.
+    // The library's settings appear in their category of the settings dialog.
     expect(screen.queryByText("Bibliotheksordner")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Bibliothek" }));
     expect(
-      within(screen.getByRole("group", { name: "Einstellungen" })).getByText(
+      within(screen.getByRole("dialog", { name: "Einstellungen" })).getByText(
         "Bibliotheksordner",
       ),
     ).toBeTruthy();
@@ -131,9 +132,9 @@ describe("DmShell", () => {
   it("applies and stores the theme chosen in the settings", () => {
     const { storage, root } = setup();
     const gear = screen.getByRole("button", { name: "Einstellungen" });
-    expect(gear.getAttribute("aria-expanded")).toBe("false");
+    expect(gear.getAttribute("aria-haspopup")).toBe("dialog");
     fireEvent.click(gear);
-    expect(gear.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("dialog", { name: "Einstellungen" })).toBeTruthy();
     expect(
       screen.getByRole("radio", { name: "Dunkel (Werkstatt)" }),
     ).toHaveProperty("checked", true);
@@ -146,24 +147,47 @@ describe("DmShell", () => {
     expect(root.dataset["dmTheme"]).toBe("system");
   });
 
-  it("closes the settings with Escape (focus back on the gear) and on an outside click", () => {
+  it("opens the settings with Cmd/Ctrl+, and closes them with Escape, focus back on the gear", () => {
     setup();
     const gear = screen.getByRole("button", { name: "Einstellungen" });
-    const themeRadio = () =>
-      screen.queryByRole("radio", { name: "Dunkel (Werkstatt)" });
-    fireEvent.click(gear);
-    fireEvent.keyDown(themeRadio() ?? gear, { key: "Escape" });
-    expect(themeRadio()).toBeNull();
+    fireEvent.keyDown(window, { key: ",", metaKey: true });
+    const dialog = screen.getByRole("dialog", { name: "Einstellungen" });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document.activeElement ?? dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(gear);
-    fireEvent.click(gear);
-    fireEvent.pointerDown(document.body);
-    expect(themeRadio()).toBeNull();
+    fireEvent.keyDown(window, { key: ",", ctrlKey: true });
+    expect(screen.getByRole("dialog", { name: "Einstellungen" })).toBeTruthy();
   });
 
-  it("leaves Escape elsewhere (e.g. on the map) to its owner", () => {
+  it("does not toggle the data panel behind the open settings", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
-    fireEvent.keyDown(screen.getByTestId("map"), { key: "Escape" });
+    const radio = screen.getByRole("radio", { name: "Dunkel (Werkstatt)" });
+    fireEvent.keyDown(radio, { key: "b", ctrlKey: true });
+    expect(panel().hidden).toBe(false);
+  });
+
+  it("switches settings categories with the arrow keys", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    const appearance = screen.getByRole("tab", { name: "Darstellung" });
+    expect(appearance.getAttribute("aria-selected")).toBe("true");
+    appearance.focus();
+    fireEvent.keyDown(appearance, { key: "ArrowDown" });
+    const library = screen.getByRole("tab", { name: "Bibliothek" });
+    expect(library.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(library);
+    fireEvent.keyDown(library, { key: "End" });
+    expect(
+      screen
+        .getByRole("tab", { name: "Werkzeugfenster" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(
+      screen.getByRole("tabpanel", { name: "Werkzeugfenster" }),
+    ).toBeTruthy();
+    fireEvent.keyDown(document.activeElement ?? library, { key: "Home" });
     expect(
       screen.getByRole("radio", { name: "Dunkel (Werkstatt)" }),
     ).toBeTruthy();
@@ -194,6 +218,7 @@ describe("DmShell", () => {
     );
     storage.setItem("dm.theme", "light");
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Werkzeugfenster" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Positionen zurücksetzen" }),
     );

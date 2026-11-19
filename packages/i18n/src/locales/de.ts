@@ -21,6 +21,7 @@ export const de = {
     },
   },
   library: {
+    folderSetting: "Bibliotheksordner",
     heading: "Bibliothek",
     loading: "Bibliothek wird geöffnet …",
     none: "Noch kein Bibliotheksordner gewählt. Am besten einen Ordner in deinem Cloud-Speicher (z. B. Dropbox, iCloud Drive).",
@@ -193,12 +194,20 @@ export const de = {
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",
   },
   shell: {
+    settingsClose: "Einstellungen schließen",
+    settingsCategories: "Kategorien",
+    settingsCategory: {
+      appearance: "Darstellung",
+      library: "Bibliothek",
+      layout: "Werkzeugfenster",
+    },
     uiScale: {
       label: "Größe der Oberfläche",
       percent: "{{percent}} %",
     },
     layout: {
-      label: "Werkzeugfenster",
+      hint: "Browser und Eigenschaften kehren an ihre Standardplätze zurück und werden ausgeklappt.",
+      label: "Positionen",
       reset: "Positionen zurücksetzen",
     },
     groups: {
@@ -217,7 +226,7 @@ export const de = {
     noScene: "Keine Szene geöffnet. Wähle im Browser eine Szene.",
     settings: "Einstellungen",
     theme: {
-      label: "Darstellung",
+      label: "Farbschema",
       system: "Wie das Betriebssystem",
       light: "Hell (Pergament)",
       dark: "Dunkel (Werkstatt)",

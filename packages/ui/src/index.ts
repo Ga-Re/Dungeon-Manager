@@ -1,3 +1,4 @@
+export { Dialog, type DialogProps } from "./Dialog.js";
 export { FloatingPanel, type FloatingPanelProps } from "./FloatingPanel.js";
 export { createI18n } from "./i18n.js";
 export { HudPanel, type HudPanelProps, type HudPlacement } from "./HudPanel.js";

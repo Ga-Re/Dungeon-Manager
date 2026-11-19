@@ -685,3 +685,81 @@
   flex: none;
   white-space: nowrap;
 }
+
+/* Dialog – modal, over everything (layer 50): a dimmed backdrop and a framed panel. */
+.dm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--dm-z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--dm-space-5);
+  background: var(--dm-backdrop);
+}
+
+.dm-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(46rem, 100%);
+  max-height: min(36rem, 100%);
+  background: var(--dm-surface-panel);
+  color: var(--dm-text-primary);
+  border: 1px solid var(--dm-border-strong);
+  border-radius: var(--dm-radius-lg);
+  box-shadow: var(--dm-shadow-panel);
+  outline: none;
+}
+
+.dm-dialog-head {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2);
+  padding: var(--dm-space-2) var(--dm-space-3);
+  border-bottom: 1px solid var(--dm-border-subtle);
+}
+
+.dm-dialog-title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--dm-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dm-text-secondary);
+}
+
+.dm-dialog-close {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--dm-radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dm-dialog-close svg {
+  width: 0.625rem;
+  height: 0.625rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.dm-dialog-close:hover {
+  background: var(--dm-surface-raised);
+}
+
+.dm-dialog-close:focus-visible {
+  outline: var(--dm-focus-width) solid var(--dm-focus);
+  outline-offset: 1px;
+}
+
+.dm-dialog-body {
+  min-height: 0;
+  overflow: auto;
+}

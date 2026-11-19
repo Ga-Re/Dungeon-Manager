@@ -48,3 +48,14 @@ test("a campaign note rendered as Markdown", async ({ page }) => {
 
   await expect(page).toHaveScreenshot("dm-window-note.png");
 });
+
+test("the settings dialog", async ({ page }) => {
+  await openHarness(page);
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Einstellungen" }),
+  ).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+
+  await expect(page).toHaveScreenshot("dm-window-settings.png");
+});
