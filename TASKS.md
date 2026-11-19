@@ -685,6 +685,14 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11 (≤ 1 % missed refreshes at 60 Hz), measured by the DM on the reference notebook
 - **Notes:** The benchmark criterion stays open until the DM has measured it on the reference notebook (it needs the TV; CI has no usable GPU).
 
+### T-170 Rounded fog rectangles and a brush outline
+
+- **Status:** done · **Depends on:** T-131 · **Refs:** SPEC §4, ADR-0011
+- The rectangle tool marks a rectangle with slightly rounded corners (a quarter grid cell, like the soft fog edge; at most half its shorter side), in the preview too. The brush shows its outline at the pointer – while hovering over the map and while painting – at the size it paints (DM request, 2026-11-19).
+- **Acceptance criteria**
+  - [x] The rectangle's area and preview have rounded corners, also with the view turned (unit + component tests)
+  - [x] The brush outline follows the pointer at the brush's size and goes when the pointer leaves the map (component test)
+
 ### T-169 Flaky focus check in the welcome dialog test
 
 - **Status:** todo · **Depends on:** T-153 · **Refs:** ARCHITECTURE §12

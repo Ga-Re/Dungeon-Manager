@@ -25,6 +25,55 @@ export function circleArea(
   return { outer, holes: [] };
 }
 
+/** Corners per rounded corner of a rectangle (a quarter circle). */
+const ROUNDED_CORNER_SEGMENTS = 8;
+
+/**
+ * The axis-aligned rectangle between two opposite corners `a` and `b` (any order), its corners
+ * rounded with `radius` – at most half its shorter side, so the sides never cross.
+ */
+export function roundedRectArea(
+  a: readonly [number, number],
+  b: readonly [number, number],
+  radius: number,
+): Polygon {
+  const left = Math.min(a[0], b[0]);
+  const right = Math.max(a[0], b[0]);
+  const top = Math.min(a[1], b[1]);
+  const bottom = Math.max(a[1], b[1]);
+  const r = Math.max(
+    0,
+    Math.min(radius, (right - left) / 2, (bottom - top) / 2),
+  );
+  if (r === 0)
+    return {
+      outer: [
+        [left, top],
+        [right, top],
+        [right, bottom],
+        [left, bottom],
+      ],
+      holes: [],
+    };
+  // Clockwise on screen (y down), from the top left corner's arc.
+  const corners: [number, number, number][] = [
+    [left + r, top + r, Math.PI],
+    [right - r, top + r, 1.5 * Math.PI],
+    [right - r, bottom - r, 0],
+    [left + r, bottom - r, 0.5 * Math.PI],
+  ];
+  const outer = corners.flatMap(([cx, cy, start]) =>
+    Array.from(
+      { length: ROUNDED_CORNER_SEGMENTS + 1 },
+      (_, step): [number, number] => {
+        const angle = start + (step / ROUNDED_CORNER_SEGMENTS) * (Math.PI / 2);
+        return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+      },
+    ),
+  );
+  return { outer, holes: [] };
+}
+
 /** Corners of a capsule's half circles: a brush edge stays smooth at TV size. */
 const CAPSULE_HALF_SEGMENTS = 16;
 

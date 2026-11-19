@@ -504,6 +504,69 @@ describe("MapView", () => {
     expect(Math.round(Math.max(...ys))).toBe(420);
   });
 
+  test("the rectangle's preview has the rounded corners it marks (T-170)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    const { container } = renderView(fake.service, {
+      tool: "reveal",
+      shape: "rectangle",
+      cornerRadius: 20,
+      onArea,
+    });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(area(), { clientX: 200, clientY: 150, pointerId: 1 });
+    // 20 map pixels at zoom 0.5.
+    expect(container.querySelector("rect")?.getAttribute("rx")).toBe("10");
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    const [rounded] = onArea.mock.calls[0] as [{ outer: [number, number][] }];
+    expect(rounded.outer.length).toBeGreaterThan(4);
+  });
+
+  test("the brush shows its outline at the pointer, at the size it paints (T-170)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const { rerender } = renderView(fake.service, {
+      tool: "reveal",
+      shape: "brush",
+      brushRadius: 20,
+    });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    expect(screen.queryByTestId("brush-cursor")).toBeNull();
+    fireEvent.pointerMove(area(), { clientX: 120, clientY: 80 });
+    const cursor = screen.getByTestId("brush-cursor");
+    // 20 map pixels at the fitted zoom of 0.5.
+    expect(cursor.getAttribute("r")).toBe("10");
+    expect(cursor.getAttribute("cx")).toBe("120");
+    expect(cursor.getAttribute("cy")).toBe("80");
+    // It stays with the pointer while painting.
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 120,
+      clientY: 80,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(area(), { clientX: 160, clientY: 90, pointerId: 1 });
+    expect(screen.getByTestId("brush-cursor").getAttribute("cx")).toBe("160");
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    fireEvent.pointerLeave(area());
+    expect(screen.queryByTestId("brush-cursor")).toBeNull();
+    // Other shapes have no outline.
+    rerender(
+      tree(fake.service, undefined, { tool: "reveal", shape: "rectangle" }),
+    );
+    fireEvent.pointerMove(area(), { clientX: 120, clientY: 80 });
+    expect(screen.queryByTestId("brush-cursor")).toBeNull();
+  });
+
   test("a real double click (two clicks on one spot, then dblclick) adds one corner", async () => {
     const fake = fakeMapService(() => Promise.resolve(image));
     const onArea = vi.fn();

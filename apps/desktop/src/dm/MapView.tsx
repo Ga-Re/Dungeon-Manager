@@ -70,6 +70,7 @@ export function MapView({
   tool = "pan",
   shape = "rectangle",
   brushRadius = 50,
+  cornerRadius = 0,
   softEdge = 0,
   fade = 0,
   onArea,
@@ -86,6 +87,8 @@ export function MapView({
   readonly shape?: FogShape;
   /** Brush radius in map pixels. */
   readonly brushRadius?: number;
+  /** Rounding of the rectangle tool's corners in map pixels (T-170); 0 keeps them sharp. */
+  readonly cornerRadius?: number;
   /** Soft fog edge in map pixels (T-136a); 0 draws hard edges. */
   readonly softEdge?: number;
   /** How long fog changes fade, in milliseconds (T-136b); 0 switches at once. */
@@ -108,6 +111,10 @@ export function MapView({
   // Polygon corners in map pixels, so panning with the keys between clicks keeps them in place.
   const [corners, setCorners] = useState<readonly [number, number][]>([]);
   const [hover, setHover] = useState<Point | null>(null);
+  // Where the pointer is over the map while the brush is chosen: its outline shows there, at
+  // the size it paints (T-170).
+  const [pointer, setPointer] = useState<Point | null>(null);
+  const brushing = tool !== "pan" && shape === "brush";
 
   // Switching tools drops a half-drawn shape.
   useEffect(() => {
@@ -331,6 +338,7 @@ export function MapView({
   };
   const onPointerMove = (event: PointerEvent) => {
     const point = local(event);
+    if (brushing) setPointer(point);
     if (drawing?.kind === "drag") {
       setDrawing({ ...drawing, end: point });
       return;
@@ -361,7 +369,10 @@ export function MapView({
       if (!stroke)
         console.warn("A brush stroke could not be turned into an area.");
       mark(stroke);
-    } else mark(dragArea(done.shape, done.start, done.end, camera, view));
+    } else
+      mark(
+        dragArea(done.shape, done.start, done.end, camera, view, cornerRadius),
+      );
   };
   const onPointerCancel = () => {
     drag.current = null;
@@ -423,6 +434,9 @@ export function MapView({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
+        onPointerLeave={() => {
+          setPointer(null);
+        }}
         onKeyDown={onKeyDown}
         onDoubleClick={() => {
           if (corners.length > 0) finishPolygon();
@@ -441,6 +455,8 @@ export function MapView({
             )}
             hover={hover}
             brushWidth={2 * brushRadius * camera.zoom}
+            cornerRadius={cornerRadius * camera.zoom}
+            brushAt={brushing ? pointer : null}
           />
         )}
       </div>

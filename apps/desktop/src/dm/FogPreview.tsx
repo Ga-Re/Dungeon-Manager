@@ -19,6 +19,8 @@ export function FogPreview({
   corners,
   hover,
   brushWidth,
+  cornerRadius = 0,
+  brushAt = null,
 }: {
   readonly tool: "reveal" | "hide";
   readonly drawing: Drawing | null;
@@ -26,8 +28,12 @@ export function FogPreview({
   readonly corners: readonly Point[];
   readonly hover: Point | null;
   readonly brushWidth: number;
+  /** Rounding of the rectangle's corners, in screen pixels. */
+  readonly cornerRadius?: number;
+  /** Where the brush is (screen pixels): its outline shows how big it paints. */
+  readonly brushAt?: Point | null;
 }) {
-  if (!drawing && corners.length === 0) return null;
+  if (!drawing && corners.length === 0 && !brushAt) return null;
   return (
     <svg
       className={`map-view-preview map-view-preview-${tool}`}
@@ -39,6 +45,11 @@ export function FogPreview({
           y={Math.min(drawing.start.y, drawing.end.y)}
           width={Math.abs(drawing.end.x - drawing.start.x)}
           height={Math.abs(drawing.end.y - drawing.start.y)}
+          rx={Math.min(
+            cornerRadius,
+            Math.abs(drawing.end.x - drawing.start.x) / 2,
+            Math.abs(drawing.end.y - drawing.start.y) / 2,
+          )}
         />
       )}
       {drawing?.kind === "drag" && drawing.shape === "circle" && (
@@ -67,6 +78,15 @@ export function FogPreview({
           className="map-view-preview-brush"
           points={points(drawing.points)}
           strokeWidth={brushWidth}
+        />
+      )}
+      {brushAt && (
+        <circle
+          className="map-view-preview-cursor"
+          data-testid="brush-cursor"
+          cx={brushAt.x}
+          cy={brushAt.y}
+          r={brushWidth / 2}
         />
       )}
       {corners.length > 0 && (
