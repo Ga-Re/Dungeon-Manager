@@ -283,10 +283,55 @@ label {
 .dm-ribbon {
   position: relative;
   z-index: var(--dm-z-chrome);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--dm-space-3);
   padding: 0 var(--dm-space-3) var(--dm-space-1);
   background: var(--dm-surface-panel);
   color: var(--dm-text-primary);
   border-bottom: 1px solid var(--dm-border-strong);
+}
+
+/* Workspace selector (T-156) at the ribbon's left end: caption over the current workspace. */
+.dm-workspace {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--dm-space-1);
+  margin-top: var(--dm-space-1);
+  padding-right: var(--dm-space-3);
+  border-right: 1px solid var(--dm-border-subtle);
+}
+
+.dm-workspace-caption {
+  font-size: var(--dm-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dm-text-secondary);
+}
+
+.dm-workspace-menu .dm-menu-button {
+  padding: var(--dm-space-1) var(--dm-space-2);
+  font-size: var(--dm-font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  border-color: var(--dm-border-subtle);
+}
+
+.dm-ribbon-body {
+  min-width: 0;
+}
+
+/* Without tabs (a workspace still to come) the row keeps the tab row's height. */
+.dm-ribbon-tabs:empty {
+  min-height: calc(var(--dm-font-size-xs) * 1.5 + 2 * var(--dm-space-1) + 2px);
+}
+
+.dm-ribbon-coming {
+  margin: 0;
+  font-size: var(--dm-font-size-sm);
+  color: var(--dm-text-muted);
 }
 
 .dm-ribbon-tabs {

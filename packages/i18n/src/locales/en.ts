@@ -237,7 +237,19 @@ export const en: Messages = {
     },
     dataPanel: "Data panel",
     toggleDataPanel: "Show or hide the data panel (⌘/Ctrl+B)",
-    modes: "Workspace",
+    workspace: {
+      label: "Workspace",
+      mapForge: "Map Forge",
+      assetStudio: "Asset Studio",
+      campaignAtlas: "Campaign Atlas",
+      gameMode: "Game Mode",
+      coming: {
+        mapForge: "Editing your maps comes here soon.",
+        assetStudio: "Editing your assets comes here soon.",
+        campaignAtlas: "Editing the current campaign comes here soon.",
+      },
+    },
+    modes: "Toolbars",
     mode: {
       scene: "Scene",
       fog: "Fog",

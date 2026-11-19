@@ -25,8 +25,7 @@ function memoryStorage(): Storage {
   };
 }
 
-function setup() {
-  const storage = memoryStorage();
+function setup(storage = memoryStorage()) {
   const root = document.createElement("html");
   render(
     <I18nextProvider i18n={createI18n()}>
@@ -60,7 +59,62 @@ function panel(): HTMLElement {
 }
 const toggle = toggleButton;
 
+const workspaceMenu = () =>
+  within(screen.getByRole("group", { name: "Arbeitsbereich" })).getByRole(
+    "button",
+  );
+
 describe("DmShell", () => {
+  it("starts in Game Mode with its tabs", () => {
+    setup();
+    expect(workspaceMenu().textContent).toBe("Game Mode");
+    expect(
+      within(screen.getByRole("tablist", { name: "Werkzeugleisten" }))
+        .getAllByRole("tab")
+        .map((tab) => tab.textContent),
+    ).toEqual(["Szene", "Nebel", "Anzeige"]);
+  });
+
+  it("switches the workspace from its menu, keeps Game Mode's tools and remembers it", () => {
+    const { storage } = setup();
+    fireEvent.click(screen.getByRole("tab", { name: "Nebel" }));
+    const tool = screen.getByRole("button", { name: "Aufdecken" });
+
+    fireEvent.click(workspaceMenu());
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Map Forge", "Asset Studio", "Campaign Atlas", "Game Mode"]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Map Forge" }));
+
+    expect(workspaceMenu().textContent).toBe("Map Forge");
+    expect(
+      screen.queryByRole("tablist", { name: "Werkzeugleisten" }),
+    ).toBeNull();
+    expect(
+      screen.getByText("Hier bearbeitest du bald deine Karten."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Aufdecken" })).toBeNull();
+    expect(storage.getItem("dm.workspace")).toBe("mapForge");
+
+    fireEvent.click(workspaceMenu());
+    fireEvent.click(screen.getByRole("menuitem", { name: "Game Mode" }));
+    // The same tool, not a new one: tools keep their state across workspaces.
+    expect(screen.getByRole("button", { name: "Aufdecken" })).toBe(tool);
+    expect(
+      screen.getByRole("tab", { name: "Nebel" }).getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+
+  it("starts in the workspace last used on this device", () => {
+    const storage = memoryStorage();
+    storage.setItem("dm.workspace", "campaignAtlas");
+    setup(storage);
+    expect(workspaceMenu().textContent).toBe("Campaign Atlas");
+    expect(
+      screen.getByText("Hier bearbeitest du bald die aktuelle Kampagne."),
+    ).toBeTruthy();
+  });
+
   it("renders portalled parts into their zones", () => {
     setup();
     expect(screen.getByTestId("map").closest(".dm-canvas")).not.toBeNull();

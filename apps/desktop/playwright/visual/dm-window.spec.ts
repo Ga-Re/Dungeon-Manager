@@ -106,3 +106,15 @@ test("the welcome dialog on the very first start", async ({ page }) => {
 
   await expect(page).toHaveScreenshot("dm-window-first-start.png");
 });
+
+test("the workspace menu", async ({ page }) => {
+  await openHarness(page);
+  await page
+    .getByRole("group", { name: "Arbeitsbereich" })
+    .getByRole("button")
+    .click();
+  await expect(page.getByRole("menuitem", { name: "Map Forge" })).toBeFocused();
+  await page.evaluate(() => document.fonts.ready);
+
+  await expect(page).toHaveScreenshot("dm-window-workspaces.png");
+});
