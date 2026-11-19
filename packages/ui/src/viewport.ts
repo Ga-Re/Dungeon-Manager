@@ -43,10 +43,12 @@ export function useClampedPoint(
     const place = () => {
       const box = ref.current?.getBoundingClientRect();
       setClamped(
-        clampPoint(
-          { x, y },
-          { width: box?.width ?? 0, height: box?.height ?? 0 },
-          viewport(),
+        keepIfSame(
+          clampPoint(
+            { x, y },
+            { width: box?.width ?? 0, height: box?.height ?? 0 },
+            viewport(),
+          ),
         ),
       );
     };
@@ -60,6 +62,12 @@ const viewport = () => ({
   width: window.innerWidth,
   height: window.innerHeight,
 });
+
+/** A state update that keeps the previous point when nothing moved: no needless re-render. */
+const keepIfSame =
+  (next: MenuPoint) =>
+  (previous: MenuPoint | undefined): MenuPoint =>
+    previous?.x === next.x && previous.y === next.y ? previous : next;
 
 /**
  * Calls `place` again whenever the result could change (T-166): the element grows or shrinks
@@ -75,11 +83,11 @@ function watchLayout(
   // Capture: a scrolling container anywhere (the ribbon's panel) moves an anchor too.
   if (followScrolling) window.addEventListener("scroll", place, true);
   // Not in every test environment; where it is missing, size changes wait for the next event.
-  const observer =
-    element && typeof ResizeObserver === "function"
-      ? new ResizeObserver(place)
-      : null;
-  if (element) observer?.observe(element);
+  let observer: ResizeObserver | null = null;
+  if (element && typeof ResizeObserver === "function") {
+    observer = new ResizeObserver(place);
+    observer.observe(element);
+  }
   return () => {
     window.removeEventListener("resize", place);
     if (followScrolling) window.removeEventListener("scroll", place, true);
@@ -121,7 +129,7 @@ export function useAnchoredPoint(
         x: align === "end" ? from.right - size.width : from.left,
         y: from.bottom + GAP,
       };
-      setPoint(clampPoint(at, size, viewport()));
+      setPoint(keepIfSame(clampPoint(at, size, viewport())));
     };
     place();
     return watchLayout(element.current, place, true);

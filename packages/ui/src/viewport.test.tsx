@@ -72,7 +72,14 @@ describe("menus and popovers keep inside the window when they or the window chan
     );
     const menu = screen.getByRole("menu", { name: "Szene" });
     expect(menu.style.top).toBe("600px");
-    size.mockReturnValue({ width: 200, height: 300 } as DOMRect);
+    size.mockReturnValue({
+      width: 200,
+      height: 300,
+      left: 0,
+      top: 0,
+      right: 200,
+      bottom: 300,
+    } as DOMRect);
     observer.resize();
     // 768 − 300 − 8
     expect(menu.style.top).toBe("460px");
@@ -103,6 +110,71 @@ describe("menus and popovers keep inside the window when they or the window chan
     });
     // Too small for it: its top stays reachable at the margin.
     expect(popover.style.top).toBe("8px");
+  });
+
+  it("moves a context menu again when the window gets smaller", () => {
+    fakeResizeObserver();
+    measureAs(200, 100);
+    render(
+      <ContextMenu
+        at={{ x: 900, y: 100 }}
+        label="Szene"
+        items={[{ id: "new", label: "Neue Szene …" }]}
+        onSelect={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const menu = screen.getByRole("menu", { name: "Szene" });
+    expect(menu.style.left).toBe("816px");
+    vi.stubGlobal("innerWidth", 600);
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    // 600 − 200 − 8
+    expect(menu.style.left).toBe("392px");
+  });
+
+  it("moves a popover under its anchor again when it grows, and stops watching once closed", () => {
+    const observer = fakeResizeObserver();
+    const size = measureAs(300, 200);
+    function Toggled({ open }: { readonly open: boolean }) {
+      const anchor = useRef<HTMLButtonElement>(null);
+      return (
+        <>
+          <button type="button" ref={anchor}>
+            Anker
+          </button>
+          <Popover
+            open={open}
+            anchor={anchor}
+            label="Neue Szene"
+            onClose={vi.fn()}
+          >
+            <input aria-label="Name" />
+          </Popover>
+        </>
+      );
+    }
+    const { rerender } = render(<Toggled open />);
+    const popover = screen.getByRole("group", { name: "Neue Szene" });
+    // Under the 200 px tall anchor.
+    expect(popover.style.top).toBe("204px");
+    size.mockReturnValue({
+      width: 300,
+      height: 700,
+      left: 0,
+      top: 0,
+      right: 300,
+      bottom: 200,
+    } as DOMRect);
+    observer.resize();
+    // 768 − 700 − 8
+    expect(popover.style.top).toBe("60px");
+
+    rerender(<Toggled open={false} />);
+    size.mockClear();
+    observer.resize();
+    expect(size).not.toHaveBeenCalled();
   });
 
   it("works where there is no ResizeObserver", () => {
