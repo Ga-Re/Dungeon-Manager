@@ -48,6 +48,10 @@ describe("level markers in the scene browser", () => {
     });
   });
 
+  test("marks nothing while the map has one level", () => {
+    expect(marks(scene(1))).toEqual({ Erdgeschoss: "" });
+  });
+
   test("marks the TV's level and the released ones; unknown ids are ignored", () => {
     expect(
       marks(
