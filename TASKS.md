@@ -701,7 +701,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Fail-closed as in T-136b: a pixel fogged before and after a change never shows the map; the first fog of a scene and a new map never animate
   - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11
 - **Notes:** From the DM (2026-11-19).
-- The benchmark criterion stays open until the DM has measured it on the reference notebook (as for T-136b). The spread order costs about 5 ms per change on a 256² grid (Node), once per change.
+- The benchmark criterion stays open until the DM has measured it on the reference notebook (as for T-136b). The spread order costs about 5 ms per change on a 256² grid (Node), once per change; a change during a running spread also mixes the current state at mask size (up to 1024²) once. From the T-167 review: a pixel test for a change during a running spread would pin down that path (it is safe by construction: the hard fog over every revealed state stays underneath).
 
 ### T-130d App menu: macOS menu bar, Windows menu button
 

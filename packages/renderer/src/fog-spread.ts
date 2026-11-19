@@ -61,6 +61,9 @@ export function spreadOrder(
     let touchesSource = false;
     let onEdge = false;
     const found = neighbours(width, height, index, around, steps);
+    // The mask's border is an edge too (a change over the whole map has no other), but never
+    // something to spread from.
+    if (found < NEIGHBOURS.length) onEdge = true;
     for (let k = 0; k < found; k++) {
       const neighbour = around[k] ?? 0;
       if (kind[neighbour] === own) continue;
@@ -93,11 +96,28 @@ export function spreadOrder(
     if (kind[index] === UNCHANGED) continue;
     const label = component[index] ?? 0;
     const max = longest.get(label) ?? 0;
-    const share = max > 0 ? (distance[index] ?? 0) / max : 0;
+    // A change with no length (one texel, a one-texel line) turns over at once.
+    if (max === 0) continue;
+    const share = (distance[index] ?? 0) / max;
     const middleFirst = kind[index] === REVEAL && !sourced.has(label);
     order[index] = Math.round(255 * (middleFirst ? 1 - share : share));
   }
-  return order;
+  // Unchanged texels next to a change take its order: the GPU filters the order linearly, and
+  // a 0 there would pull the change's edge ahead of its front.
+  const padded = order.slice();
+  for (let index = 0; index < count; index++) {
+    if (kind[index] !== UNCHANGED) continue;
+    const found = neighbours(width, height, index, around, steps);
+    let nearest = -1;
+    for (let k = 0; k < found; k++) {
+      const neighbour = around[k] ?? 0;
+      if (kind[neighbour] === UNCHANGED) continue;
+      const value = order[neighbour] ?? 0;
+      if (nearest === -1 || value < nearest) nearest = value;
+    }
+    if (nearest !== -1) padded[index] = nearest;
+  }
+  return padded;
 }
 
 /** A raster of one value per texel, row by row. */

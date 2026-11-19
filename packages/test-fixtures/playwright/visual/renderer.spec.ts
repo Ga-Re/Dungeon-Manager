@@ -36,6 +36,15 @@ for (const scenario of ["spread-adjacent", "spread-isolated", "spread-hide"]) {
   test(`fog change: ${scenario}`, async ({ page }) => {
     await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
     await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
+    // Half-way, the start of the spread shows the map and its end is still fogged.
+    await expect(page.locator("body")).toHaveAttribute(
+      "data-spread-start",
+      "open",
+    );
+    await expect(page.locator("body")).toHaveAttribute(
+      "data-spread-end",
+      "fogged",
+    );
     await expect(page).toHaveScreenshot(`${scenario}.png`);
   });
 }

@@ -93,6 +93,49 @@ describe("spreadOrder", () => {
       expect(at(order, 20, x, 3)).toBeLessThan(at(order, 20, x - 1, 3));
   });
 
+  it("clears a reveal of the whole map from its middle, and hides it from the border", () => {
+    const fogged = mask(17, 17, () => false);
+    const open = mask(17, 17, () => true);
+    const reveal = spreadOrder(17, 17, fogged, open);
+    expect(at(reveal, 17, 8, 8)).toBe(0);
+    expect(at(reveal, 17, 0, 8)).toBe(255);
+    const hide = spreadOrder(17, 17, open, fogged);
+    expect(at(hide, 17, 0, 8)).toBe(0);
+    expect(at(hide, 17, 8, 8)).toBe(255);
+  });
+
+  it("turns a change without length over at once", () => {
+    const from = mask(9, 9, () => false);
+    expect(
+      at(
+        spreadOrder(
+          9,
+          9,
+          from,
+          mask(9, 9, (x, y) => x === 4 && y === 4),
+        ),
+        9,
+        4,
+        4,
+      ),
+    ).toBe(0);
+    const line = spreadOrder(
+      9,
+      9,
+      from,
+      mask(9, 9, (_, y) => y === 4),
+    );
+    for (let x = 0; x < 9; x++) expect(at(line, 9, x, 4)).toBe(0);
+  });
+
+  it("gives unchanged texels next to a change its order, so filtering keeps the front", () => {
+    const from = mask(16, 8, (x) => x < 4);
+    const to = mask(16, 8, (x) => x < 12);
+    const order = spreadOrder(16, 8, from, to);
+    // The fog right after the reveal's far end carries the far end's order.
+    expect(at(order, 16, 12, 4)).toBe(at(order, 16, 11, 4));
+  });
+
   it("times each separate change on its own, so all finish together", () => {
     const from = mask(30, 9, () => false);
     // A small and a large isolated reveal.
