@@ -177,11 +177,11 @@ export const en: Messages = {
     tree: {
       browserTitle: "Browser",
       move: "Move browser (arrow keys)",
-      collapse: "Collapse browser",
-      expand: "Expand browser",
+      fold: "Fold or unfold the browser",
       switchCampaign: "Switch campaign",
       settings: "Campaign settings",
       scenes: "Scenes",
+      noScenes: "No scenes yet",
       maps: "Maps",
       noMaps: "No maps yet",
       players: "Players & characters",

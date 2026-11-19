@@ -207,8 +207,7 @@ export function LibraryPanel({
           title={t("shell.tree.browserTitle")}
           labels={{
             move: t("shell.tree.move"),
-            collapse: t("shell.tree.collapse"),
-            expand: t("shell.tree.expand"),
+            fold: t("shell.tree.fold"),
           }}
           placement={browserPlacement}
           onPlacementChange={setBrowserPlacement}

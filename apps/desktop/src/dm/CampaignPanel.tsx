@@ -157,9 +157,13 @@ export function CampaignPanel({
 
   // The players come from campaign.json; an unreadable file just shows none here (the library
   // list already reports it).
+  const latestPlayers = useRef(0);
   const readPlayers = useCallback(async () => {
+    // Only the newest read may land: two quick changes can resolve out of order.
+    const request = ++latestPlayers.current;
     const result = await loadCampaign(service.fs, slug).catch(() => null);
-    setPlayers(result?.status === "ok" ? result.value.players : []);
+    if (request === latestPlayers.current)
+      setPlayers(result?.status === "ok" ? result.value.players : []);
   }, [service, slug]);
   useEffect(() => {
     void readPlayers();
@@ -261,7 +265,13 @@ export function CampaignPanel({
         label: t("shell.tree.settings"),
         icon: <Settings2 />,
       },
-      group(GROUP.scenes, t("shell.tree.scenes"), <Folder />, sceneNodes),
+      group(
+        GROUP.scenes,
+        t("shell.tree.scenes"),
+        <Folder />,
+        sceneNodes,
+        state.status === "ready" ? t("shell.tree.noScenes") : undefined,
+      ),
       group(
         GROUP.maps,
         t("shell.tree.maps"),
