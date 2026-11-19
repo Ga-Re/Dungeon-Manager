@@ -145,10 +145,10 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-117 Project domain events for viewers
 
-- **Status:** todo · **Depends on:** T-102b · **Refs:** ARCHITECTURE §5.1
+- **Status:** done · **Depends on:** T-102b · **Refs:** ARCHITECTURE §5.1
 - `DomainEvent`s carry hidden data (exact HP in `hp.changed`, moves of hidden tokens). Add a pure `projectEvents(events, stateAfter, viewer)` in `core` so the session log shown to players and any event broadcast never leak; property tests like the state projection.
 - **Acceptance criteria**
-  - [ ] No event reveals a token, HP number or name that `projectForViewer` hides (property-based tests)
+  - [x] No event reveals a token, HP number or name that `projectForViewer` hides (property-based tests)
 - **Notes:** From the T-102a review; needed before events leave the host (companion, session log on the TV).
 
 ### T-118 Companion-safe map delivery and released levels
@@ -158,7 +158,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Companion projections contain no asset reference to un-fogged map files and no unreleased level
   - [ ] The table view shows the scene's current level
-- **Notes:** From the T-102b review; must be done before companions show maps (stage 3).
+- **Notes:** From the T-102b review; must be done before companions show maps (stage 3). From T-117: `projectEvents` passes fog events for every level, like `projectForViewer` passes every level's fog today; restrict both to released levels.
 
 ### T-119 Case-insensitive id collisions in file names
 

@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { viewerSceneSchema, viewerTokenSchema } from "./index.js";
+import {
+  viewerEventSchema,
+  viewerSceneSchema,
+  viewerTokenSchema,
+} from "./index.js";
 
 const token = {
   id: "t1",
@@ -40,6 +44,45 @@ describe("viewer schemas are strict", () => {
         fog: {},
         tokens: [],
         dmNotes: "trap",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("viewer events", () => {
+  const hpChanged = { at: 1, type: "hp.changed", combatantId: "goblin" };
+  const hp = { current: 4, temp: 0 };
+
+  test("carry exact HP or the coarse state, never both and never neither", () => {
+    expect(viewerEventSchema.safeParse({ ...hpChanged, hp }).success).toBe(
+      true,
+    );
+    expect(
+      viewerEventSchema.safeParse({ ...hpChanged, hpState: "wounded" }).success,
+    ).toBe(true);
+    expect(
+      viewerEventSchema.safeParse({ ...hpChanged, hp, hpState: "wounded" })
+        .success,
+    ).toBe(false);
+    expect(viewerEventSchema.safeParse(hpChanged).success).toBe(false);
+  });
+
+  test("reject unknown keys and DM-only events", () => {
+    expect(
+      viewerEventSchema.safeParse({
+        at: 1,
+        type: "token.moved",
+        tokenId: "t1",
+        to: { col: 1, row: 1 },
+        from: { col: 0, row: 0 },
+        levelId: "ground",
+      }).success,
+    ).toBe(false);
+    expect(
+      viewerEventSchema.safeParse({
+        at: 1,
+        type: "initiative.combatantRemoved",
+        combatantId: "goblin",
       }).success,
     ).toBe(false);
   });
