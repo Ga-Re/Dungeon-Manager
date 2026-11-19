@@ -687,10 +687,10 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-166 Keep popovers inside the window when they grow
 
-- **Status:** todo · **Depends on:** T-130d · **Refs:** ADR-0011, `packages/ui/src/viewport.ts`
+- **Status:** done · **Depends on:** T-130d · **Refs:** ADR-0011, `packages/ui/src/viewport.ts`
 - From the T-130d review: the viewport clamp runs once per opening point. A popover that grows while open (e.g. a form's error message near the bottom) or a window resized while it is open can still leave the window.
 - **Acceptance criteria**
-  - [ ] Re-clamp on content size changes (`ResizeObserver`, where available) and on window resize; component tests
+  - [x] Re-clamp on content size changes (`ResizeObserver`, where available) and on window resize; component tests
 
 ### T-152 Sub-scenes
 

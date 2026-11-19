@@ -36,21 +36,63 @@ export function useClampedPoint(
   const x = at?.x;
   const y = at?.y;
   useLayoutEffect(() => {
-    const element = ref.current;
     if (x === undefined || y === undefined) {
       setClamped(undefined);
       return;
     }
-    const box = element?.getBoundingClientRect();
-    setClamped(
-      clampPoint(
-        { x, y },
-        { width: box?.width ?? 0, height: box?.height ?? 0 },
-        { width: window.innerWidth, height: window.innerHeight },
-      ),
-    );
+    const place = () => {
+      const box = ref.current?.getBoundingClientRect();
+      setClamped(
+        keepIfSame(
+          clampPoint(
+            { x, y },
+            { width: box?.width ?? 0, height: box?.height ?? 0 },
+            viewport(),
+          ),
+        ),
+      );
+    };
+    place();
+    return watchLayout(ref.current, place, false);
   }, [ref, x, y]);
   return clamped;
+}
+
+const viewport = () => ({
+  width: window.innerWidth,
+  height: window.innerHeight,
+});
+
+/** A state update that keeps the previous point when nothing moved: no needless re-render. */
+const keepIfSame =
+  (next: MenuPoint) =>
+  (previous: MenuPoint | undefined): MenuPoint =>
+    previous?.x === next.x && previous.y === next.y ? previous : next;
+
+/**
+ * Calls `place` again whenever the result could change (T-166): the element grows or shrinks
+ * (a form's error message), the window is resized, and – for things under an anchor – any
+ * container scrolls. Returns a function that stops watching.
+ */
+function watchLayout(
+  element: HTMLElement | null,
+  place: () => void,
+  followScrolling: boolean,
+): () => void {
+  window.addEventListener("resize", place);
+  // Capture: a scrolling container anywhere (the ribbon's panel) moves an anchor too.
+  if (followScrolling) window.addEventListener("scroll", place, true);
+  // Not in every test environment; where it is missing, size changes wait for the next event.
+  let observer: ResizeObserver | null = null;
+  if (element && typeof ResizeObserver === "function") {
+    observer = new ResizeObserver(place);
+    observer.observe(element);
+  }
+  return () => {
+    window.removeEventListener("resize", place);
+    if (followScrolling) window.removeEventListener("scroll", place, true);
+    observer?.disconnect();
+  };
 }
 
 /** Gap between an anchor and what opens under it, in CSS pixels. */
@@ -60,7 +102,7 @@ const GAP = 4;
  * Where something opening under `anchor` goes, as a fixed viewport point (T-131): under the
  * anchor, lined up with its `align` edge, and kept inside the window. Fixed, so a container
  * that clips or scrolls (the ribbon's panel) never cuts it off; it follows the anchor on
- * scrolling and resizing. `undefined` while `active` is false.
+ * scrolling, resizing and size changes of its own. `undefined` while `active` is false.
  */
 export function useAnchoredPoint(
   anchor: RefObject<HTMLElement | null>,
@@ -87,21 +129,10 @@ export function useAnchoredPoint(
         x: align === "end" ? from.right - size.width : from.left,
         y: from.bottom + GAP,
       };
-      setPoint(
-        clampPoint(at, size, {
-          width: window.innerWidth,
-          height: window.innerHeight,
-        }),
-      );
+      setPoint(keepIfSame(clampPoint(at, size, viewport())));
     };
     place();
-    window.addEventListener("resize", place);
-    // Capture: a scrolling container anywhere (the ribbon's panel) moves the anchor too.
-    window.addEventListener("scroll", place, true);
-    return () => {
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    };
+    return watchLayout(element.current, place, true);
   }, [anchor, element, align, active]);
   return point;
 }
