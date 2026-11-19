@@ -520,7 +520,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [x] Token themes `workshop` (default) and `parchment`, both WCAG AA (pair tests); setting "OS / Hell / Dunkel" maps light → parchment, dark → workshop; first start is dark
   - [x] Flatter base: sans-serif headings, small uppercase captions, smaller radii and shadows; components only through tokens
-  - [ ] Screenshot golden in the default theme; ARCHITECTURE §15 and the ui-design skill updated
+  - [x] Screenshot golden in the default theme; ARCHITECTURE §15 and the ui-design skill updated
 
 ### T-158 Scene browser: campaign tree, transparent, collapsible, movable
 
