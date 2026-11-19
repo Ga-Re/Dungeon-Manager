@@ -1,4 +1,4 @@
-import type { AssetRef, Polygon, Scene } from "@dungeon-manager/schema";
+import type { AssetRef, Player, Polygon, Scene } from "@dungeon-manager/schema";
 import {
   ContextMenu,
   IconButton,
@@ -8,17 +8,29 @@ import {
   type MenuPoint,
   type TreeNode,
 } from "@dungeon-manager/ui";
-import { BookOpen, FilePlus, ScrollText } from "lucide-react";
+import {
+  BookOpen,
+  FilePlus,
+  Folder,
+  Image as ImageIcon,
+  NotebookPen,
+  ScrollText,
+  Settings2,
+  UserRound,
+  Users,
+} from "lucide-react";
 import {
   createScene,
   newMap,
   listScenes,
+  loadCampaign,
   loadScene,
 } from "@dungeon-manager/storage";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
+import { fileName } from "./file-name.js";
 import { NewSceneForm } from "./NewSceneForm.js";
 import { OpenScenePanel } from "./OpenScenePanel.js";
 import { sceneContentNodes } from "./scene-tree.js";
@@ -60,6 +72,15 @@ async function readScenes(
 }
 
 const CAMPAIGN_NODE = "campaign";
+/** Groups under the campaign (DM decision, T-158); ids never collide with `scene:` ids. */
+const GROUP = {
+  settings: "group:settings",
+  scenes: "group:scenes",
+  maps: "group:maps",
+  players: "group:players",
+  handouts: "group:handouts",
+  notes: "group:notes",
+} as const;
 const SCENE_PREFIX = "scene:";
 const sceneNode = (id: string) => `${SCENE_PREFIX}${id}`;
 
@@ -102,6 +123,7 @@ export function CampaignPanel({
   const [notice, setNotice] = useState("");
   const [context, setContext] = useState<ContextRequest | null>(null);
   const [newScene, setNewScene] = useState<NewSceneOrigin | null>(null);
+  const [players, setPlayers] = useState<readonly Player[]>([]);
   const newSceneButton = useRef<HTMLButtonElement>(null);
   const contextItem = useRef<HTMLElement | null>(null);
   const latest = useRef(0);
@@ -131,6 +153,21 @@ export function CampaignPanel({
     service,
     (path) => path.startsWith(`campaigns/${slug}/scenes/`),
     () => void reload(),
+  );
+
+  // The players come from campaign.json; an unreadable file just shows none here (the library
+  // list already reports it).
+  const readPlayers = useCallback(async () => {
+    const result = await loadCampaign(service.fs, slug).catch(() => null);
+    setPlayers(result?.status === "ok" ? result.value.players : []);
+  }, [service, slug]);
+  useEffect(() => {
+    void readPlayers();
+  }, [readPlayers]);
+  useLibraryChanges(
+    service,
+    (path) => path === `campaigns/${slug}/campaign.json`,
+    () => void readPlayers(),
   );
 
   const create = async (sceneName: string, map: AssetRef | null) => {
@@ -189,25 +226,98 @@ export function CampaignPanel({
         })
       : [];
 
+  // Maps used by this campaign's scenes, the open one as edited.
+  const mapPaths = [
+    ...new Set(
+      state.status === "ready"
+        ? state.scenes.flatMap((entry) => {
+            const scene =
+              live && live.scene.id === entry.id ? live.scene : entry.scene;
+            return scene?.map ? [scene.map.asset.path] : [];
+          })
+        : [],
+    ),
+  ].sort();
+
+  /** A group that is still empty shows why instead of an empty folder. */
+  const group = (
+    id: string,
+    label: string,
+    icon: TreeNode["icon"],
+    children: TreeNode[],
+    empty?: string,
+  ): TreeNode =>
+    children.length === 0 && empty !== undefined
+      ? { id, label, icon, meta: empty }
+      : { id, label, icon, children };
+
+  const campaignTree: TreeNode = {
+    id: CAMPAIGN_NODE,
+    label: name,
+    icon: <BookOpen />,
+    children: [
+      {
+        id: GROUP.settings,
+        label: t("shell.tree.settings"),
+        icon: <Settings2 />,
+      },
+      group(GROUP.scenes, t("shell.tree.scenes"), <Folder />, sceneNodes),
+      group(
+        GROUP.maps,
+        t("shell.tree.maps"),
+        <Folder />,
+        mapPaths.map((path) => ({
+          id: `map:${path}`,
+          label: fileName(path),
+          icon: <ImageIcon />,
+          mono: true,
+        })),
+        t("shell.tree.noMaps"),
+      ),
+      group(
+        GROUP.players,
+        t("shell.tree.players"),
+        <Users />,
+        players.map((player) => ({
+          id: `player:${player.id}`,
+          label: player.name,
+          icon: <UserRound />,
+          meta: player.characterName,
+        })),
+        t("shell.tree.noPlayers"),
+      ),
+      group(
+        GROUP.handouts,
+        t("shell.tree.handouts"),
+        <Folder />,
+        [],
+        t("shell.tree.noHandouts"),
+      ),
+      group(
+        GROUP.notes,
+        t("shell.tree.notes"),
+        <NotebookPen />,
+        [],
+        t("shell.tree.noNotes"),
+      ),
+    ],
+  };
+
   const newSceneForm = <NewSceneForm service={service} onCreate={create} />;
 
   return (
     <>
       <TreeList
-        label={t("campaign.scenes")}
-        nodes={[
-          {
-            id: CAMPAIGN_NODE,
-            label: name,
-            icon: <BookOpen />,
-            children: sceneNodes,
-          },
-        ]}
+        label={t("shell.tree.browserTitle")}
+        variant="compact"
+        nodes={[campaignTree]}
         selectedId={openScene ? sceneNode(openScene.id) : null}
         onSelect={open}
         onItemContextMenu={(id, at, item) => {
           // Only the campaign and its scenes have commands; the open scene's content not yet.
           if (id === CAMPAIGN_NODE) setContext({ at, item, name });
+          else if (id === GROUP.scenes)
+            setContext({ at, item, name: t("shell.tree.scenes") });
           else if (id.startsWith(SCENE_PREFIX) && state.status === "ready") {
             const entry = state.scenes.find(
               (each) => sceneNode(each.id) === id,

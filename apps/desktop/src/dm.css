@@ -188,7 +188,6 @@ label {
   pointer-events: none;
 }
 
-.dm-browser > *,
 .dm-notices > * {
   pointer-events: auto;
 }
@@ -416,28 +415,10 @@ label {
   font-family: var(--dm-font-heading);
 }
 
-/* The browser column spans the map area's height; only its panel takes the pointer, and only
-   the panel body scrolls, so header menus and popovers are never clipped. */
+/* The browser slot covers the map area; its tool window positions itself inside (T-158). */
 .dm-browser {
   position: absolute;
-  top: var(--dm-space-3);
-  bottom: var(--dm-space-3);
-  left: var(--dm-space-3);
-  width: 18rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.dm-browser > .dm-panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  max-height: 100%;
-}
-
-.dm-browser .dm-panel-body {
-  min-height: 0;
-  overflow: auto;
+  inset: 0;
 }
 
 .dm-browser:empty {
@@ -464,7 +445,7 @@ label {
 }
 
 /* Scene browser (T-130c): campaign switch in the header, campaign list or tree in the body. */
-.dm-panel-head {
+.dm-hud-head {
   position: relative;
 }
 
@@ -480,13 +461,30 @@ label {
   right: 0;
 }
 
-.dm-campaign-browser .dm-panel-body > p {
+/* Text and lists in the transparent browser body sit on the same chips as tree rows. */
+.dm-campaign-browser .dm-hud-body > p,
+.dm-campaign-list button {
+  width: fit-content;
   margin: var(--dm-space-1) 0;
+  padding: var(--dm-space-1) var(--dm-space-2);
   font-size: var(--dm-font-size-sm);
+  color: var(--dm-hud-text);
+  background: var(--dm-hud-row);
+  border-color: transparent;
+  border-radius: var(--dm-radius-sm);
+}
+
+.dm-campaign-list button:hover {
+  background: var(--dm-hud-row-hover);
+}
+
+/* Buttons in the browser body (e.g. "Bibliotheksordner wählen") keep the panel look. */
+.dm-campaign-browser .dm-hud-body > button {
+  margin: var(--dm-space-1) 0;
 }
 
 .dm-browser-hint {
-  color: var(--dm-text-secondary);
+  color: var(--dm-hud-text-muted);
 }
 
 .dm-campaign-list {
@@ -508,7 +506,7 @@ label {
 .dm-campaign-list svg {
   width: 16px;
   height: 16px;
-  color: var(--dm-text-secondary);
+  color: var(--dm-hud-text-muted);
 }
 
 .dm-new-scene {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   COLOR_PAIRS,
+  HUD,
   THEMES,
   contrastRatio,
   tokensToCss,
@@ -37,6 +38,30 @@ describe.each(themeNames)("theme %s", (theme) => {
       expect(
         contrastRatio(colors[foreground], colors[background]),
       ).toBeGreaterThanOrEqual(minimum);
+    },
+  );
+});
+
+describe("tool windows over the map", () => {
+  /** A translucent chip over a white map: the worst case for light text. */
+  const overWhite = (chip: { rgb: readonly number[]; alpha: number }) =>
+    `#${chip.rgb
+      .map((channel) =>
+        Math.round(channel * chip.alpha + 255 * (1 - chip.alpha))
+          .toString(16)
+          .padStart(2, "0"),
+      )
+      .join("")}`;
+
+  it.each(["row", "row-hover", "row-selected"] as const)(
+    "text stays readable on the %s chip over a white map",
+    (chip) => {
+      expect(
+        contrastRatio(HUD.text, overWhite(HUD[chip])),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(HUD["text-muted"], overWhite(HUD[chip])),
+      ).toBeGreaterThanOrEqual(4.5);
     },
   );
 });

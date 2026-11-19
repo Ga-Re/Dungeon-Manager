@@ -168,3 +168,39 @@ test("the DM creates a scene from the browser's context menu, by keyboard", asyn
   ).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Szene „Grabkammer“ angelegt.")).toBeVisible();
 });
+
+test("the browser can be dragged and folded, and stays so after a restart", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  const browser = page.getByRole("region", { name: "Browser" });
+  const start = await browser.boundingBox();
+  if (!start) throw new Error("browser not laid out");
+
+  const grip = page.getByRole("button", { name: /Browser verschieben/ });
+  const gripBox = await grip.boundingBox();
+  if (!gripBox) throw new Error("grip not laid out");
+  await page.mouse.move(gripBox.x + 5, gripBox.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(gripBox.x + 205, gripBox.y + 105, { steps: 5 });
+  await page.mouse.up();
+  const moved = await browser.boundingBox();
+  expect(Math.round((moved?.x ?? 0) - start.x)).toBe(200);
+  expect(Math.round((moved?.y ?? 0) - start.y)).toBe(100);
+
+  await page.getByRole("button", { name: "Browser einklappen" }).click();
+  await expect(page.getByText("Fluch der Krypta")).toBeHidden();
+
+  await page.reload();
+  const again = await page
+    .getByRole("region", { name: "Browser" })
+    .boundingBox();
+  expect(Math.round(again?.x ?? 0)).toBe(Math.round(moved?.x ?? 0));
+  await expect(
+    page.getByRole("button", { name: "Browser ausklappen" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Browser ausklappen" }).click();
+  await expect(
+    page.getByRole("button", { name: "Fluch der Krypta" }),
+  ).toBeVisible();
+});

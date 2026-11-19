@@ -7,14 +7,18 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
-import { FloatingPanel, Menu, Popover } from "@dungeon-manager/ui";
+import { HudPanel, Menu, Popover } from "@dungeon-manager/ui";
 import { BookOpen, FolderPlus } from "lucide-react";
 import { CampaignPanel } from "./CampaignPanel.js";
 import { CatalogPanel } from "./CatalogPanel.js";
 import { describeLibraryError } from "./describe-error.js";
 import { NameForm } from "./NameForm.js";
+import { useHudPlacement } from "./shell/hud-layout.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
+
+/** Top left of the map area, unfolded. */
+const BROWSER_DEFAULT = { x: 12, y: 12, collapsed: false };
 
 /** Menu id of "Neue Kampagne …"; campaign slugs never contain a colon. */
 const NEW_CAMPAIGN = ":new";
@@ -78,6 +82,10 @@ export function LibraryPanel({
   const [notice, setNotice] = useState("");
   const [creating, setCreating] = useState(false);
   const campaignMenu = useRef<HTMLButtonElement>(null);
+  const [browserPlacement, setBrowserPlacement] = useHudPlacement(
+    "browser",
+    BROWSER_DEFAULT,
+  );
   const active = useRef(true);
   // Only the most recent load may update the state: a slow earlier one (e.g. the initial load
   // finishing after the DM chose another folder) must not overwrite newer data.
@@ -195,15 +203,26 @@ export function LibraryPanel({
         <CatalogPanel service={service} ready={state.status === "open"} />
       </ShellPortal>
       <ShellPortal slot="browser">
-        <FloatingPanel
-          compact
-          title={t("library.browserTitle")}
+        <HudPanel
+          title={t("shell.tree.browserTitle")}
+          labels={{
+            move: t("shell.tree.move"),
+            collapse: t("shell.tree.collapse"),
+            expand: t("shell.tree.expand"),
+          }}
+          placement={browserPlacement}
+          onPlacementChange={setBrowserPlacement}
           className="dm-campaign-browser"
           headerActions={
             state.status === "open" && (
               <span className="dm-panel-head-menu">
                 <Menu
-                  label={selectedCampaign?.name ?? t("library.chooseCampaign")}
+                  // The campaign itself heads the tree; the header only switches it.
+                  label={
+                    selectedCampaign
+                      ? t("shell.tree.switchCampaign")
+                      : t("library.chooseCampaign")
+                  }
                   buttonRef={campaignMenu}
                   items={[
                     ...campaigns.map((campaign) => ({
@@ -297,7 +316,7 @@ export function LibraryPanel({
               newId={newId}
             />
           )}
-        </FloatingPanel>
+        </HudPanel>
       </ShellPortal>
       <ShellPortal slot="notices">
         <p role="status">{notice}</p>

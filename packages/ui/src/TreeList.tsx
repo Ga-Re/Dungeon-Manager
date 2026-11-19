@@ -47,6 +47,11 @@ export interface TreeListProps {
   onItemContextMenu?:
     | ((id: string, point: { x: number; y: number }, item: HTMLElement) => void)
     | undefined;
+  /**
+   * `guides`: outline tree with connector lines, junction dots and toggle boxes. `compact`: CAD
+   * browser style with disclosure chevrons and no lines, for tool windows over the map.
+   */
+  variant?: "guides" | "compact" | undefined;
   className?: string | undefined;
 }
 
@@ -99,6 +104,7 @@ export function TreeList({
   onExpandedChange,
   renderActions,
   onItemContextMenu,
+  variant = "guides",
   className,
 }: TreeListProps) {
   const idPrefix = useId();
@@ -244,16 +250,23 @@ export function TreeList({
               if (event.target === event.currentTarget) event.preventDefault();
             })
           }
+          // The whole item line selects, also beside a row that is narrower than the tree; clicks
+          // inside nested items belong to them.
+          onClick={(event) => {
+            if (
+              !(event.target instanceof Element) ||
+              event.target.closest(".dm-tree-item") !== event.currentTarget
+            )
+              return;
+            moveFocus(node.id);
+            onSelect?.(node.id);
+          }}
           onFocus={(event) => {
             if (event.target === event.currentTarget) setFocusedId(node.id);
           }}
         >
           <div
             className="dm-tree-row"
-            onClick={() => {
-              moveFocus(node.id);
-              onSelect?.(node.id);
-            }}
             onContextMenu={
               onItemContextMenu &&
               ((event) => {
@@ -278,10 +291,22 @@ export function TreeList({
                   setExpanded(node.id, !isOpen);
                 }}
               >
-                <svg viewBox="0 0 8 8">
-                  <path d="M1 4h6" />
-                  {!isOpen && <path d="M4 1v6" />}
-                </svg>
+                {variant === "compact" ? (
+                  <svg viewBox="0 0 8 8">
+                    <path
+                      d={
+                        isOpen
+                          ? "M1.5 3l2.5 2.5 2.5-2.5"
+                          : "M3 1.5l2.5 2.5-2.5 2.5"
+                      }
+                    />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 8 8">
+                    <path d="M1 4h6" />
+                    {!isOpen && <path d="M4 1v6" />}
+                  </svg>
+                )}
               </span>
             )}
             {node.icon !== undefined && (
@@ -325,7 +350,13 @@ export function TreeList({
     <ul
       role="tree"
       aria-label={label}
-      className={["dm-tree", className ?? ""].filter(Boolean).join(" ")}
+      className={[
+        "dm-tree",
+        variant === "compact" ? "dm-tree-compact" : "",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {renderItems(nodes, 1)}
     </ul>

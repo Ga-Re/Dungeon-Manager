@@ -146,6 +146,10 @@ export const de = {
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",
   },
   shell: {
+    layout: {
+      label: "Werkzeugfenster",
+      reset: "Positionen zurücksetzen",
+    },
     groups: {
       create: "Neu",
       scene: "Szene",
@@ -171,6 +175,23 @@ export const de = {
       saved: "Gespeichert",
       saving: "Speichert …",
       failed: "Nicht gespeichert",
+    },
+    tree: {
+      browserTitle: "Browser",
+      move: "Browser verschieben (Pfeiltasten)",
+      collapse: "Browser einklappen",
+      expand: "Browser ausklappen",
+      switchCampaign: "Kampagne wechseln",
+      settings: "Kampagneneinstellungen",
+      scenes: "Szenen",
+      maps: "Karten",
+      noMaps: "Noch keine Karten",
+      players: "Spieler & Charaktere",
+      noPlayers: "Noch keine Spieler",
+      handouts: "Handouts & Hinweise",
+      noHandouts: "Noch keine Handouts",
+      notes: "Notizen",
+      noNotes: "Noch keine Notizen",
     },
     browser: {
       map: "Karte",

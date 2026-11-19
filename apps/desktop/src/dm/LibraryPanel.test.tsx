@@ -101,11 +101,11 @@ describe("LibraryPanel", () => {
       await screen.findByRole("treeitem", { name: "Fluch über Größenwahn" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Fluch über Größenwahn" }),
+      screen.getByRole("button", { name: "Kampagne wechseln" }),
     ).toHaveProperty("ariaHasPopup", "menu");
     expect(screen.queryByLabelText("Name der neuen Kampagne")).toBeNull();
     expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: "Fluch über Größenwahn" }),
+      screen.getByRole("button", { name: "Kampagne wechseln" }),
     );
     expect(
       library.fs
@@ -129,7 +129,7 @@ describe("LibraryPanel", () => {
       await screen.findByRole("treeitem", { name: "Fluch der Krypta" }),
     ).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Fluch der Krypta" }));
+    fireEvent.click(screen.getByRole("button", { name: "Kampagne wechseln" }));
     fireEvent.click(
       screen.getByRole("menuitem", { name: "Die verlorene Mine" }),
     );

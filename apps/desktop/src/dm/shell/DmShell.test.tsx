@@ -15,7 +15,7 @@ function memoryStorage(): Storage {
       data.clear();
     },
     getItem: (key) => data.get(key) ?? null,
-    key: () => null,
+    key: (index) => [...data.keys()][index] ?? null,
     removeItem: (key) => {
       data.delete(key);
     },
@@ -184,5 +184,21 @@ describe("DmShell", () => {
     fireEvent.keyDown(window, { key: "b", ctrlKey: true });
     fireEvent.keyDown(window, { key: "b", ctrlKey: true, repeat: true });
     expect(panel().hidden).toBe(true);
+  });
+
+  it("resets remembered tool window positions from the settings", () => {
+    const { storage } = setup();
+    storage.setItem(
+      "dm.hud.browser",
+      JSON.stringify({ x: 300, y: 40, collapsed: true }),
+    );
+    storage.setItem("dm.theme", "light");
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Positionen zurücksetzen" }),
+    );
+    expect(storage.getItem("dm.hud.browser")).toBeNull();
+    // Other settings stay.
+    expect(storage.getItem("dm.theme")).toBe("light");
   });
 });

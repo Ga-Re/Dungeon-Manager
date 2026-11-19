@@ -515,7 +515,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-157 Workshop theme (dark default) and reduced parchment
 
-- **Status:** done · **Depends on:** T-154 · **Refs:** ADR-0015 (Proposed), ADR-0011, ARCHITECTURE §15
+- **Status:** done · **Depends on:** T-154 · **Refs:** ADR-0015, ADR-0011, ARCHITECTURE §15
 - DM feedback (2026-11-19): the look is "too playful and simple"; Fusion feels tidier. DM decision after the style mock-up: **both directions as themes** – dark "workshop" (default) and reduced light "parchment"; the old night variant goes.
 - **Acceptance criteria**
   - [x] Token themes `workshop` (default) and `parchment`, both WCAG AA (pair tests); setting "OS / Hell / Dunkel" maps light → parchment, dark → workshop; first start is dark
@@ -524,13 +524,13 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-158 Scene browser: campaign tree, transparent, collapsible, movable
 
-- **Status:** todo · **Depends on:** T-157 · **Refs:** ADR-0011, ADR-0014, ADR-0015, ARCHITECTURE §15
+- **Status:** done · **Depends on:** T-157 · **Refs:** ADR-0011, ADR-0014, ADR-0015, ARCHITECTURE §15
 - DM request (2026-11-19, Fusion browser as reference): the tree starts with the current campaign, below it the campaign settings, then scenes, notes and later more groups. The browser has no panel background (transparent over the map, only a small header bar), can be collapsed, and can be dragged freely over the map area; position and collapsed state are remembered per device (DM decision), with a reset in the settings.
 - **Acceptance criteria**
-  - [ ] Tree: campaign → Kampagneneinstellungen, Szenen (open scene with its content), Notizen, …; keyboard and screen-reader accessible as today
-  - [ ] Transparent body readable over any map (text shadow or scrim; WCAG AA checked on light and dark maps)
-  - [ ] Collapse/expand, drag by the header grip within the map area, keyboard alternative; position per device; component + E2E tests
-- **Notes:** Which groups besides scenes and notes, and what the campaign settings contain, is settled with the DM in the plan.
+  - [x] Tree: campaign → Kampagneneinstellungen, Szenen (open scene with its content), Notizen, …; keyboard and screen-reader accessible as today
+  - [x] Transparent body readable over any map (text shadow or scrim; WCAG AA checked on light and dark maps)
+  - [x] Collapse/expand, drag by the header grip within the map area, keyboard alternative; position per device; component + E2E tests
+- **Notes:** DM decision (2026-11-19): groups Kampagneneinstellungen, Szenen, Karten (maps used by the campaign's scenes), Spieler & Charaktere (character pictures come with tokens, T-107), Handouts & Hinweise (filled by T-137) and Notizen (filled by T-150); folded, only the header bar stays. Campaign settings open in the details panel (T-159).
 
 ### T-159 Details panel (properties) on the right
 
