@@ -635,3 +635,23 @@ test("menus and popovers of the ribbon are not cut off by its fixed height (T-13
   expect(await reachable("Ja, löschen")).toBe(true);
   expect(await reachable("Abbrechen")).toBe(true);
 });
+
+test("the DM creates a sub-scene from a scene's context menu; it shows nested under it (T-152)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  const krypta = page.getByRole("treeitem", { name: "Krypta", exact: true });
+  await krypta.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Neue Unterszene …" }).click();
+  const name = page.getByLabel("Name der neuen Szene");
+  await expect(name).toBeFocused();
+  await name.fill("Geheimkammer");
+  await page.keyboard.press("Enter");
+
+  await expect(page.getByText("Geöffnete Szene: Geheimkammer")).toBeVisible();
+  const chamber = krypta.getByRole("treeitem", { name: "Geheimkammer" });
+  await expect(chamber).toBeVisible();
+  const level = Number(await krypta.getAttribute("aria-level"));
+  await expect(chamber).toHaveAttribute("aria-level", String(level + 1));
+});

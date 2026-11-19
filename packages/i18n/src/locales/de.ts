@@ -73,6 +73,11 @@ export const de = {
     },
   },
   campaign: {
+    newSubScene: "Neue Unterszene …",
+    subScenesOnDelete_one: "Sie hat eine Unterszene:",
+    subScenesOnDelete_other: "Sie hat {{count}} Unterszenen:",
+    keepSubScenes: "Unterszenen behalten (eine Ebene nach oben)",
+    deleteSubScenes: "Unterszenen mit löschen (in den Papierkorb)",
     noteIsOwn: "Das ist die eigene Notiz – öffne sie mit „Notiz öffnen“.",
     notePathExample: "wiki/NSCs/Strahd.md",
     openNote: "Notiz öffnen",

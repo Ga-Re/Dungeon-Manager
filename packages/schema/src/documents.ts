@@ -31,17 +31,27 @@ export const campaignSchema = z.looseObject({
   notes: noteLinksSchema,
 });
 
-/** `campaigns/<slug>/scenes/<id>.json`. */
-export const sceneSchema = z.looseObject({
-  schemaVersion: z.literal(SCENE_VERSION),
-  id: idSchema,
-  name: z.string().min(1),
-  map: mapSchema.nullable(),
-  tokens: z.array(tokenSchema),
-  fog: fogStateSchema,
-  initiative: initiativeStateSchema.nullable(),
-  notes: noteLinksSchema,
-});
+/**
+ * `campaigns/<slug>/scenes/<id>.json`. A sub-scene (T-152) names its parent in
+ * `parentSceneId`: optional and additive, so no version bump – older readers keep it (DM
+ * decision, 2026-11-19). It is its own scene with its own map, fog and tokens.
+ */
+export const sceneSchema = z
+  .looseObject({
+    schemaVersion: z.literal(SCENE_VERSION),
+    id: idSchema,
+    name: z.string().min(1),
+    map: mapSchema.nullable(),
+    tokens: z.array(tokenSchema),
+    fog: fogStateSchema,
+    initiative: initiativeStateSchema.nullable(),
+    notes: noteLinksSchema,
+    parentSceneId: idSchema.optional(),
+  })
+  .refine((scene) => scene.parentSceneId !== scene.id, {
+    message: "A scene cannot be its own parent",
+    path: ["parentSceneId"],
+  });
 
 /** A calendar day as `YYYY-MM-DD` that really exists (no 30 February). */
 const isoDateSchema = z

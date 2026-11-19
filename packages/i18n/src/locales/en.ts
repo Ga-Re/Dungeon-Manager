@@ -73,6 +73,11 @@ export const en: Messages = {
     },
   },
   campaign: {
+    newSubScene: "New sub-scene …",
+    subScenesOnDelete_one: "It has one sub-scene:",
+    subScenesOnDelete_other: "It has {{count}} sub-scenes:",
+    keepSubScenes: "Keep the sub-scenes (one level up)",
+    deleteSubScenes: "Delete the sub-scenes too (into the trash)",
     noteIsOwn: "That is the own note – open it with “Open note”.",
     notePathExample: "wiki/NPCs/Strahd.md",
     openNote: "Open note",

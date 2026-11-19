@@ -5,6 +5,7 @@ import {
   createMemoryFileSystem,
   createScene,
   deleteScene,
+  reparentScene,
   listScenes,
   mapKind,
   withMap,
@@ -367,6 +368,59 @@ describe("mapKind", () => {
     };
     expect(withMap(scene, asset, { id: "l", name: "L" }).map?.kind).toBe(
       "video",
+    );
+  });
+});
+
+describe("sub-scenes (T-152)", () => {
+  test("a new scene can be a sub-scene of another one", async () => {
+    const fs = createMemoryFileSystem();
+    const scene = await createScene(fs, "mine", {
+      id: "kammer",
+      name: "Geheimkammer",
+      parentSceneId: "krypta",
+    });
+    expect(scene.parentSceneId).toBe("krypta");
+    expect(await loadScene(fs, "mine", "kammer")).toMatchObject({
+      status: "ok",
+      value: { parentSceneId: "krypta" },
+    });
+  });
+
+  test("reparentScene moves a scene up or under another parent, keeping the rest", async () => {
+    const fs = createMemoryFileSystem();
+    await createScene(fs, "mine", {
+      id: "kammer",
+      name: "Geheimkammer",
+      parentSceneId: "krypta",
+    });
+    const raw = JSON.parse(
+      fs.files().get("campaigns/mine/scenes/kammer.json") ?? "{}",
+    ) as Record<string, unknown>;
+    // A field this version does not know survives (ADR-0006, loose schemas).
+    await fs.writeAtomic(
+      "campaigns/mine/scenes/kammer.json",
+      JSON.stringify({ ...raw, future: 1 }),
+    );
+
+    const top = await reparentScene(fs, "mine", "kammer", null);
+    expect(top.parentSceneId).toBeUndefined();
+    const stored = JSON.parse(
+      fs.files().get("campaigns/mine/scenes/kammer.json") ?? "{}",
+    ) as Record<string, unknown>;
+    expect(stored).not.toHaveProperty("parentSceneId");
+    expect(stored["future"]).toBe(1);
+
+    await reparentScene(fs, "mine", "kammer", "burg");
+    expect(await loadScene(fs, "mine", "kammer")).toMatchObject({
+      value: { parentSceneId: "burg", name: "Geheimkammer" },
+    });
+  });
+
+  test("reparentScene fails for a scene that cannot be read", async () => {
+    const fs = createMemoryFileSystem();
+    await expect(reparentScene(fs, "mine", "gone", null)).rejects.toThrow(
+      "cannot be read",
     );
   });
 });

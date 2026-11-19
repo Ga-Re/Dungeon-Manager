@@ -22,6 +22,7 @@ import {
 } from "./campaign-data.js";
 import { fileName, linkedNotes, noteTitle } from "./file-name.js";
 import { sceneContentNodes } from "./scene-tree.js";
+import { sceneHierarchy, topScenes } from "./scene-hierarchy.js";
 import {
   CAMPAIGN_NODE,
   GROUP,
@@ -86,23 +87,33 @@ export function buildCampaignTree(
   t: TFunction,
   data: CampaignTreeData,
 ): TreeNode {
-  const byId = new Map((data.scenes ?? []).map((entry) => [entry.id, entry]));
+  const scenes = data.scenes ?? [];
+  const sessions = data.sessions ?? [];
+  const byId = new Map(scenes.map((entry) => [entry.id, entry]));
+  const hierarchy = sceneHierarchy(scenes);
 
+  // A scene with the open scene's content (if it is open here) and its sub-scenes (T-152).
   const sceneItem = (slot: SceneSlot, entry: SceneEntry): TreeNode => {
     const id = sceneNodeId(slot, entry.id);
     const open =
       data.open?.scene.id === entry.id && data.open.nodeId === id
         ? data.open
         : null;
+    const subScenes = hierarchy.childrenOf(entry.id).flatMap((child) => {
+      const childEntry = byId.get(child);
+      return childEntry ? [sceneItem(slot, childEntry)] : [];
+    });
+    const children = [
+      ...(open ? sceneContentNodes(t, open.scene, open.revealed) : []),
+      ...subScenes,
+    ];
     return {
       id,
       label: entry.scene
         ? (open?.scene.name ?? entry.scene.name)
         : t(`campaign.scene.${entry.problem ?? "invalid"}`, { id: entry.id }),
       icon: <ScrollText />,
-      children: open
-        ? sceneContentNodes(t, open.scene, open.revealed)
-        : undefined,
+      children: children.length > 0 ? children : undefined,
     };
   };
 
@@ -116,34 +127,39 @@ export function buildCampaignTree(
         icon: <CircleAlert />,
       };
     const session = entry.session;
-    const scenes = session.sceneIds.map((sceneId): TreeNode => {
-      const scene = byId.get(sceneId);
-      return scene
-        ? sceneItem({ sessionId: session.id }, scene)
-        : {
-            id: missingNodeId(session.id, sceneId),
-            label: t("shell.tree.missingScene", { id: sceneId }),
-            icon: <CircleAlert />,
-          };
-    });
+    const slot = { sessionId: session.id };
+    const sessionScenes = topScenes(hierarchy, scenes, sessions, slot).map(
+      (sceneId): TreeNode => {
+        const scene = byId.get(sceneId);
+        return scene
+          ? sceneItem(slot, scene)
+          : {
+              id: missingNodeId(session.id, sceneId),
+              label: t("shell.tree.missingScene", { id: sceneId }),
+              icon: <CircleAlert />,
+            };
+      },
+    );
     return {
       ...group(
         sessionNodeId(session.id),
         session.name,
         <CalendarDays />,
-        scenes,
+        sessionScenes,
         t("shell.tree.emptySession"),
       ),
-      ...(session.date && scenes.length > 0
+      ...(session.date && sessionScenes.length > 0
         ? { meta: formatDate(session.date, data.language) }
         : {}),
     };
   });
 
-  const planned = scenesInSessions(data.sessions);
-  const unsorted = (data.scenes ?? [])
-    .filter((entry) => !planned.has(entry.id))
-    .map((entry) => sceneItem("unsorted", entry));
+  const unsorted = topScenes(hierarchy, scenes, sessions, "unsorted").flatMap(
+    (sceneId) => {
+      const entry = byId.get(sceneId);
+      return entry ? [sceneItem("unsorted", entry)] : [];
+    },
+  );
 
   return {
     id: CAMPAIGN_NODE,
