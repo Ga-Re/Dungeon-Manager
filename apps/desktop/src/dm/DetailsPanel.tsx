@@ -14,6 +14,8 @@ export interface Details {
   readonly kind: string;
   readonly name: string;
   readonly rows: readonly DetailRow[];
+  /** Longer text below the facts, e.g. a note's Markdown as it is (T-161b). */
+  readonly body?: string;
 }
 
 /**
@@ -65,6 +67,9 @@ export function DetailsPanel({
               </div>
             ))}
           </dl>
+          {details.body !== undefined && (
+            <pre className="dm-details-body">{details.body}</pre>
+          )}
         </>
       ) : (
         <p className="dm-details-empty">

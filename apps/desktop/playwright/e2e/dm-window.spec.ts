@@ -360,3 +360,19 @@ test("the interface size scales the chrome but never the map area (T-162)", asyn
     })
     .toBeLessThanOrEqual(1);
 });
+
+test("the DM opens the campaign note from the browser (T-161b)", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  const campaign = page.getByRole("treeitem", { name: "Fluch der Krypta" });
+  await campaign.focus();
+  await page.keyboard.press("Shift+F10");
+  await page.getByRole("menuitem", { name: "Notiz öffnen" }).click();
+  const details = page.getByRole("region", { name: "Eigenschaften" });
+  await expect(details.getByText("# Fluch der Krypta")).toBeVisible();
+  await expect(
+    page.getByRole("treeitem", { name: "Kampagnennotiz" }),
+  ).toHaveAttribute("aria-selected", "true");
+});

@@ -1,6 +1,8 @@
 import type { Scene, Session } from "@dungeon-manager/schema";
 import {
+  listNoteOwners,
   listScenes,
+  readNote,
   listSessions,
   loadScene,
   loadSession,
@@ -76,4 +78,26 @@ export function formatDate(date: string, language: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+/** Which fixed notes exist (T-161b): the campaign's, and the sessions' and scenes' by id. */
+export interface NotesIndex {
+  readonly campaign: boolean;
+  readonly sessions: readonly string[];
+  readonly scenes: readonly string[];
+}
+
+/** @throws when the notes folders cannot be listed */
+export async function readNotesIndex(
+  service: LibraryService,
+  slug: string,
+): Promise<NotesIndex> {
+  const [owners, campaign] = await Promise.all([
+    listNoteOwners(service.fs, slug),
+    readNote(service.fs, slug, "notes/campaign.md"),
+  ]);
+  return {
+    campaign: campaign.status === "ok" || campaign.status === "notAvailable",
+    ...owners,
+  };
 }

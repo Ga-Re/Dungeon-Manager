@@ -2,11 +2,13 @@ import type { Player, Polygon, Scene } from "@dungeon-manager/schema";
 import type { TFunction } from "i18next";
 import {
   formatDate,
+  type NotesIndex,
   type SceneEntry,
   type SessionEntry,
 } from "./campaign-data.js";
+import { ownNotePath } from "@dungeon-manager/storage";
 import type { Details } from "./DetailsPanel.js";
-import { fileName } from "./file-name.js";
+import { fileName, linkedNotes, noteTitle } from "./file-name.js";
 import { GROUP, parseTreeId } from "./tree-ids.js";
 
 /** What the details panel can describe (T-159, T-160b). */
@@ -25,6 +27,22 @@ export interface DetailsData {
   } | null;
   readonly openSceneId: string | null;
   readonly language: string;
+  readonly notesIndex: NotesIndex | null;
+  /** Notes linked from campaign.json. */
+  readonly campaignLinks: readonly string[];
+}
+
+/** "Notizen: 2" – the own note (if it exists) plus the linked ones, each once. */
+function notesRow(
+  t: TFunction,
+  hasOwn: boolean,
+  links: readonly string[] | undefined,
+  ownPath: string,
+) {
+  return {
+    label: t("shell.details.notes"),
+    value: String((hasOwn ? 1 : 0) + linkedNotes(links, ownPath).length),
+  };
 }
 
 /** The facts of a tree item; `null` for items without any (groups, the scene's content). */
@@ -54,6 +72,12 @@ export function describeItem(
         kind: t("shell.details.session"),
         name: session.name,
         rows: [
+          notesRow(
+            t,
+            data.notesIndex?.sessions.includes(session.id) ?? false,
+            session.notes,
+            ownNotePath({ kind: "session", id: session.id }),
+          ),
           {
             label: t("shell.details.date"),
             value: session.date
@@ -129,6 +153,12 @@ export function describeItem(
                 ? inSessions.join(", ")
                 : t("shell.tree.unsorted"),
           },
+          notesRow(
+            t,
+            data.notesIndex?.scenes.includes(scene.id) ?? false,
+            scene.notes,
+            ownNotePath({ kind: "scene", id: scene.id }),
+          ),
           {
             label: t("shell.details.state"),
             value:
@@ -167,6 +197,26 @@ export function describeItem(
         ],
       };
     }
+    case "note": {
+      // A fixed note is named after its owner; a linked one after its file.
+      const owner = item.owner;
+      const ownerName =
+        owner.kind === "campaign"
+          ? data.name
+          : owner.kind === "session"
+            ? data.sessions.find((each) => each.id === owner.id)?.session?.name
+            : data.scenes.find((each) => each.id === owner.id)?.scene?.name;
+      return {
+        kind: t("shell.details.note"),
+        name:
+          item.path === ownNotePath(owner) && ownerName
+            ? ownerName
+            : noteTitle(item.path),
+        rows: [
+          { label: t("shell.details.path"), value: item.path, mono: true },
+        ],
+      };
+    }
     case "missing":
     case "other":
       return null;
@@ -189,6 +239,12 @@ function campaignDetails(
       { label: t("shell.details.scenes"), value: String(data.scenes.length) },
       { label: t("shell.details.maps"), value: String(data.mapPaths.length) },
       { label: t("shell.details.players"), value: String(data.players.length) },
+      notesRow(
+        t,
+        data.notesIndex?.campaign ?? false,
+        data.campaignLinks,
+        "notes/campaign.md",
+      ),
       {
         label: t("shell.details.visibility"),
         value:

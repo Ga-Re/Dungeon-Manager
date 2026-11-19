@@ -169,3 +169,53 @@ export function ConfirmForm({
     </div>
   );
 }
+
+/** A path to an existing `.md` in the campaign folder, to link as a note (T-161b). */
+export function LinkNoteForm({
+  onSubmit,
+}: {
+  /** Resolves to `null` once linked (the popover then closes), else why not. */
+  readonly onSubmit: (path: string) => Promise<string | null>;
+}) {
+  const { t } = useTranslation();
+  const inputId = useId();
+  const hintId = useId();
+  const field = useFocusOnMount<HTMLInputElement>();
+  const [path, setPath] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+
+  const submit = async (event: SyntheticEvent) => {
+    event.preventDefault();
+    if (path.trim() === "" || busy) return;
+    setBusy(true);
+    try {
+      setProblem((await onSubmit(path.trim())) ?? "");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="dm-new-scene" onSubmit={(event) => void submit(event)}>
+      <label htmlFor={inputId}>{t("campaign.notePath")}</label>
+      <input
+        ref={field}
+        id={inputId}
+        value={path}
+        aria-describedby={hintId}
+        placeholder={t("campaign.notePathExample")}
+        onChange={(event) => {
+          setPath(event.target.value);
+        }}
+      />
+      <p id={hintId}>{t("campaign.notePathHint")}</p>
+      <div className="dm-popover-actions">
+        <button type="submit" disabled={busy || path.trim() === ""}>
+          {t("campaign.linkNoteConfirm")}
+        </button>
+      </div>
+      {problem && <p role="alert">{problem}</p>}
+    </form>
+  );
+}

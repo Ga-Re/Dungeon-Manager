@@ -49,6 +49,25 @@ export const en: Messages = {
     },
   },
   campaign: {
+    noteIsOwn: "That is the own note – open it with “Open note”.",
+    notePathExample: "wiki/NPCs/Strahd.md",
+    openNote: "Open note",
+    linkNote: "Link note …",
+    unlinkNote: "Remove link",
+    notePath: "Note path",
+    notePathHint:
+      "Relative to the campaign folder, e.g. a file from your Obsidian vault.",
+    linkNoteConfirm: "Link",
+    notePathInvalid: "That is not a path to a .md file in the campaign folder.",
+    noteNotFound: "“{{path}}” does not exist in the campaign folder.",
+    closeSceneToLink: "Close the scene to link notes to it.",
+    noteLoading: "Loading note …",
+    noteStatus: {
+      missing: "This note does not exist (yet).",
+      notAvailable: "The note is not downloaded yet.",
+      unreadable: "The note cannot be read.",
+      invalid: "Not a valid note path.",
+    },
     sceneCreatedNotAdded:
       "Scene “{{name}}” created, but not added to the session: {{problem}}",
     newSession: "New session …",
@@ -196,6 +215,8 @@ export const en: Messages = {
       failed: "Not saved",
     },
     details: {
+      notes: "Notes",
+      note: "Note",
       session: "Session",
       date: "Date",
       missing: "Missing scenes",
@@ -231,6 +252,9 @@ export const en: Messages = {
       none: "–",
     },
     tree: {
+      campaignNote: "Campaign note",
+      sceneNotes: "Scenes",
+      noteNew: "new",
       sessions: "Sessions",
       allPlanned: "Every scene is planned",
       unsorted: "Without session",

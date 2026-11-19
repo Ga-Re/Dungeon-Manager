@@ -40,6 +40,8 @@ const data: DetailsData = {
   live: null,
   openSceneId: null,
   language: "de",
+  notesIndex: { campaign: true, sessions: ["s1"], scenes: [] },
+  campaignLinks: ["wiki/Strahd.md"],
 };
 
 const rows = (id: string) =>
@@ -74,5 +76,22 @@ describe("describeItem", () => {
     expect(describeItem(t, "scene:-/b", data)).toBeNull();
     expect(describeItem(t, "group:notes", data)).toBeNull();
     expect(describeItem(t, "missing:s1/gone", data)).toBeNull();
+  });
+
+  it("counts notes and describes a note by its path", () => {
+    expect(rows("campaign")["Notizen"]).toBe("2");
+    expect(rows("session:s1")["Notizen"]).toBe("1");
+    expect(describeItem(t, "note:campaign:wiki/Strahd.md", data)).toEqual({
+      kind: "Notiz",
+      name: "Strahd",
+      rows: [{ label: "Pfad", value: "wiki/Strahd.md", mono: true }],
+    });
+    // Fixed notes carry their owner's name.
+    expect(describeItem(t, "note:campaign:notes/campaign.md", data)?.name).toBe(
+      "Fluch der Krypta",
+    );
+    expect(
+      describeItem(t, "note:session.s1:notes/sessions/s1.md", data)?.name,
+    ).toBe("Session 1");
   });
 });

@@ -49,6 +49,25 @@ export const de = {
     },
   },
   campaign: {
+    noteIsOwn: "Das ist die eigene Notiz – öffne sie mit „Notiz öffnen“.",
+    notePathExample: "wiki/NSCs/Strahd.md",
+    openNote: "Notiz öffnen",
+    linkNote: "Notiz verknüpfen …",
+    unlinkNote: "Verknüpfung entfernen",
+    notePath: "Pfad der Notiz",
+    notePathHint:
+      "Relativ zum Kampagnenordner, z. B. eine Datei aus deinem Obsidian-Vault.",
+    linkNoteConfirm: "Verknüpfen",
+    notePathInvalid: "Das ist kein Pfad zu einer .md-Datei im Kampagnenordner.",
+    noteNotFound: "„{{path}}“ gibt es im Kampagnenordner nicht.",
+    closeSceneToLink: "Schließe die Szene, um Notizen mit ihr zu verknüpfen.",
+    noteLoading: "Notiz wird geladen …",
+    noteStatus: {
+      missing: "Diese Notiz gibt es (noch) nicht.",
+      notAvailable: "Die Notiz ist noch nicht heruntergeladen.",
+      unreadable: "Die Notiz kann nicht gelesen werden.",
+      invalid: "Kein gültiger Notizpfad.",
+    },
     sceneCreatedNotAdded:
       "Szene „{{name}}“ angelegt, aber nicht zur Session hinzugefügt: {{problem}}",
     newSession: "Neue Session …",
@@ -199,6 +218,8 @@ export const de = {
       failed: "Nicht gespeichert",
     },
     details: {
+      notes: "Notizen",
+      note: "Notiz",
       session: "Session",
       date: "Datum",
       missing: "Fehlende Szenen",
@@ -234,6 +255,9 @@ export const de = {
       none: "–",
     },
     tree: {
+      campaignNote: "Kampagnennotiz",
+      sceneNotes: "Szenen",
+      noteNew: "neu",
       sessions: "Sessions",
       allPlanned: "Alle Szenen sind eingeplant",
       unsorted: "Ohne Session",

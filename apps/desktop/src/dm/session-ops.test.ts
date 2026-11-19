@@ -1,7 +1,8 @@
 import type { Session } from "@dungeon-manager/schema";
 import { describe, expect, it } from "vitest";
+import { linkedNotes } from "./file-name.js";
 import { addScene, moveScene, removeScene } from "./session-ops.js";
-import { parseTreeId, sceneNodeId } from "./tree-ids.js";
+import { noteNodeId, parseTreeId, sceneNodeId } from "./tree-ids.js";
 
 const session: Session = {
   schemaVersion: 1,
@@ -66,5 +67,39 @@ describe("tree ids", () => {
       sessionId: "s-1",
       sceneId: "x",
     });
+  });
+});
+
+describe("note ids (T-161b)", () => {
+  it("round-trip the owner and the path, also with folders and colons in names", () => {
+    for (const owner of [
+      { kind: "campaign" } as const,
+      { kind: "session", id: "s-1" } as const,
+      { kind: "scene", id: "krypta" } as const,
+    ]) {
+      const path = "wiki/Orte: Burg/Strahd.md";
+      expect(parseTreeId(noteNodeId(owner, path))).toEqual({
+        kind: "note",
+        owner,
+        path,
+      });
+    }
+  });
+});
+
+describe("linked notes", () => {
+  it("lists each link once and never the own note", () => {
+    expect(
+      linkedNotes(
+        [
+          "wiki/a.md",
+          "notes/scenes/x.md",
+          "wiki/a.md",
+          "U\u0308ber.md",
+          "Über.md",
+        ],
+        "notes/scenes/x.md",
+      ),
+    ).toEqual(["wiki/a.md", "U\u0308ber.md"]);
   });
 });
