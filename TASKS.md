@@ -168,6 +168,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Switching the TV's level from the DM window (component + E2E test); hidden while the map has one level
   - [ ] Fog tools work on the level the DM has picked, and the DM window shows that level's own image when it has one
+- **Notes:** From the T-118a review: showing the level already current still adds an undo step (make it a no-op); a level image is loaded with the map's `kind` (video vs image), so a PNG level on a video map fails to load (fail-closed) – check the file type per level.
 
 ### T-119 Case-insensitive id collisions in file names
 
@@ -683,6 +684,13 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] A pixel that is fogged before and after a change never shows the map during the fade
   - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11 (≤ 1 % missed refreshes at 60 Hz), measured by the DM on the reference notebook
 - **Notes:** The benchmark criterion stays open until the DM has measured it on the reference notebook (it needs the TV; CI has no usable GPU).
+
+### T-169 Flaky focus check in the welcome dialog test
+
+- **Status:** todo · **Depends on:** T-153 · **Refs:** ARCHITECTURE §12
+- `WelcomeDialog.test.tsx` checks the first focus synchronously (`document.activeElement` right after the dialog shows) and failed once in a full `pnpm check` run (T-118a review); wait for the focus as the T-164 fix did elsewhere.
+- **Acceptance criteria**
+  - [ ] The focus assertions wait for the focus; the file passes 20 runs in a row
 
 ### T-167 Fog spreads from the revealed edge
 

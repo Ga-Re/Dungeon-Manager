@@ -102,7 +102,8 @@ There is no DM phone app (ADR-0013). Planning on the go happens in tools the DM 
 
 - **Manual reveal:** brush, rectangle, polygon, circle, or whole predefined rooms – by clicking the room on the map, from the room list in the scene browser, or by a trigger zone
 - **Three tiers:** unexplored (black for players, tinted see-through for the DM), explored memory (dimmed, no current movement), active vision (fully lit, with the light's colour)
-- **Soft fades and soft edges** for fog changes; can be switched off in the settings (performance)
+- **Soft fades and soft edges** for fog changes; can be switched off in the settings (performance). A reveal spreads from the revealed area it touches (or from its centre when it touches none); hiding spreads from the fog side (T-167)
+- **Animated fog effects per map:** drifting mist, snow flurry, smoke and ash, darkness – set on the map, adjustable during a session (T-168)
 - **Dynamic vision:** walls, closed doors and asset blockers stop line of sight and light (2D raycasting); the TV shows the union of what all player tokens see; respects light sources, darkvision and torch radius
 - **Light model:** brightness per scene (day / dusk / dark), bright and dim radius per light (5e), darkvision in greyscale, coloured and flickering light
 - **Secret rooms** stay hidden on "reveal all" and when neighbouring or overlapping rooms are revealed (the reveal skips the secret area), until the DM reveals them explicitly or paints into them with a manual tool; their contents are never sent to the TV or companions before that

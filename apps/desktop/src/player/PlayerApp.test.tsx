@@ -289,6 +289,38 @@ describe("PlayerApp", () => {
     });
   });
 
+  test("switches to a level sharing the map's image without a fade or a reload", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const scene = sceneWith("library/maps/a.png");
+    const map = scene.map;
+    if (!map) throw new Error("the sample scene has a map");
+    feed.send({ v: 1, scene, rotation: 0 });
+    await waitFor(() => {
+      expect(maps.view.setMap).toHaveBeenLastCalledWith(image);
+    });
+    feed.send({
+      v: 1,
+      scene: {
+        ...scene,
+        map: {
+          ...map,
+          currentLevelId: "cellar",
+          levels: [...map.levels, { id: "cellar", name: "Keller" }],
+        },
+        fog: { ...scene.fog, cellar: { revealed: [], remembered: [] } },
+      },
+      rotation: 0,
+    });
+    expect(maps.view.setFog).toHaveBeenLastCalledWith([], {
+      softEdge: 25,
+      fade: 0,
+    });
+    expect(maps.service.loadImage).toHaveBeenCalledTimes(1);
+  });
+
   test("redraws the fog with hard edges when the DM switches soft edges off", async () => {
     const { maps, feed, storage } = renderPlayer();
     await waitFor(() => {

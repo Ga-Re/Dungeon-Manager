@@ -84,6 +84,10 @@ export const viewerSceneSchema = z.strictObject({
         }),
       ),
     })
+    .refine((map) => map.levels.some(({ id }) => id === map.currentLevelId), {
+      message: "the current level must be one of the listed levels",
+      path: ["currentLevelId"],
+    })
     .nullable(),
   fog: z.record(
     idSchema,
