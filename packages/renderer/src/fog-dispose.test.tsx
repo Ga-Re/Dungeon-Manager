@@ -1,5 +1,12 @@
-import { Container, Graphics, Sprite, Texture } from "pixi.js";
-import { describe, expect, it } from "vitest";
+import {
+  Container,
+  Graphics,
+  Mesh,
+  MeshGeometry,
+  Sprite,
+  Texture,
+} from "pixi.js";
+import { describe, expect, it, vi } from "vitest";
 import { disposeFog } from "./fog-dispose.js";
 
 describe("disposeFog (T-165)", () => {
@@ -21,6 +28,30 @@ describe("disposeFog (T-165)", () => {
     expect(layer.destroyed && nested.destroyed && soft.destroyed).toBe(true);
     expect(own.destroyed).toBe(true);
     // Colour fills use the shared white texture: it must survive.
+    expect(Texture.WHITE.destroyed).toBe(false);
+  });
+
+  it("frees a fade layer: the mesh's own texture, and what its layer frees when destroyed", () => {
+    const layer = new Container();
+    const target = Texture.from(document.createElement("canvas"));
+    const source = Texture.from(document.createElement("canvas"));
+    const geometry = new MeshGeometry({
+      positions: new Float32Array([0, 0, 1, 0, 1, 1]),
+      uvs: new Float32Array([0, 0, 1, 0, 1, 1]),
+      indices: new Uint32Array([0, 1, 2]),
+    });
+    const freeGeometry = vi.spyOn(geometry, "destroy");
+    layer.addChild(new Mesh({ geometry, texture: target }));
+    // As the renderer's fade layer does for what PixiJS does not free with the mesh.
+    layer.on("destroyed", () => {
+      source.destroy(true);
+      geometry.destroy();
+    });
+
+    disposeFog(layer);
+
+    expect(target.destroyed && source.destroyed).toBe(true);
+    expect(freeGeometry).toHaveBeenCalled();
     expect(Texture.WHITE.destroyed).toBe(false);
   });
 });

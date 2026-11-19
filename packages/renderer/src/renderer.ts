@@ -367,6 +367,8 @@ export async function createRenderer(
     destroy() {
       destroyed = true;
       dropFade();
+      // The fog's graphics contexts too, as on every rebuild.
+      replaceFog(null);
       gate.destroyed();
       hideVideo();
       video?.removeEventListener("resize", onVideoResize);
