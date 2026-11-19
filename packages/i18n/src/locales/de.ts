@@ -20,6 +20,29 @@ export const de = {
         "Dieses Display ist nicht mehr verfügbar. Bitte Displays neu suchen.",
     },
   },
+  welcome: {
+    title: "Willkommen",
+    close: "Willkommensdialog schließen",
+    heading: "Willkommen beim Dungeon Manager",
+    intro:
+      "Kampagnen, Karten und Notizen liegen in einem Bibliotheksordner. Am besten wählst du einen Ordner in deinem Cloud-Speicher (z. B. Dropbox, iCloud Drive) – dann ist alles auf jedem deiner Geräte da.",
+    firstCampaign: "Erste Kampagne anlegen",
+    firstCampaignHint:
+      "In dieser Bibliothek gibt es noch keine Kampagne. Gib deiner ersten einen Namen – Sessions, Szenen und Notizen legst du danach im Browser an.",
+    recent: "Zuletzt bearbeitet",
+    campaigns: "Kampagnen in dieser Bibliothek",
+    lastScene: "{{scene}} · {{date}}",
+    newCampaign: "Neue Kampagne",
+    otherCampaign: "Andere Kampagne öffnen …",
+    otherHeading: "Andere Kampagne öffnen",
+    back: "Zurück",
+    forget: "„{{name}}“ aus der Liste entfernen",
+    problem: {
+      missing: "Nicht mehr in dieser Bibliothek",
+      notAvailable: "Noch nicht heruntergeladen",
+      invalid: "Kann nicht gelesen werden",
+    },
+  },
   library: {
     folderSetting: "Bibliotheksordner",
     heading: "Bibliothek",

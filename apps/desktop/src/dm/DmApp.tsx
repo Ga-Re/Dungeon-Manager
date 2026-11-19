@@ -26,6 +26,7 @@ export function DmApp({
   newId,
   storage = deviceStorage(),
   root = document.documentElement,
+  welcome = true,
 }: {
   readonly displayService: DisplayService;
   readonly libraryService: LibraryService;
@@ -34,6 +35,8 @@ export function DmApp({
   readonly storage?: Storage | undefined;
   /** Element that carries the theme attribute; the document root by default. */
   readonly root?: HTMLElement;
+  /** Open the welcome dialog first (T-153); on by default, as on every start. */
+  readonly welcome?: boolean;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<DisplayState>({ status: "loading" });
@@ -104,7 +107,12 @@ export function DmApp({
     <main>
       <h1 className="visually-hidden">{t("dm.heading")}</h1>
       <DmShell storage={storage} root={root}>
-        <LibraryPanel service={libraryService} newId={newId} />
+        <LibraryPanel
+          service={libraryService}
+          newId={newId}
+          welcome={welcome}
+          storage={storage}
+        />
         <ShellPortal slot="ribbonDisplay">
           <RibbonGroup
             caption={t("shell.groups.playerView")}

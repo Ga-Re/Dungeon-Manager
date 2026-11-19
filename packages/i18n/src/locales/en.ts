@@ -21,6 +21,29 @@ export const en: Messages = {
         "This display is no longer available. Please search displays again.",
     },
   },
+  welcome: {
+    title: "Welcome",
+    close: "Close the welcome dialog",
+    heading: "Welcome to Dungeon Manager",
+    intro:
+      "Campaigns, maps and notes live in a library folder. Best choose a folder in your cloud storage (e.g. Dropbox, iCloud Drive) – then everything is there on each of your devices.",
+    firstCampaign: "Create your first campaign",
+    firstCampaignHint:
+      "This library has no campaign yet. Give your first one a name – sessions, scenes and notes come afterwards in the browser.",
+    recent: "Recently edited",
+    campaigns: "Campaigns in this library",
+    lastScene: "{{scene}} · {{date}}",
+    newCampaign: "New campaign",
+    otherCampaign: "Open another campaign …",
+    otherHeading: "Open another campaign",
+    back: "Back",
+    forget: "Remove “{{name}}” from the list",
+    problem: {
+      missing: "No longer in this library",
+      notAvailable: "Not downloaded yet",
+      invalid: "Cannot be read",
+    },
+  },
   library: {
     folderSetting: "Library folder",
     heading: "Library",

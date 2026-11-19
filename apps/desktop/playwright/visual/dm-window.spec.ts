@@ -14,7 +14,7 @@ function harnessFile(pathname: string): string {
 
 test.use({ viewport: { width: 1280, height: 800 } });
 
-async function openHarness(page: Page) {
+async function loadHarness(page: Page, search = "") {
   // Playwright reads the file and sets the content type from its extension.
   await page.route(`${ORIGIN}/**`, async (route) => {
     try {
@@ -26,7 +26,16 @@ async function openHarness(page: Page) {
       await route.fulfill({ status: 404 });
     }
   });
-  await page.goto(`${ORIGIN}/e2e.html`);
+  await page.goto(`${ORIGIN}/e2e.html${search}`);
+}
+
+/** The harness past the welcome dialog of every start (T-153). */
+async function openHarness(page: Page) {
+  await loadHarness(page);
+  const welcome = page.getByRole("dialog", { name: "Willkommen" });
+  await expect(welcome).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(welcome).toBeHidden();
 }
 
 test("zone layout with an open scene", async ({ page }) => {
@@ -58,4 +67,42 @@ test("the settings dialog", async ({ page }) => {
   await page.evaluate(() => document.fonts.ready);
 
   await expect(page).toHaveScreenshot("dm-window-settings.png");
+});
+
+test("the welcome dialog with recent campaigns", async ({ page }) => {
+  // One campaign worked on before, one that is gone from the library since.
+  await page.addInitScript(() => {
+    const entry = (slug: string, name: string, scene: string | null) => ({
+      root: "/Bibliothek (E2E)",
+      slug,
+      name,
+      sceneId: scene ? "e2e-scene" : null,
+      sceneName: scene,
+      openedAt: "2026-11-18T19:30:00.000Z",
+    });
+    localStorage.setItem(
+      "dm.recentCampaigns",
+      JSON.stringify([
+        entry("fluch-der-krypta", "Fluch der Krypta", "Krypta"),
+        entry("alte-runde", "Die alte Runde", null),
+      ]),
+    );
+  });
+  await loadHarness(page);
+  await expect(
+    page.getByRole("list", { name: "Zuletzt bearbeitet" }),
+  ).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+
+  await expect(page).toHaveScreenshot("dm-window-welcome.png");
+});
+
+test("the welcome dialog on the very first start", async ({ page }) => {
+  await loadHarness(page, "?firstStart");
+  await expect(
+    page.getByRole("heading", { name: "Willkommen beim Dungeon Manager" }),
+  ).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+
+  await expect(page).toHaveScreenshot("dm-window-first-start.png");
 });

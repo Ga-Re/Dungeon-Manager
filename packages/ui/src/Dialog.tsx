@@ -20,6 +20,8 @@ export interface DialogProps {
    * element focused before opening does – but WebKit does not focus a clicked button.
    */
   returnFocus?: RefObject<HTMLElement | null> | undefined;
+  /** Gets focus when the dialog opens; the first control by default. */
+  initialFocus?: RefObject<HTMLElement | null> | undefined;
   className?: string | undefined;
   children: ReactNode;
 }
@@ -61,6 +63,7 @@ export function Dialog({
   title,
   closeLabel,
   returnFocus,
+  initialFocus,
   className,
   children,
 }: DialogProps) {
@@ -75,8 +78,14 @@ export function Dialog({
     if (!open) return;
     const previous = document.activeElement;
     const element = panel.current;
-    // The first control, else the panel itself.
-    (element?.querySelector<HTMLElement>(FOCUSABLE) ?? element)?.focus();
+    // The given element, else the first control, else the panel itself – unless a control
+    // inside already took focus when it mounted (its effects run before this one).
+    if (!element?.contains(document.activeElement))
+      (
+        initialFocus?.current ??
+        element?.querySelector<HTMLElement>(FOCUSABLE) ??
+        element
+      )?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -111,7 +120,7 @@ export function Dialog({
       const target = returnFocus?.current ?? previous;
       if (target instanceof HTMLElement) target.focus();
     };
-  }, [open, returnFocus]);
+  }, [open, returnFocus, initialFocus]);
 
   if (!open) return null;
   return (

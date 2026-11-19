@@ -610,16 +610,18 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-153 Welcome dialog with recent campaigns
 
-- **Status:** todo · **Depends on:** T-155 · **Refs:** ARCHITECTURE §6.2, §15, ADR-0011
+- **Status:** done · **Depends on:** T-155 · **Refs:** ARCHITECTURE §6.2, §15, ADR-0011
 - On every start the DM window shows a welcome dialog, similar to Inkscape/Illustrator (DM request, 2026-11-19). Comes after T-155 (DM order, 2026-11-19), whose modal dialog it reuses.
 - DM decisions (2026-11-19):
   - **List + actions:** recently edited campaigns with name, last opened scene and date; buttons "Neue Kampagne", "Andere Kampagne öffnen …" and the library folder. Previews/tiles come once T-124 produces previews.
   - Choosing a campaign opens it **with its last open scene**; the dialog appears on every start and can be opened again from the app menu (T-130d).
   - "Recently edited" is stored **per device** (webview storage in OS app data, like the theme; not in the sync folder, no file format change).
+- DM addition (2026-11-19): the very first start (no library folder, no campaign yet) is covered too – the dialog explains the library and asks for the folder, then for the first campaign's name.
+- Reopening it from the app menu comes with T-130d.
 - **Acceptance criteria**
-  - [ ] Dialog lists recent campaigns, most recent first; missing or unreadable campaigns are shown as such and can be removed from the list
-  - [ ] Choosing one opens the campaign and its last scene; new campaign and other campaign work from the dialog
-  - [ ] Keyboard and screen-reader accessible modal (focus trap, Escape closes into the empty window); component + E2E tests, screenshot
+  - [x] Dialog lists recent campaigns, most recent first; missing or unreadable campaigns are shown as such and can be removed from the list
+  - [x] Choosing one opens the campaign and its last scene; new campaign and other campaign work from the dialog
+  - [x] Keyboard and screen-reader accessible modal (focus trap, Escape closes into the empty window); component + E2E tests, screenshot
 
 ### T-156 Workspaces
 

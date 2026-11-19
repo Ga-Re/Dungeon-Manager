@@ -923,3 +923,214 @@ label {
   font-size: var(--dm-font-size-xs);
   color: var(--dm-text-secondary);
 }
+
+/* Welcome dialog (T-153): recent campaigns on the left, actions and the library on the right. */
+.dm-welcome-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16rem;
+  min-height: 22rem;
+}
+
+.dm-welcome-main {
+  display: grid;
+  align-content: start;
+  gap: var(--dm-space-3);
+  padding: var(--dm-space-4);
+  font-size: var(--dm-font-size-sm);
+}
+
+.dm-welcome-main p {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--dm-text-secondary);
+}
+
+.dm-welcome-main form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--dm-space-2);
+}
+
+.dm-welcome-main label {
+  flex-basis: 100%;
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+}
+
+.dm-welcome-heading {
+  margin: 0;
+  font-size: var(--dm-font-size-md);
+  font-weight: 600;
+}
+
+.dm-welcome-heading:focus {
+  outline: none;
+}
+
+.dm-welcome-list {
+  display: grid;
+  gap: var(--dm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dm-welcome-campaign {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2);
+  width: 100%;
+  padding: var(--dm-space-2);
+  text-align: left;
+  color: var(--dm-text-primary);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--dm-radius-sm);
+}
+
+button.dm-welcome-campaign {
+  cursor: pointer;
+}
+
+button.dm-welcome-campaign:hover {
+  background: var(--dm-surface-raised);
+  border-color: var(--dm-border-subtle);
+}
+
+.dm-welcome-campaign:focus-visible,
+.dm-welcome-actions button:focus-visible,
+.dm-welcome-primary:focus-visible {
+  outline: var(--dm-focus-width) solid var(--dm-focus);
+  outline-offset: 1px;
+}
+
+.dm-welcome-campaign > svg {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--dm-accent);
+}
+
+.dm-welcome-unavailable > svg {
+  color: var(--dm-text-muted);
+}
+
+.dm-welcome-campaign-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.dm-welcome-campaign-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-welcome-unavailable .dm-welcome-campaign-name {
+  color: var(--dm-text-secondary);
+}
+
+.dm-welcome-meta {
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+}
+
+.dm-welcome-forget {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  color: var(--dm-text-secondary);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--dm-radius-sm);
+  cursor: pointer;
+}
+
+.dm-welcome-forget:hover {
+  color: var(--dm-text-primary);
+  background: var(--dm-surface-raised);
+}
+
+.dm-welcome-forget svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.dm-welcome-primary,
+.dm-welcome-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dm-space-2);
+  font-size: var(--dm-font-size-sm);
+}
+
+.dm-welcome-primary {
+  justify-self: start;
+  padding: var(--dm-space-2) var(--dm-space-3);
+  color: var(--dm-text-on-accent);
+  background: var(--dm-accent);
+  border: 1px solid var(--dm-accent);
+  border-radius: var(--dm-radius-sm);
+  cursor: pointer;
+}
+
+.dm-welcome-primary svg,
+.dm-welcome-actions svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.dm-welcome-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-1);
+  padding: var(--dm-space-3);
+  background: var(--dm-surface-sunken);
+  border-left: 1px solid var(--dm-border-subtle);
+}
+
+.dm-welcome-actions > button {
+  padding: var(--dm-space-1) var(--dm-space-2);
+  text-align: left;
+  color: var(--dm-text-primary);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--dm-radius-sm);
+  cursor: pointer;
+}
+
+.dm-welcome-actions > button:hover {
+  background: var(--dm-surface-raised);
+}
+
+.dm-welcome-library {
+  display: grid;
+  gap: var(--dm-space-1);
+  margin-top: auto;
+  padding-top: var(--dm-space-3);
+  border-top: 1px solid var(--dm-border-subtle);
+}
+
+.dm-welcome-label {
+  font-size: var(--dm-font-size-xs);
+  font-weight: 600;
+  color: var(--dm-text-secondary);
+}
+
+.dm-welcome-library button {
+  justify-self: start;
+  white-space: nowrap;
+}
+
+.dm-welcome-back {
+  justify-self: start;
+}
+
+.dm-welcome-notice:empty {
+  display: none;
+}
