@@ -248,7 +248,8 @@ export function DmShell({
             <div ref={slotRefs.notices} className="dm-notices" />
           </div>
         </div>
-        {children}
+        {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
+        <div className="dm-shell-content">{children}</div>
       </div>
     </ShellSlotsContext>
   );

@@ -15,7 +15,7 @@ Dungeon Manager combines two distinct paradigms:
    - **Map-First Viewport (ADR-0014):** The `MapView` (PixiJS + `<video>` layer) fills all of the area left free by the docked title bar, data panel and ribbon, with zero wasted margins; nothing permanent covers it.
    - **Collapsible Data Panel (Left Column, `#1`):** A full-height docked column below the title bar (the map shrinks next to it); holds the map and asset catalogue. Folds away with Cmd/Ctrl+B so the DM can maximize map space during play.
    - **Contextual Ribbon Toolbar (Top Bar right of the data panel, docked, `#2` & `#4`):** Grouped by workflow mode (e.g., _Scene_, _Fog of War_, _Tokens_, _Display/Projection_) with clear primary icon buttons and dropdown sub-menus.
-   - **Floating Scene Browser (Top-Left Overlay, `#3`):** A compact, semi-transparent or framed tree view showing the active scene hierarchy (Map Layer, Video Layer, Fog Shapes, Tokens, Notes) with quick visibility (`eye`) toggles.
+   - **Floating Scene Browser (top left of the map area, `#3`):** A compact, semi-transparent or framed tree view showing the active scene hierarchy (Map Layer, Video Layer, Fog Shapes, Tokens, Notes) with quick visibility (`eye`) toggles.
    - **Floating Navigation & Display Dock (Bottom Center, `#8`):** Houses zoom, pan, fit-to-screen, rotation controls (`90°`), and live `PlayerFeed` projection status.
    - **Radial / Marking Context Menu (Right-Click, `#6`):** Fast, cursor-centered access to frequent actions (Undo/Redo, Reveal/Hide Fog, Rotate, Reset View).
 

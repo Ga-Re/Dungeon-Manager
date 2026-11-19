@@ -412,12 +412,27 @@ label {
   font-family: var(--dm-font-heading);
 }
 
+/* The browser column spans the map area's height; only its panel takes the pointer, and only
+   the panel body scrolls, so header menus and popovers are never clipped. */
 .dm-browser {
   position: absolute;
   top: var(--dm-space-3);
+  bottom: var(--dm-space-3);
   left: var(--dm-space-3);
   width: 18rem;
-  max-height: calc(100% - 2 * var(--dm-space-3));
+  display: flex;
+  flex-direction: column;
+}
+
+.dm-browser > .dm-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.dm-browser .dm-panel-body {
+  min-height: 0;
   overflow: auto;
 }
 
@@ -567,4 +582,8 @@ label {
 
 .dm-notices > :empty {
   display: none;
+}
+
+.dm-shell-content {
+  display: contents;
 }

@@ -505,12 +505,13 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-154 Docked data panel and ribbon
 
-- **Status:** in-progress · **Depends on:** T-130c · **Refs:** ADR-0014 (Proposed), ADR-0011, ARCHITECTURE §15
+- **Status:** done · **Depends on:** T-130c · **Refs:** ADR-0014 (Proposed), ADR-0011, ARCHITECTURE §15
 - DM request (2026-11-19): the data panel takes the full height as its own column instead of lying over the map, and "Einpassen" must not fit the map under the ribbon. DM decision: dock the data panel and the ribbon; the map fills the remaining area; scene browser, dock and notices keep floating over the map (ADR-0014).
 - **Acceptance criteria**
-  - [ ] Title bar full width; data panel a full-height left column (Cmd/Ctrl+B folds it); ribbon right of it; the canvas fills exactly the rest (E2E via bounding boxes, panel open and folded)
-  - [ ] "Einpassen" fits the map into the visible map area; the view follows canvas resizes (panel fold, window resize)
-  - [ ] Screenshot golden updated; ARCHITECTURE §15 and the ui-design skill describe the docked zones
+  - [x] Title bar full width; data panel a full-height left column (Cmd/Ctrl+B folds it); ribbon right of it; the canvas fills exactly the rest (E2E via bounding boxes, panel open and folded)
+  - [x] "Einpassen" fits the map into the visible map area; the view follows canvas resizes (panel fold, window resize)
+  - [x] Screenshot golden updated; ARCHITECTURE §15 and the ui-design skill describe the docked zones
+- **Notes:** "Einpassen" needed no code change: it fits to the canvas size, which now is the visible map area (E2E checks the canvas against panel and ribbon; the fit itself is covered by the camera unit tests). Whether a fold should keep the view's centre is left for later.
 
 ### T-155 Settings dialog
 
@@ -524,7 +525,7 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-153 Welcome dialog with recent campaigns
 
 - **Status:** todo · **Depends on:** T-155 · **Refs:** ARCHITECTURE §6.2, §15, ADR-0011
-- On every start the DM window shows a welcome dialog, similar to Inkscape/Illustrator (DM request, 2026-11-19).
+- On every start the DM window shows a welcome dialog, similar to Inkscape/Illustrator (DM request, 2026-11-19). Comes after T-155 (DM order, 2026-11-19), whose modal dialog it reuses.
 - DM decisions (2026-11-19):
   - **List + actions:** recently edited campaigns with name, last opened scene and date; buttons "Neue Kampagne", "Andere Kampagne öffnen …" and the library folder. Previews/tiles come once T-124 produces previews.
   - Choosing a campaign opens it **with its last open scene**; the dialog appears on every start and can be opened again from the app menu (T-130d).

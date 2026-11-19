@@ -58,16 +58,20 @@ test("the map fills the area right of the data panel and below the ribbon (ADR-0
     if (!found) throw new Error(`${selector} not laid out`);
     return found;
   };
+  /** Within a pixel: the canvas size is whole pixels, chrome heights can be fractional. */
+  const near = (actual: number, expected: number) => {
+    expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
+  };
   /** The canvas starts where panel and ribbon end and reaches the window's right and bottom. */
   const mapFillsFreeArea = async (panelOpen: boolean) => {
     const canvas = await box(".map-view-canvas canvas");
     const ribbon = await box(".dm-ribbon");
     const left = panelOpen ? (await box(".dm-datapanel")).width : 0;
-    expect(canvas.x).toBeCloseTo(left, 0);
-    expect(canvas.y).toBeCloseTo(ribbon.y + ribbon.height, 0);
-    expect(canvas.x + canvas.width).toBeCloseTo(viewport.width, 0);
-    expect(canvas.y + canvas.height).toBeCloseTo(viewport.height, 0);
-    expect(ribbon.x).toBeCloseTo(left, 0);
+    near(canvas.x, left);
+    near(canvas.y, ribbon.y + ribbon.height);
+    near(canvas.x + canvas.width, viewport.width);
+    near(canvas.y + canvas.height, viewport.height);
+    near(ribbon.x, left);
     return canvas.width;
   };
   const panel = page.getByRole("complementary", { name: "Datenpanel" });
@@ -76,8 +80,8 @@ test("the map fills the area right of the data panel and below the ribbon (ADR-0
   // The panel spans everything below the title bar.
   const panelBox = await box(".dm-datapanel");
   const titlebar = await box(".dm-titlebar");
-  expect(panelBox.y).toBeCloseTo(titlebar.height, 0);
-  expect(panelBox.y + panelBox.height).toBeCloseTo(viewport.height, 0);
+  near(panelBox.y, titlebar.height);
+  near(panelBox.y + panelBox.height, viewport.height);
   const narrow = await mapFillsFreeArea(true);
 
   await page
