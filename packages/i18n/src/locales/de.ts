@@ -240,7 +240,19 @@ export const de = {
     },
     dataPanel: "Datenpanel",
     toggleDataPanel: "Datenpanel ein- oder ausblenden (⌘/Strg+B)",
-    modes: "Arbeitsbereich",
+    workspace: {
+      label: "Arbeitsbereich",
+      mapForge: "Map Forge",
+      assetStudio: "Asset Studio",
+      campaignAtlas: "Campaign Atlas",
+      gameMode: "Game Mode",
+      coming: {
+        mapForge: "Hier bearbeitest du bald deine Karten.",
+        assetStudio: "Hier bearbeitest du bald deine Assets.",
+        campaignAtlas: "Hier bearbeitest du bald die aktuelle Kampagne.",
+      },
+    },
+    modes: "Werkzeugleisten",
     mode: {
       scene: "Szene",
       fog: "Nebel",

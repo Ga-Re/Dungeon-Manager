@@ -625,12 +625,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-156 Workspaces
 
-- **Status:** todo · **Depends on:** T-153 · **Refs:** ADR-0011, ADR-0014, ARCHITECTURE §15
+- **Status:** done · **Depends on:** T-153 · **Refs:** ADR-0011, ADR-0014, ARCHITECTURE §15
 - DM request (2026-11-19, with their mock-up): a workspace selector at the left end of the ribbon ("ARBEITSBEREICH / MAP FORGE ▾"); each workspace has its own ribbon tabs.
 - DM decisions (2026-11-19): four workspaces – **Map Forge** (edit maps), **Asset Studio** (edit assets), **Campaign Atlas** (edit the current campaign), **Game Mode** (run the session). Game Mode gets today's tabs (Szene, Nebel, Anzeige); the others show a "coming" hint until their own tasks fill them. The app starts in the last used workspace (per device), Game Mode on first start.
 - **Acceptance criteria**
-  - [ ] Selector keyboard accessible (Menu), workspace switch changes the tabs; last workspace remembered per device
-  - [ ] Component + E2E tests, screenshot
+  - [x] Selector keyboard accessible (Menu), workspace switch changes the tabs; last workspace remembered per device
+  - [x] Component + E2E tests, screenshot
 - **Notes:** What each workspace contains (tabs, tools, data panel content) is planned with the DM per workspace before its content task.
 
 ### T-136 Soft fog fades and edges
@@ -671,7 +671,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] All fog tools reachable from the ribbon, with keyboard shortcuts as before
   - [ ] Zoom/fit change the DM view transform, rotation turns the player view; component and E2E tests
   - [ ] No regression on the benchmark scene (ARCHITECTURE §11)
-- **Notes:** From ADR-0011. Left over from T-130 review: at 1280 px the open data panel covers the left end of today's map dock, and `.dm-notices` sits at a fixed offset above it – lay both out with the new dock; display status (`role="status"`) moves out of the hidden Anzeige tab into the dock.
+- **Notes:** From ADR-0011. Left over from T-130 review: at 1280 px the open data panel covers the left end of today's map dock, and `.dm-notices` sits at a fixed offset above it – lay both out with the new dock; display status (`role="status"`) moves out of the hidden Anzeige tab into the dock. Found in T-156: the ribbon's height differs per tab and workspace (about 65–142 px at 1280 px; Nebel wraps the most), so the map below moves when switching – give the ribbon one height as in Fusion 360 when the fog tools become ribbon groups.
 
 ### T-134 Sidecar files for map and asset data
 

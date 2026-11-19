@@ -1,5 +1,12 @@
-import { IconButton } from "@dungeon-manager/ui";
-import { PanelLeft, Settings } from "lucide-react";
+import { IconButton, Menu } from "@dungeon-manager/ui";
+import {
+  BookMarked,
+  Boxes,
+  Map as MapIcon,
+  PanelLeft,
+  Settings,
+  Swords,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -16,6 +23,12 @@ import { HudLayoutContext, useHudLayoutStore } from "./hud-layout.js";
 import { SettingsDialog, type SettingsCategory } from "./SettingsDialog.js";
 import { THEME_SETTINGS, useThemeSetting } from "./theme.js";
 import { UI_SCALES, useUiScale } from "./ui-scale.js";
+import {
+  WORKSPACES,
+  readWorkspace,
+  saveWorkspace,
+  type Workspace,
+} from "./workspace.js";
 
 const MODES = ["scene", "fog", "display"] as const;
 type Mode = (typeof MODES)[number];
@@ -24,6 +37,13 @@ const MODE_SLOT: Record<Mode, ShellSlot> = {
   scene: "ribbonScene",
   fog: "ribbonFog",
   display: "ribbonDisplay",
+};
+
+const WORKSPACE_ICON: Record<Workspace, ReactNode> = {
+  mapForge: <MapIcon />,
+  assetStudio: <Boxes />,
+  campaignAtlas: <BookMarked />,
+  gameMode: <Swords />,
 };
 
 /** Cmd+B on macOS, Ctrl+B elsewhere; not in rich-text fields, where it means bold. */
@@ -62,6 +82,14 @@ export function DmShell({
   const { t } = useTranslation();
   const [panelOpen, setPanelOpen] = useState(true);
   const [mode, setMode] = useState<Mode>("display");
+  const [workspace, setWorkspace] = useState(() => readWorkspace(storage));
+  const inGame = workspace === "gameMode";
+  const chooseWorkspace = (id: string) => {
+    const next = WORKSPACES.find((each) => each === id);
+    if (!next) return;
+    setWorkspace(next);
+    saveWorkspace(storage, next);
+  };
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useThemeSetting(storage, root);
   const [uiScale, setUiScale] = useUiScale(storage, root);
@@ -269,46 +297,83 @@ export function DmShell({
           </aside>
           <div className="dm-main">
             <div className="dm-ribbon">
+              {/* Each workspace has its own tabs (T-156); Game Mode has today's tools. */}
               <div
-                role="tablist"
-                aria-label={t("shell.modes")}
-                className="dm-ribbon-tabs"
+                role="group"
+                aria-labelledby={`${idPrefix}-workspace`}
+                className="dm-workspace"
               >
-                {MODES.map((each) => (
-                  <button
-                    key={each}
-                    ref={(element) => {
-                      if (element) tabs.current.set(each, element);
-                      else tabs.current.delete(each);
-                    }}
-                    type="button"
-                    role="tab"
-                    id={`${idPrefix}-tab-${each}`}
-                    aria-selected={mode === each}
-                    aria-controls={`${idPrefix}-mode-${each}`}
-                    tabIndex={mode === each ? 0 : -1}
-                    className="dm-ribbon-tab"
-                    onClick={() => {
-                      setMode(each);
-                    }}
-                    onKeyDown={onTabKeyDown}
-                  >
-                    {t(`shell.mode.${each}`)}
-                  </button>
-                ))}
-              </div>
-              {MODES.map((each) => (
-                <div
-                  key={each}
-                  ref={slotRefs[MODE_SLOT[each]]}
-                  id={`${idPrefix}-mode-${each}`}
-                  role="tabpanel"
-                  aria-labelledby={`${idPrefix}-tab-${each}`}
-                  hidden={mode !== each}
-                  className="dm-ribbon-panel"
-                  data-empty={t("shell.noScene")}
+                <span
+                  id={`${idPrefix}-workspace`}
+                  className="dm-workspace-caption"
+                >
+                  {t("shell.workspace.label")}
+                </span>
+                <Menu
+                  label={t(`shell.workspace.${workspace}`)}
+                  items={WORKSPACES.map((each) => ({
+                    id: each,
+                    label: t(`shell.workspace.${each}`),
+                    icon: WORKSPACE_ICON[each],
+                  }))}
+                  onSelect={chooseWorkspace}
+                  className="dm-workspace-menu"
                 />
-              ))}
+              </div>
+              <div className="dm-ribbon-body">
+                {inGame ? (
+                  <div
+                    role="tablist"
+                    aria-label={t("shell.modes")}
+                    className="dm-ribbon-tabs"
+                  >
+                    {MODES.map((each) => (
+                      <button
+                        key={each}
+                        ref={(element) => {
+                          if (element) tabs.current.set(each, element);
+                          else tabs.current.delete(each);
+                        }}
+                        type="button"
+                        role="tab"
+                        id={`${idPrefix}-tab-${each}`}
+                        aria-selected={mode === each}
+                        aria-controls={`${idPrefix}-mode-${each}`}
+                        tabIndex={mode === each ? 0 : -1}
+                        className="dm-ribbon-tab"
+                        onClick={() => {
+                          setMode(each);
+                        }}
+                        onKeyDown={onTabKeyDown}
+                      >
+                        {t(`shell.mode.${each}`)}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="dm-ribbon-tabs" />
+                )}
+                {/* Always mounted, only hidden: the tools portaled here keep their state. */}
+                {MODES.map((each) => (
+                  <div
+                    key={each}
+                    ref={slotRefs[MODE_SLOT[each]]}
+                    id={`${idPrefix}-mode-${each}`}
+                    role={inGame ? "tabpanel" : undefined}
+                    aria-labelledby={
+                      inGame ? `${idPrefix}-tab-${each}` : undefined
+                    }
+                    hidden={!inGame || mode !== each}
+                    className="dm-ribbon-panel"
+                    data-empty={t("shell.noScene")}
+                  />
+                ))}
+                {!inGame && (
+                  <p className="dm-ribbon-panel dm-ribbon-coming">
+                    {t(`shell.workspace.coming.${workspace}`)}
+                  </p>
+                )}
+              </div>
             </div>
             {/* The map area: the canvas fills it, HUD parts float over it (ADR-0014). */}
             <div className="dm-stage">

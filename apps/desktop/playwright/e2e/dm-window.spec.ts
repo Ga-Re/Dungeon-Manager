@@ -484,3 +484,32 @@ test("on the very first start the DM chooses a folder and creates a campaign (T-
     page.getByRole("treeitem", { name: "Die erste Runde" }),
   ).toBeVisible();
 });
+
+test("the workspace selector switches the ribbon by keyboard and is remembered (T-156)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  const workspace = page
+    .getByRole("group", { name: "Arbeitsbereich" })
+    .getByRole("button");
+  await expect(workspace).toHaveText("Game Mode");
+
+  await workspace.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitem", { name: "Map Forge" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+
+  await expect(workspace).toHaveText("Asset Studio");
+  await expect(workspace).toBeFocused();
+  await expect(
+    page.getByRole("tablist", { name: "Werkzeugleisten" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Hier bearbeitest du bald deine Assets."),
+  ).toBeVisible();
+
+  await page.reload();
+  await closeWelcome(page);
+  await expect(workspace).toHaveText("Asset Studio");
+});
