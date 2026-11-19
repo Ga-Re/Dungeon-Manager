@@ -208,10 +208,83 @@ async function fadeFailClosedScenario(canvas: HTMLCanvasElement) {
   document.body.dataset["between"] = String(between);
 }
 
+const LEFT_ROOM = { outer: rect(100, 100, 500, 400), holes: [] };
+const CORRIDOR = { outer: rect(600, 250, 400, 100), holes: [] };
+const RIGHT_ROOM = { outer: rect(1000, 100, 500, 800), holes: [] };
+
+/**
+ * Before and after of the "spread-" scenarios (T-167), and two map points that half-way must
+ * show the map (`open`) and still be fogged (`fogged`): where the spread starts and ends.
+ */
+const SPREADS = {
+  // The corridor and the right room open from the left room they touch.
+  "spread-adjacent": {
+    before: [LEFT_ROOM],
+    after: [LEFT_ROOM, CORRIDOR, RIGHT_ROOM],
+    open: [700, 300],
+    fogged: [1450, 850],
+  },
+  // The right room touches nothing revealed: it clears from its middle.
+  "spread-isolated": {
+    before: [LEFT_ROOM],
+    after: [LEFT_ROOM, RIGHT_ROOM],
+    open: [1250, 450],
+    fogged: [1040, 140],
+  },
+  // Hiding the corridor and the right room: the fog comes in from the fog around them.
+  "spread-hide": {
+    before: [LEFT_ROOM, CORRIDOR, RIGHT_ROOM],
+    after: [LEFT_ROOM],
+    open: [1250, 450],
+    fogged: [1040, 140],
+  },
+} as const;
+
+/**
+ * "spread-…" (T-167): a fog change with soft edges, frozen half-way (the renderer's clock is
+ * the harness's), so the screenshot shows where the change starts.
+ */
+async function spreadScenario(
+  scenario: keyof typeof SPREADS,
+  canvas: HTMLCanvasElement,
+) {
+  let time = 0;
+  const renderer = await createRenderer({
+    canvas,
+    size: view,
+    resolution: 1,
+    now: () => time,
+  });
+  const { before, after, open, fogged } = SPREADS[scenario];
+  const camera = cameraFor("fit");
+  renderer.setFog(before, { opacity: 1, softEdge: SOFT_EDGE });
+  renderer.setMap(drawFixtureMap());
+  renderer.setCamera(camera);
+  await renderer.drawn();
+  renderer.setFog(after, { opacity: 1, softEdge: SOFT_EDGE, fade: 1000 });
+  // Eased, 206 of 1000 ms is half-way (1 − 0.794³ ≈ 0.5).
+  time = 206;
+  await renderer.drawn();
+  const pixels = capture(canvas);
+  // Red of the map pixel at `point`: 0 under the fog (unrotated camera).
+  const red = ([x, y]: readonly [number, number]) => {
+    const sx = Math.round((x - camera.centerX) * camera.zoom + view.width / 2);
+    const sy = Math.round((y - camera.centerY) * camera.zoom + view.height / 2);
+    return pixels[(sy * view.width + sx) * 4] ?? -1;
+  };
+  document.body.dataset["spreadStart"] = red(open) > 20 ? "open" : "fogged";
+  document.body.dataset["spreadEnd"] = red(fogged) === 0 ? "fogged" : "open";
+}
+
 async function main() {
   const canvas = document.querySelector("canvas");
   if (!canvas) throw new Error("canvas missing");
   const scenario = location.hash.slice(1);
+  if (scenario in SPREADS) {
+    await spreadScenario(scenario as keyof typeof SPREADS, canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
   if (scenario === "fade-fail-closed") {
     await fadeFailClosedScenario(canvas);
     document.body.dataset["ready"] = "true";

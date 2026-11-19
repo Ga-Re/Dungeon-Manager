@@ -12,7 +12,14 @@ import {
 } from "pixi.js";
 import type { Camera, Size } from "./camera.js";
 import { disposeFog } from "./fog-dispose.js";
-import { easeOut, fadeProgress, mixAlpha } from "./fog-fade.js";
+import { easeOut, fadeProgress } from "./fog-fade.js";
+import {
+  coarseSpreadOrder,
+  FRONT,
+  sampleOrder,
+  spreadMix,
+  type Grid,
+} from "./fog-spread.js";
 import { softFogAlpha } from "./soft-mask.js";
 import { createVideoGate, cssTransform, sameAspect } from "./video-layer.js";
 
@@ -28,9 +35,11 @@ export interface FogOptions {
    */
   readonly softEdge?: number;
   /**
-   * Fade from the fog shown now to this one, in milliseconds (T-136b); 0 or none switches at
-   * once. Only fades within the same map: the first fog and the fog of a new map never fade.
-   * A pixel fogged before and after stays fogged throughout.
+   * Animate from the fog shown now to this one, in milliseconds (T-136b); 0 or none switches at
+   * once. The change spreads (T-167): a reveal from the revealed area it touches, else from its
+   * middle; a hide from the fog it touches, else from its edge. Only within the same map: the
+   * first fog and the fog of a new map never animate. A pixel fogged before and after stays
+   * fogged throughout.
    */
   readonly fade?: number;
 }
@@ -43,6 +52,8 @@ export interface RendererOptions {
   readonly resolution?: number;
   /** Shown around the map; dark, so a TV in a dim room does not glare. */
   readonly background?: string;
+  /** Milliseconds for fog animations; tests freeze it for screenshots mid-spread. */
+  readonly now?: () => number;
 }
 
 /**
@@ -78,6 +89,7 @@ export async function createRenderer(
   options: RendererOptions,
 ): Promise<Renderer> {
   const background = options.background ?? "#111111";
+  const now = options.now ?? (() => performance.now());
   const app = new Application();
   await app.init({
     canvas: options.canvas,
@@ -184,24 +196,27 @@ export async function createRenderer(
     const from = fade
       ? {
           ...fade.to,
-          alpha: mixAlpha(
+          alpha: spreadMix(
             fade.from.alpha,
             fade.to.alpha,
-            easeOut(fadeProgress(fade.start, fade.duration, performance.now())),
+            sampleOrder(fade.order, fade.to.width, fade.to.height),
+            easeOut(fadeProgress(fade.start, fade.duration, now())),
           ),
         }
       : fogMask(previous.revealed, mapSize, previous.options.softEdge ?? 0);
+    const order = coarseSpreadOrder(gridOf(from), gridOf(to));
     // Fogged in every state of the fade: the exact hard fog covers it all along.
     const revealedAll = unique([
       ...(fade?.revealedAll ?? previous.revealed),
       ...target.revealed,
     ]);
     return {
-      ...drawFadeFog(revealedAll, from, to, target.options.opacity ?? 1),
+      ...drawFadeFog(revealedAll, from, to, order, target.options.opacity ?? 1),
       from,
       to,
+      order,
       revealedAll,
-      start: performance.now(),
+      start: now(),
       duration,
       final: drawFog(target.revealed, target.options, mapSize, to),
     };
@@ -240,7 +255,7 @@ export async function createRenderer(
   /** Advances a running fade; at its end the exact fog takes over. */
   const stepFade = () => {
     if (!fade) return;
-    const progress = fadeProgress(fade.start, fade.duration, performance.now());
+    const progress = fadeProgress(fade.start, fade.duration, now());
     if (progress < 1) {
       fade.setMix(easeOut(progress));
       return;
@@ -497,18 +512,25 @@ function fogMask(
 
 /** A mask as a black texture with the mask's alpha (times `opacity`), linearly filtered. */
 function maskTexture(mask: FogMask, opacity: number): Texture {
+  return alphaTexture(gridOf(mask), opacity);
+}
+
+/** `grid` as the alpha of a black texture (times `scale`), linearly filtered. */
+function alphaTexture(grid: Grid, scale: number): Texture {
   const canvas = document.createElement("canvas");
-  canvas.width = mask.width;
-  canvas.height = mask.height;
+  canvas.width = grid.width;
+  canvas.height = grid.height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("No 2D canvas for the fog mask.");
-  const pixels = context.createImageData(mask.width, mask.height);
-  for (let index = 0; index < mask.alpha.length; index++)
-    pixels.data[index * 4 + 3] = Math.round(
-      (mask.alpha[index] ?? 255) * opacity,
-    );
+  const pixels = context.createImageData(grid.width, grid.height);
+  for (let index = 0; index < grid.data.length; index++)
+    pixels.data[index * 4 + 3] = Math.round((grid.data[index] ?? 255) * scale);
   context.putImageData(pixels, 0, 0);
   return Texture.from(canvas);
+}
+
+function gridOf(mask: FogMask): Grid {
+  return { width: mask.width, height: mask.height, data: mask.alpha };
 }
 
 /**
@@ -521,12 +543,14 @@ function drawSoftFog(mask: FogMask, opacity: number): Sprite {
   return sprite;
 }
 
-/** A running fade (T-136b): its layer, where it goes, and how to move it on. */
+/** A running fade (T-136b, spreading since T-167): its layer, where it goes, and how. */
 interface Fade {
   readonly layer: Container;
   readonly setMix: (t: number) => void;
   readonly from: FogMask;
   readonly to: FogMask;
+  /** When each part of the change turns over (coarse, see `coarseSpreadOrder`). */
+  readonly order: Grid;
   /** Every revealed area of the fade's states: the hard fog covers the rest throughout. */
   readonly revealedAll: readonly Polygon[];
   readonly start: number;
@@ -535,7 +559,8 @@ interface Fade {
   readonly final: Container;
 }
 
-// Blends two fog masks texel by texel on the GPU: linear, so fog in both stays fog.
+// Blends two fog masks texel by texel on the GPU while a front passes in the spread order
+// (`spreadMix` does the same on the CPU): linear, so fog in both stays fog.
 const FADE_VERTEX = `in vec2 aPosition;
 in vec2 aUV;
 out vec2 vUV;
@@ -550,25 +575,33 @@ void main() {
 const FADE_FRAGMENT = `in vec2 vUV;
 uniform sampler2D uFrom;
 uniform sampler2D uTo;
+uniform sampler2D uOrder;
 uniform float uMix;
 out vec4 finalColor;
 void main() {
-  float alpha = mix(texture(uFrom, vUV).a, texture(uTo, vUV).a, uMix);
+  float local = clamp(
+    (uMix * (1.0 + ${FRONT.toFixed(3)}) - texture(uOrder, vUV).a) / ${FRONT.toFixed(3)},
+    0.0,
+    1.0
+  );
+  float alpha = mix(texture(uFrom, vUV).a, texture(uTo, vUV).a, local);
   finalColor = vec4(0.0, 0.0, 0.0, alpha);
 }`;
 
 /**
  * The fog during a fade: the exact hard fog over everything fogged in all of the fade's states
- * (player view), and over the map a blend of the masks before and after.
+ * (player view), and over the map the masks before and after, mixed along `order`.
  */
 function drawFadeFog(
   revealedAll: readonly Polygon[],
   from: FogMask,
   to: FogMask,
+  order: Grid,
   opacity: number,
 ): { readonly layer: Container; readonly setMix: (t: number) => void } {
   const fromTexture = maskTexture(from, opacity);
   const toTexture = maskTexture(to, opacity);
+  const orderTexture = alphaTexture(order, 1);
   const uniforms = new UniformGroup({ uMix: { value: 0, type: "f32" } });
   const width = to.width * to.texel;
   const height = to.height * to.texel;
@@ -582,6 +615,7 @@ function drawFadeFog(
     resources: {
       uFrom: fromTexture.source,
       uTo: toTexture.source,
+      uOrder: orderTexture.source,
       fadeUniforms: uniforms,
     },
   });
@@ -594,10 +628,11 @@ function drawFadeFog(
   });
   const layer = opacity < 1 ? new Container() : drawHardFog(revealedAll, 1);
   layer.addChild(mesh);
-  // The target texture goes with the mesh; the other one, the geometry and the shader are
-  // not destroyed by PixiJS with the mesh.
+  // The target texture goes with the mesh; the others, the geometry and the shader are not
+  // destroyed by PixiJS with the mesh.
   layer.on("destroyed", () => {
     fromTexture.destroy(true);
+    orderTexture.destroy(true);
     geometry.destroy();
     shader.destroy();
   });
