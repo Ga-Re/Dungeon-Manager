@@ -20,26 +20,40 @@ import {
   ArrowUp,
   CalendarPlus,
   FilePlus,
+  Link2,
   ListMinus,
   ListPlus,
+  NotebookPen,
   Pencil,
   Trash2,
+  Unlink,
 } from "lucide-react";
 import {
+  createNote,
   createScene,
   createSession,
   deleteSession,
+  linkNote,
   loadCampaign,
+  loadScene,
   loadSession,
   newMap,
+  ownNotePath,
+  readNote,
+  saveCampaign,
+  saveScene,
   saveSession,
+  unlinkNote,
+  type NoteResult,
 } from "@dungeon-manager/storage";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import {
+  readNotesIndex,
   readScenes,
   readSessions,
+  type NotesIndex,
   type SceneEntry,
   type SessionEntry,
 } from "./campaign-data.js";
@@ -50,9 +64,21 @@ import { DetailsPanel } from "./DetailsPanel.js";
 import { NewSceneForm } from "./NewSceneForm.js";
 import { OpenScenePanel } from "./OpenScenePanel.js";
 import { addScene, moveScene, removeScene } from "./session-ops.js";
-import { AddToSessionForm, ConfirmForm, SessionForm } from "./SessionForms.js";
+import {
+  AddToSessionForm,
+  ConfirmForm,
+  LinkNoteForm,
+  SessionForm,
+} from "./SessionForms.js";
 import { ShellPortal } from "./shell/slots.js";
-import { GROUP, parseTreeId, sceneNodeId, sessionNodeId } from "./tree-ids.js";
+import {
+  GROUP,
+  noteNodeId,
+  parseTreeId,
+  sceneNodeId,
+  sessionNodeId,
+  type NoteOwnerRef,
+} from "./tree-ids.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
 
 type Loaded<T> =
@@ -118,6 +144,11 @@ type Dialog =
       readonly kind: "addToSession";
       readonly origin: Origin;
       readonly sceneId: string;
+    }
+  | {
+      readonly kind: "linkNote";
+      readonly origin: Origin;
+      readonly owner: NoteOwnerRef;
     };
 
 /** An open context menu: its point, the tree item it belongs to and its name. */
@@ -179,6 +210,22 @@ export function CampaignPanel({
   const [context, setContext] = useState<ContextRequest | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [campaignFile, setCampaignFile] = useState<Campaign | null>(null);
+  // Which fixed notes exist (T-161b); re-read when the notes folder changes.
+  const [notesIndex, setNotesIndex] = useState<NotesIndex | null>(null);
+  const latestNotes = useRef(0);
+  const reloadNotes = useCallback(async () => {
+    const request = ++latestNotes.current;
+    const index = await readNotesIndex(service, slug).catch(() => null);
+    if (request === latestNotes.current) setNotesIndex(index);
+  }, [service, slug]);
+  useEffect(() => {
+    void reloadNotes();
+  }, [reloadNotes]);
+  useLibraryChanges(
+    service,
+    (path) => path.startsWith(`campaigns/${slug}/notes/`),
+    () => void reloadNotes(),
+  );
   const players: readonly Player[] = campaignFile?.players ?? [];
   // What the details panel shows: a tree item id (T-159).
   const [inspected, setInspected] = useState<string | null>(null);
@@ -205,6 +252,42 @@ export function CampaignPanel({
     (path) => path === `campaigns/${slug}/campaign.json`,
     () => void readCampaign(),
   );
+
+  // The inspected note's text, read as it is (T-161b); re-read when that file changes.
+  const inspectedNote = (() => {
+    const item = inspected ? parseTreeId(inspected) : null;
+    return item?.kind === "note" ? item.path : null;
+  })();
+  const [noteText, setNoteText] = useState<{
+    readonly path: string;
+    readonly result: NoteResult;
+  } | null>(null);
+  const latestNoteText = useRef(0);
+  const readInspectedNote = useCallback(async () => {
+    const request = ++latestNoteText.current;
+    if (!inspectedNote) {
+      setNoteText(null);
+      return;
+    }
+    const result = await readNote(service.fs, slug, inspectedNote);
+    if (request === latestNoteText.current)
+      setNoteText({ path: inspectedNote, result });
+  }, [service, slug, inspectedNote]);
+  useEffect(() => {
+    void readInspectedNote();
+  }, [readInspectedNote]);
+  useLibraryChanges(
+    service,
+    (path) =>
+      inspectedNote !== null && path === `campaigns/${slug}/${inspectedNote}`,
+    () => void readInspectedNote(),
+  );
+  const noteBody = (path: string): string => {
+    if (noteText?.path !== path) return t("campaign.noteLoading");
+    const result = noteText.result;
+    if (result.status === "ok") return result.text;
+    return t(`campaign.noteStatus.${result.status}`);
+  };
 
   const planned = scenesInSessions(sessions);
   /** The tree places of a scene: each session it is in, else "Ohne Session". */
@@ -253,6 +336,7 @@ export function CampaignPanel({
         ? { ...live, nodeId: openNodeId }
         : null,
     language: i18n.language,
+    notes: { index: notesIndex, campaignLinks: campaignFile?.notes ?? [] },
   });
 
   const sessionById = (id: string): Session | null =>
@@ -377,7 +461,22 @@ export function CampaignPanel({
       icon: <CalendarPlus />,
     };
     const item = parseTreeId(treeId);
-    if (item.kind === "campaign") return [newScene, newSession];
+    const noteCommands = [
+      { id: "openNote", label: t("campaign.openNote"), icon: <NotebookPen /> },
+      { id: "linkNote", label: t("campaign.linkNote"), icon: <Link2 /> },
+    ];
+    if (item.kind === "note")
+      return ownNotePath(item.owner) === item.path
+        ? []
+        : [
+            {
+              id: "unlinkNote",
+              label: t("campaign.unlinkNote"),
+              icon: <Unlink />,
+            },
+          ];
+    if (item.kind === "campaign")
+      return [newScene, newSession, ...noteCommands];
     if (item.kind === "group" && item.id === GROUP.sessions)
       return [newSession];
     if (item.kind === "group" && item.id === GROUP.unsorted) return [newScene];
@@ -411,6 +510,7 @@ export function CampaignPanel({
           label: t("campaign.deleteSession"),
           icon: <Trash2 />,
         },
+        ...noteCommands,
       ];
     if (item.kind === "scene") {
       const others = (sessions ?? []).filter(
@@ -423,7 +523,7 @@ export function CampaignPanel({
         icon: <ListPlus />,
         disabled: others.length === 0,
       };
-      if (item.slot === "unsorted") return [addTo, newScene];
+      if (item.slot === "unsorted") return [addTo, newScene, ...noteCommands];
       const ids = sessionById(item.slot.sessionId)?.sceneIds ?? [];
       const index = ids.indexOf(item.sceneId);
       return [
@@ -446,9 +546,78 @@ export function CampaignPanel({
         },
         addTo,
         newScene,
+        ...noteCommands,
       ];
     }
     return [];
+  };
+
+  /** The owner of a tree item's notes, if it has any. */
+  const noteOwnerOf = (treeId: string): NoteOwnerRef | null => {
+    const item = parseTreeId(treeId);
+    if (item.kind === "campaign") return { kind: "campaign" };
+    if (item.kind === "session") return { kind: "session", id: item.sessionId };
+    if (item.kind === "scene") return { kind: "scene", id: item.sceneId };
+    if (item.kind === "note") return item.owner;
+    return null;
+  };
+
+  const ownerName = (owner: NoteOwnerRef) =>
+    owner.kind === "campaign"
+      ? name
+      : owner.kind === "session"
+        ? (sessionById(owner.id)?.name ?? owner.id)
+        : ((scenes ?? []).find((entry) => entry.id === owner.id)?.scene?.name ??
+          owner.id);
+
+  /** Opens the owner's own note, starting it with its title when it does not exist yet. */
+  const openNote = async (owner: NoteOwnerRef) => {
+    const path = ownNotePath(owner);
+    try {
+      await createNote(service.fs, slug, path, ownerName(owner));
+      await reloadNotes();
+      setInspected(noteNodeId(owner, path));
+    } catch (error) {
+      setNotice(describeLibraryError(t, error));
+    }
+  };
+
+  /**
+   * Adds or removes a linked note on the owner's file, read fresh from disk (another device
+   * may have changed it). The open scene saves its whole state on every change, so its links
+   * wait until it is closed. @returns why it failed, or `null`
+   */
+  const changeLinks = async (
+    owner: NoteOwnerRef,
+    action: "link" | "unlink",
+    path: string,
+  ): Promise<string | null> => {
+    const change = <
+      T extends { readonly notes?: readonly string[] | undefined },
+    >(
+      doc: T,
+    ): T => (action === "link" ? linkNote(doc, path) : unlinkNote(doc, path));
+    try {
+      if (owner.kind === "session")
+        return await changeSession(owner.id, (session) => change(session));
+      if (owner.kind === "scene") {
+        if (openScene?.id === owner.id) return t("campaign.closeSceneToLink");
+        const loaded = await loadScene(service.fs, slug, owner.id);
+        if (loaded.status !== "ok")
+          return t("campaign.scene.invalid", { id: owner.id });
+        await saveScene(service.fs, slug, change(loaded.value));
+        await reloadScenes();
+        return null;
+      }
+      const loaded = await loadCampaign(service.fs, slug);
+      if (loaded.status !== "ok")
+        return t("library.campaign.invalid", { slug });
+      await saveCampaign(service.fs, slug, change(loaded.value));
+      await readCampaign();
+      return null;
+    } catch (error) {
+      return describeLibraryError(t, error);
+    }
   };
 
   const runCommand = (command: string, request: ContextRequest) => {
@@ -485,6 +654,23 @@ export function CampaignPanel({
       case "addToSession":
         if (item.kind === "scene")
           setDialog({ kind: "addToSession", origin, sceneId: item.sceneId });
+        return;
+      case "openNote": {
+        const owner = noteOwnerOf(request.treeId);
+        if (owner) void openNote(owner);
+        return;
+      }
+      case "linkNote": {
+        const owner = noteOwnerOf(request.treeId);
+        if (owner) setDialog({ kind: "linkNote", origin, owner });
+        return;
+      }
+      case "unlinkNote":
+        if (item.kind === "note") {
+          const path = item.path;
+          report(changeLinks(item.owner, "unlink", path));
+          setInspected(null);
+        }
         return;
       case "moveUp":
       case "moveDown":
@@ -570,6 +756,24 @@ export function CampaignPanel({
           />
         );
       }
+      case "linkNote":
+        return (
+          <LinkNoteForm
+            onSubmit={async (path) => {
+              const found = await readNote(service.fs, slug, path);
+              if (found.status === "invalid")
+                return t("campaign.notePathInvalid");
+              if (found.status !== "ok" && found.status !== "notAvailable")
+                return t("campaign.noteNotFound", { path });
+              const problem = await changeLinks(current.owner, "link", path);
+              if (!problem) {
+                closeDialog(current.origin);
+                setInspected(noteNodeId(current.owner, path.normalize("NFC")));
+              }
+              return problem;
+            }}
+          />
+        );
       case "addToSession":
         return (
           <AddToSessionForm
@@ -598,8 +802,15 @@ export function CampaignPanel({
         editSession: "campaign.editSession",
         deleteSession: "campaign.deleteSession",
         addToSession: "campaign.addToSession",
+        linkNote: "campaign.linkNote",
       }[current.kind],
     );
+
+  /** A note's details carry its text. */
+  const withNoteBody = (details: ReturnType<typeof describeItem>) =>
+    details && inspectedNote
+      ? { ...details, body: noteBody(inspectedNote) }
+      : details;
 
   const contextDialog = dialog?.origin.from === "context" ? dialog : null;
   const ribbonDialog = (from: Origin["from"]) =>
@@ -767,19 +978,23 @@ export function CampaignPanel({
         <DetailsPanel
           details={
             inspected
-              ? describeItem(t, inspected, {
-                  name,
-                  scenes: readyScenes,
-                  sessions: sessions ?? [],
-                  players,
-                  mapPaths,
-                  visibilityRules: Object.keys(
-                    campaignFile?.visibilityDefaults ?? {},
-                  ).length,
-                  live,
-                  openSceneId: openScene?.id ?? null,
-                  language: i18n.language,
-                })
+              ? withNoteBody(
+                  describeItem(t, inspected, {
+                    name,
+                    scenes: readyScenes,
+                    sessions: sessions ?? [],
+                    players,
+                    mapPaths,
+                    visibilityRules: Object.keys(
+                      campaignFile?.visibilityDefaults ?? {},
+                    ).length,
+                    live,
+                    openSceneId: openScene?.id ?? null,
+                    language: i18n.language,
+                    notesIndex,
+                    campaignLinks: campaignFile?.notes ?? [],
+                  }),
+                )
               : null
           }
           selected={inspected !== null}

@@ -442,7 +442,11 @@ describe("CampaignPanel", () => {
     ).toBeTruthy();
     expect(await screen.findByRole("treeitem", { name: "Anna" })).toBeTruthy();
     expect(screen.getByText("Mira")).toBeTruthy();
-    expect(screen.getByText("Noch keine Notizen")).toBeTruthy();
+    // The campaign note is always there; session and scene notes say they are empty.
+    expect(
+      screen.getByRole("treeitem", { name: "Kampagnennotiz" }),
+    ).toBeTruthy();
+    expect(screen.getAllByText("Noch keine Notizen")).toHaveLength(2);
     expect(screen.getByText("Noch keine Handouts")).toBeTruthy();
   });
 
@@ -460,7 +464,10 @@ describe("CampaignPanel", () => {
       key: "Escape",
     });
     fireEvent.contextMenu(
-      screen.getByText("Sessions", { selector: ".dm-tree-label" }),
+      // The first "Sessions" is the group of sessions, the second the session notes.
+      screen.getAllByText("Sessions", {
+        selector: ".dm-tree-label",
+      })[0] as HTMLElement,
     );
     expect(
       within(
@@ -855,6 +862,117 @@ describe("CampaignPanel", () => {
         expect(library.fs.files().has("campaigns/mine/sessions/bad.json")).toBe(
           false,
         );
+      });
+    });
+
+    describe("notes (T-161b)", () => {
+      const details = () =>
+        within(screen.getByRole("region", { name: "Eigenschaften" }));
+
+      test("opens a scene's note, starting it, and shows changes made elsewhere", async () => {
+        const library = fakeLibraryService("/lib", {
+          "campaigns/mine/scenes/a.json": sceneFile("a", "Krypta"),
+        });
+        renderCampaign(library);
+        command(
+          (
+            await screen.findAllByText("Krypta", { selector: ".dm-tree-label" })
+          )[0]?.textContent ?? "Krypta",
+          "Notiz öffnen",
+        );
+        await waitFor(() => {
+          expect(
+            library.fs.files().get("campaigns/mine/notes/scenes/a.md"),
+          ).toBe("# Krypta\n");
+        });
+        expect(await details().findByText("# Krypta")).toBeTruthy();
+        expect(
+          await screen.findByRole("treeitem", {
+            name: "Krypta",
+            selected: true,
+          }),
+        ).toBeTruthy();
+
+        // Written in Obsidian on another device:
+        await library.fs.writeAtomic(
+          "campaigns/mine/notes/scenes/a.md",
+          "# Krypta\nDer Wächter schläft.\n",
+        );
+        library.emit(["campaigns/mine/notes/scenes/a.md"]);
+        expect(await details().findByText(/Der Wächter schläft/)).toBeTruthy();
+      });
+
+      test("links an existing note to a session, shows it and removes the link", async () => {
+        const library = fakeLibraryService("/lib", {
+          "campaigns/mine/sessions/s1.json": sessionFile("s1", "Session 1", []),
+          "campaigns/mine/wiki/Strahd.md":
+            "---\nrole: villain\n---\n# Strahd\n",
+        });
+        renderCampaign(library);
+        await screen.findByRole("treeitem", { name: "Session 1" });
+        command("Session 1", "Notiz verknüpfen …");
+        const form = within(
+          screen.getByRole("group", { name: "Notiz verknüpfen …" }),
+        );
+        fireEvent.change(form.getByLabelText("Pfad der Notiz"), {
+          target: { value: "wiki/Fehlt.md" },
+        });
+        fireEvent.click(form.getByRole("button", { name: "Verknüpfen" }));
+        expect(
+          await form.findByText(
+            "„wiki/Fehlt.md“ gibt es im Kampagnenordner nicht.",
+          ),
+        ).toBeTruthy();
+        fireEvent.change(form.getByLabelText("Pfad der Notiz"), {
+          target: { value: "wiki/Strahd.md" },
+        });
+        fireEvent.click(form.getByRole("button", { name: "Verknüpfen" }));
+        await waitFor(() => {
+          expect(
+            JSON.parse(
+              library.fs.files().get("campaigns/mine/sessions/s1.json") ?? "{}",
+            ),
+          ).toMatchObject({ notes: ["wiki/Strahd.md"] });
+        });
+        expect(
+          await screen.findByRole("treeitem", { name: "Session 1 › Strahd" }),
+        ).toBeTruthy();
+        // The note is read as it is, front matter included.
+        expect(await details().findByText(/role: villain/)).toBeTruthy();
+
+        command("Session 1 › Strahd", "Verknüpfung entfernen");
+        await waitFor(() => {
+          expect(
+            JSON.parse(
+              library.fs.files().get("campaigns/mine/sessions/s1.json") ?? "{}",
+            ),
+          ).not.toHaveProperty("notes");
+        });
+        expect(library.fs.files().has("campaigns/mine/wiki/Strahd.md")).toBe(
+          true,
+        );
+      });
+
+      test("asks to close an open scene before linking notes to it", async () => {
+        const library = fakeLibraryService("/lib", {
+          "campaigns/mine/scenes/a.json": sceneFile("a", "Krypta"),
+          "campaigns/mine/wiki/x.md": "x",
+        });
+        renderCampaign(library);
+        await openScene("Krypta");
+        command("Krypta", "Notiz verknüpfen …");
+        const form = within(
+          screen.getByRole("group", { name: "Notiz verknüpfen …" }),
+        );
+        fireEvent.change(form.getByLabelText("Pfad der Notiz"), {
+          target: { value: "wiki/x.md" },
+        });
+        fireEvent.click(form.getByRole("button", { name: "Verknüpfen" }));
+        expect(
+          await form.findByText(
+            "Schließe die Szene, um Notizen mit ihr zu verknüpfen.",
+          ),
+        ).toBeTruthy();
       });
     });
   });

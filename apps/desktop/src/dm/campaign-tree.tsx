@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import {
   formatDate,
+  type NotesIndex,
   type SceneEntry,
   type SessionEntry,
 } from "./campaign-data.js";
@@ -25,6 +26,7 @@ import {
   GROUP,
   mapNodeId,
   missingNodeId,
+  noteNodeId,
   playerNodeId,
   sceneNodeId,
   sessionNodeId,
@@ -45,7 +47,15 @@ export interface CampaignTreeData {
     readonly nodeId: string;
   } | null;
   readonly language: string;
+  /** Which fixed notes exist, and the notes linked from campaign.json (T-161b). */
+  readonly notes: {
+    readonly index: NotesIndex | null;
+    readonly campaignLinks: readonly string[];
+  };
 }
+
+/** The file name of a note without `.md`, for labels. */
+export const noteTitle = (path: string) => fileName(path).replace(/\.md$/, "");
 
 /** A group that is still empty shows why instead of an empty folder. */
 function group(
@@ -197,11 +207,96 @@ export function buildCampaignTree(
         [],
         t("shell.tree.noHandouts"),
       ),
+      notesGroup(t, data),
+    ],
+  };
+}
+
+/**
+ * Notizen (T-161b): the campaign note and its links, then the session and scene notes – each
+ * session or scene with its own note and the notes linked from it.
+ */
+function notesGroup(t: TFunction, data: CampaignTreeData): TreeNode {
+  const index = data.notes.index;
+  const noteItem = (
+    owner: Parameters<typeof noteNodeId>[0],
+    path: string,
+    label: string,
+    exists = true,
+  ): TreeNode => ({
+    id: noteNodeId(owner, path),
+    label,
+    icon: <NotebookPen />,
+    ...(exists ? {} : { meta: t("shell.tree.noteNew") }),
+  });
+  const ownedBy = (
+    kind: "session" | "scene",
+    id: string,
+    name: string,
+    links: readonly string[] | undefined,
+    hasOwn: boolean,
+  ): TreeNode[] => [
+    ...(hasOwn
+      ? [
+          noteItem(
+            { kind, id },
+            `notes/${kind === "session" ? "sessions" : "scenes"}/${id}.md`,
+            name,
+          ),
+        ]
+      : []),
+    ...(links ?? []).map((path) =>
+      noteItem({ kind, id }, path, `${name} › ${noteTitle(path)}`),
+    ),
+  ];
+  const sessionNotes = (data.sessions ?? []).flatMap((entry) =>
+    entry.session
+      ? ownedBy(
+          "session",
+          entry.id,
+          entry.session.name,
+          entry.session.notes,
+          index?.sessions.includes(entry.id) ?? false,
+        )
+      : [],
+  );
+  const sceneNotes = (data.scenes ?? []).flatMap((entry) =>
+    entry.scene
+      ? ownedBy(
+          "scene",
+          entry.id,
+          entry.scene.name,
+          entry.scene.notes,
+          index?.scenes.includes(entry.id) ?? false,
+        )
+      : [],
+  );
+  return {
+    id: GROUP.notes,
+    label: t("shell.tree.notes"),
+    icon: <NotebookPen />,
+    children: [
+      noteItem(
+        { kind: "campaign" },
+        "notes/campaign.md",
+        t("shell.tree.campaignNote"),
+        index?.campaign ?? true,
+      ),
+      ...data.notes.campaignLinks.map((path) =>
+        noteItem({ kind: "campaign" }, path, noteTitle(path)),
+      ),
       group(
-        GROUP.notes,
-        t("shell.tree.notes"),
-        <NotebookPen />,
-        [],
+        GROUP.sessionNotes,
+        t("shell.tree.sessions"),
+        <Folder />,
+        sessionNotes,
+        t("shell.tree.noNotes"),
+      ),
+      group(
+        GROUP.sceneNotes,
+        t("shell.tree.sceneNotes"),
+        <Folder />,
+        sceneNotes,
         t("shell.tree.noNotes"),
       ),
     ],

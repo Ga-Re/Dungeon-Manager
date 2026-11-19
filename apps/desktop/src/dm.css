@@ -678,3 +678,17 @@ label {
   flex-wrap: wrap;
   gap: var(--dm-space-1) var(--dm-space-3);
 }
+
+/* A note's text in the details panel (T-161b): as written, wrapped, scrolling if long. */
+.dm-details-body {
+  max-height: 24rem;
+  margin: var(--dm-space-3) 0 0;
+  padding: var(--dm-space-2);
+  overflow: auto;
+  font-family: var(--dm-font-mono);
+  font-size: var(--dm-font-size-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--dm-surface-sunken);
+  border-radius: var(--dm-radius-sm);
+}

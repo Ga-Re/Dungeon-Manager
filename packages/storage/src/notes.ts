@@ -93,10 +93,9 @@ export async function createNote(
 }
 
 /** The document with `notePath` added to its note links (once). @throws on an unsafe path */
-export function linkNote<T extends { readonly notes?: readonly string[] }>(
-  document: T,
-  notePath: string,
-): T {
+export function linkNote<
+  T extends { readonly notes?: readonly string[] | undefined },
+>(document: T, notePath: string): T {
   const path = notePath.normalize("NFC");
   if (!notePathSchema.safeParse(path).success)
     throw new Error(`Invalid note path: ${notePath}`);
@@ -109,10 +108,9 @@ export function linkNote<T extends { readonly notes?: readonly string[] }>(
  * The document without the link; an emptied list is left out of the file, so `notes` must be
  * optional in `T` (it is on campaign, session and scene).
  */
-export function unlinkNote<T extends { readonly notes?: readonly string[] }>(
-  document: T,
-  notePath: string,
-): T {
+export function unlinkNote<
+  T extends { readonly notes?: readonly string[] | undefined },
+>(document: T, notePath: string): T {
   const path = notePath.normalize("NFC");
   const notes = (document.notes ?? []).filter(
     (each) => each.normalize("NFC") !== path,
