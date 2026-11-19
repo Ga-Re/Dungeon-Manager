@@ -1,4 +1,10 @@
-import type { AssetRef, Player, Polygon, Scene } from "@dungeon-manager/schema";
+import type {
+  AssetRef,
+  Campaign,
+  Player,
+  Polygon,
+  Scene,
+} from "@dungeon-manager/schema";
 import {
   ContextMenu,
   IconButton,
@@ -30,6 +36,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
+import { DetailsPanel, type Details } from "./DetailsPanel.js";
 import { fileName } from "./file-name.js";
 import { NewSceneForm } from "./NewSceneForm.js";
 import { OpenScenePanel } from "./OpenScenePanel.js";
@@ -123,7 +130,10 @@ export function CampaignPanel({
   const [notice, setNotice] = useState("");
   const [context, setContext] = useState<ContextRequest | null>(null);
   const [newScene, setNewScene] = useState<NewSceneOrigin | null>(null);
-  const [players, setPlayers] = useState<readonly Player[]>([]);
+  const [campaignFile, setCampaignFile] = useState<Campaign | null>(null);
+  const players: readonly Player[] = campaignFile?.players ?? [];
+  // What the details panel shows: a tree item id (T-159).
+  const [inspected, setInspected] = useState<string | null>(null);
   const newSceneButton = useRef<HTMLButtonElement>(null);
   const contextItem = useRef<HTMLElement | null>(null);
   const latest = useRef(0);
@@ -163,7 +173,7 @@ export function CampaignPanel({
     const request = ++latestPlayers.current;
     const result = await loadCampaign(service.fs, slug).catch(() => null);
     if (request === latestPlayers.current)
-      setPlayers(result?.status === "ok" ? result.value.players : []);
+      setCampaignFile(result?.status === "ok" ? result.value : null);
   }, [service, slug]);
   useEffect(() => {
     void readPlayers();
@@ -313,6 +323,124 @@ export function CampaignPanel({
     ],
   };
 
+  const sceneOf = (entry: SceneEntry) =>
+    live && live.scene.id === entry.id ? live.scene : entry.scene;
+  const readyScenes = state.status === "ready" ? state.scenes : [];
+
+  /** The facts of a tree item for the details panel; groups show nothing yet. */
+  const describe = (id: string): Details | null => {
+    const visibilityRules = Object.keys(
+      campaignFile?.visibilityDefaults ?? {},
+    ).length;
+    if (id === CAMPAIGN_NODE || id === GROUP.settings)
+      return {
+        kind: t(
+          id === CAMPAIGN_NODE
+            ? "shell.details.campaign"
+            : "shell.tree.settings",
+        ),
+        name,
+        rows: [
+          {
+            label: t("shell.details.scenes"),
+            value: String(readyScenes.length),
+          },
+          { label: t("shell.details.maps"), value: String(mapPaths.length) },
+          { label: t("shell.details.players"), value: String(players.length) },
+          {
+            label: t("shell.details.visibility"),
+            value:
+              visibilityRules === 0
+                ? t("shell.details.allVisible")
+                : t("shell.details.rules", { count: visibilityRules }),
+          },
+        ],
+      };
+    if (id.startsWith(SCENE_PREFIX)) {
+      const entry = readyScenes.find((each) => sceneNode(each.id) === id);
+      const scene = entry && sceneOf(entry);
+      if (!scene) return null;
+      const revealed =
+        live && live.scene.id === scene.id ? live.revealed.length : null;
+      return {
+        kind: t("shell.details.scene"),
+        name: scene.name,
+        rows: [
+          scene.map
+            ? {
+                label: t("shell.details.map"),
+                value: fileName(scene.map.asset.path),
+                mono: true,
+              }
+            : { label: t("shell.details.map"), value: t("campaign.noMap") },
+          ...(scene.map
+            ? [
+                {
+                  label: t("shell.details.grid"),
+                  value: t("shell.details.cellSize", {
+                    px: scene.map.grid.cellSizePx,
+                  }),
+                },
+                {
+                  label: t("shell.details.levels"),
+                  value: scene.map.levels.map((level) => level.name).join(", "),
+                },
+              ]
+            : []),
+          {
+            label: t("shell.details.tokens"),
+            value: String(scene.tokens.length),
+          },
+          ...(revealed === null
+            ? []
+            : [
+                {
+                  label: t("shell.details.fog"),
+                  value: t("shell.browser.fogAreas", { count: revealed }),
+                },
+              ]),
+          {
+            label: t("shell.details.state"),
+            value:
+              openScene?.id === scene.id
+                ? t("shell.details.open")
+                : t("shell.details.closed"),
+          },
+        ],
+      };
+    }
+    if (id.startsWith("map:")) {
+      const path = id.slice("map:".length);
+      const usedBy = readyScenes
+        .map(sceneOf)
+        .filter((scene): scene is Scene => scene?.map?.asset.path === path)
+        .map((scene) => scene.name);
+      return {
+        kind: t("shell.details.mapKind"),
+        name: fileName(path),
+        rows: [
+          { label: t("shell.details.path"), value: path, mono: true },
+          { label: t("shell.details.usedBy"), value: usedBy.join(", ") },
+        ],
+      };
+    }
+    if (id.startsWith("player:")) {
+      const player = players.find((each) => `player:${each.id}` === id);
+      if (!player) return null;
+      return {
+        kind: t("shell.details.player"),
+        name: player.name,
+        rows: [
+          {
+            label: t("shell.details.character"),
+            value: player.characterName ?? t("shell.details.none"),
+          },
+        ],
+      };
+    }
+    return null;
+  };
+
   const newSceneForm = <NewSceneForm service={service} onCreate={create} />;
 
   return (
@@ -321,8 +449,11 @@ export function CampaignPanel({
         label={t("shell.tree.browserTitle")}
         variant="compact"
         nodes={[campaignTree]}
-        selectedId={openScene ? sceneNode(openScene.id) : null}
-        onSelect={open}
+        selectedId={inspected ?? (openScene ? sceneNode(openScene.id) : null)}
+        onSelect={(id) => {
+          setInspected(id);
+          open(id);
+        }}
         onItemContextMenu={(id, at, item) => {
           // Only the campaign and its scenes have commands; the open scene's content not yet.
           if (id === CAMPAIGN_NODE) setContext({ at, item, name });
@@ -427,6 +558,9 @@ export function CampaignPanel({
           }}
         />
       )}
+      <ShellPortal slot="details">
+        <DetailsPanel details={inspected ? describe(inspected) : null} />
+      </ShellPortal>
       <ShellPortal slot="notices">
         <p role="status">{notice}</p>
       </ShellPortal>

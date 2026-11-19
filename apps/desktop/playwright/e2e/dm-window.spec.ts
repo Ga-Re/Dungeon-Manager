@@ -256,3 +256,22 @@ test("the browser stays inside the map area; a smaller window does not change it
     .poll(async () => (await browser.boundingBox())?.x)
     .toBeCloseTo(placed.x, 0);
 });
+
+test("selecting a scene in the browser shows its properties on the right", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  const details = page.getByRole("region", { name: "Eigenschaften" });
+  await expect(
+    details.getByText("Wähle im Browser einen Eintrag."),
+  ).toBeVisible();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(details.getByText("krypta.png")).toBeVisible();
+
+  // It sits at the right of the map area.
+  const stage = await page.locator(".dm-stage").boundingBox();
+  const box = await details.boundingBox();
+  if (!stage || !box) throw new Error("not laid out");
+  expect(stage.x + stage.width - (box.x + box.width)).toBeLessThan(40);
+});

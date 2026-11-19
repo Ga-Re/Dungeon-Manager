@@ -84,6 +84,7 @@ export function DmShell({
       "browser",
       "dataPanel",
       "settings",
+      "details",
       "notices",
     ];
     for (const name of names) {
@@ -259,6 +260,7 @@ export function DmShell({
                 <p className="dm-canvas-empty">{t("shell.noScene")}</p>
               </div>
               <div ref={slotRefs.browser} className="dm-browser" />
+              <div ref={slotRefs.details} className="dm-details" />
               <div ref={slotRefs.notices} className="dm-notices" />
             </div>
           </div>

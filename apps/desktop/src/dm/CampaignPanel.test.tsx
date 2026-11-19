@@ -455,4 +455,61 @@ describe("CampaignPanel", () => {
       screen.getByRole("menu", { name: "Befehle für „Szenen“" }),
     ).toBeTruthy();
   });
+
+  test("shows the selected item's facts in the details panel", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/campaign.json": JSON.stringify({
+        schemaVersion: 1,
+        id: "c",
+        name: "Die verlorene Mine",
+        players: [{ id: "p1", name: "Anna", characterName: "Mira" }],
+        visibilityDefaults: { token: "hidden" },
+      }),
+      "campaigns/mine/scenes/a.json": JSON.stringify({
+        ...JSON.parse(sceneFile("a", "Höhle")),
+        map: {
+          kind: "image",
+          asset: {
+            path: "library/maps/hoehle.webp",
+            hash: `sha256:${"a".repeat(64)}`,
+          },
+          grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },
+          levels: [{ id: "ground", name: "Unten" }],
+        },
+      }),
+    });
+    renderCampaign(library);
+    const details = () =>
+      within(screen.getByRole("region", { name: "Eigenschaften" }));
+    expect(details().getByText("Wähle im Browser einen Eintrag.")).toBeTruthy();
+
+    await openScene("Höhle");
+    expect(details().getByText("Höhle")).toBeTruthy();
+    expect(details().getByText("70 px pro Feld")).toBeTruthy();
+    expect(details().getByText("Geöffnet")).toBeTruthy();
+
+    fireEvent.click(
+      // The one in the Karten group (the open scene lists its map file too).
+      within(screen.getByRole("treeitem", { name: "Karten" })).getByText(
+        "hoehle.webp",
+        { selector: ".dm-tree-label" },
+      ),
+    );
+    expect(details().getByText("library/maps/hoehle.webp")).toBeTruthy();
+    expect(details().getByText("Höhle")).toBeTruthy();
+
+    fireEvent.click(
+      await screen.findByText("Anna", { selector: ".dm-tree-label" }),
+    );
+    expect(details().getByText("Mira")).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByText("Kampagneneinstellungen", {
+        selector: ".dm-tree-label",
+      }),
+    );
+    expect(details().getByText("1 Regel")).toBeTruthy();
+    // The scene stays open while something else is inspected.
+    expect(screen.getByText("Geöffnete Szene: Höhle")).toBeTruthy();
+  });
 });

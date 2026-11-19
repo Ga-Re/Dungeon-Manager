@@ -34,6 +34,9 @@ export interface HudPanelProps {
   children: ReactNode;
 }
 
+/** Room kept between the panel and the edges of its area. */
+const EDGE = 12;
+
 /** Keyboard step of the grip; Shift moves further. */
 const STEP = 16;
 const BIG_STEP = 64;
@@ -50,8 +53,8 @@ function clamp(
 ): { x: number; y: number } {
   const area = panel.offsetParent;
   if (!(area instanceof HTMLElement)) return clamp0(x, y);
-  const maxX = Math.max(0, area.clientWidth - panel.offsetWidth);
-  const maxY = Math.max(0, area.clientHeight - panel.offsetHeight);
+  const maxX = Math.max(0, area.clientWidth - panel.offsetWidth - EDGE);
+  const maxY = Math.max(0, area.clientHeight - panel.offsetHeight - EDGE);
   return {
     x: Math.round(Math.min(Math.max(0, x), maxX)),
     y: Math.round(Math.min(Math.max(0, y), maxY)),
