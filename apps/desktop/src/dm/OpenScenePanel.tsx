@@ -43,9 +43,9 @@ function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
   const target = event.target;
   if (
     target instanceof HTMLElement &&
-    // Text entry only: on a tool radio button the shortcuts still undo fog edits.
+    // Text entry only: on a tool button, a switch or a slider the shortcuts still undo fog.
     target.closest(
-      'input:not([type="radio"]):not([type="checkbox"]):not([type="button"]), textarea, select, [contenteditable]',
+      'input:not([type="radio"]):not([type="checkbox"]):not([type="button"]):not([type="range"]), textarea, select, [contenteditable]',
     )
   )
     return null;

@@ -5,7 +5,11 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { useClampedPoint, type MenuPoint } from "./viewport.js";
+import {
+  useAnchoredPoint,
+  useClampedPoint,
+  type MenuPoint,
+} from "./viewport.js";
 
 /** One command of a {@link Menu} or {@link ContextMenu}. */
 export interface MenuItem {
@@ -33,7 +37,10 @@ export interface MenuListProps {
   onDismiss: (reason: MenuDismissal) => void;
   /** Presses on this element (e.g. the menu button) do not count as outside. */
   owner?: RefObject<HTMLElement | null> | undefined;
-  /** Open at a viewport point (a context menu), kept inside the window; else under its owner. */
+  /**
+   * Open at a viewport point (a context menu); without one it opens under `owner` (a menu
+   * button). Either way fixed and kept inside the window.
+   */
   at?: MenuPoint | undefined;
 }
 
@@ -53,7 +60,14 @@ export function MenuList({
   at,
 }: MenuListProps) {
   const menu = useRef<HTMLDivElement>(null);
-  const point = useClampedPoint(menu, at);
+  const atPoint = useClampedPoint(menu, at);
+  const anchored = useAnchoredPoint(
+    owner ?? menu,
+    menu,
+    "start",
+    at === undefined && owner !== undefined,
+  );
+  const point = at ? (atPoint ?? at) : anchored;
   const entries = useRef<(HTMLButtonElement | null)[]>([]);
   const dismiss = useRef(onDismiss);
   useEffect(() => {

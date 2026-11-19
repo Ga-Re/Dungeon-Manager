@@ -680,7 +680,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Status:** done · **Depends on:** T-130c · **Refs:** ARCHITECTURE §15, ADR-0011
 - **New campaign** (and later more app commands such as the welcome dialog of T-153) on macOS from the native menu bar (Tauri menu, e.g. "Ablage → Neue Kampagne"); on Windows from a menu button in the title bar (DM decision, 2026-11-19).
 - **Acceptance criteria**
-  - [ ] Native macOS menu command reaches the DM window (Rust test or smoke test) – **pending DM decision**: the menu is built in the DM window (translated labels), not in Rust, and the smoke test cannot run on macOS; PR #58 proposes a test against a mocked Tauri menu module plus a manual check on macOS
+  - [x] Native macOS menu command reaches the DM window – DM-approved deviation (2026-11-19): a test against a mocked Tauri menu module plus a manual check on macOS, as the menu is built in the DM window (translated labels) and the smoke test cannot run on macOS
   - [x] Windows menu button covered by a component test; menu labels translated
 - **Notes:** From the T-130c review: context menus and popovers opened at a point are not yet kept inside the viewport (a low tree item with Shift+F10 can push the new-scene form off-screen) – clamp them when the menus are built here.
 - Done in T-130d: context menus and popovers opened at a point are clamped to the viewport. Menu commands close open dialogs first (the native menu bar works while a modal is open).
@@ -703,13 +703,14 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-131 Fog tools in the ribbon and navigation dock
 
-- **Status:** todo · **Depends on:** T-130c · **Refs:** ARCHITECTURE §15, ADR-0011
+- **Status:** done · **Depends on:** T-130c · **Refs:** ARCHITECTURE §15, ADR-0011
 - Move `FogToolbar` into the ribbon's fog mode (tool groups with captions, active tool highlighted); bottom-centre dock with zoom and fit-to-screen for the DM view, the player-view rotation (SPEC 2.2) and player-feed status.
 - **Acceptance criteria**
-  - [ ] All fog tools reachable from the ribbon, with keyboard shortcuts as before
-  - [ ] Zoom/fit change the DM view transform, rotation turns the player view; component and E2E tests
-  - [ ] No regression on the benchmark scene (ARCHITECTURE §11)
+  - [x] All fog tools reachable from the ribbon, with keyboard shortcuts as before
+  - [x] Zoom/fit change the DM view transform, rotation turns the player view; component and E2E tests
+  - [x] No regression on the benchmark scene (ARCHITECTURE §11) – the renderer is unchanged; only DOM controls moved
 - **Notes:** From ADR-0011. Left over from T-130 review: at 1280 px the open data panel covers the left end of today's map dock, and `.dm-notices` sits at a fixed offset above it – lay both out with the new dock; display status (`role="status"`) moves out of the hidden Anzeige tab into the dock. Found in T-156: the ribbon's height differs per tab and workspace (about 65–142 px at 1280 px; Nebel wraps the most), so the map below moves when switching – give the ribbon one height as in Fusion 360 when the fog tools become ribbon groups.
+- Done in T-131: the fog tools are ribbon groups (Werkzeug, Form, Ganze Karte); the dock holds zoom, fit and rotation of the DM view, the TV rotation and the player-view status; notices stack above it; the ribbon has one height (tabs row and panel fixed, tools never wrap). The TV rotation and player-feed status appear only with a player feed (not in the E2E harness).
 
 ### T-134 Sidecar files for map and asset data
 

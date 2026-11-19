@@ -20,6 +20,9 @@ import {
   type PointerEvent,
 } from "react";
 import type { Polygon } from "@dungeon-manager/schema";
+import { IconButton } from "@dungeon-manager/ui";
+import { RotateCw, Scan, ZoomIn, ZoomOut } from "lucide-react";
+import { ShellPortal } from "./shell/slots.js";
 import { useTranslation } from "react-i18next";
 import { FogPreview } from "./FogPreview.js";
 import {
@@ -412,7 +415,9 @@ export function MapView({
         className="map-view-canvas"
         role="application"
         aria-label={t("mapView.label", { name: label })}
-        aria-describedby="map-view-help"
+        aria-describedby={
+          tool === "pan" ? "map-view-help" : "map-view-help map-view-hint"
+        }
         tabIndex={0}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -439,25 +444,63 @@ export function MapView({
           />
         )}
       </div>
-      <div className="map-view-dock">
-        <p id="map-view-help" className="map-view-help">
-          {t("mapView.help")}
-        </p>
+      {/* What the keys do, for screen readers; the drawing tool's instructions show above the
+          dock while it is active (T-131). */}
+      <p id="map-view-help" className="visually-hidden">
+        {t("mapView.help")}
+      </p>
+      <ShellPortal slot="notices">
+        {tool !== "pan" && (
+          <p id="map-view-hint" className="map-view-hint">
+            {t(`fog.shapeHints.${shape}`)}
+          </p>
+        )}
         {load === "loading" && <p>{t("mapView.loading")}</p>}
         {load === "error" && <p role="alert">{t("mapView.error")}</p>}
-        <button type="button" disabled={load !== "ready"} onClick={fit}>
-          {t("mapView.fit")}
-        </button>
-        <button
-          type="button"
-          disabled={load !== "ready"}
-          onClick={() => {
-            change((current) => rotateBy(current, 90));
-          }}
-        >
-          {t("mapView.rotate")}
-        </button>
-      </div>
+      </ShellPortal>
+      {/* Navigation of the DM's view in the dock (T-131): its keys are −, 0, + and r. */}
+      <ShellPortal slot="dock">
+        <div className="dm-dock-group">
+          <IconButton
+            icon={<ZoomOut />}
+            label={t("mapView.zoomOut")}
+            aria-keyshortcuts="-"
+            disabled={load !== "ready"}
+            onClick={() => {
+              change((current, view) =>
+                zoomAt(current, 1 / KEY_ZOOM, centre(view), view),
+              );
+            }}
+          />
+          <IconButton
+            icon={<Scan />}
+            label={t("mapView.fit")}
+            aria-keyshortcuts="0"
+            disabled={load !== "ready"}
+            onClick={fit}
+          />
+          <IconButton
+            icon={<ZoomIn />}
+            label={t("mapView.zoomIn")}
+            aria-keyshortcuts="+"
+            disabled={load !== "ready"}
+            onClick={() => {
+              change((current, view) =>
+                zoomAt(current, KEY_ZOOM, centre(view), view),
+              );
+            }}
+          />
+          <IconButton
+            icon={<RotateCw />}
+            label={t("mapView.rotate")}
+            aria-keyshortcuts="r"
+            disabled={load !== "ready"}
+            onClick={() => {
+              change((current) => rotateBy(current, 90));
+            }}
+          />
+        </div>
+      </ShellPortal>
     </div>
   );
 }

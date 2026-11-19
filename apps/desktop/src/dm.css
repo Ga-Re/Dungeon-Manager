@@ -96,34 +96,11 @@ label {
 }
 
 /* Bottom-centre dock over the map (zoom/rotation; reworked in T-131). */
-.map-view-dock {
-  position: absolute;
-  left: 50%;
-  bottom: var(--dm-space-4);
-  transform: translateX(-50%);
-  z-index: var(--dm-z-hud);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--dm-space-2) var(--dm-space-3);
-  max-width: calc(100% - 2 * var(--dm-space-4));
-  padding: var(--dm-space-2) var(--dm-space-3);
-  background: var(--dm-surface-panel);
-  color: var(--dm-text-primary);
-  border: 1px solid var(--dm-border-strong);
-  border-radius: var(--dm-radius-lg);
-  box-shadow: var(--dm-shadow-panel);
-}
-
-.map-view-dock p {
-  margin: 0;
-}
-
-.map-view-help {
-  font-size: var(--dm-font-size-sm);
-  color: var(--dm-text-secondary);
+/* The drawing tool's instructions, above the dock while a tool is active (T-131). */
+.dm-notices > .map-view-hint {
   max-width: 36rem;
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
 }
 
 /* Zone layout (ADR-0011, ADR-0014): title bar, a full-height data panel column, the ribbon
@@ -323,9 +300,11 @@ label {
   min-width: 0;
 }
 
-/* Without tabs (a workspace still to come) the row keeps the tab row's height. */
-.dm-ribbon-tabs:empty {
-  min-height: calc(var(--dm-font-size-xs) * 1.5 + 2 * var(--dm-space-1) + 2px);
+/* One height with or without tabs (a workspace still to come), so the ribbon never moves. */
+.dm-ribbon-tabs {
+  box-sizing: border-box;
+  height: 1.75rem;
+  align-items: stretch;
 }
 
 .dm-ribbon-coming {
@@ -366,12 +345,24 @@ label {
   outline: var(--dm-focus-width) solid var(--dm-focus);
 }
 
+/* One height for every tab and workspace, as in Fusion 360 (T-131): the map below never moves
+   when switching. Tools never wrap; a narrow window scrolls the panel sideways instead. */
 .dm-ribbon-panel {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--dm-space-2) 0;
-  min-height: 2.5rem;
+  gap: 0;
+  height: 4.625rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.dm-ribbon .dm-icon-button-label {
+  white-space: nowrap;
+}
+
+.dm-ribbon-panel .dm-ribbon-field input[type="range"] {
+  width: 7rem;
 }
 
 .dm-ribbon-panel[hidden] {
@@ -384,8 +375,7 @@ label {
   color: var(--dm-text-muted);
 }
 
-.dm-ribbon form,
-.fog-toolbar {
+.dm-ribbon form {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -477,13 +467,66 @@ label {
   display: none;
 }
 
-.dm-notices {
+/* Bottom centre of the map (T-131): notices over the navigation and display dock. */
+.dm-stage-bottom {
   position: absolute;
   left: 50%;
-  bottom: 7rem;
+  bottom: var(--dm-space-3);
   transform: translateX(-50%);
+  z-index: var(--dm-z-hud);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dm-space-2);
+  max-width: calc(100% - 2 * var(--dm-space-3));
+  pointer-events: none;
+}
+
+.dm-notices {
   display: grid;
   gap: var(--dm-space-2);
+}
+
+.dm-dock {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-1);
+  padding: var(--dm-space-1);
+  background: var(--dm-surface-panel);
+  border: 1px solid var(--dm-border-strong);
+  border-radius: var(--dm-radius-md);
+  box-shadow: var(--dm-shadow-panel);
+  pointer-events: auto;
+}
+
+/* Nothing to use or read yet (no scene, no player view, no status): no empty box over the map. */
+.dm-dock:not(:has(button)):not(:has(.dm-dock-status:not(:empty))) {
+  display: none;
+}
+
+/* Groups of the dock: the view's navigation, then the TV. */
+.dm-dock-group {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-1);
+}
+
+/* The TV's group and status come after the view's navigation, whoever renders first. */
+.dm-dock-tv {
+  order: 1;
+  padding-left: var(--dm-space-1);
+  border-left: 1px solid var(--dm-border-subtle);
+}
+
+.dm-dock-status {
+  order: 2;
+  margin: 0 var(--dm-space-2);
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+}
+
+.dm-dock-status:empty {
+  display: none;
 }
 
 .dm-notices > * {
@@ -506,11 +549,6 @@ label {
   margin-left: auto;
   font-size: var(--dm-font-size-sm);
   color: var(--dm-text-primary);
-}
-
-.dm-panel-head-menu .dm-menu-list {
-  left: auto;
-  right: 0;
 }
 
 /* Text and lists in the transparent browser body sit on the same chips as tree rows. */
@@ -1205,8 +1243,4 @@ button.dm-welcome-campaign:hover {
   padding: var(--dm-space-1) var(--dm-space-2);
   font-size: var(--dm-font-size-sm);
   color: var(--dm-text-on-chrome);
-}
-
-.dm-app-menu .dm-menu-list {
-  left: 0;
 }

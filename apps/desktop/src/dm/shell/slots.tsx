@@ -12,7 +12,8 @@ export type ShellSlot =
   | "details"
   | "dataPanel"
   | "settings"
-  | "notices";
+  | "notices"
+  | "dock";
 
 /** The slot elements of the surrounding shell; `null` outside a shell. */
 export const ShellSlotsContext = createContext<Partial<

@@ -337,7 +337,7 @@ async function main() {
         throw new Error("The map failed to load.");
       const fit = await findElement(
         sessionPath,
-        "//button[text()='Einpassen']",
+        "//button[@aria-label='Einpassen']",
         "xpath",
       );
       return (
@@ -360,7 +360,7 @@ async function main() {
     await clickXPath(
       sessionPath,
       "reveal all",
-      "//button[text()='Alles aufdecken']",
+      "//button[normalize-space()='Alles aufdecken']",
     );
     await waitFor("the revealed fog on disk", () => revealedAreas() === 1);
     await clickXPath(sessionPath, "undo", "//button[@aria-label='Rückgängig']");
