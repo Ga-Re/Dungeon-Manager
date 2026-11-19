@@ -161,6 +161,21 @@ describe("projectEvents", () => {
     ).toEqual(["fog.revealed", "fog.hidden"]);
   });
 
+  test("passes on fog changes of a level only once it has been shown", () => {
+    const revealCellar: Command = {
+      type: "fog.reveal",
+      levelId: "cellar",
+      area: square(0, 0, 100),
+    };
+    expect(projected([], [revealCellar])).toEqual([]);
+    expect(
+      projected(
+        [],
+        [{ type: "level.show", levelId: "cellar" }, revealCellar],
+      ).map((event) => event.type),
+    ).toEqual(["level.shown", "fog.revealed"]);
+  });
+
   test("never passes on visibility changes or removed combatants", () => {
     expect(
       projected(

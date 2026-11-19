@@ -34,7 +34,9 @@ export const campaignSchema = z.looseObject({
 /**
  * `campaigns/<slug>/scenes/<id>.json`. A sub-scene (T-152) names its parent in
  * `parentSceneId`: optional and additive, so no version bump – older readers keep it (DM
- * decision, 2026-11-19). It is its own scene with its own map, fog and tokens.
+ * decision, 2026-11-19). It is its own scene with its own map, fog and tokens. `table` (T-118a),
+ * optional and additive too: the level on the TV and every level shown there so far, which
+ * players may see from then on; without it the TV shows the map's first level.
  */
 export const sceneSchema = z.looseObject({
   schemaVersion: z.literal(SCENE_VERSION),
@@ -47,6 +49,12 @@ export const sceneSchema = z.looseObject({
   notes: noteLinksSchema,
   // A scene naming itself (a loop) stays readable: the browser shows it at the top.
   parentSceneId: idSchema.optional(),
+  table: z
+    .looseObject({
+      levelId: idSchema,
+      shownLevelIds: z.array(idSchema),
+    })
+    .optional(),
 });
 
 /** A calendar day as `YYYY-MM-DD` that really exists (no 30 February). */

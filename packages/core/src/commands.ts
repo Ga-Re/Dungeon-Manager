@@ -40,6 +40,8 @@ export type Command =
       readonly elementType: VisibilityElementType;
       readonly visibility: Visibility | null;
     }
+  /** Shows `levelId` on the TV; from then on players may see it (released). */
+  | { readonly type: "level.show"; readonly levelId: string }
   | { readonly type: "initiative.add"; readonly combatant: Combatant }
   | { readonly type: "initiative.remove"; readonly combatantId: string }
   /** Ends the current turn; starts round 1 if combat has not started. */
@@ -67,6 +69,7 @@ export type DomainEvent = { readonly at: number } & (
     }
   | { readonly type: "fog.revealed"; readonly levelId: string }
   | { readonly type: "fog.hidden"; readonly levelId: string }
+  | { readonly type: "level.shown"; readonly levelId: string }
   | {
       readonly type: "visibility.changed";
       readonly target: VisibilityTarget;

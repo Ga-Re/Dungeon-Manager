@@ -1,4 +1,5 @@
 import {
+  type Scene,
   viewerEventSchema,
   viewerSceneSchema,
   type ApproximateHp,
@@ -46,37 +47,51 @@ export function projectForViewer(
   viewer: Viewer,
 ): ViewerScene {
   const { scene } = state;
+  const { current, released } = tableLevels(scene);
   const visibleTokens = scene.tokens.filter((token) =>
-    isTokenVisible(state, token, viewer),
+    isTokenVisible(state, token, viewer, released),
   );
   const visibleTokenIds = new Set(visibleTokens.map((token) => token.id));
+  // Asset references are capabilities: only the host-rendered table view gets them (T-118a).
+  const withAssets = viewer.kind === "table";
   const projected: ViewerScene = {
     id: scene.id,
     name: scene.name,
-    map: scene.map && {
-      kind: scene.map.kind,
-      asset: { path: scene.map.asset.path, hash: scene.map.asset.hash },
-      grid: {
-        cellSizePx: scene.map.grid.cellSizePx,
-        offsetXPx: scene.map.grid.offsetXPx,
-        offsetYPx: scene.map.grid.offsetYPx,
-      },
-      levels: scene.map.levels.map((level) => ({
-        id: level.id,
-        name: level.name,
-        ...(level.asset && {
-          asset: { path: level.asset.path, hash: level.asset.hash },
-        }),
-      })),
-    },
+    map:
+      scene.map && current !== null
+        ? {
+            kind: scene.map.kind,
+            ...(withAssets && {
+              asset: { path: scene.map.asset.path, hash: scene.map.asset.hash },
+            }),
+            currentLevelId: current,
+            grid: {
+              cellSizePx: scene.map.grid.cellSizePx,
+              offsetXPx: scene.map.grid.offsetXPx,
+              offsetYPx: scene.map.grid.offsetYPx,
+            },
+            levels: scene.map.levels
+              .filter((level) => released.has(level.id))
+              .map((level) => ({
+                id: level.id,
+                name: level.name,
+                ...(withAssets &&
+                  level.asset && {
+                    asset: { path: level.asset.path, hash: level.asset.hash },
+                  }),
+              })),
+          }
+        : null,
     fog: Object.fromEntries(
-      Object.entries(scene.fog.levels).map(([levelId, fog]) => [
-        levelId,
-        {
-          revealed: fog.revealed.map(copyPolygon),
-          remembered: fog.remembered.map(copyPolygon),
-        },
-      ]),
+      Object.entries(scene.fog.levels)
+        .filter(([levelId]) => released.has(levelId))
+        .map(([levelId, fog]) => [
+          levelId,
+          {
+            revealed: fog.revealed.map(copyPolygon),
+            remembered: fog.remembered.map(copyPolygon),
+          },
+        ]),
     ),
     tokens: visibleTokens.map((token) => projectToken(state, token, viewer)),
     ...projectInitiative(state, viewer, visibleTokenIds),
@@ -94,7 +109,7 @@ export function projectForViewer(
  *
  * - `token.moved`: when the token is visible where it moved to; without `from`, which may lie
  *   in fog and whose level is not known.
- * - Fog changes pass; the projected state shows the same fog.
+ * - Fog changes pass for released levels, like the projected state's fog; `level.shown` passes.
  * - `initiative.combatantAdded`, `initiative.turnStarted`: when the combatant is listed.
  * - `hp.changed`: exact or coarse HP, as the listed combatant's HP show. A change within the
  *   same coarse state still passes: that a creature was hit is seen at the table anyway.
@@ -108,6 +123,7 @@ export function projectEvents(
 ): ViewerEvent[] {
   const view = projectForViewer(stateAfter, viewer);
   const visibleTokens = new Set(view.tokens.map((token) => token.id));
+  const { released } = tableLevels(stateAfter.scene);
   const listed = new Map(
     view.initiative?.combatants.map((combatant) => [combatant.id, combatant]),
   );
@@ -133,7 +149,10 @@ export function projectEvents(
       }
       case "fog.revealed":
       case "fog.hidden":
-        return { at, type: event.type, levelId: event.levelId };
+      case "level.shown":
+        return released.has(event.levelId)
+          ? { at, type: event.type, levelId: event.levelId }
+          : null;
       case "initiative.combatantAdded":
         return listed.has(event.combatantId)
           ? { at, type: event.type, combatantId: event.combatantId }
@@ -166,6 +185,28 @@ export function projectEvents(
     const projected = project(event);
     return projected ? [viewerEventSchema.parse(projected)] : [];
   });
+}
+
+/**
+ * The level on the TV and the released levels (SPEC §3.1, T-118a): `scene.table` where it names
+ * levels of the map, else the map's first level; ids of levels the map no longer has are
+ * ignored. `current` is `null` only without a map.
+ */
+export function tableLevels(scene: Scene): {
+  readonly current: string | null;
+  readonly released: ReadonlySet<string>;
+} {
+  const levels = new Set(scene.map?.levels.map((level) => level.id));
+  const wanted = scene.table?.levelId;
+  const current =
+    wanted !== undefined && levels.has(wanted)
+      ? wanted
+      : (scene.map?.levels[0]?.id ?? null);
+  const released = new Set(
+    (scene.table?.shownLevelIds ?? []).filter((id) => levels.has(id)),
+  );
+  if (current !== null) released.add(current);
+  return { current, released };
 }
 
 function copyPolygon(polygon: {
@@ -206,12 +247,17 @@ function ownedBy(token: Token | undefined, viewer: Viewer): boolean {
   return viewer.kind === "player" && token?.ownerPlayerId === viewer.playerId;
 }
 
-/** Visible unless hidden, or standing outside the revealed fog of its level; own tokens always show. */
+/**
+ * Never on an unreleased level (its id alone would give the level away); else visible unless
+ * hidden or standing outside the revealed fog of its level; own tokens always show.
+ */
 function isTokenVisible(
   state: SessionState,
   token: Token,
   viewer: Viewer,
+  released: ReadonlySet<string>,
 ): boolean {
+  if (!released.has(token.levelId)) return false;
   if (ownedBy(token, viewer)) return true;
   if (visibilityOf(state, "token", token) === "hidden") return false;
   const { map } = state.scene;

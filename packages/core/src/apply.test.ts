@@ -712,3 +712,41 @@ describe("initiative edge cases", () => {
     expect(next.scene.initiative?.combatants[0]?.hp?.current).toBe(9);
   });
 });
+
+describe("level.show", () => {
+  test("shows a level on the TV and keeps the levels shown before released", () => {
+    const result = ok(
+      apply(state, { type: "level.show", levelId: "cellar" }, ctx),
+    );
+    expect(result.state.scene.table).toEqual({
+      levelId: "cellar",
+      shownLevelIds: ["cellar"],
+    });
+    expect(result.events).toEqual([
+      { at: 1_000, type: "level.shown", levelId: "cellar" },
+    ]);
+    const back = run(
+      result.state,
+      { type: "level.show", levelId: "ground" },
+      { type: "level.show", levelId: "cellar" },
+    );
+    expect(back.scene.table).toEqual({
+      levelId: "cellar",
+      shownLevelIds: ["cellar", "ground"],
+    });
+  });
+
+  test("rejects unknown levels and scenes without a map", () => {
+    expect(apply(state, { type: "level.show", levelId: "roof" }, ctx)).toEqual({
+      ok: false,
+      reason: "unknownLevel",
+    });
+    expect(
+      apply(
+        { ...state, scene: { ...scene, map: null } },
+        { type: "level.show", levelId: "ground" },
+        ctx,
+      ),
+    ).toEqual({ ok: false, reason: "noMap" });
+  });
+});

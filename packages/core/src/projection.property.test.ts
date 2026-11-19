@@ -94,6 +94,14 @@ const session = fc.record({
     conditions: maybe,
     initiative: maybe,
   }),
+  // The TV's level and the levels shown so far; "gone" stands for a level the map no longer has.
+  table: fc.option(
+    fc.record({
+      levelId: fc.constantFrom(...LEVELS, "gone"),
+      shownLevelIds: fc.subarray([...LEVELS, "gone"]),
+    }),
+    { nil: undefined },
+  ),
   viewer: fc.constantFrom<Viewer>(
     { kind: "table" },
     ...PLAYERS.map((playerId) => ({ kind: "player" as const, playerId })),
@@ -164,6 +172,12 @@ function build(spec: Spec): SessionState {
       ...base.scene,
       map: {
         ...map,
+        // The cellar has its own image, so a leaked level asset can be searched for.
+        levels: map.levels.map((level) =>
+          level.id === "cellar"
+            ? { ...level, asset: { path: "maps/secret-cellar.png", hash } }
+            : level,
+        ),
         grid: {
           cellSizePx: CELL,
           offsetXPx: spec.offset.x * CELL,
@@ -171,6 +185,7 @@ function build(spec: Spec): SessionState {
         },
       },
       tokens,
+      ...(spec.table && { table: spec.table }),
       initiative:
         combatants.length > 0
           ? {
@@ -191,6 +206,21 @@ function build(spec: Spec): SessionState {
     if (!result.ok) throw new Error(result.reason);
     return result.state;
   }, start);
+}
+
+/** The TV's level: the scene's choice if the map has it, else the first level ("ground"). */
+function currentLevel(spec: Spec): string {
+  const wanted = spec.table?.levelId;
+  return LEVELS.find((level) => level === wanted) ?? "ground";
+}
+
+/** Levels players may see: those shown so far that the map still has, and the current one. */
+function releasedLevels(spec: Spec): Set<string> {
+  const shown = spec.table?.shownLevelIds ?? [];
+  return new Set([
+    currentLevel(spec),
+    ...LEVELS.filter((level) => shown.includes(level)),
+  ]);
 }
 
 /** Independent model of what a viewer may see of entry `index`. */
@@ -227,8 +257,11 @@ function expected(spec: Spec, index: number) {
       cy > r.y &&
       cy < r.y + r.size,
   );
+  // Not even an own token shows on an unreleased level: its level id would give the level away.
   const tokenVisible =
-    e.hasToken && (own || (resolveToken("token") !== "hidden" && revealed));
+    e.hasToken &&
+    releasedLevels(spec).has(e.level) &&
+    (own || (resolveToken("token") !== "hidden" && revealed));
   const listed =
     (e.inCombat || !e.hasToken) &&
     resolve("initiative") !== "hidden" &&
@@ -309,13 +342,34 @@ describe("projectForViewer (property-based)", () => {
     );
   });
 
-  test("sends exactly the revealed and remembered fog of each level", () => {
+  test("sends exactly the revealed and remembered fog of each released level", () => {
     fc.assert(
       fc.property(session, (spec) => {
         const built = build(spec);
+        const released = releasedLevels(spec);
         expect(projectForViewer(built, spec.viewer).fog).toEqual(
-          built.scene.fog.levels,
+          Object.fromEntries(
+            Object.entries(built.scene.fog.levels).filter(([level]) =>
+              released.has(level),
+            ),
+          ),
         );
+      }),
+      runs,
+    );
+  });
+
+  test("lists only released levels, and asset references only for the table", () => {
+    fc.assert(
+      fc.property(session, (spec) => {
+        const map = projectForViewer(build(spec), spec.viewer).map;
+        expect(map?.currentLevelId).toBe(currentLevel(spec));
+        expect(new Set(map?.levels.map((level) => level.id))).toEqual(
+          releasedLevels(spec),
+        );
+        expect(map?.asset !== undefined).toBe(spec.viewer.kind === "table");
+        if (spec.viewer.kind === "player")
+          expect(JSON.stringify(map)).not.toMatch(/\.png|secret-cellar/);
       }),
       runs,
     );
@@ -410,6 +464,7 @@ const command: fc.Arbitrary<Command> = fc.oneof(
     temp: fc.integer({ min: 0, max: 10 }),
   }),
   fc.constant<Command>({ type: "initiative.next" }),
+  fc.record({ type: fc.constant("level.show" as const), levelId: level }),
   fc.record({
     type: fc.constant("initiative.remove" as const),
     combatantId: index.map((i) => `fighter-${String(i)}`),
@@ -454,6 +509,10 @@ describe("projectEvents (property-based)", () => {
             if ("tokenId" in event) expect(tokens).toContain(event.tokenId);
             if ("combatantId" in event)
               expect(listed).toContain(event.combatantId);
+            if ("levelId" in event)
+              expect(view.map?.levels.map((level) => level.id)).toContain(
+                event.levelId,
+              );
           }
         }
       }),

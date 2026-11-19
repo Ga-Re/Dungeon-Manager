@@ -1,3 +1,4 @@
+import { tableLevels } from "@dungeon-manager/core";
 import type { Size } from "@dungeon-manager/renderer";
 import type { AssetRef, Polygon, Scene } from "@dungeon-manager/schema";
 import {
@@ -110,7 +111,8 @@ export function OpenScenePanel({
   const [shape, setShape] = useState<FogShape>("rectangle");
   const [brushCells, setBrushCells] = useState(1);
   const [mapSize, setMapSize] = useState<Size | null>(null);
-  const levelId = scene.map?.levels[0]?.id;
+  // The DM works on the level the TV shows (a switcher follows in T-118c).
+  const levelId = tableLevels(scene).current ?? undefined;
   const revealed =
     (levelId === undefined ? undefined : scene.fog.levels[levelId]?.revealed) ??
     NOTHING_REVEALED;
