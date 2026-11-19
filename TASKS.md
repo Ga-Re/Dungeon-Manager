@@ -505,7 +505,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-154 Docked data panel and ribbon
 
-- **Status:** done · **Depends on:** T-130c · **Refs:** ADR-0014 (Proposed), ADR-0011, ARCHITECTURE §15
+- **Status:** done · **Depends on:** T-130c · **Refs:** ADR-0014, ADR-0011, ARCHITECTURE §15
 - DM request (2026-11-19): the data panel takes the full height as its own column instead of lying over the map, and "Einpassen" must not fit the map under the ribbon. DM decision: dock the data panel and the ribbon; the map fills the remaining area; scene browser, dock and notices keep floating over the map (ADR-0014).
 - **Acceptance criteria**
   - [x] Title bar full width; data panel a full-height left column (Cmd/Ctrl+B folds it); ribbon right of it; the canvas fills exactly the rest (E2E via bounding boxes, panel open and folded)
