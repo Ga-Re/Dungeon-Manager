@@ -222,7 +222,7 @@ describe("DmShell", () => {
     expect(panel().hidden).toBe(false);
   });
 
-  it("switches soft fog edges in the settings and remembers it per device", () => {
+  it("switches soft fog edges and sets the fade duration, per device", () => {
     const { storage } = setup();
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
     fireEvent.click(screen.getByRole("tab", { name: "Nebel & Animation" }));
@@ -231,6 +231,12 @@ describe("DmShell", () => {
     fireEvent.click(soft);
     expect((soft as HTMLInputElement).checked).toBe(false);
     expect(storage.getItem("dm.fog.softEdges")).toBe("off");
+
+    const fade = screen.getByRole("slider", { name: /Übergangsdauer/ });
+    expect(fade.getAttribute("aria-valuetext")).toBe("0,65 s");
+    fireEvent.change(fade, { target: { value: "1.5" } });
+    expect(fade.getAttribute("aria-valuetext")).toBe("1,50 s");
+    expect(storage.getItem("dm.fog.fadeSeconds")).toBe("1.5");
   });
 
   it("switches settings categories with the arrow keys", () => {

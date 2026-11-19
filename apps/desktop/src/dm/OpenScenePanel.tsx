@@ -22,7 +22,7 @@ import { SceneTitle } from "./SceneTitle.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useSceneSession } from "./useSceneSession.js";
 import { softEdgeWidth } from "../fog-settings.js";
-import { SoftEdgesContext } from "./shell/fog-look.js";
+import { FogLookContext } from "./shell/fog-look.js";
 
 /** A rectangle polygon in map pixels. */
 const rectangle = (size: Size): Polygon => ({
@@ -81,7 +81,7 @@ export function OpenScenePanel({
   readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const softEdges = useContext(SoftEdgesContext);
+  const fogLook = useContext(FogLookContext);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
@@ -353,7 +353,11 @@ export function OpenScenePanel({
               shape={shape}
               // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
               brushRadius={(brushCells * scene.map.grid.cellSizePx) / 2}
-              softEdge={softEdgeWidth(scene.map.grid.cellSizePx, softEdges)}
+              softEdge={softEdgeWidth(
+                scene.map.grid.cellSizePx,
+                fogLook.softEdges,
+              )}
+              fade={fogLook.fadeSeconds * 1000}
               onArea={(area, kind) => {
                 if (!busy)
                   fogCommand(

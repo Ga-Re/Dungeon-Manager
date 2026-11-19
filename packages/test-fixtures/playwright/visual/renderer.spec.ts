@@ -53,3 +53,12 @@ test("soft fog edges never reveal more than hard ones", async ({ page }) => {
   await expect(body).toHaveAttribute("data-violations", "0");
   expect(Number(await body.getAttribute("data-softened"))).toBeGreaterThan(0);
 });
+
+// Fades (T-136b): a pixel fogged before and after a change never shows the map on the way.
+test("fog fades never show what stays fogged", async ({ page }) => {
+  await page.goto(`${fixturePage("renderer.html")}#fade-fail-closed`);
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true");
+  await expect(body).toHaveAttribute("data-violations", "0");
+  expect(Number(await body.getAttribute("data-between"))).toBeGreaterThan(0);
+});

@@ -231,6 +231,10 @@ export const en: Messages = {
       softEdges: "Soft edges",
       softEdgesHint:
         "The fog fades out softly at the edges of revealed areas – on this device and the TV. It never shows more than with hard edges.",
+      fade: "Transition duration",
+      fadeHint:
+        "How long revealing and hiding fade – also on the TV. 0 s switches at once.",
+      seconds: "{{seconds, number(minimumFractionDigits: 2)}} s",
     },
     layout: {
       hint: "Browser and properties return to their default places, unfolded.",

@@ -234,6 +234,10 @@ export const de = {
       softEdges: "Weiche Kanten",
       softEdgesHint:
         "Der Nebel läuft an den Rändern aufgedeckter Bereiche sanft aus – auf diesem Gerät und dem TV. Er zeigt dabei nie mehr als mit harten Kanten.",
+      fade: "Übergangsdauer",
+      fadeHint:
+        "Wie lange Aufdecken und Verdecken weich überblenden – auch auf dem TV. 0 s schaltet sofort um.",
+      seconds: "{{seconds, number(minimumFractionDigits: 2)}} s",
     },
     layout: {
       hint: "Browser und Eigenschaften kehren an ihre Standardplätze zurück und werden ausgeklappt.",

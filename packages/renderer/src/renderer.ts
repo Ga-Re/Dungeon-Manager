@@ -1,6 +1,17 @@
 import type { Polygon } from "@dungeon-manager/schema";
-import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
+import {
+  Application,
+  Container,
+  Graphics,
+  Mesh,
+  MeshGeometry,
+  Shader,
+  Sprite,
+  Texture,
+  UniformGroup,
+} from "pixi.js";
 import type { Camera, Size } from "./camera.js";
+import { easeOut, fadeProgress, mixAlpha } from "./fog-fade.js";
 import { softFogAlpha } from "./soft-mask.js";
 import { createVideoGate, cssTransform, sameAspect } from "./video-layer.js";
 
@@ -15,6 +26,12 @@ export interface FogOptions {
    * lies inside the revealed area, so it never shows more than the hard fog would.
    */
   readonly softEdge?: number;
+  /**
+   * Fade from the fog shown now to this one, in milliseconds (T-136b); 0 or none switches at
+   * once. Only fades within the same map: the first fog and the fog of a new map never fade.
+   * A pixel fogged before and after stays fogged throughout.
+   */
+  readonly fade?: number;
 }
 
 export interface RendererOptions {
@@ -93,6 +110,14 @@ export async function createRenderer(
   // What the current fog was built from: an equal request (the player view gets the whole
   // scene with every message, also for a rotation) keeps it instead of rebuilding.
   let fogBuiltFrom: string | null = null;
+  // The fog shown before the current request, and the map size it was shown on: fades start
+  // from it.
+  let shownFog: {
+    readonly revealed: readonly Polygon[];
+    readonly options: FogOptions;
+    readonly map: Size;
+  } | null = null;
+  let fade: Fade | null = null;
   let size = options.size;
   let camera: Camera | null = null;
   let frame: number | null = null;
@@ -138,20 +163,75 @@ export async function createRenderer(
   options.canvas.addEventListener("webglcontextlost", onContextLost);
   options.canvas.addEventListener("webglcontextrestored", onContextRestored);
 
-  const applyFog = () => {
-    const key = fogInput ? JSON.stringify([fogInput, mapSize]) : null;
-    if (key !== null && key === fogBuiltFrom && fog) return;
-    // Build the new fog first: if that fails, the old fog stays in place and counts.
-    const next = fogInput
-      ? drawFog(fogInput.revealed, fogInput.options, mapSize)
-      : null;
+  const replaceFog = (next: Container | null) => {
     if (fog) {
       world.removeChild(fog);
       fog.destroy({ children: true, texture: true, textureSource: true });
     }
     fog = next;
-    fogBuiltFrom = key;
     if (fog) world.addChild(fog);
+  };
+
+  /** A fade from the fog on screen to `target`, or `null` if this change must not fade. */
+  const startFade = (target: NonNullable<typeof fogInput>): Fade | null => {
+    const duration = target.options.fade ?? 0;
+    const previous = shownFog;
+    if (duration <= 0 || !previous || !mapSize || !fog) return null;
+    if (!sameSize(previous.map, mapSize)) return null;
+    const to = fogMask(target.revealed, mapSize, target.options.softEdge ?? 0);
+    // From what is on screen: mid-fade, the mix reached so far.
+    const from = fade
+      ? {
+          ...fade.to,
+          alpha: mixAlpha(
+            fade.from.alpha,
+            fade.to.alpha,
+            easeOut(fadeProgress(fade.start, fade.duration, performance.now())),
+          ),
+        }
+      : fogMask(previous.revealed, mapSize, previous.options.softEdge ?? 0);
+    // Fogged in every state of the fade: the exact hard fog covers it all along.
+    const revealedAll = [
+      ...(fade?.revealedAll ?? previous.revealed),
+      ...target.revealed,
+    ];
+    return {
+      ...drawFadeFog(revealedAll, from, to, target.options.opacity ?? 1),
+      from,
+      to,
+      revealedAll,
+      start: performance.now(),
+      duration,
+    };
+  };
+
+  const applyFog = () => {
+    const key = fogInput ? JSON.stringify([fogInput, mapSize]) : null;
+    if (key !== null && key === fogBuiltFrom && fog) return;
+    // Build the new fog first: if that fails, the old fog stays in place and counts.
+    const fading = fogInput ? startFade(fogInput) : null;
+    const next = fading
+      ? fading.layer
+      : fogInput
+        ? drawFog(fogInput.revealed, fogInput.options, mapSize)
+        : null;
+    replaceFog(next);
+    fade = fading;
+    fogBuiltFrom = key;
+    shownFog = fogInput && mapSize ? { ...fogInput, map: mapSize } : null;
+  };
+
+  /** Advances a running fade; at its end the exact fog takes over. */
+  const stepFade = () => {
+    if (!fade) return;
+    const progress = fadeProgress(fade.start, fade.duration, performance.now());
+    if (progress < 1) {
+      fade.setMix(easeOut(progress));
+      return;
+    }
+    fade = null;
+    if (fogInput)
+      replaceFog(drawFog(fogInput.revealed, fogInput.options, mapSize));
   };
 
   const requestDraw = () => {
@@ -159,6 +239,7 @@ export async function createRenderer(
     frame = requestAnimationFrame(() => {
       frame = null;
       try {
+        stepFade();
         applyCamera();
         app.render();
         gate.drawn();
@@ -174,6 +255,8 @@ export async function createRenderer(
       done.forEach((resolve) => {
         resolve();
       });
+      // A fade draws every frame until it is over; otherwise drawing stays on demand.
+      if (fade) requestDraw();
     });
   };
 
@@ -201,6 +284,9 @@ export async function createRenderer(
         : video
           ? videoSize
           : null;
+      // A new map never fades: its fog is there at once.
+      fade = null;
+      shownFog = null;
       if (fogInput) applyFog();
       requestDraw();
     },
@@ -227,6 +313,8 @@ export async function createRenderer(
         next.style.visibility = "hidden";
         mapSize = videoSize;
       } else if (!map) mapSize = null;
+      fade = null;
+      shownFog = null;
       if (fogInput) applyFog();
       requestDraw();
     },
@@ -313,16 +401,26 @@ function drawHardFog(revealed: readonly Polygon[], opacity: number): Container {
  */
 const SOFT_MASK_SIDE = 1024;
 
+/** The fog's alpha over the map, one texel per `texel` map pixels (255 = opaque). */
+interface FogMask {
+  readonly width: number;
+  readonly height: number;
+  readonly texel: number;
+  readonly alpha: Uint8Array;
+}
+
+const sameSize = (a: Size, b: Size) =>
+  a.width === b.width && a.height === b.height;
+
 /**
- * Soft fog over the map (T-136a): the revealed polygons rasterized into a small mask, softened
- * inside the revealed area (`softFogAlpha`) and stretched over the map with linear filtering.
+ * The revealed polygons rasterized into a small mask over the map: softened inside the revealed
+ * area with a soft edge (T-136a), or as they are (hard, for fades without soft edges).
  */
-function drawSoftFog(
+function fogMask(
   revealed: readonly Polygon[],
   map: Size,
   softEdge: number,
-  opacity: number,
-): Sprite {
+): FogMask {
   const texel = Math.max(1, Math.max(map.width, map.height) / SOFT_MASK_SIDE);
   const width = Math.ceil(map.width / texel);
   const height = Math.ceil(map.height / texel);
@@ -330,7 +428,7 @@ function drawSoftFog(
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context) throw new Error("No 2D canvas for the soft fog mask.");
+  if (!context) throw new Error("No 2D canvas for the fog mask.");
   context.fillStyle = "#000";
   context.fillRect(0, 0, width, height);
   context.fillStyle = "#fff";
@@ -346,26 +444,133 @@ function drawSoftFog(
     }
     context.fill("evenodd");
   }
-  const pixels = context.getImageData(0, 0, width, height);
+  const pixels = context.getImageData(0, 0, width, height).data;
   // Only fully covered texels count as revealed: anti-aliased edges stay hidden.
-  const mask = new Uint8Array(width * height);
-  for (let index = 0; index < mask.length; index++)
-    mask[index] = pixels.data[index * 4] === 255 ? 255 : 0;
-  const alpha = softFogAlpha(
-    { width, height, data: mask },
-    // At least 2 texels, so there is a blur at all.
-    Math.max(2, Math.round(softEdge / texel)),
-  );
-  for (let index = 0; index < alpha.length; index++) {
-    pixels.data[index * 4] = 0;
-    pixels.data[index * 4 + 1] = 0;
-    pixels.data[index * 4 + 2] = 0;
-    pixels.data[index * 4 + 3] = Math.round((alpha[index] ?? 255) * opacity);
+  const open = new Uint8Array(width * height);
+  for (let index = 0; index < open.length; index++)
+    open[index] = pixels[index * 4] === 255 ? 255 : 0;
+  if (softEdge > 0) {
+    const alpha = softFogAlpha(
+      { width, height, data: open },
+      // At least 2 texels, so there is a blur at all.
+      Math.max(2, Math.round(softEdge / texel)),
+    );
+    return { width, height, texel, alpha };
   }
+  return { width, height, texel, alpha: open.map((value) => 255 - value) };
+}
+
+/** A mask as a black texture with the mask's alpha (times `opacity`), linearly filtered. */
+function maskTexture(mask: FogMask, opacity: number): Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = mask.width;
+  canvas.height = mask.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("No 2D canvas for the fog mask.");
+  const pixels = context.createImageData(mask.width, mask.height);
+  for (let index = 0; index < mask.alpha.length; index++)
+    pixels.data[index * 4 + 3] = Math.round(
+      (mask.alpha[index] ?? 255) * opacity,
+    );
   context.putImageData(pixels, 0, 0);
-  const sprite = new Sprite(Texture.from(canvas));
-  sprite.scale.set(texel);
+  return Texture.from(canvas);
+}
+
+/**
+ * Soft fog over the map (T-136a): the revealed polygons rasterized into a small mask, softened
+ * inside the revealed area (`softFogAlpha`) and stretched over the map with linear filtering.
+ */
+function drawSoftFog(
+  revealed: readonly Polygon[],
+  map: Size,
+  softEdge: number,
+  opacity: number,
+): Sprite {
+  const mask = fogMask(revealed, map, softEdge);
+  const sprite = new Sprite(maskTexture(mask, opacity));
+  sprite.scale.set(mask.texel);
   return sprite;
+}
+
+/** A running fade (T-136b): its layer, where it goes, and how to move it on. */
+interface Fade {
+  readonly layer: Container;
+  readonly setMix: (t: number) => void;
+  readonly from: FogMask;
+  readonly to: FogMask;
+  /** Every revealed area of the fade's states: the hard fog covers the rest throughout. */
+  readonly revealedAll: readonly Polygon[];
+  readonly start: number;
+  readonly duration: number;
+}
+
+// Blends two fog masks texel by texel on the GPU: linear, so fog in both stays fog.
+const FADE_VERTEX = `in vec2 aPosition;
+in vec2 aUV;
+out vec2 vUV;
+uniform mat3 uProjectionMatrix;
+uniform mat3 uWorldTransformMatrix;
+uniform mat3 uTransformMatrix;
+void main() {
+  mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
+  gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
+  vUV = aUV;
+}`;
+const FADE_FRAGMENT = `in vec2 vUV;
+uniform sampler2D uFrom;
+uniform sampler2D uTo;
+uniform float uMix;
+out vec4 finalColor;
+void main() {
+  float alpha = mix(texture(uFrom, vUV).a, texture(uTo, vUV).a, uMix);
+  finalColor = vec4(0.0, 0.0, 0.0, alpha);
+}`;
+
+/**
+ * The fog during a fade: the exact hard fog over everything fogged in all of the fade's states
+ * (player view), and over the map a blend of the masks before and after.
+ */
+function drawFadeFog(
+  revealedAll: readonly Polygon[],
+  from: FogMask,
+  to: FogMask,
+  opacity: number,
+): { readonly layer: Container; readonly setMix: (t: number) => void } {
+  const fromTexture = maskTexture(from, opacity);
+  const toTexture = maskTexture(to, opacity);
+  const uniforms = new UniformGroup({ uMix: { value: 0, type: "f32" } });
+  const width = to.width * to.texel;
+  const height = to.height * to.texel;
+  const mesh = new Mesh({
+    geometry: new MeshGeometry({
+      positions: new Float32Array([0, 0, width, 0, width, height, 0, height]),
+      uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
+      indices: new Uint32Array([0, 1, 2, 0, 2, 3]),
+    }),
+    // Its own texture (the target): destroying the mesh with its texture must never reach a
+    // shared default texture.
+    texture: toTexture,
+    shader: Shader.from({
+      gl: { vertex: FADE_VERTEX, fragment: FADE_FRAGMENT },
+      resources: {
+        uFrom: fromTexture.source,
+        uTo: toTexture.source,
+        fadeUniforms: uniforms,
+      },
+    }),
+  });
+  const layer = opacity < 1 ? new Container() : drawHardFog(revealedAll, 1);
+  layer.addChild(mesh);
+  // The target texture goes with the mesh; the other one is only the shader's.
+  layer.on("destroyed", () => {
+    fromTexture.destroy(true);
+  });
+  return {
+    layer,
+    setMix: (t) => {
+      uniforms.uniforms.uMix = t;
+    },
+  };
 }
 
 /**

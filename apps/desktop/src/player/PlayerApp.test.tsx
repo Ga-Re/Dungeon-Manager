@@ -58,16 +58,13 @@ const image = { width: 2000, height: 1000 } as unknown as MapImage;
 function renderPlayer(load = () => Promise.resolve(image)) {
   const maps = fakeMapService(load);
   const feed = fakeFeed();
+  const storage = memoryStorage();
   const result = render(
     <I18nextProvider i18n={createI18n()}>
-      <PlayerApp
-        feed={feed.feed}
-        maps={maps.service}
-        storage={memoryStorage()}
-      />
+      <PlayerApp feed={feed.feed} maps={maps.service} storage={storage} />
     </I18nextProvider>,
   );
-  return { maps, feed, ...result };
+  return { maps, feed, storage, ...result };
 }
 
 describe("PlayerApp", () => {
@@ -95,8 +92,10 @@ describe("PlayerApp", () => {
     const mapOrder =
       maps.view.setMap.mock.invocationCallOrder.at(-1) ?? -Infinity;
     // Soft edges are on by default: 0.25 of the 100 px cell.
+    // The first fog of a scene never fades.
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
+      fade: 0,
     });
     expect(fogOrder).toBeLessThan(mapOrder);
     expect(maps.service.loadImage).toHaveBeenCalledWith("library/maps/a.png");
@@ -127,7 +126,10 @@ describe("PlayerApp", () => {
 
     feed.send({ v: 1, scene: null, rotation: 0 });
     expect(maps.view.setMap).toHaveBeenLastCalledWith(null);
-    expect(maps.view.setFog).toHaveBeenLastCalledWith([], { softEdge: 0 });
+    expect(maps.view.setFog).toHaveBeenLastCalledWith([], {
+      softEdge: 0,
+      fade: 0,
+    });
   });
 
   test("closing a scene cancels a map that is still loading", async () => {
@@ -194,8 +196,10 @@ describe("PlayerApp", () => {
     });
     const video = maps.view.setVideo.mock.calls.at(-1)?.[0];
     // Soft edges are on by default: 0.25 of the 100 px cell.
+    // The first fog of a scene never fades.
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
+      fade: 0,
     });
     expect(video?.isConnected).toBe(true);
     expect(screen.getByRole("main").dataset["showing"]).toBe("map");
@@ -205,22 +209,62 @@ describe("PlayerApp", () => {
     expect(video?.isConnected).toBe(false);
   });
 
-  test("redraws the fog with hard edges when the DM switches soft edges off", async () => {
+  test("fades fog changes within a scene, never into a new scene", async () => {
     const { maps, feed } = renderPlayer();
     await waitFor(() => {
       expect(maps.view.setFog).toHaveBeenCalled();
     });
-    feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
-    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+    const scene = sceneWith("library/maps/a.png");
+    feed.send({ v: 1, scene, rotation: 0 });
+    const more = [
+      ...revealed,
+      {
+        ...revealed[0],
+        outer: [
+          [200, 0],
+          [300, 0],
+          [300, 100],
+        ] as [number, number][],
+        holes: [],
+      },
+    ];
+    feed.send({
+      v: 1,
+      scene: { ...scene, fog: { ground: { revealed: more, remembered: [] } } },
+      rotation: 0,
+    });
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(more, {
       softEdge: 25,
+      fade: 650,
     });
 
+    feed.send({ v: 1, scene: { ...scene, id: "other" }, rotation: 0 });
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      softEdge: 25,
+      fade: 0,
+    });
+  });
+
+  test("redraws the fog with hard edges when the DM switches soft edges off", async () => {
+    const { maps, feed, storage } = renderPlayer();
+    await waitFor(() => {
+      expect(maps.view.setFog).toHaveBeenCalled();
+    });
+    feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
+    // The first fog of a scene never fades.
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      softEdge: 25,
+      fade: 0,
+    });
+
+    storage.setItem("dm.fog.softEdges", "off");
     window.dispatchEvent(
       new StorageEvent("storage", { key: "dm.fog.softEdges", newValue: "off" }),
     );
 
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 0,
+      fade: 650,
     });
   });
 });
