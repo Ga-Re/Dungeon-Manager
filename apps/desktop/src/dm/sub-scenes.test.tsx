@@ -185,4 +185,55 @@ describe("sub-scenes (T-152)", () => {
     );
     expect(trashed).toHaveLength(3);
   });
+
+  test("“delete too” also takes the sub-scenes out of their sessions; cancelling preselects “keep” again", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/scenes/burg.json": sceneFile("burg", "Burg"),
+      "campaigns/mine/scenes/keller.json": sceneFile(
+        "keller",
+        "Keller",
+        "burg",
+      ),
+      "campaigns/mine/sessions/abend.json": JSON.stringify({
+        schemaVersion: 1,
+        id: "abend",
+        name: "Abend",
+        sceneIds: ["keller"],
+      }),
+    });
+    renderCampaign(library);
+    fireEvent.click(
+      (await screen.findAllByText("Burg", { selector: ".dm-tree-label" }))[0] ??
+        document.body,
+    );
+    await screen.findByText("Geöffnete Szene: Burg");
+
+    askToDelete();
+    fireEvent.click(
+      screen.getByRole("radio", {
+        name: "Unterszenen mit löschen (in den Papierkorb)",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    askToDelete();
+    expect(
+      screen.getByRole<HTMLInputElement>("radio", {
+        name: "Unterszenen behalten (eine Ebene nach oben)",
+      }).checked,
+    ).toBe(true);
+
+    fireEvent.click(
+      screen.getByRole("radio", {
+        name: "Unterszenen mit löschen (in den Papierkorb)",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ja, löschen" }));
+    await waitFor(() => {
+      expect(stored(library, "keller")).toBeNull();
+    });
+    const session = JSON.parse(
+      library.fs.files().get("campaigns/mine/sessions/abend.json") ?? "{}",
+    ) as { sceneIds: string[] };
+    expect(session.sceneIds).toEqual([]);
+  });
 });

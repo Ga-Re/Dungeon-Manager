@@ -36,22 +36,18 @@ export const campaignSchema = z.looseObject({
  * `parentSceneId`: optional and additive, so no version bump – older readers keep it (DM
  * decision, 2026-11-19). It is its own scene with its own map, fog and tokens.
  */
-export const sceneSchema = z
-  .looseObject({
-    schemaVersion: z.literal(SCENE_VERSION),
-    id: idSchema,
-    name: z.string().min(1),
-    map: mapSchema.nullable(),
-    tokens: z.array(tokenSchema),
-    fog: fogStateSchema,
-    initiative: initiativeStateSchema.nullable(),
-    notes: noteLinksSchema,
-    parentSceneId: idSchema.optional(),
-  })
-  .refine((scene) => scene.parentSceneId !== scene.id, {
-    message: "A scene cannot be its own parent",
-    path: ["parentSceneId"],
-  });
+export const sceneSchema = z.looseObject({
+  schemaVersion: z.literal(SCENE_VERSION),
+  id: idSchema,
+  name: z.string().min(1),
+  map: mapSchema.nullable(),
+  tokens: z.array(tokenSchema),
+  fog: fogStateSchema,
+  initiative: initiativeStateSchema.nullable(),
+  notes: noteLinksSchema,
+  // A scene naming itself (a loop) stays readable: the browser shows it at the top.
+  parentSceneId: idSchema.optional(),
+});
 
 /** A calendar day as `YYYY-MM-DD` that really exists (no 30 February). */
 const isoDateSchema = z

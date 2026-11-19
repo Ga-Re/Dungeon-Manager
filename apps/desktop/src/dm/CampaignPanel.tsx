@@ -66,7 +66,7 @@ import {
   type SessionEntry,
 } from "./campaign-data.js";
 import { buildCampaignTree } from "./campaign-tree.js";
-import { sceneHierarchy, scenePlaces } from "./scene-hierarchy.js";
+import { sceneHierarchy, scenePlaces, topScenes } from "./scene-hierarchy.js";
 import { describeLibraryError } from "./describe-error.js";
 import { noteTitle } from "./file-name.js";
 import { describeItem } from "./details.js";
@@ -646,23 +646,32 @@ export function CampaignPanel({
         return [addTo, newScene, newSubScene, ...noteCommands];
       const ids = sessionById(item.slot.sessionId)?.sceneIds ?? [];
       const index = ids.indexOf(item.sceneId);
+      // Shown under its parent (T-152), not at the session's top: its place in the session
+      // list changes nothing visible, so moving and removing do not apply here.
+      const nested = !topScenes(
+        hierarchy,
+        scenes ?? [],
+        sessions ?? [],
+        item.slot,
+      ).includes(item.sceneId);
       return [
         {
           id: "moveUp",
           label: t("campaign.moveUp"),
           icon: <ArrowUp />,
-          disabled: index <= 0,
+          disabled: nested || index <= 0,
         },
         {
           id: "moveDown",
           label: t("campaign.moveDown"),
           icon: <ArrowDown />,
-          disabled: index < 0 || index >= ids.length - 1,
+          disabled: nested || index < 0 || index >= ids.length - 1,
         },
         {
           id: "removeFromSession",
           label: t("campaign.removeFromSession"),
           icon: <ListMinus />,
+          disabled: nested || index < 0,
         },
         addTo,
         newScene,

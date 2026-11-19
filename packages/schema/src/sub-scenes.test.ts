@@ -18,12 +18,13 @@ describe("sub-scenes (T-152)", () => {
     expect(parsed.parentSceneId).toBe("krypta");
   });
 
-  it("rejects an unsafe id and a scene that is its own parent", () => {
+  it("rejects an unsafe id, but keeps a scene that names itself readable", () => {
     expect(
       sceneSchema.safeParse({ ...scene, parentSceneId: "../krypta" }).success,
     ).toBe(false);
+    // A loop (DM decision): the browser shows such a scene at the top level.
     expect(
       sceneSchema.safeParse({ ...scene, parentSceneId: "kammer" }).success,
-    ).toBe(false);
+    ).toBe(true);
   });
 });

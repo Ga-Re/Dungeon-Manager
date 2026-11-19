@@ -23,18 +23,23 @@ export function sceneHierarchy(scenes: readonly SceneEntry[]): SceneHierarchy {
     scenes.map((entry) => [entry.id, entry.scene?.parentSceneId ?? null]),
   );
   const parents = new Map<string, string | null>();
+  // In a loop: the way up comes back to the scene itself. A scene merely below a loop keeps
+  // its parent (which, being in the loop, shows at the top).
+  const inLoop = (id: string) => {
+    const seen = new Set<string>();
+    for (
+      let step = declared.get(id) ?? null;
+      step !== null && known.has(step) && !seen.has(step);
+      step = declared.get(step) ?? null
+    ) {
+      if (step === id) return true;
+      seen.add(step);
+    }
+    return false;
+  };
   for (const entry of scenes) {
     const parent = declared.get(entry.id) ?? null;
-    // Walk up: the parent must exist, and the way up must never come back to this scene.
-    const seen = new Set([entry.id]);
-    let step = parent;
-    let valid = parent !== null && known.has(parent);
-    while (valid && step !== null) {
-      if (seen.has(step)) valid = false;
-      seen.add(step);
-      const next = declared.get(step) ?? null;
-      step = next !== null && known.has(next) ? next : null;
-    }
+    const valid = parent !== null && known.has(parent) && !inLoop(entry.id);
     parents.set(entry.id, valid ? parent : null);
   }
   const children = new Map<string, string[]>();

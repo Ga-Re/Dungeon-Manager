@@ -220,8 +220,12 @@ export function OpenScenePanel({
         for (const child of subScenes.direct)
           await reparentScene(service.fs, slug, child, subScenes.parentSceneId);
       else
-        for (const each of [...subScenes.all].reverse())
+        for (const each of [...subScenes.all].reverse()) {
+          // Already gone (e.g. trashed by an earlier try that failed later): nothing to do.
+          if ((await loadScene(service.fs, slug, each)).status === "missing")
+            continue;
           await deleteScene(service.fs, slug, each);
+        }
       await deleteScene(service.fs, slug, scene.id);
       onDeleted(scene);
     });
@@ -267,6 +271,8 @@ export function OpenScenePanel({
               },
             ],
             onSelect: () => {
+              // Every time anew: keeping the sub-scenes is preselected (T-152).
+              setKeepSubScenes(true);
               setConfirmingDelete(true);
             },
             buttonRef: sceneMenuButton,
@@ -324,7 +330,7 @@ export function OpenScenePanel({
           >
             <p>{t("campaign.confirmDelete", { name: scene.name })}</p>
             {subScenes.all.length > 0 && (
-              <fieldset className="dm-delete-sub-scenes">
+              <fieldset>
                 <legend>
                   {t("campaign.subScenesOnDelete", {
                     count: subScenes.all.length,

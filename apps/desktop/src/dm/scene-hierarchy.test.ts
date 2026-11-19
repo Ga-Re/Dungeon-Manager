@@ -47,11 +47,28 @@ describe("scene hierarchy (T-152)", () => {
       scene("b", "a"),
       scene("c", "gone"),
       scene("d", "c"),
+      scene("self", "self"),
+      scene("below", "a"),
     ]);
     expect(tree.parentOf("a")).toBeNull();
     expect(tree.parentOf("b")).toBeNull();
     expect(tree.parentOf("c")).toBeNull();
     expect(tree.parentOf("d")).toBe("c");
+    expect(tree.parentOf("self")).toBeNull();
+    // Below a loop, not in it: it keeps its parent, which shows at the top.
+    expect(tree.parentOf("below")).toBe("a");
+    expect(tree.descendantsOf("a")).toEqual(["below"]);
+  });
+
+  it("nests a sub-scene under a listed grandparent when its parent is not listed", () => {
+    const tree = sceneHierarchy(scenes);
+    const sessions = [session("abend", ["gang", "burg"])];
+    expect(topScenes(tree, scenes, sessions, { sessionId: "abend" })).toEqual([
+      "burg",
+    ]);
+    expect(scenePlaces(tree, scenes, sessions, "gang")).toEqual([
+      { sessionId: "abend" },
+    ]);
   });
 
   it("shows sub-scenes under their parent wherever it shows", () => {
