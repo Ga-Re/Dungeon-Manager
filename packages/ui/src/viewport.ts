@@ -52,3 +52,56 @@ export function useClampedPoint(
   }, [ref, x, y]);
   return clamped;
 }
+
+/** Gap between an anchor and what opens under it, in CSS pixels. */
+const GAP = 4;
+
+/**
+ * Where something opening under `anchor` goes, as a fixed viewport point (T-131): under the
+ * anchor, lined up with its `align` edge, and kept inside the window. Fixed, so a container
+ * that clips or scrolls (the ribbon's panel) never cuts it off; it follows the anchor on
+ * scrolling and resizing. `undefined` while `active` is false.
+ */
+export function useAnchoredPoint(
+  anchor: RefObject<HTMLElement | null>,
+  element: RefObject<HTMLElement | null>,
+  align: "start" | "end",
+  active: boolean,
+): MenuPoint | undefined {
+  const [point, setPoint] = useState<MenuPoint | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (!active) {
+      setPoint(undefined);
+      return;
+    }
+    const place = () => {
+      // Without its anchor in the page (yet), the window's top left corner, never nowhere.
+      const from = anchor.current?.getBoundingClientRect() ?? {
+        left: 0,
+        right: 0,
+        bottom: 0,
+      };
+      const box = element.current?.getBoundingClientRect();
+      const size = { width: box?.width ?? 0, height: box?.height ?? 0 };
+      const at = {
+        x: align === "end" ? from.right - size.width : from.left,
+        y: from.bottom + GAP,
+      };
+      setPoint(
+        clampPoint(at, size, {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        }),
+      );
+    };
+    place();
+    window.addEventListener("resize", place);
+    // Capture: a scrolling container anywhere (the ribbon's panel) moves the anchor too.
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [anchor, element, align, active]);
+  return point;
+}

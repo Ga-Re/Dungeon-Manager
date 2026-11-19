@@ -415,7 +415,9 @@ export function MapView({
         className="map-view-canvas"
         role="application"
         aria-label={t("mapView.label", { name: label })}
-        aria-describedby="map-view-help"
+        aria-describedby={
+          tool === "pan" ? "map-view-help" : "map-view-help map-view-hint"
+        }
         tabIndex={0}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -442,18 +444,21 @@ export function MapView({
           />
         )}
       </div>
-      {/* What the keys and the drawing tool do; visible while a tool draws (T-131). */}
-      <p
-        id="map-view-help"
-        className={tool === "pan" ? "visually-hidden" : "map-view-hint"}
-      >
-        {tool === "pan" ? t("mapView.help") : t(`fog.shapeHints.${shape}`)}
+      {/* What the keys do, for screen readers; the drawing tool's instructions show above the
+          dock while it is active (T-131). */}
+      <p id="map-view-help" className="visually-hidden">
+        {t("mapView.help")}
       </p>
       <ShellPortal slot="notices">
+        {tool !== "pan" && (
+          <p id="map-view-hint" className="map-view-hint">
+            {t(`fog.shapeHints.${shape}`)}
+          </p>
+        )}
         {load === "loading" && <p>{t("mapView.loading")}</p>}
         {load === "error" && <p role="alert">{t("mapView.error")}</p>}
       </ShellPortal>
-      {/* Navigation of the DM's view in the dock (T-131): its keys are +, −, 0 and R. */}
+      {/* Navigation of the DM's view in the dock (T-131): its keys are −, 0, + and r. */}
       <ShellPortal slot="dock">
         <div className="dm-dock-group">
           <IconButton
@@ -488,7 +493,7 @@ export function MapView({
           <IconButton
             icon={<RotateCw />}
             label={t("mapView.rotate")}
-            aria-keyshortcuts="R"
+            aria-keyshortcuts="r"
             disabled={load !== "ready"}
             onClick={() => {
               change((current) => rotateBy(current, 90));

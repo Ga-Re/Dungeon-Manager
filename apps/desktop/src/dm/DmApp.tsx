@@ -1,5 +1,5 @@
 import { IconButton, RibbonGroup } from "@dungeon-manager/ui";
-import { MonitorUp, RefreshCw, RotateCw } from "lucide-react";
+import { MonitorUp, RefreshCw, RotateCwSquare } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -179,7 +179,7 @@ export function DmApp({
           {playerFeed && (
             <div className="dm-dock-group dm-dock-tv">
               <IconButton
-                icon={<RotateCw />}
+                icon={<RotateCwSquare />}
                 label={t("dm.rotateTv", { degrees: rotation })}
                 onClick={rotateTv}
               />

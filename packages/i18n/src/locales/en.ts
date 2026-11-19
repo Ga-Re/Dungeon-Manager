@@ -186,7 +186,6 @@ export const en: Messages = {
     zoomOut: "Zoom out",
   },
   fog: {
-    toolbar: "Fog",
     tool: "Tool",
     tools: {
       pan: "Move",

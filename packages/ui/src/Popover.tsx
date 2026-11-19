@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import type { MenuPoint } from "./ContextMenu.js";
-import { useClampedPoint } from "./viewport.js";
+import { useAnchoredPoint, useClampedPoint } from "./viewport.js";
 
 /** Props of {@link Popover}. */
 export interface PopoverProps {
@@ -38,8 +38,11 @@ export function Popover({
   children,
 }: PopoverProps) {
   const panel = useRef<HTMLDivElement>(null);
-  // Opened at a point (e.g. a low tree item's context menu): kept inside the window.
-  const point = useClampedPoint(panel, open ? at : undefined);
+  // Opened at a point (e.g. a low tree item's context menu) or under its anchor: fixed and
+  // kept inside the window, so no clipping container (the ribbon) cuts it off.
+  const atPoint = useClampedPoint(panel, open ? at : undefined);
+  const anchored = useAnchoredPoint(anchor, panel, align, open && !at);
+  const point = at ? (atPoint ?? at) : anchored;
   // The latest callback without re-subscribing the listeners on every render.
   const close = useRef(onClose);
   useEffect(() => {
@@ -86,14 +89,12 @@ export function Popover({
       id={id}
       role="group"
       aria-label={label}
-      className={[
-        "dm-popover",
-        at ? "dm-popover-at" : `dm-popover-${align}`,
-        className ?? "",
-      ]
+      className={["dm-popover", "dm-popover-at", className ?? ""]
         .filter(Boolean)
         .join(" ")}
-      style={at && { left: (point ?? at).x, top: (point ?? at).y }}
+      // Measured and placed before the first paint; visible all along, so a field in it can
+      // take focus when it mounts.
+      style={point ? { left: point.x, top: point.y } : { left: 0, top: 0 }}
     >
       {children}
     </div>

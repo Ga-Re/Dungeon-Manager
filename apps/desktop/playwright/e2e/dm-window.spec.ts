@@ -574,7 +574,7 @@ test("the dock zooms and fits the DM's view of the map (T-131)", async ({
   await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
-  const dock = page.getByRole("toolbar", { name: "Ansicht und TV" });
+  const dock = page.getByRole("group", { name: "Ansicht und TV" });
   const fit = dock.getByRole("button", { name: "Einpassen" });
   await expect(fit).toBeEnabled();
   // The camera the renderer got last (noted by the E2E harness).
@@ -596,4 +596,42 @@ test("the dock zooms and fits the DM's view of the map (T-131)", async ({
 
   await dock.getByRole("button", { name: "Drehen" }).click();
   await expect.poll(async () => (await camera())?.rotation).toBe(90);
+});
+
+test("menus and popovers of the ribbon are not cut off by its fixed height (T-131)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Szene" }).click();
+  /** Whether a click at the middle of `name` really reaches it (nothing covers or clips it). */
+  const reachable = (name: string) =>
+    page.getByRole("button", { name, exact: true }).evaluate((button) => {
+      const box = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2,
+      );
+      return hit !== null && button.contains(hit);
+    });
+
+  await page.getByRole("button", { name: "Szene", exact: true }).click();
+  const remove = page.getByRole("menuitem", { name: "Szene löschen …" });
+  await expect(remove).toBeVisible();
+  expect(
+    await remove.evaluate((item) => {
+      const box = item.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2,
+      );
+      return hit !== null && item.contains(hit);
+    }),
+  ).toBe(true);
+  await remove.click();
+  await expect(page.getByRole("button", { name: "Ja, löschen" })).toBeVisible();
+  expect(await reachable("Ja, löschen")).toBe(true);
+  expect(await reachable("Abbrechen")).toBe(true);
 });

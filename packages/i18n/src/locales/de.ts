@@ -187,7 +187,6 @@ export const de = {
     zoomOut: "Verkleinern",
   },
   fog: {
-    toolbar: "Nebel",
     tool: "Werkzeug",
     tools: {
       pan: "Verschieben",

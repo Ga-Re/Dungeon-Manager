@@ -547,7 +547,7 @@ export function DmShell({
                 <div ref={slotRefs.notices} className="dm-notices" />
                 <div
                   ref={slotRefs.dock}
-                  role="toolbar"
+                  role="group"
                   aria-label={t("shell.dock")}
                   className="dm-dock"
                 />

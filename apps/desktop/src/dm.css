@@ -96,22 +96,11 @@ label {
 }
 
 /* Bottom-centre dock over the map (zoom/rotation; reworked in T-131). */
-/* The drawing tool's instructions, over the map's top centre while a tool is active. */
-.map-view-hint {
-  position: absolute;
-  top: var(--dm-space-2);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: var(--dm-z-hud);
-  max-width: min(36rem, calc(100% - 2 * var(--dm-space-3)));
-  margin: 0;
-  padding: var(--dm-space-1) var(--dm-space-3);
+/* The drawing tool's instructions, above the dock while a tool is active (T-131). */
+.dm-notices > .map-view-hint {
+  max-width: 36rem;
   font-size: var(--dm-font-size-xs);
   color: var(--dm-text-secondary);
-  background: var(--dm-surface-panel);
-  border: 1px solid var(--dm-border-subtle);
-  border-radius: var(--dm-radius-sm);
-  pointer-events: none;
 }
 
 /* Zone layout (ADR-0011, ADR-0014): title bar, a full-height data panel column, the ribbon
@@ -386,8 +375,7 @@ label {
   color: var(--dm-text-muted);
 }
 
-.dm-ribbon form,
-.fog-toolbar {
+.dm-ribbon form {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -511,7 +499,8 @@ label {
   pointer-events: auto;
 }
 
-.dm-dock:empty {
+/* Nothing to use or read yet (no scene, no player view, no status): no empty box over the map. */
+.dm-dock:not(:has(button)):not(:has(.dm-dock-status:not(:empty))) {
   display: none;
 }
 
@@ -560,11 +549,6 @@ label {
   margin-left: auto;
   font-size: var(--dm-font-size-sm);
   color: var(--dm-text-primary);
-}
-
-.dm-panel-head-menu .dm-menu-list {
-  left: auto;
-  right: 0;
 }
 
 /* Text and lists in the transparent browser body sit on the same chips as tree rows. */
@@ -1259,8 +1243,4 @@ button.dm-welcome-campaign:hover {
   padding: var(--dm-space-1) var(--dm-space-2);
   font-size: var(--dm-font-size-sm);
   color: var(--dm-text-on-chrome);
-}
-
-.dm-app-menu .dm-menu-list {
-  left: 0;
 }
