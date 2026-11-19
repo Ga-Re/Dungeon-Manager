@@ -638,11 +638,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-164 Menu: name of the open menu and the current choice
 
-- **Status:** todo · **Depends on:** T-156 · **Refs:** ADR-0011, `packages/ui/src/Menu.tsx`
+- **Status:** done · **Depends on:** T-156 · **Refs:** ADR-0011, `packages/ui/src/Menu.tsx`
 - From the T-156 review: the workspace menu is announced with the button's text ("Game Mode") instead of "Arbeitsbereich", and the current workspace is not marked in it.
 - **Acceptance criteria**
-  - [ ] `Menu` takes a separate accessible name for the open menu and checkable items (`menuitemradio` with `aria-checked`, a visible check)
-  - [ ] The workspace selector uses both; component tests
+  - [x] `Menu` takes a separate accessible name for the open menu and checkable items (`menuitemradio` with `aria-checked`, a visible check)
+  - [x] The workspace selector uses both; component tests
 
 ### T-136a Soft fog edges
 

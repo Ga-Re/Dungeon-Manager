@@ -443,6 +443,27 @@
   background: var(--dm-accent-soft);
 }
 
+/* The current choice of a set (T-164): a check mark at the end; the others keep its room. */
+.dm-menu-item-check {
+  display: inline-flex;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-left: auto;
+  padding-left: var(--dm-space-3);
+  box-sizing: content-box;
+  color: var(--dm-accent);
+}
+
+.dm-menu-item-check svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .dm-menu-item[aria-disabled="true"] {
   cursor: default;
   opacity: 0.5;
