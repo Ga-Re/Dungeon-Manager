@@ -9,6 +9,8 @@ export interface FloatingPanelProps {
   count?: number | undefined;
   /** Controls at the right end of the header. */
   headerActions?: ReactNode;
+  /** Small, tool-window header (scene browser) instead of the heading-style one. */
+  compact?: boolean | undefined;
   className?: string | undefined;
   children: ReactNode;
 }
@@ -18,6 +20,7 @@ export function FloatingPanel({
   title,
   count,
   headerActions,
+  compact = false,
   className,
   children,
 }: FloatingPanelProps) {
@@ -25,7 +28,13 @@ export function FloatingPanel({
   const headingId = useId();
   return (
     <section
-      className={["dm-panel", className ?? ""].filter(Boolean).join(" ")}
+      className={[
+        "dm-panel",
+        compact ? "dm-panel-compact" : "",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-labelledby={headingId}
     >
       <header className="dm-panel-head">

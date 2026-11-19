@@ -20,13 +20,6 @@ label {
   margin-bottom: var(--dm-space-4);
 }
 
-select,
-button {
-  font: inherit;
-  padding: var(--dm-space-2) var(--dm-space-3);
-  max-width: 24rem;
-}
-
 .map-view {
   position: absolute;
   inset: 0;
@@ -240,20 +233,6 @@ button {
   position: relative;
 }
 
-.dm-popover {
-  position: absolute;
-  right: 0;
-  top: calc(100% + var(--dm-space-1));
-  z-index: var(--dm-z-popover);
-  min-width: 16rem;
-  padding: var(--dm-space-3);
-  background: var(--dm-surface-panel);
-  color: var(--dm-text-primary);
-  border: 1px solid var(--dm-border-strong);
-  border-radius: var(--dm-radius-lg);
-  box-shadow: var(--dm-shadow-panel);
-}
-
 .dm-settings-group {
   display: grid;
   gap: var(--dm-space-2);
@@ -292,13 +271,13 @@ button {
 }
 
 .dm-ribbon-tab {
-  max-width: none;
   padding: var(--dm-space-2) var(--dm-space-3);
   font-size: var(--dm-font-size-sm);
   background: none;
   color: var(--dm-text-secondary);
   border: 0;
   border-bottom: 2px solid transparent;
+  border-radius: 0;
   cursor: pointer;
 }
 
@@ -316,7 +295,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dm-space-3) var(--dm-space-4);
+  gap: var(--dm-space-2) 0;
   min-height: 2.5rem;
 }
 
@@ -330,7 +309,6 @@ button {
   color: var(--dm-text-muted);
 }
 
-.dm-ribbon-group,
 .dm-ribbon form,
 .fog-toolbar {
   display: flex;
@@ -341,6 +319,44 @@ button {
 
 .dm-ribbon-group p {
   margin: 0;
+}
+
+/* Popovers of a ribbon group open below the whole group. */
+.dm-ribbon .dm-ribbon-group {
+  position: relative;
+}
+
+.dm-ribbon-meta {
+  max-width: 12rem;
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+}
+
+.dm-ribbon-meta:empty {
+  display: none;
+}
+
+.dm-ribbon .dm-ribbon-field {
+  display: grid;
+  gap: var(--dm-space-1);
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+}
+
+.dm-popover p {
+  margin: 0 0 var(--dm-space-2);
+}
+
+.dm-popover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dm-space-2);
+}
+
+.dm-popover fieldset {
+  display: grid;
+  gap: var(--dm-space-2);
+  max-width: 24rem;
 }
 
 .dm-ribbon fieldset {

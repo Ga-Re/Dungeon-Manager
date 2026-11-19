@@ -1,4 +1,6 @@
-import { useContext, useEffect, useState, type SyntheticEvent } from "react";
+import { IconButton, RibbonGroup } from "@dungeon-manager/ui";
+import { MonitorUp, RefreshCw, RotateCw } from "lucide-react";
+import { useContext, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DisplayError,
@@ -78,8 +80,7 @@ export function DmApp({
   const displayName = (display: Display, index: number) =>
     display.name ?? t("dm.unnamedDisplay", { number: index + 1 });
 
-  const openPlayerView = async (event: SyntheticEvent) => {
-    event.preventDefault();
+  const openPlayerView = async () => {
     if (state.status !== "ready" || opening) return;
     const index = state.displays.findIndex(
       (display) => display.id === selectedId,
@@ -108,7 +109,22 @@ export function DmApp({
         dataPanel={<LibraryPanel service={libraryService} newId={newId} />}
       >
         <ShellPortal slot="ribbonDisplay">
-          <div className="dm-ribbon-group">
+          <RibbonGroup
+            caption={t("shell.groups.playerView")}
+            menu={{
+              items: [
+                {
+                  id: "refresh",
+                  label: t("dm.refreshDisplays"),
+                  icon: <RefreshCw />,
+                  disabled: state.status === "loading",
+                },
+              ],
+              onSelect: () => {
+                setSearchCount((count) => count + 1);
+              },
+            }}
+          >
             {state.status === "loading" && <p>{t("dm.loadingDisplays")}</p>}
             {state.status === "error" && (
               <p role="alert">{describeError(state.error)}</p>
@@ -117,8 +133,8 @@ export function DmApp({
               <p>{t("dm.noDisplays")}</p>
             )}
             {state.status === "ready" && state.displays.length > 0 && (
-              <form onSubmit={(event) => void openPlayerView(event)}>
-                <label>
+              <>
+                <label className="dm-ribbon-field">
                   {t("dm.displayLabel")}
                   <select
                     value={selectedId}
@@ -137,28 +153,29 @@ export function DmApp({
                     ))}
                   </select>
                 </label>
-                <button type="submit" id="open-player-view" disabled={opening}>
-                  {t("dm.openPlayerView")}
-                </button>
-              </form>
+                <IconButton
+                  id="open-player-view"
+                  showLabel
+                  icon={<MonitorUp />}
+                  label={t("dm.openPlayerView")}
+                  disabled={opening}
+                  onClick={() => void openPlayerView()}
+                />
+              </>
             )}
             {playerFeed && (
-              <button type="button" onClick={rotateTv}>
-                {t("dm.rotateTv", { degrees: rotation })}
-              </button>
+              <IconButton
+                showLabel
+                icon={<RotateCw />}
+                label={t("dm.rotateTv", { degrees: rotation })}
+                onClick={rotateTv}
+              />
             )}
-            <button
-              type="button"
-              disabled={state.status === "loading"}
-              onClick={() => {
-                setSearchCount((count) => count + 1);
-              }}
-            >
-              {t("dm.refreshDisplays")}
-            </button>
-            {/* Always rendered: screen readers only announce changes to an existing live region. */}
-            <p role="status">{notice}</p>
-          </div>
+          </RibbonGroup>
+          {/* Always rendered: screen readers only announce changes to an existing live region. */}
+          <p role="status" className="dm-ribbon-meta">
+            {notice}
+          </p>
         </ShellPortal>
       </DmShell>
     </main>

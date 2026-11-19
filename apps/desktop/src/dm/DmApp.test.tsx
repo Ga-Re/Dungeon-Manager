@@ -139,8 +139,9 @@ describe("DmApp", () => {
     await openButton();
     service.listDisplays.mockResolvedValueOnce([laptop, tv]);
 
+    fireEvent.click(screen.getByRole("button", { name: "Spieleransicht" }));
     fireEvent.click(
-      screen.getByRole("button", { name: "Displays neu suchen" }),
+      screen.getByRole("menuitem", { name: "Displays neu suchen" }),
     );
 
     expect(

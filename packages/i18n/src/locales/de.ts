@@ -69,6 +69,7 @@ export const de = {
     cancel: "Abbrechen",
     sceneDeleted: "Szene „{{name}}“ ist im Papierkorb der Kampagne.",
     mapChange: {
+      title: "Karte ändern",
       question:
         "Neue Karte: {{file}}. Was soll mit der bisherigen Einrichtung passieren? Nicht Angehaktes bleibt erhalten.",
       fog: "Nebel zurücksetzen (alles wieder verdeckt)",
@@ -124,6 +125,10 @@ export const de = {
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",
   },
   shell: {
+    groups: {
+      scene: "Szene",
+      playerView: "Spieleransicht",
+    },
     dataPanel: "Datenpanel",
     toggleDataPanel: "Datenpanel ein- oder ausblenden (⌘/Strg+B)",
     modes: "Arbeitsbereich",

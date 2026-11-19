@@ -47,7 +47,7 @@ export function SceneBrowser({
     meta: t("shell.browser.fogAreas", { count: revealed.length }),
   };
   return (
-    <FloatingPanel title={t("shell.browser.title")}>
+    <FloatingPanel title={t("shell.browser.title")} compact>
       <TreeList
         label={t("shell.browser.title")}
         nodes={[{ id: "scene", label: scene.name, children: [map, fog] }]}

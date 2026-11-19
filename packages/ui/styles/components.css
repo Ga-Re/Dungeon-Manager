@@ -69,6 +69,18 @@
   height: 20px;
 }
 
+.dm-icon-button-label {
+  max-width: 6rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Ribbon tools get large icons, as in CAD ribbons. */
+.dm-ribbon-group-tools .dm-icon-button-labelled .dm-icon-button-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
 /* Explicit text colour: the button may sit on the dark title bar, the hover surface is light. */
 .dm-icon-button:hover {
   background: var(--dm-surface-raised);
@@ -261,4 +273,237 @@
 .dm-tree-meta {
   font-size: var(--dm-font-size-xs);
   color: var(--dm-text-secondary);
+}
+
+/* Form controls – the base look of plain buttons, fields and selects inside `.dm-ui`.
+   :where() keeps the specificity at zero, so every component class overrides it. */
+:where(.dm-ui) :where(button) {
+  font: inherit;
+  font-size: var(--dm-font-size-sm);
+  padding: var(--dm-space-1) var(--dm-space-3);
+  border: 1px solid var(--dm-border-strong);
+  border-radius: var(--dm-radius-md);
+  background: var(--dm-surface-raised);
+  color: var(--dm-text-primary);
+  cursor: pointer;
+}
+
+:where(.dm-ui) :where(button:hover:not(:disabled)) {
+  background: var(--dm-accent-soft);
+}
+
+:where(.dm-ui) :where(button:disabled) {
+  cursor: default;
+  opacity: 0.5;
+}
+
+:where(.dm-ui)
+  :where(input:not([type]), input[type="text"], input[type="search"], select) {
+  font: inherit;
+  font-size: var(--dm-font-size-sm);
+  padding: var(--dm-space-1) var(--dm-space-2);
+  border: 1px solid var(--dm-border-strong);
+  border-radius: var(--dm-radius-md);
+  background-color: var(--dm-surface-sunken);
+  color: var(--dm-text-primary);
+}
+
+/* A drawn chevron instead of the platform's select arrow. */
+:where(.dm-ui) :where(select) {
+  appearance: none;
+  padding-right: var(--dm-space-6);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--dm-text-secondary) 50%),
+    linear-gradient(135deg, var(--dm-text-secondary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 55%,
+    calc(100% - 9px) 55%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+:where(.dm-ui)
+  :where(input[type="radio"], input[type="checkbox"], input[type="range"]) {
+  accent-color: var(--dm-accent);
+}
+
+:where(.dm-ui)
+  :where(button:focus-visible, input:focus-visible, select:focus-visible) {
+  outline: var(--dm-focus-width) solid var(--dm-focus);
+  outline-offset: 1px;
+}
+
+:where(.dm-ui) :where(fieldset) {
+  margin: 0;
+  padding: var(--dm-space-1) var(--dm-space-2) var(--dm-space-2);
+  border: 1px solid var(--dm-border-subtle);
+  border-radius: var(--dm-radius-md);
+}
+
+:where(.dm-ui) :where(legend) {
+  padding: 0 var(--dm-space-1);
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+}
+
+/* Popover */
+.dm-popover {
+  position: absolute;
+  top: calc(100% + var(--dm-space-1));
+  z-index: var(--dm-z-popover);
+  min-width: 16rem;
+  padding: var(--dm-space-3);
+  background: var(--dm-surface-panel);
+  color: var(--dm-text-primary);
+  border: 1px solid var(--dm-border-strong);
+  border-radius: var(--dm-radius-lg);
+  box-shadow: var(--dm-shadow-panel);
+}
+
+.dm-popover-start {
+  left: 0;
+}
+
+.dm-popover-end {
+  right: 0;
+}
+
+/* Menu */
+.dm-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.dm-menu-button {
+  font: inherit;
+  font-size: var(--dm-font-size-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dm-space-1);
+  padding: 0 var(--dm-space-1);
+  border: 1px solid transparent;
+  border-radius: var(--dm-radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dm-menu-button:hover,
+.dm-menu-button[aria-expanded="true"] {
+  background: var(--dm-surface-raised);
+  border-color: var(--dm-border-subtle);
+  color: var(--dm-text-primary);
+}
+
+.dm-menu-button:focus-visible,
+.dm-menu-item:focus-visible {
+  outline: var(--dm-focus-width) solid var(--dm-focus);
+  outline-offset: 1px;
+}
+
+.dm-menu-chevron {
+  width: 8px;
+  height: 8px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dm-menu-list {
+  position: absolute;
+  top: calc(100% + var(--dm-space-1));
+  left: 0;
+  z-index: var(--dm-z-popover);
+  display: grid;
+  min-width: 12rem;
+  padding: var(--dm-space-1);
+  background: var(--dm-surface-panel);
+  color: var(--dm-text-primary);
+  border: 1px solid var(--dm-border-strong);
+  border-radius: var(--dm-radius-md);
+  box-shadow: var(--dm-shadow-panel);
+}
+
+.dm-menu-item {
+  font: inherit;
+  font-size: var(--dm-font-size-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2);
+  padding: var(--dm-space-1) var(--dm-space-2);
+  border: 0;
+  border-radius: var(--dm-radius-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dm-menu-item:hover,
+.dm-menu-item:focus {
+  background: var(--dm-accent-soft);
+}
+
+.dm-menu-item[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.dm-menu-item-icon {
+  display: inline-flex;
+  color: var(--dm-text-secondary);
+}
+
+.dm-menu-item-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* RibbonGroup – tools in a row, caption centred below, thin divider to the next group. */
+.dm-ribbon-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dm-space-1);
+  padding: 0 var(--dm-space-3);
+  border-right: 1px solid var(--dm-border-subtle);
+}
+
+.dm-ribbon-group:last-of-type {
+  border-right: 0;
+}
+
+.dm-ribbon-group-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2);
+  min-height: 3rem;
+}
+
+.dm-ribbon-group-caption {
+  font-size: var(--dm-font-size-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dm-text-secondary);
+}
+
+/* FloatingPanel, compact header (scene browser). */
+.dm-panel-compact .dm-panel-head {
+  padding: var(--dm-space-1) var(--dm-space-2);
+  background: var(--dm-surface-sunken);
+  border-radius: var(--dm-radius-lg) var(--dm-radius-lg) 0 0;
+}
+
+.dm-panel-compact .dm-panel-title {
+  font-family: var(--dm-font-ui);
+  font-size: var(--dm-font-size-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dm-text-secondary);
+}
+
+.dm-panel-compact .dm-panel-body {
+  padding: var(--dm-space-1) var(--dm-space-2) var(--dm-space-2);
 }
