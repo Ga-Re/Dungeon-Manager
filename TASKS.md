@@ -632,6 +632,17 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Selector keyboard accessible (Menu), workspace switch changes the tabs; last workspace remembered per device
   - [x] Component + E2E tests, screenshot
 - **Notes:** What each workspace contains (tabs, tools, data panel content) is planned with the DM per workspace before its content task.
+- **Notes from the T-156 review, for the first workspace content task:**
+  - The active fog tool stays active in other workspaces, while its toolbar is hidden. Dragging on the map in Map Forge would still reveal fog on the TV, as switching from the Nebel tab to Anzeige does today. Decide whether leaving Game Mode drops back to panning.
+  - Cmd/Ctrl+Z undoes the scene's (fog) history in every workspace; Map Forge and Asset Studio will need their own undo scope.
+
+### T-164 Menu: name of the open menu and the current choice
+
+- **Status:** todo · **Depends on:** T-156 · **Refs:** ADR-0011, `packages/ui/src/Menu.tsx`
+- From the T-156 review: the workspace menu is announced with the button's text ("Game Mode") instead of "Arbeitsbereich", and the current workspace is not marked in it.
+- **Acceptance criteria**
+  - [ ] `Menu` takes a separate accessible name for the open menu and checkable items (`menuitemradio` with `aria-checked`, a visible check)
+  - [ ] The workspace selector uses both; component tests
 
 ### T-136 Soft fog fades and edges
 

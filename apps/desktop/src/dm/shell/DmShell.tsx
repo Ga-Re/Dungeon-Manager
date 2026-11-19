@@ -25,6 +25,7 @@ import { THEME_SETTINGS, useThemeSetting } from "./theme.js";
 import { UI_SCALES, useUiScale } from "./ui-scale.js";
 import {
   WORKSPACES,
+  isWorkspace,
   readWorkspace,
   saveWorkspace,
   type Workspace,
@@ -85,10 +86,9 @@ export function DmShell({
   const [workspace, setWorkspace] = useState(() => readWorkspace(storage));
   const inGame = workspace === "gameMode";
   const chooseWorkspace = (id: string) => {
-    const next = WORKSPACES.find((each) => each === id);
-    if (!next) return;
-    setWorkspace(next);
-    saveWorkspace(storage, next);
+    if (!isWorkspace(id)) return;
+    setWorkspace(id);
+    saveWorkspace(storage, id);
   };
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useThemeSetting(storage, root);

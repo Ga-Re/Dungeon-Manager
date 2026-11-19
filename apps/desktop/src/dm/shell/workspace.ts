@@ -15,7 +15,8 @@ const STORAGE_KEY = "dm.workspace";
 /** Where the first start opens: running a session needs today's tools. */
 const DEFAULT_WORKSPACE: Workspace = "gameMode";
 
-function isWorkspace(value: unknown): value is Workspace {
+/** Whether `value` names one of the workspaces (e.g. a menu item's id). */
+export function isWorkspace(value: unknown): value is Workspace {
   return WORKSPACES.includes(value as Workspace);
 }
 
