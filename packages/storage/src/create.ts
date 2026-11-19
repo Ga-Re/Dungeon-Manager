@@ -1,13 +1,26 @@
 import {
   CAMPAIGN_VERSION,
   SCENE_VERSION,
+  SESSION_VERSION,
   type AssetRef,
   type MapSpec,
   type Scene,
+  type Session,
 } from "@dungeon-manager/schema";
-import { saveCampaign, saveScene } from "./documents.js";
+import {
+  listSessions,
+  loadSession,
+  saveCampaign,
+  saveScene,
+  saveSession,
+} from "./documents.js";
 import type { FileSystem } from "./fs.js";
-import { isValidFileId, isValidSlug, sceneFile } from "./layout.js";
+import {
+  isValidFileId,
+  isValidSlug,
+  sceneFile,
+  sessionFile,
+} from "./layout.js";
 
 const TRANSLITERATIONS: Readonly<Record<string, string>> = {
   ä: "ae",
@@ -187,7 +200,14 @@ export function newMap(
   };
 }
 
-/** Moves a scene file into the campaign's trash. @returns its path there. @throws on unsafe input */
+/**
+ * Moves a scene file into the campaign's trash and takes it out of every session that lists it
+ * (sessions without it are not rewritten). Updating the sessions is best effort: the scene is
+ * already gone, so a session that cannot be read, listed or written keeps the id and shows it
+ * as missing. A session whose file name differs from its `id` (renamed by hand) is skipped, so
+ * it never overwrites another session's file (ARCHITECTURE §6.3).
+ * @returns its path in the trash. @throws on unsafe input or when the trash move fails
+ */
 export async function deleteScene(
   fs: FileSystem,
   slug: string,
@@ -195,5 +215,60 @@ export async function deleteScene(
 ): Promise<string> {
   if (!isValidSlug(slug)) throw new Error(`Invalid campaign slug: ${slug}`);
   if (!isValidFileId(sceneId)) throw new Error(`Invalid scene id: ${sceneId}`);
-  return fs.moveToTrash(sceneFile(slug, sceneId));
+  const trashed = await fs.moveToTrash(sceneFile(slug, sceneId));
+  const sessionIds = await listSessions(fs, slug).then(
+    (listed) => listed.sessionIds,
+    () => [],
+  );
+  for (const id of sessionIds) {
+    const loaded = await loadSession(fs, slug, id);
+    if (
+      loaded.status !== "ok" ||
+      loaded.value.id !== id ||
+      !loaded.value.sceneIds.includes(sceneId)
+    )
+      continue;
+    await saveSession(fs, slug, {
+      ...loaded.value,
+      sceneIds: loaded.value.sceneIds.filter((each) => each !== sceneId),
+    }).catch(() => undefined);
+  }
+  return trashed;
+}
+
+/**
+ * Creates and saves an empty session (T-160). @returns the saved session.
+ * @throws on an empty name or an invalid date
+ */
+export async function createSession(
+  fs: FileSystem,
+  slug: string,
+  session: {
+    readonly id: string;
+    readonly name: string;
+    readonly date?: string;
+  },
+): Promise<Session> {
+  if (session.name.trim() === "") throw new Error("A session needs a name");
+  const created: Session = {
+    schemaVersion: SESSION_VERSION,
+    id: session.id,
+    name: session.name.trim(),
+    ...(session.date === undefined ? {} : { date: session.date }),
+    sceneIds: [],
+  };
+  await saveSession(fs, slug, created);
+  return created;
+}
+
+/** Moves a session file into the campaign's trash; its scenes stay. @returns its path there */
+export async function deleteSession(
+  fs: FileSystem,
+  slug: string,
+  sessionId: string,
+): Promise<string> {
+  if (!isValidSlug(slug)) throw new Error(`Invalid campaign slug: ${slug}`);
+  if (!isValidFileId(sessionId))
+    throw new Error(`Invalid session id: ${sessionId}`);
+  return fs.moveToTrash(sessionFile(slug, sessionId));
 }

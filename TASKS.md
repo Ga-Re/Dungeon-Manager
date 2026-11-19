@@ -540,20 +540,27 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Details for a scene and a map (read-only facts first; editing moves in as features need it)
   - [x] Collapse, drag, keyboard; component + E2E tests, screenshot
 
-### T-160 Sessions: campaign › sessions › scenes
+### T-160a Session files: schema and storage
 
-- **Status:** todo · **Depends on:** T-159 · **Refs:** SPEC 13, ARCHITECTURE §6, ADR-0006
+- **Status:** done · **Depends on:** T-159 · **Refs:** ARCHITECTURE §6.2, ADR-0006
+- Schema approved by the DM (2026-11-19): `campaigns/<slug>/sessions/<id>.json` with `schemaVersion`, `id`, `name`, optional `date` (YYYY-MM-DD), ordered `sceneIds` (a scene at most once per session, in any number of sessions); unknown fields survive. Scene and campaign files unchanged, no migration. Deleting a session trashes only its file; deleting a scene takes it out of every session that lists it.
+- **Acceptance criteria**
+  - [x] Session schema (zod) with tests; storage load/save/list (conflict copies as for scenes), create, delete to the trash
+  - [x] Deleting a scene updates the sessions that list it, and only those
+
+### T-160b Sessions in the browser
+
+- **Status:** todo · **Depends on:** T-160a · **Refs:** SPEC 13, ARCHITECTURE §6, ADR-0006
 - DM request (2026-11-19): a campaign is planned in several sessions, each with several scenes; the browser shows Kampagne › Sessions › Szenen, with handouts, puzzles etc. on campaign level.
 - DM decisions (2026-11-19): each session is its own file `campaigns/<slug>/sessions/<id>.json` (name, date, ordered scene list); a scene may appear in several sessions (e.g. not finished last time); scenes in no session are listed under "Ohne Session"; scene files stay unchanged. Handouts & puzzles hang on the campaign (a scene may reference them later, T-137/T-139).
 - **Acceptance criteria**
-  - [ ] Session schema (zod) with tests, storage read/write/list, trash like scenes; no migration of existing files needed
   - [ ] Browser: Sessions group with sessions and their scenes in order, "Ohne Session"; create/rename/delete a session, add/remove/reorder scenes (context menu + keyboard)
   - [ ] Component + E2E tests, screenshot
-- **Notes:** New file format: propose the schema to the DM before implementing. Relation to sub-scenes (T-152) is settled in that proposal.
+- **Notes:** Missing scenes in a session show as "(fehlt)"; an invalid session file (e.g. a duplicate scene after a hand edit) shows an actionable "kann nicht gelesen werden" entry; new sessions get fresh ids (`createSession` overwrites like `createScene`). Sub-scenes (T-152) hang under their scene, not under the session (DM-approved proposal, 2026-11-19).
 
 ### T-161 Campaign, session and scene notes as Markdown
 
-- **Status:** todo · **Depends on:** T-160 · **Refs:** ADR-0013, ADR-0006, ADR-0005, T-150
+- **Status:** todo · **Depends on:** T-160b · **Refs:** ADR-0013, ADR-0006, ADR-0005, T-150
 - DM request (2026-11-19): campaign notes, session notes and scene notes, linked to `.md` files so they can be filled remotely (Obsidian or similar; Notion only via files in the synced folder – no cloud APIs, ADR-0005/0013).
 - DM decision (2026-11-19): fixed places plus free links – `notes/campaign.md`, `notes/sessions/<id>.md`, `notes/scenes/<id>.md` (created by the app on demand), and any other `.md` in the vault can be linked as well.
 - **Acceptance criteria**
