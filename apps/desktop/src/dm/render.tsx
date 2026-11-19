@@ -15,6 +15,7 @@ import { DmApp } from "./DmApp.js";
 import { MapViewContext } from "./MapView.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 import { applyTheme, deviceStorage, readThemeSetting } from "./shell/theme.js";
+import { applyUiScale, readUiScale } from "./shell/ui-scale.js";
 
 /** Platform services the DM window runs on. */
 export interface DmWindowServices {
@@ -33,6 +34,7 @@ export function renderDmWindow(services: DmWindowServices): void {
   document.title = i18n.t("app.title");
   // Before React renders, so the first frame of the UI already has the DM's theme.
   applyTheme(readThemeSetting(deviceStorage()), documentRoot);
+  applyUiScale(readUiScale(deviceStorage()), documentRoot);
   const root = document.getElementById("root");
   if (!root) throw new Error("#root is missing");
 

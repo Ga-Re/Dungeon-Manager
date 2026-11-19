@@ -201,4 +201,12 @@ describe("DmShell", () => {
     // Other settings stay.
     expect(storage.getItem("dm.theme")).toBe("light");
   });
+
+  it("sets the interface size from the settings", () => {
+    const { storage, root } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    fireEvent.click(screen.getByRole("radio", { name: "125 %" }));
+    expect(root.style.getPropertyValue("--dm-ui-scale")).toBe("1.25");
+    expect(storage.getItem("dm.uiScale")).toBe("1.25");
+  });
 });

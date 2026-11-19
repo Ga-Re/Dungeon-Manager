@@ -139,12 +139,15 @@ export const HUD = {
 
 /** Values shared by both themes: spacing (4/8 px grid), type, radii, layering, map overlays. */
 const SHARED: Record<string, string> = {
-  "space-1": "4px",
-  "space-2": "8px",
-  "space-3": "12px",
-  "space-4": "16px",
-  "space-5": "24px",
-  "space-6": "32px",
+  // Sizes scale with the DM window's base size (T-162): rem, set from `ui-base-size` × the
+  // DM's interface size. Hairlines and radii stay in px.
+  "ui-base-size": "14px",
+  "space-1": "0.25rem",
+  "space-2": "0.5rem",
+  "space-3": "0.75rem",
+  "space-4": "1rem",
+  "space-5": "1.5rem",
+  "space-6": "2rem",
   // System fonts for now (DM decision 2026-11-18); real faces later by changing these only.
   // One family for labels and headings (ADR-0015); captions are small uppercase.
   "font-ui": 'system-ui, -apple-system, "Segoe UI", sans-serif',

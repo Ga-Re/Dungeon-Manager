@@ -164,6 +164,10 @@ export const de = {
     placeholder: "Hier kannst du bald dem Spieltisch beitreten.",
   },
   shell: {
+    uiScale: {
+      label: "Größe der Oberfläche",
+      percent: "{{percent}} %",
+    },
     layout: {
       label: "Werkzeugfenster",
       reset: "Positionen zurücksetzen",

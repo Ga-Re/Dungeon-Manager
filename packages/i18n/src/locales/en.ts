@@ -161,6 +161,10 @@ export const en: Messages = {
     placeholder: "Soon you can join the game table here.",
   },
   shell: {
+    uiScale: {
+      label: "Interface size",
+      percent: "{{percent}}%",
+    },
     layout: {
       label: "Tool windows",
       reset: "Reset positions",

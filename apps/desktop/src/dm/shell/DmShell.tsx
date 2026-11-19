@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { ShellSlotsContext, type ShellSlot } from "./slots.js";
 import { HudLayoutContext, useHudLayoutStore } from "./hud-layout.js";
 import { THEME_SETTINGS, useThemeSetting } from "./theme.js";
+import { UI_SCALES, useUiScale } from "./ui-scale.js";
 
 const MODES = ["scene", "fog", "display"] as const;
 type Mode = (typeof MODES)[number];
@@ -62,6 +63,7 @@ export function DmShell({
   const [mode, setMode] = useState<Mode>("display");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useThemeSetting(storage, root);
+  const [uiScale, setUiScale] = useUiScale(storage, root);
   const hudLayout = useHudLayoutStore(storage);
   const [slots, setSlots] = useState<Partial<Record<ShellSlot, HTMLElement>>>(
     {},
@@ -186,6 +188,26 @@ export function DmShell({
                       {t(`shell.theme.${each}`)}
                     </label>
                   ))}
+                </fieldset>
+                <fieldset className="dm-settings-group dm-settings-more">
+                  <legend>{t("shell.uiScale.label")}</legend>
+                  <div className="dm-settings-choices">
+                    {UI_SCALES.map((each) => (
+                      <label key={each}>
+                        <input
+                          type="radio"
+                          name={`${idPrefix}-ui-scale`}
+                          checked={uiScale === each}
+                          onChange={() => {
+                            setUiScale(each);
+                          }}
+                        />
+                        {t("shell.uiScale.percent", {
+                          percent: Math.round(each * 100),
+                        })}
+                      </label>
+                    ))}
+                  </div>
                 </fieldset>
                 <fieldset className="dm-settings-group dm-settings-more">
                   <legend>{t("shell.layout.label")}</legend>
