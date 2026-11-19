@@ -26,6 +26,11 @@ describe("note links (T-161)", () => {
     ["an empty segment", "wiki//x.md"],
     ["a dot segment", "./x.md"],
     ["a tool folder", ".obsidian/workspace.md"],
+    ["a Windows device name", "nul.md"],
+    ["a device name as a folder", "con/x.md"],
+    ["a trailing space", "Orte /x.md"],
+    ["a trailing dot", "a./x.md"],
+    ["a forbidden character", "x?.md"],
   ])("rejects %s", (_case, path) => {
     expect(notePathSchema.safeParse(path).success).toBe(false);
   });

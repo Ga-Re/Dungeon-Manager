@@ -17,29 +17,6 @@ export const idSchema = z
   .string()
   .regex(/^[A-Za-z0-9_-]{1,64}$/, "must be 1–64 letters, digits, '-' or '_'");
 
-/**
- * A Markdown note linked from a campaign, session or scene (T-161): a path relative to the
- * campaign folder, inside it (no `..`, not absolute, no backslashes or drive letters), ending
- * in `.md`, and never in a tool folder such as `.obsidian/`. Spaces and umlauts are fine.
- */
-export const notePathSchema = z
-  .string()
-  .max(512)
-  .refine((path) => {
-    if (!path.endsWith(".md") || /[\\:]/.test(path)) return false;
-    const segments = path.split("/");
-    return segments.every(
-      (segment) =>
-        segment !== "" &&
-        segment !== "." &&
-        segment !== ".." &&
-        !segment.startsWith("."),
-    );
-  }, "Not a note path inside the campaign folder");
-
-/** Notes linked from a document (T-161); the fixed note of the document needs no entry. */
-export const noteLinksSchema = z.array(notePathSchema).optional();
-
 /** A grid cell in game coordinates (ARCHITECTURE §5.2); map pixels are a rendering concern. */
 export const gridCellSchema = z.looseObject({
   col: z.number().int().nonnegative(),
@@ -77,6 +54,36 @@ function isSafeSegment(segment: string): boolean {
     !FORBIDDEN_IN_SEGMENT.test(segment)
   );
 }
+
+/** Windows device names, reserved with any extension (`nul.md`). */
+const WINDOWS_DEVICE = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i;
+
+/**
+ * A Markdown note linked from a campaign, session or scene (T-161): a path relative to the
+ * campaign folder with the same safe segments as asset paths (and as the desktop's file access
+ * checks), no Windows device names, never in a tool folder such as `.obsidian/`, ending in
+ * `.md`. Spaces and umlauts are fine; links are stored in NFC so macOS and other systems agree.
+ * Names differing only in case are one file on macOS and Windows (see T-119).
+ */
+export const notePathSchema = z
+  .string()
+  .max(512)
+  .refine(
+    (path) =>
+      path.endsWith(".md") &&
+      path
+        .split("/")
+        .every(
+          (segment) =>
+            isSafeSegment(segment) &&
+            !segment.startsWith(".") &&
+            !WINDOWS_DEVICE.test(segment),
+        ),
+    "Not a note path inside the campaign folder",
+  );
+
+/** Notes linked from a document (T-161); the fixed note of the document needs no entry. */
+export const noteLinksSchema = z.array(notePathSchema).optional();
 
 /**
  * Reference to a file in the library: a relative path from the library root plus a content

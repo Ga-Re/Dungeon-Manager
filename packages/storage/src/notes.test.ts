@@ -76,6 +76,10 @@ describe("note files (T-161)", () => {
       extra: 1,
     });
     expect(() => linkNote(scene, "../x.md")).toThrow(/note path/);
+    // Decomposed umlauts (macOS file names) are the same link.
+    const nfc = linkNote(scene, "Über.md");
+    expect(linkNote(nfc, "U\u0308ber.md")).toBe(nfc);
+    expect(unlinkNote(nfc, "U\u0308ber.md")).toEqual({ id: "s", extra: 1 });
   });
 
   test("lists the sessions and scenes that have a note file", async () => {

@@ -70,7 +70,9 @@ export async function readNote(
 
 /**
  * Starts a note that does not exist yet with its title as a heading; an existing note (maybe
- * written in Obsidian on another device) is never overwritten.
+ * written in Obsidian on another device) is never overwritten. A note not downloaded yet
+ * counts as existing. Known gap: a note a sync client delivers between the check and the write
+ * would be replaced – the file adapter has no create-exclusive write yet.
  * @returns whether the note was created. @throws on an unsafe path or a failed write
  */
 export async function createNote(
@@ -84,7 +86,9 @@ export async function createNote(
   if (existing.kind !== "missing") return false;
   const folder = path.slice(0, path.lastIndexOf("/"));
   await fs.makeDirectory(folder);
-  await fs.writeAtomic(path, `# ${title.trim()}\n`);
+  // One line, never an empty heading.
+  const heading = title.replace(/\s+/g, " ").trim() || notePath;
+  await fs.writeAtomic(path, `# ${heading}\n`);
   return true;
 }
 
@@ -93,25 +97,32 @@ export function linkNote<T extends { readonly notes?: readonly string[] }>(
   document: T,
   notePath: string,
 ): T {
-  if (!notePathSchema.safeParse(notePath).success)
+  const path = notePath.normalize("NFC");
+  if (!notePathSchema.safeParse(path).success)
     throw new Error(`Invalid note path: ${notePath}`);
   const notes = document.notes ?? [];
-  if (notes.includes(notePath)) return document;
-  return { ...document, notes: [...notes, notePath] };
+  if (notes.some((each) => each.normalize("NFC") === path)) return document;
+  return { ...document, notes: [...notes, path] };
 }
 
-/** The document without the link; an emptied list is left out of the file. */
+/**
+ * The document without the link; an emptied list is left out of the file, so `notes` must be
+ * optional in `T` (it is on campaign, session and scene).
+ */
 export function unlinkNote<T extends { readonly notes?: readonly string[] }>(
   document: T,
   notePath: string,
 ): T {
-  const notes = (document.notes ?? []).filter((each) => each !== notePath);
+  const path = notePath.normalize("NFC");
+  const notes = (document.notes ?? []).filter(
+    (each) => each.normalize("NFC") !== path,
+  );
   const next: { notes?: readonly string[] } = { ...document, notes };
   if (notes.length === 0) delete next.notes;
   return next as T;
 }
 
-/** Ids of the sessions and scenes that have a fixed note file. */
+/** Ids of the sessions and scenes that have a fixed note file (the campaign note: `readNote`). */
 export async function listNoteOwners(
   fs: FileSystem,
   slug: string,
