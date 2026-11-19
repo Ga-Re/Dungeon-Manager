@@ -32,6 +32,7 @@
   --dm-hud-row: rgb(24 28 34 / 0.78);
   --dm-hud-row-hover: rgb(44 50 60 / 0.88);
   --dm-hud-row-selected: rgb(70 56 26 / 0.9);
+  --dm-backdrop: rgb(0 0 0 / 0.5);
   --dm-overlay-line: #ffffff;
   --dm-overlay-reveal-fill: rgb(255 255 255 / 0.2);
   --dm-overlay-reveal-stroke: rgb(255 255 255 / 0.35);

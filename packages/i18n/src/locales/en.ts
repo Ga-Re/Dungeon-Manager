@@ -22,6 +22,7 @@ export const en: Messages = {
     },
   },
   library: {
+    folderSetting: "Library folder",
     heading: "Library",
     loading: "Opening the library …",
     none: "No library folder chosen yet. A folder in your cloud storage (e.g. Dropbox, iCloud Drive) works best.",
@@ -190,11 +191,19 @@ export const en: Messages = {
     placeholder: "Soon you can join the game table here.",
   },
   shell: {
+    settingsClose: "Close settings",
+    settingsCategories: "Categories",
+    settingsCategory: {
+      appearance: "Appearance",
+      library: "Library",
+      layout: "Tool windows",
+    },
     uiScale: {
       label: "Interface size",
       percent: "{{percent}}%",
     },
     layout: {
+      hint: "Browser and properties return to their default places, unfolded.",
       label: "Tool windows",
       reset: "Reset positions",
     },

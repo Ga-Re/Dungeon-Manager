@@ -190,7 +190,7 @@ export function LibraryPanel({
     <>
       <ShellPortal slot="settings">
         <fieldset className="dm-settings-group">
-          <legend>{t("library.heading")}</legend>
+          <legend>{t("library.folderSetting")}</legend>
           {state.status === "open" && (
             <p className="dm-settings-path">
               {t("library.folder", { path: state.root })}

@@ -864,3 +864,64 @@ label {
 .dm-note-missing {
   color: var(--dm-text-muted);
 }
+
+/* Settings dialog (T-155): categories on the left, the chosen one on the right. */
+.dm-settings-layout {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  min-height: 22rem;
+}
+
+.dm-settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-1);
+  padding: var(--dm-space-2);
+  background: var(--dm-surface-sunken);
+  border-right: 1px solid var(--dm-border-subtle);
+}
+
+.dm-settings-tab {
+  padding: var(--dm-space-1) var(--dm-space-2);
+  font-size: var(--dm-font-size-sm);
+  text-align: left;
+  color: var(--dm-text-secondary);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--dm-radius-sm);
+  cursor: pointer;
+}
+
+.dm-settings-tab:hover {
+  background: var(--dm-surface-raised);
+}
+
+.dm-settings-tab[aria-selected="true"] {
+  color: var(--dm-text-primary);
+  background: var(--dm-accent-soft);
+  border-color: var(--dm-border-subtle);
+}
+
+.dm-settings-tab:focus-visible {
+  outline: var(--dm-focus-width) solid var(--dm-focus);
+  outline-offset: 1px;
+}
+
+.dm-settings-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--dm-space-4);
+  padding: var(--dm-space-3) var(--dm-space-4);
+}
+
+.dm-settings-heading {
+  margin: 0;
+  font-size: var(--dm-font-size-md);
+  font-weight: 600;
+}
+
+.dm-settings-hint {
+  margin: 0;
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+}

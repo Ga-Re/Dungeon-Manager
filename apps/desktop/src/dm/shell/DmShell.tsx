@@ -1,4 +1,4 @@
-import { IconButton, Popover } from "@dungeon-manager/ui";
+import { IconButton } from "@dungeon-manager/ui";
 import { PanelLeft, Settings } from "lucide-react";
 import {
   useCallback,
@@ -13,6 +13,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { ShellSlotsContext, type ShellSlot } from "./slots.js";
 import { HudLayoutContext, useHudLayoutStore } from "./hud-layout.js";
+import { SettingsDialog, type SettingsCategory } from "./SettingsDialog.js";
 import { THEME_SETTINGS, useThemeSetting } from "./theme.js";
 import { UI_SCALES, useUiScale } from "./ui-scale.js";
 
@@ -111,6 +112,17 @@ export function DmShell({
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      // Cmd/Ctrl+, opens the settings, as in most desktop apps (T-155).
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key === ","
+      ) {
+        event.preventDefault();
+        setSettingsOpen(true);
+        return;
+      }
       if (!isPanelShortcut(event)) return;
       event.preventDefault();
       togglePanel();
@@ -135,6 +147,79 @@ export function DmShell({
     tabs.current.get(next)?.focus();
   };
 
+  // The settings registry (T-155): one entry per category. Fog & animation (T-136) and the
+  // player view join here as they get settings.
+  const settingsCategories: SettingsCategory[] = [
+    {
+      id: "appearance",
+      label: t("shell.settingsCategory.appearance"),
+      content: (
+        <>
+          <fieldset className="dm-settings-group">
+            <legend>{t("shell.theme.label")}</legend>
+            {THEME_SETTINGS.map((each) => (
+              <label key={each}>
+                <input
+                  type="radio"
+                  name={`${idPrefix}-theme`}
+                  checked={theme === each}
+                  onChange={() => {
+                    setTheme(each);
+                  }}
+                />
+                {t(`shell.theme.${each}`)}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className="dm-settings-group">
+            <legend>{t("shell.uiScale.label")}</legend>
+            <div className="dm-settings-choices">
+              {UI_SCALES.map((each) => (
+                <label key={each}>
+                  <input
+                    type="radio"
+                    name={`${idPrefix}-ui-scale`}
+                    checked={uiScale === each}
+                    onChange={() => {
+                      setUiScale(each);
+                    }}
+                  />
+                  {t("shell.uiScale.percent", {
+                    percent: Math.round(each * 100),
+                  })}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </>
+      ),
+    },
+    {
+      id: "library",
+      label: t("shell.settingsCategory.library"),
+      // The library panel puts the folder choice here (it owns the library state).
+      content: <div ref={slotRefs.settings} />,
+    },
+    {
+      id: "layout",
+      label: t("shell.settingsCategory.layout"),
+      content: (
+        <fieldset className="dm-settings-group">
+          <legend>{t("shell.layout.label")}</legend>
+          <p className="dm-settings-hint">{t("shell.layout.hint")}</p>
+          <button
+            type="button"
+            onClick={() => {
+              hudLayout.reset();
+            }}
+          >
+            {t("shell.layout.reset")}
+          </button>
+        </fieldset>
+      ),
+    },
+  ];
+
   return (
     <ShellSlotsContext value={slots}>
       <HudLayoutContext value={hudLayout}>
@@ -158,70 +243,19 @@ export function DmShell({
                 ref={settingsButton}
                 icon={<Settings />}
                 label={t("shell.settings")}
-                aria-expanded={settingsOpen}
-                aria-controls={`${idPrefix}-settings`}
+                aria-haspopup="dialog"
                 onClick={() => {
                   setSettingsOpen((open) => !open);
                 }}
               />
-              <Popover
+              <SettingsDialog
                 open={settingsOpen}
                 onClose={() => {
                   setSettingsOpen(false);
                 }}
-                anchor={settingsButton}
-                label={t("shell.settings")}
-                id={`${idPrefix}-settings`}
-              >
-                <fieldset className="dm-settings-group">
-                  <legend>{t("shell.theme.label")}</legend>
-                  {THEME_SETTINGS.map((each) => (
-                    <label key={each}>
-                      <input
-                        type="radio"
-                        name={`${idPrefix}-theme`}
-                        checked={theme === each}
-                        onChange={() => {
-                          setTheme(each);
-                        }}
-                      />
-                      {t(`shell.theme.${each}`)}
-                    </label>
-                  ))}
-                </fieldset>
-                <fieldset className="dm-settings-group dm-settings-more">
-                  <legend>{t("shell.uiScale.label")}</legend>
-                  <div className="dm-settings-choices">
-                    {UI_SCALES.map((each) => (
-                      <label key={each}>
-                        <input
-                          type="radio"
-                          name={`${idPrefix}-ui-scale`}
-                          checked={uiScale === each}
-                          onChange={() => {
-                            setUiScale(each);
-                          }}
-                        />
-                        {t("shell.uiScale.percent", {
-                          percent: Math.round(each * 100),
-                        })}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <fieldset className="dm-settings-group dm-settings-more">
-                  <legend>{t("shell.layout.label")}</legend>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      hudLayout.reset();
-                    }}
-                  >
-                    {t("shell.layout.reset")}
-                  </button>
-                </fieldset>
-                <div ref={slotRefs.settings} className="dm-settings-more" />
-              </Popover>
+                returnFocus={settingsButton}
+                categories={settingsCategories}
+              />
             </div>
           </header>
           <aside

@@ -12,6 +12,7 @@ test("the DM opens a campaign and a scene and sees its map", async ({
     page.getByRole("heading", { name: "Spielleitung" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("tab", { name: "Bibliothek" }).click();
   await expect(page.getByText("Ordner: /Bibliothek (E2E)")).toBeVisible();
   await page.keyboard.press("Escape");
 
@@ -393,4 +394,27 @@ test("a note renders as Markdown with its image, and a wiki link opens the linke
   await expect(details.getByText("horror, gruft")).toBeVisible();
   await details.getByRole("button", { name: "Strahd" }).click();
   await expect(details.getByRole("heading", { name: "Strahd" })).toBeVisible();
+});
+
+test("the settings dialog opens with Cmd/Ctrl+, and keeps the keyboard inside (T-155)", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await page.keyboard.press("ControlOrMeta+Comma");
+  const dialog = page.getByRole("dialog", { name: "Einstellungen" });
+  await expect(dialog).toBeVisible();
+  // Tab cycles within the dialog.
+  for (let step = 0; step < 12; step++) {
+    await page.keyboard.press("Tab");
+    expect(
+      await dialog.evaluate((element) =>
+        element.contains(document.activeElement),
+      ),
+    ).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Einstellungen" }),
+  ).toBeFocused();
 });
