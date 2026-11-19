@@ -302,3 +302,25 @@ test("the properties panel folds and remembers it apart from the browser", async
   expect(stored.details).toContain('"collapsed":true');
   expect(stored.browser).toBeNull();
 });
+
+test("the DM plans a session and adds a scene to it from the browser", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("tab", { name: "Szene" }).click();
+  await page.getByRole("button", { name: "Neue Session …" }).click();
+  await page.getByLabel("Name der Session").fill("Spielabend 1");
+  await page.keyboard.press("Enter");
+  const session = page.getByRole("treeitem", { name: "Spielabend 1" });
+  await expect(session).toBeVisible();
+
+  const scene = page.getByRole("treeitem", { name: "Krypta", exact: true });
+  await scene.focus();
+  await page.keyboard.press("Shift+F10");
+  await page.getByRole("menuitem", { name: "Zu Session hinzufügen …" }).click();
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await expect(
+    session.getByRole("treeitem", { name: "Krypta", exact: true }),
+  ).toBeVisible();
+});

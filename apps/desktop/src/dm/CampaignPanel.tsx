@@ -4,6 +4,7 @@ import type {
   Player,
   Polygon,
   Scene,
+  Session,
 } from "@dungeon-manager/schema";
 import {
   ContextMenu,
@@ -11,102 +12,125 @@ import {
   Popover,
   RibbonGroup,
   TreeList,
+  type MenuItem,
   type MenuPoint,
-  type TreeNode,
 } from "@dungeon-manager/ui";
 import {
-  BookOpen,
+  ArrowDown,
+  ArrowUp,
+  CalendarPlus,
   FilePlus,
-  Folder,
-  Image as ImageIcon,
-  NotebookPen,
-  ScrollText,
-  Settings2,
-  UserRound,
-  Users,
+  ListMinus,
+  ListPlus,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import {
   createScene,
-  newMap,
-  listScenes,
+  createSession,
+  deleteSession,
   loadCampaign,
-  loadScene,
+  newMap,
+  saveSession,
 } from "@dungeon-manager/storage";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
+import {
+  readScenes,
+  readSessions,
+  type SceneEntry,
+  type SessionEntry,
+} from "./campaign-data.js";
+import { buildCampaignTree, scenesInSessions } from "./campaign-tree.js";
 import { describeLibraryError } from "./describe-error.js";
-import { DetailsPanel, type Details } from "./DetailsPanel.js";
-import { fileName } from "./file-name.js";
+import { describeItem } from "./details.js";
+import { DetailsPanel } from "./DetailsPanel.js";
 import { NewSceneForm } from "./NewSceneForm.js";
 import { OpenScenePanel } from "./OpenScenePanel.js";
-import { sceneContentNodes } from "./scene-tree.js";
+import { addScene, moveScene, removeScene } from "./session-ops.js";
+import { AddToSessionForm, ConfirmForm, SessionForm } from "./SessionForms.js";
 import { ShellPortal } from "./shell/slots.js";
+import { GROUP, parseTreeId, sceneNodeId } from "./tree-ids.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
 
-interface SceneEntry {
-  readonly id: string;
-  /** The scene's name, or why it could not be read (`null`). */
-  readonly scene: Scene | null;
-  readonly problem: "notAvailable" | "invalid" | null;
-}
-
-type ScenesState =
+type Loaded<T> =
   | { readonly status: "loading" }
-  | { readonly status: "ready"; readonly scenes: readonly SceneEntry[] }
+  | { readonly status: "ready"; readonly items: readonly T[] }
   | { readonly status: "error"; readonly error: unknown };
 
-async function readScenes(
+/** Reads a list of the campaign's documents; only the newest read lands, and it re-reads when
+ * files under `folder` change. */
+function useCampaignList<T>(
   service: LibraryService,
-  slug: string,
-): Promise<SceneEntry[]> {
-  const { sceneIds } = await listScenes(service.fs, slug);
-  const entries = await Promise.all(
-    sceneIds.map(async (id): Promise<SceneEntry> => {
-      const result = await loadScene(service.fs, slug, id);
-      if (result.status === "ok")
-        return { id, scene: result.value, problem: null };
-      return {
-        id,
-        scene: null,
-        problem: result.status === "notAvailable" ? "notAvailable" : "invalid",
-      };
-    }),
+  folder: string,
+  read: () => Promise<T[]>,
+) {
+  const [state, setState] = useState<Loaded<T>>({ status: "loading" });
+  const latest = useRef(0);
+  const reload = useCallback(async () => {
+    const request = ++latest.current;
+    try {
+      const items = await read();
+      if (request === latest.current) setState({ status: "ready", items });
+    } catch (error) {
+      if (request === latest.current) setState({ status: "error", error });
+    }
+  }, [read]);
+  useEffect(() => {
+    setState({ status: "loading" });
+    void reload();
+    return () => {
+      // Results of this campaign must not land in the next one.
+      latest.current++;
+    };
+  }, [reload]);
+  useLibraryChanges(
+    service,
+    (path) => path.startsWith(folder),
+    () => void reload(),
   );
-  return entries.sort((a, b) =>
-    (a.scene?.name ?? a.id).localeCompare(b.scene?.name ?? b.id),
-  );
+  return [state, reload] as const;
 }
 
-const CAMPAIGN_NODE = "campaign";
-/** Groups under the campaign (DM decision, T-158); ids never collide with `scene:` ids. */
-const GROUP = {
-  settings: "group:settings",
-  scenes: "group:scenes",
-  maps: "group:maps",
-  players: "group:players",
-  handouts: "group:handouts",
-  notes: "group:notes",
-} as const;
-const SCENE_PREFIX = "scene:";
-const sceneNode = (id: string) => `${SCENE_PREFIX}${id}`;
-
-/** Where "Neue Szene" was asked for: the ribbon button, or a context menu at a point. */
-type NewSceneOrigin =
-  | { readonly from: "ribbon" }
+/** Where a command was asked for: a ribbon button, or a context menu at a point. */
+type Origin =
+  | { readonly from: "ribbonScene" }
+  | { readonly from: "ribbonSession" }
   | { readonly from: "context"; readonly at: MenuPoint };
 
-/** An open context menu: its point, the tree item that gets focus back, and its name. */
+/** The small popover a command opens (T-130c, T-160b). */
+type Dialog =
+  | {
+      readonly kind: "newScene";
+      readonly origin: Origin;
+      /** Add the new scene to this session. */
+      readonly sessionId?: string;
+    }
+  | { readonly kind: "newSession"; readonly origin: Origin }
+  | {
+      readonly kind: "editSession" | "deleteSession";
+      readonly origin: Origin;
+      readonly sessionId: string;
+    }
+  | {
+      readonly kind: "addToSession";
+      readonly origin: Origin;
+      readonly sceneId: string;
+    };
+
+/** An open context menu: its point, the tree item it belongs to and its name. */
 interface ContextRequest {
   readonly at: MenuPoint;
   readonly item: HTMLElement;
+  readonly treeId: string;
   readonly name: string;
 }
 
 /**
- * One campaign in the scene browser (DM decision, T-130c): a tree of the campaign, its scenes
- * and the open scene's content. Clicking a scene opens it; "Neue Szene" comes from the ribbon
- * or the context menu of the tree and opens a small popover.
+ * One campaign in the scene browser (T-130c, T-158, T-160b): the campaign tree with its
+ * sessions and scenes, the open scene, the details panel, and the commands for scenes and
+ * sessions (ribbon "Neu" and the tree's context menu, each opening a small popover).
  */
 export function CampaignPanel({
   service,
@@ -119,9 +143,32 @@ export function CampaignPanel({
   readonly name: string;
   readonly newId: () => string;
 }) {
-  const { t } = useTranslation();
-  const [state, setState] = useState<ScenesState>({ status: "loading" });
+  const { t, i18n } = useTranslation();
+  const readSceneList = useCallback(
+    () => readScenes(service, slug),
+    [service, slug],
+  );
+  const readSessionList = useCallback(
+    () => readSessions(service, slug),
+    [service, slug],
+  );
+  const [scenesState, reloadScenes] = useCampaignList<SceneEntry>(
+    service,
+    `campaigns/${slug}/scenes/`,
+    readSceneList,
+  );
+  const [sessionsState, reloadSessions] = useCampaignList<SessionEntry>(
+    service,
+    `campaigns/${slug}/sessions/`,
+    readSessionList,
+  );
+  const scenes = scenesState.status === "ready" ? scenesState.items : null;
+  const sessions =
+    sessionsState.status === "ready" ? sessionsState.items : null;
+
   const [openScene, setOpenScene] = useState<Scene | null>(null);
+  // Where the open scene was opened in the tree (it may appear in several places).
+  const [openAt, setOpenAt] = useState<string | null>(null);
   // The open scene as edited (fog, map), for its part of the tree.
   const [live, setLive] = useState<{
     readonly scene: Scene;
@@ -129,62 +176,107 @@ export function CampaignPanel({
   } | null>(null);
   const [notice, setNotice] = useState("");
   const [context, setContext] = useState<ContextRequest | null>(null);
-  const [newScene, setNewScene] = useState<NewSceneOrigin | null>(null);
+  const [dialog, setDialog] = useState<Dialog | null>(null);
   const [campaignFile, setCampaignFile] = useState<Campaign | null>(null);
   const players: readonly Player[] = campaignFile?.players ?? [];
   // What the details panel shows: a tree item id (T-159).
   const [inspected, setInspected] = useState<string | null>(null);
   const newSceneButton = useRef<HTMLButtonElement>(null);
+  const newSessionButton = useRef<HTMLButtonElement>(null);
   const contextItem = useRef<HTMLElement | null>(null);
-  const latest = useRef(0);
-  const ribbonPopoverId = useId();
-
-  const reload = useCallback(async () => {
-    const request = ++latest.current;
-    try {
-      const scenes = await readScenes(service, slug);
-      if (request === latest.current) setState({ status: "ready", scenes });
-    } catch (error) {
-      if (request === latest.current) setState({ status: "error", error });
-    }
-  }, [service, slug]);
-
-  useEffect(() => {
-    setOpenScene(null);
-    setState({ status: "loading" });
-    void reload();
-    return () => {
-      // Results of this campaign must not land in the next one.
-      latest.current++;
-    };
-  }, [reload]);
-
-  useLibraryChanges(
-    service,
-    (path) => path.startsWith(`campaigns/${slug}/scenes/`),
-    () => void reload(),
-  );
+  const ribbonSceneId = useId();
+  const ribbonSessionId = useId();
 
   // The players come from campaign.json; an unreadable file just shows none here (the library
   // list already reports it).
-  const latestPlayers = useRef(0);
-  const readPlayers = useCallback(async () => {
-    // Only the newest read may land: two quick changes can resolve out of order.
-    const request = ++latestPlayers.current;
+  const latestCampaign = useRef(0);
+  const readCampaign = useCallback(async () => {
+    const request = ++latestCampaign.current;
     const result = await loadCampaign(service.fs, slug).catch(() => null);
-    if (request === latestPlayers.current)
+    if (request === latestCampaign.current)
       setCampaignFile(result?.status === "ok" ? result.value : null);
   }, [service, slug]);
   useEffect(() => {
-    void readPlayers();
-  }, [readPlayers]);
+    void readCampaign();
+  }, [readCampaign]);
   useLibraryChanges(
     service,
     (path) => path === `campaigns/${slug}/campaign.json`,
-    () => void readPlayers(),
+    () => void readCampaign(),
   );
 
+  const planned = scenesInSessions(sessions);
+  /** The tree places of a scene: each session it is in, else "Ohne Session". */
+  const placesOf = (sceneId: string): string[] => {
+    const inSessions = (sessions ?? [])
+      .filter((entry) => entry.session?.sceneIds.includes(sceneId))
+      .map((entry) => sceneNodeId({ sessionId: entry.id }, sceneId));
+    return inSessions.length > 0 || planned.has(sceneId)
+      ? inSessions
+      : [sceneNodeId("unsorted", sceneId)];
+  };
+  const openNodeId = (() => {
+    if (!openScene) return null;
+    const places = placesOf(openScene.id);
+    return openAt && places.includes(openAt) ? openAt : (places[0] ?? null);
+  })();
+
+  // Maps used by this campaign's scenes, the open one as edited.
+  const mapPaths = [
+    ...new Set(
+      (scenes ?? []).flatMap((entry) => {
+        const scene = live?.scene.id === entry.id ? live.scene : entry.scene;
+        return scene?.map ? [scene.map.asset.path] : [];
+      }),
+    ),
+  ].sort();
+
+  const campaignTree = buildCampaignTree(t, {
+    name,
+    scenes,
+    sessions,
+    players,
+    mapPaths,
+    open:
+      openScene && live?.scene.id === openScene.id && openNodeId
+        ? { ...live, nodeId: openNodeId }
+        : null,
+    language: i18n.language,
+  });
+
+  const sessionById = (id: string): Session | null =>
+    (sessions ?? []).find((entry) => entry.id === id)?.session ?? null;
+
+  /** Saves a changed session and re-reads the list. @returns why it failed, or `null` */
+  const changeSession = async (
+    sessionId: string,
+    change: (session: Session) => Session,
+  ): Promise<string | null> => {
+    const session = sessionById(sessionId);
+    if (!session) return t("shell.tree.session.invalid", { id: sessionId });
+    try {
+      const changed = change(session);
+      if (changed !== session) await saveSession(service.fs, slug, changed);
+      await reloadSessions();
+      return null;
+    } catch (error) {
+      return describeLibraryError(t, error);
+    }
+  };
+
+  /** Closes the popover, with focus back where the command came from. */
+  const closeDialog = (origin: Origin | undefined) => {
+    (origin?.from === "context"
+      ? contextItem.current
+      : origin?.from === "ribbonSession"
+        ? newSessionButton.current
+        : newSceneButton.current
+    )?.focus();
+    setDialog(null);
+  };
+
   const create = async (sceneName: string, map: AssetRef | null) => {
+    const target = dialog?.kind === "newScene" ? dialog.sessionId : undefined;
     try {
       const scene = await createScene(service.fs, slug, {
         id: newId(),
@@ -193,257 +285,293 @@ export function CampaignPanel({
           // The level id only has to be unique within this scene.
           map && newMap(map, { id: newId(), name: t("campaign.defaultLevel") }),
       });
-      // The popover with the focused form goes away: focus back where it was asked for.
-      (newScene?.from === "context"
-        ? contextItem.current
-        : newSceneButton.current
-      )?.focus();
-      setNewScene(null);
+      if (target) {
+        const problem = await changeSession(target, (session) =>
+          addScene(session, scene.id),
+        );
+        if (problem) setNotice(problem);
+      }
+      closeDialog(dialog?.origin);
       setNotice(t("campaign.sceneCreated", { name: scene.name }));
+      const place = sceneNodeId(
+        target ? { sessionId: target } : "unsorted",
+        scene.id,
+      );
       setOpenScene(scene);
+      setOpenAt(place);
       // The new scene is what the DM works on now: select it in the tree and the details.
-      setInspected(sceneNode(scene.id));
-      await reload();
+      setInspected(place);
+      await reloadScenes();
       return null;
     } catch (error) {
       return describeLibraryError(t, error);
     }
   };
 
-  const open = (id: string) => {
-    if (!id.startsWith(SCENE_PREFIX) || state.status !== "ready") return;
-    const entry = state.scenes.find(
-      (each) => sceneNode(each.id) === id && each.scene,
-    );
+  const createNewSession = async (
+    sessionName: string,
+    date: string | undefined,
+  ) => {
+    try {
+      const session = await createSession(service.fs, slug, {
+        id: newId(),
+        name: sessionName,
+        ...(date ? { date } : {}),
+      });
+      closeDialog(dialog?.origin);
+      setNotice(t("campaign.sessionCreated", { name: session.name }));
+      setInspected(`session:${session.id}`);
+      await reloadSessions();
+      return null;
+    } catch (error) {
+      return describeLibraryError(t, error);
+    }
+  };
+
+  const open = (treeId: string) => {
+    const item = parseTreeId(treeId);
+    if (item.kind !== "scene") return;
+    const entry = (scenes ?? []).find((each) => each.id === item.sceneId);
+    if (!entry?.scene) return;
+    setOpenAt(treeId);
     // The open scene is being edited: the list's copy may be older (a save still in flight)
     // and would replace the edits and their undo history.
-    if (!entry?.scene || openScene?.id === entry.id) return;
+    if (openScene?.id === entry.id) return;
     setOpenScene(entry.scene);
   };
 
-  const sceneNodes: TreeNode[] =
-    state.status === "ready"
-      ? state.scenes.map((entry): TreeNode => {
-          const isOpen = openScene?.id === entry.id;
-          // Until the newly opened scene reports itself, `live` is still the previous one.
-          const current = isOpen && live?.scene.id === entry.id ? live : null;
-          return {
-            id: sceneNode(entry.id),
-            label: entry.scene
-              ? (current?.scene.name ?? entry.scene.name)
-              : t(`campaign.scene.${entry.problem ?? "invalid"}`, {
-                  id: entry.id,
-                }),
-            icon: <ScrollText />,
-            children: current
-              ? sceneContentNodes(t, current.scene, current.revealed)
-              : undefined,
-          };
-        })
-      : [];
+  /** Commands of a tree item's context menu (T-160b). */
+  const commandsFor = (treeId: string): MenuItem[] => {
+    const newScene = {
+      id: "newScene",
+      label: t("campaign.newScene"),
+      icon: <FilePlus />,
+    };
+    const newSession = {
+      id: "newSession",
+      label: t("campaign.newSession"),
+      icon: <CalendarPlus />,
+    };
+    const item = parseTreeId(treeId);
+    if (item.kind === "campaign") return [newScene, newSession];
+    if (item.kind === "group" && item.id === GROUP.sessions)
+      return [newSession];
+    if (item.kind === "group" && item.id === GROUP.unsorted) return [newScene];
+    if (item.kind === "session" && sessionById(item.sessionId))
+      return [
+        newScene,
+        {
+          id: "editSession",
+          label: t("campaign.editSession"),
+          icon: <Pencil />,
+        },
+        {
+          id: "deleteSession",
+          label: t("campaign.deleteSession"),
+          icon: <Trash2 />,
+        },
+      ];
+    if (item.kind === "scene") {
+      const others = (sessions ?? []).filter(
+        (entry) =>
+          entry.session && !entry.session.sceneIds.includes(item.sceneId),
+      );
+      const addTo = {
+        id: "addToSession",
+        label: t("campaign.addToSession"),
+        icon: <ListPlus />,
+        disabled: others.length === 0,
+      };
+      if (item.slot === "unsorted") return [addTo, newScene];
+      const ids = sessionById(item.slot.sessionId)?.sceneIds ?? [];
+      const index = ids.indexOf(item.sceneId);
+      return [
+        {
+          id: "moveUp",
+          label: t("campaign.moveUp"),
+          icon: <ArrowUp />,
+          disabled: index <= 0,
+        },
+        {
+          id: "moveDown",
+          label: t("campaign.moveDown"),
+          icon: <ArrowDown />,
+          disabled: index < 0 || index >= ids.length - 1,
+        },
+        {
+          id: "removeFromSession",
+          label: t("campaign.removeFromSession"),
+          icon: <ListMinus />,
+        },
+        addTo,
+        newScene,
+      ];
+    }
+    return [];
+  };
 
-  // Maps used by this campaign's scenes, the open one as edited.
-  const mapPaths = [
-    ...new Set(
-      state.status === "ready"
-        ? state.scenes.flatMap((entry) => {
-            const scene =
-              live && live.scene.id === entry.id ? live.scene : entry.scene;
-            return scene?.map ? [scene.map.asset.path] : [];
-          })
-        : [],
-    ),
-  ].sort();
+  const runCommand = (command: string, request: ContextRequest) => {
+    contextItem.current = request.item;
+    const origin: Origin = { from: "context", at: request.at };
+    const item = parseTreeId(request.treeId);
+    const sessionOfItem =
+      item.kind === "session"
+        ? item.sessionId
+        : item.kind === "scene" && item.slot !== "unsorted"
+          ? item.slot.sessionId
+          : undefined;
+    const report = (result: Promise<string | null>) => {
+      void result.then((problem) => {
+        if (problem) setNotice(problem);
+      });
+    };
+    switch (command) {
+      case "newScene":
+        setDialog({
+          kind: "newScene",
+          origin,
+          ...(sessionOfItem ? { sessionId: sessionOfItem } : {}),
+        });
+        return;
+      case "newSession":
+        setDialog({ kind: "newSession", origin });
+        return;
+      case "editSession":
+      case "deleteSession":
+        if (sessionOfItem)
+          setDialog({ kind: command, origin, sessionId: sessionOfItem });
+        return;
+      case "addToSession":
+        if (item.kind === "scene")
+          setDialog({ kind: "addToSession", origin, sceneId: item.sceneId });
+        return;
+      case "moveUp":
+      case "moveDown":
+        if (item.kind === "scene" && sessionOfItem)
+          report(
+            changeSession(sessionOfItem, (session) =>
+              moveScene(session, item.sceneId, command === "moveUp" ? -1 : 1),
+            ),
+          );
+        return;
+      case "removeFromSession":
+        if (item.kind === "scene" && sessionOfItem)
+          report(
+            changeSession(sessionOfItem, (session) =>
+              removeScene(session, item.sceneId),
+            ),
+          );
+        return;
+    }
+  };
 
-  /** A group that is still empty shows why instead of an empty folder. */
-  const group = (
-    id: string,
-    label: string,
-    icon: TreeNode["icon"],
-    children: TreeNode[],
-    empty?: string,
-  ): TreeNode =>
-    children.length === 0 && empty !== undefined
-      ? { id, label, icon, meta: empty }
-      : { id, label, icon, children };
+  const removeSession = async (sessionId: string) => {
+    const session = sessionById(sessionId);
+    try {
+      await deleteSession(service.fs, slug, sessionId);
+      setNotice(
+        t("campaign.sessionDeleted", { name: session?.name ?? sessionId }),
+      );
+      setInspected((current) =>
+        current === `session:${sessionId}` ? null : current,
+      );
+    } catch (error) {
+      setNotice(describeLibraryError(t, error));
+    }
+    closeDialog(dialog?.origin);
+    await reloadSessions();
+  };
 
-  const campaignTree: TreeNode = {
-    id: CAMPAIGN_NODE,
-    label: name,
-    icon: <BookOpen />,
-    children: [
+  const dialogContent = (current: Dialog) => {
+    switch (current.kind) {
+      case "newScene":
+        return <NewSceneForm service={service} onCreate={create} />;
+      case "newSession":
+        return (
+          <SessionForm
+            submitLabel={t("campaign.createSession")}
+            onSubmit={createNewSession}
+          />
+        );
+      case "editSession": {
+        const session = sessionById(current.sessionId);
+        return (
+          <SessionForm
+            initialName={session?.name ?? ""}
+            initialDate={session?.date ?? ""}
+            submitLabel={t("campaign.saveSession")}
+            onSubmit={async (sessionName, date) => {
+              const problem = await changeSession(current.sessionId, (each) => {
+                const next: Session = { ...each, name: sessionName.trim() };
+                // An emptied date field removes the date.
+                if (date) next.date = date;
+                else delete next.date;
+                return next;
+              });
+              if (!problem) closeDialog(current.origin);
+              return problem;
+            }}
+          />
+        );
+      }
+      case "deleteSession": {
+        const session = sessionById(current.sessionId);
+        return (
+          <ConfirmForm
+            question={t("campaign.confirmDeleteSession", {
+              name: session?.name ?? current.sessionId,
+            })}
+            confirmLabel={t("campaign.deleteConfirmed")}
+            onConfirm={() => void removeSession(current.sessionId)}
+            onCancel={() => {
+              closeDialog(current.origin);
+            }}
+          />
+        );
+      }
+      case "addToSession":
+        return (
+          <AddToSessionForm
+            sessions={(sessions ?? []).flatMap((entry) =>
+              entry.session && !entry.session.sceneIds.includes(current.sceneId)
+                ? [[entry.id, entry.session.name] as const]
+                : [],
+            )}
+            onSubmit={async (sessionId) => {
+              const problem = await changeSession(sessionId, (session) =>
+                addScene(session, current.sceneId),
+              );
+              if (!problem) closeDialog(current.origin);
+              return problem;
+            }}
+          />
+        );
+    }
+  };
+
+  const dialogLabel = (current: Dialog) =>
+    t(
       {
-        id: GROUP.settings,
-        label: t("shell.tree.settings"),
-        icon: <Settings2 />,
-      },
-      group(
-        GROUP.scenes,
-        t("shell.tree.scenes"),
-        <Folder />,
-        sceneNodes,
-        state.status === "ready" ? t("shell.tree.noScenes") : undefined,
-      ),
-      group(
-        GROUP.maps,
-        t("shell.tree.maps"),
-        <Folder />,
-        mapPaths.map((path) => ({
-          id: `map:${path}`,
-          label: fileName(path),
-          icon: <ImageIcon />,
-          mono: true,
-        })),
-        t("shell.tree.noMaps"),
-      ),
-      group(
-        GROUP.players,
-        t("shell.tree.players"),
-        <Users />,
-        players.map((player) => ({
-          id: `player:${player.id}`,
-          label: player.name,
-          icon: <UserRound />,
-          meta: player.characterName,
-        })),
-        t("shell.tree.noPlayers"),
-      ),
-      group(
-        GROUP.handouts,
-        t("shell.tree.handouts"),
-        <Folder />,
-        [],
-        t("shell.tree.noHandouts"),
-      ),
-      group(
-        GROUP.notes,
-        t("shell.tree.notes"),
-        <NotebookPen />,
-        [],
-        t("shell.tree.noNotes"),
-      ),
-    ],
+        newScene: "campaign.newScene",
+        newSession: "campaign.newSession",
+        editSession: "campaign.editSession",
+        deleteSession: "campaign.deleteSession",
+        addToSession: "campaign.addToSession",
+      }[current.kind],
+    );
+
+  const contextDialog = dialog?.origin.from === "context" ? dialog : null;
+  const ribbonDialog = (from: Origin["from"]) =>
+    dialog?.origin.from === from ? dialog : null;
+
+  const toggleRibbon = (kind: "newScene" | "newSession") => {
+    const from = kind === "newScene" ? "ribbonScene" : "ribbonSession";
+    setDialog((current) =>
+      current?.origin.from === from ? null : { kind, origin: { from } },
+    );
   };
 
-  const sceneOf = (entry: SceneEntry) =>
-    live && live.scene.id === entry.id ? live.scene : entry.scene;
-  const readyScenes = state.status === "ready" ? state.scenes : [];
-
-  /** The facts of a tree item for the details panel; groups show nothing yet. */
-  const describe = (id: string): Details | null => {
-    const visibilityRules = Object.keys(
-      campaignFile?.visibilityDefaults ?? {},
-    ).length;
-    if (id === CAMPAIGN_NODE || id === GROUP.settings)
-      return {
-        kind: t(
-          id === CAMPAIGN_NODE
-            ? "shell.details.campaign"
-            : "shell.tree.settings",
-        ),
-        name,
-        rows: [
-          {
-            label: t("shell.details.scenes"),
-            value: String(readyScenes.length),
-          },
-          { label: t("shell.details.maps"), value: String(mapPaths.length) },
-          { label: t("shell.details.players"), value: String(players.length) },
-          {
-            label: t("shell.details.visibility"),
-            value:
-              visibilityRules === 0
-                ? t("shell.details.allVisible")
-                : t("shell.details.rules", { count: visibilityRules }),
-          },
-        ],
-      };
-    if (id.startsWith(SCENE_PREFIX)) {
-      const entry = readyScenes.find((each) => sceneNode(each.id) === id);
-      const scene = entry && sceneOf(entry);
-      if (!scene) return null;
-      const revealed =
-        live && live.scene.id === scene.id ? live.revealed.length : null;
-      return {
-        kind: t("shell.details.scene"),
-        name: scene.name,
-        rows: [
-          scene.map
-            ? {
-                label: t("shell.details.map"),
-                value: fileName(scene.map.asset.path),
-                mono: true,
-              }
-            : { label: t("shell.details.map"), value: t("campaign.noMap") },
-          ...(scene.map
-            ? [
-                {
-                  label: t("shell.details.grid"),
-                  value: t("shell.details.cellSize", {
-                    px: scene.map.grid.cellSizePx,
-                  }),
-                },
-                {
-                  label: t("shell.details.levels"),
-                  value: scene.map.levels.map((level) => level.name).join(", "),
-                },
-              ]
-            : []),
-          {
-            label: t("shell.details.tokens"),
-            value: String(scene.tokens.length),
-          },
-          ...(revealed === null
-            ? []
-            : [
-                {
-                  label: t("shell.details.fog"),
-                  value: t("shell.browser.fogAreas", { count: revealed }),
-                },
-              ]),
-          {
-            label: t("shell.details.state"),
-            value:
-              openScene?.id === scene.id
-                ? t("shell.details.open")
-                : t("shell.details.closed"),
-          },
-        ],
-      };
-    }
-    if (id.startsWith("map:")) {
-      const path = id.slice("map:".length);
-      const usedBy = readyScenes
-        .map(sceneOf)
-        .filter((scene): scene is Scene => scene?.map?.asset.path === path)
-        .map((scene) => scene.name);
-      return {
-        kind: t("shell.details.mapKind"),
-        name: fileName(path),
-        rows: [
-          { label: t("shell.details.path"), value: path, mono: true },
-          { label: t("shell.details.usedBy"), value: usedBy.join(", ") },
-        ],
-      };
-    }
-    if (id.startsWith("player:")) {
-      const player = players.find((each) => `player:${each.id}` === id);
-      if (!player) return null;
-      return {
-        kind: t("shell.details.player"),
-        name: player.name,
-        rows: [
-          {
-            label: t("shell.details.character"),
-            value: player.characterName ?? t("shell.details.none"),
-          },
-        ],
-      };
-    }
-    return null;
-  };
-
-  const newSceneForm = <NewSceneForm service={service} onCreate={create} />;
+  const readyScenes = scenes ?? [];
 
   return (
     <>
@@ -451,57 +579,64 @@ export function CampaignPanel({
         label={t("shell.tree.browserTitle")}
         variant="compact"
         nodes={[campaignTree]}
-        selectedId={inspected ?? (openScene ? sceneNode(openScene.id) : null)}
+        selectedId={inspected ?? openNodeId}
         onSelect={(id) => {
           setInspected(id);
           open(id);
         }}
-        onItemContextMenu={(id, at, item) => {
-          // Only the campaign and its scenes have commands; the open scene's content not yet.
-          if (id === CAMPAIGN_NODE) setContext({ at, item, name });
-          else if (id === GROUP.scenes)
-            setContext({ at, item, name: t("shell.tree.scenes") });
-          else if (id.startsWith(SCENE_PREFIX) && state.status === "ready") {
-            const entry = state.scenes.find(
-              (each) => sceneNode(each.id) === id,
-            );
-            if (entry?.scene) setContext({ at, item, name: entry.scene.name });
-          }
+        onItemContextMenu={(treeId, at, item) => {
+          if (commandsFor(treeId).length === 0) return;
+          const parsed = parseTreeId(treeId);
+          const label =
+            parsed.kind === "campaign"
+              ? name
+              : parsed.kind === "session"
+                ? (sessionById(parsed.sessionId)?.name ?? treeId)
+                : parsed.kind === "scene"
+                  ? (readyScenes.find((entry) => entry.id === parsed.sceneId)
+                      ?.scene?.name ?? parsed.sceneId)
+                  : treeId === GROUP.sessions
+                    ? t("shell.tree.sessions")
+                    : t("shell.tree.unsorted");
+          setContext({ at, item, treeId, name: label });
         }}
       />
-      {state.status === "loading" && <p>{t("campaign.loading")}</p>}
-      {state.status === "error" && (
-        <p role="alert">{describeLibraryError(t, state.error)}</p>
+      {scenesState.status === "loading" && <p>{t("campaign.loading")}</p>}
+      {scenesState.status === "error" && (
+        <p role="alert">{describeLibraryError(t, scenesState.error)}</p>
       )}
-      {state.status === "ready" && state.scenes.length === 0 && (
+      {sessionsState.status === "error" && (
+        <p role="alert">{describeLibraryError(t, sessionsState.error)}</p>
+      )}
+      {scenes?.length === 0 && (
         <p className="dm-browser-hint">{t("campaign.noScenes")}</p>
       )}
       <ContextMenu
         at={context?.at ?? null}
         label={t("campaign.commands", { name: context?.name ?? name })}
-        items={[
-          { id: "newScene", label: t("campaign.newScene"), icon: <FilePlus /> },
-        ]}
+        items={context ? commandsFor(context.treeId) : []}
         returnFocus={context?.item}
         onClose={() => {
           setContext(null);
         }}
-        onSelect={() => {
-          if (!context) return;
-          contextItem.current = context.item;
-          setNewScene({ from: "context", at: context.at });
+        onSelect={(command) => {
+          if (context) runCommand(command, context);
         }}
       />
       <Popover
-        open={newScene?.from === "context"}
-        at={newScene?.from === "context" ? newScene.at : undefined}
+        open={contextDialog !== null}
+        at={
+          contextDialog?.origin.from === "context"
+            ? contextDialog.origin.at
+            : undefined
+        }
         anchor={contextItem}
-        label={t("campaign.newScene")}
+        label={contextDialog ? dialogLabel(contextDialog) : ""}
         onClose={() => {
-          setNewScene(null);
+          setDialog(null);
         }}
       >
-        {newSceneForm}
+        {contextDialog && dialogContent(contextDialog)}
       </Popover>
       <ShellPortal slot="ribbonScene">
         <RibbonGroup caption={t("shell.groups.create")}>
@@ -510,28 +645,47 @@ export function CampaignPanel({
             showLabel
             icon={<FilePlus />}
             label={t("campaign.newScene")}
-            aria-expanded={newScene?.from === "ribbon"}
+            aria-expanded={ribbonDialog("ribbonScene") !== null}
             aria-controls={
-              newScene?.from === "ribbon" ? ribbonPopoverId : undefined
+              ribbonDialog("ribbonScene") ? ribbonSceneId : undefined
             }
             onClick={() => {
-              setNewScene((current) =>
-                current?.from === "ribbon" ? null : { from: "ribbon" },
-              );
+              toggleRibbon("newScene");
             }}
           />
-          <Popover
-            id={ribbonPopoverId}
-            open={newScene?.from === "ribbon"}
-            anchor={newSceneButton}
-            label={t("campaign.newScene")}
-            align="start"
-            onClose={() => {
-              setNewScene(null);
+          <IconButton
+            ref={newSessionButton}
+            showLabel
+            icon={<CalendarPlus />}
+            label={t("campaign.newSession")}
+            aria-expanded={ribbonDialog("ribbonSession") !== null}
+            aria-controls={
+              ribbonDialog("ribbonSession") ? ribbonSessionId : undefined
+            }
+            onClick={() => {
+              toggleRibbon("newSession");
             }}
-          >
-            {newSceneForm}
-          </Popover>
+          />
+          {(["ribbonScene", "ribbonSession"] as const).map((from) => {
+            const current = ribbonDialog(from);
+            return (
+              <Popover
+                key={from}
+                id={from === "ribbonScene" ? ribbonSceneId : ribbonSessionId}
+                open={current !== null}
+                anchor={
+                  from === "ribbonScene" ? newSceneButton : newSessionButton
+                }
+                label={current ? dialogLabel(current) : ""}
+                align="start"
+                onClose={() => {
+                  setDialog(null);
+                }}
+              >
+                {current && dialogContent(current)}
+              </Popover>
+            );
+          })}
         </RibbonGroup>
       </ShellPortal>
       {openScene && (
@@ -546,16 +700,21 @@ export function CampaignPanel({
           }}
           onChanged={(scene) => {
             setOpenScene(scene);
-            void reload();
+            void reloadScenes();
           }}
           onDeleted={(scene) => {
             setOpenScene(null);
             setLive(null);
-            setInspected((current) =>
-              current === sceneNode(scene.id) ? null : current,
-            );
+            setInspected((current) => {
+              const item = current ? parseTreeId(current) : null;
+              return item?.kind === "scene" && item.sceneId === scene.id
+                ? null
+                : current;
+            });
             setNotice(t("campaign.sceneDeleted", { name: scene.name }));
-            void reload();
+            void reloadScenes();
+            // Deleting a scene also takes it out of its sessions.
+            void reloadSessions();
           }}
           onClose={() => {
             setOpenScene(null);
@@ -565,7 +724,23 @@ export function CampaignPanel({
       )}
       <ShellPortal slot="details">
         <DetailsPanel
-          details={inspected ? describe(inspected) : null}
+          details={
+            inspected
+              ? describeItem(t, inspected, {
+                  name,
+                  scenes: readyScenes,
+                  sessions: sessions ?? [],
+                  players,
+                  mapPaths,
+                  visibilityRules: Object.keys(
+                    campaignFile?.visibilityDefaults ?? {},
+                  ).length,
+                  live,
+                  openSceneId: openScene?.id ?? null,
+                  language: i18n.language,
+                })
+              : null
+          }
           selected={inspected !== null}
         />
       </ShellPortal>
