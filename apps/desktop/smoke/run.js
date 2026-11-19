@@ -1,5 +1,5 @@
 // Smoke test for the real desktop app (T-006, T-103b): start it via tauri-driver, open the
-// player view from the DM window and check that both windows exist; check that the player
+// player view from the DM window (past the welcome dialog) and check that both windows exist; check that the player
 // window cannot call library commands; open a temporary library and check that a campaign
 // written from outside the app shows up while it runs.
 //
@@ -157,6 +157,13 @@ async function main() {
       capabilities: { alwaysMatch: { "tauri:options": { application } } },
     });
     sessionPath = `/session/${session.sessionId}`;
+
+    // Every start shows the welcome dialog (T-153); it covers the window until closed.
+    await clickXPath(
+      sessionPath,
+      "the welcome dialog's close button",
+      "//button[@aria-label='Willkommensdialog schließen']",
+    );
 
     const button = await waitFor("the open-player-view button", () =>
       findElement(sessionPath, "#open-player-view"),

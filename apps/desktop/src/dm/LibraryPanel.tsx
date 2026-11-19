@@ -13,6 +13,16 @@ import { CampaignPanel } from "./CampaignPanel.js";
 import { CatalogPanel } from "./CatalogPanel.js";
 import { describeLibraryError } from "./describe-error.js";
 import { NameForm } from "./NameForm.js";
+import {
+  forgetCampaign,
+  readRecent,
+  recentIn,
+  recordCampaign,
+  recordScene,
+  saveRecent,
+  type RecentCampaign,
+} from "./recent-campaigns.js";
+import { WelcomeDialog, type WelcomeLibrary } from "./WelcomeDialog.js";
 import { useHudPlacement } from "./shell/hud-layout.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
@@ -65,15 +75,23 @@ const isCampaignChange = (path: string) =>
 /**
  * The library folder and its campaigns (T-130c): the folder is chosen in the settings, the data
  * panel shows the catalogue, and the scene browser shows the chosen campaign – switched or
- * created from its header menu.
+ * created from its header menu. With `welcome`, the welcome dialog opens first (T-153).
  */
 export function LibraryPanel({
   service,
   newId,
+  welcome = false,
+  storage,
+  now = () => new Date(),
 }: {
   readonly service: LibraryService;
   /** Fresh opaque ids for new campaigns and scenes. */
   readonly newId: () => string;
+  /** Show the welcome dialog when the window opens. */
+  readonly welcome?: boolean;
+  /** Device-local storage for the recently edited campaigns. */
+  readonly storage?: Storage | undefined;
+  readonly now?: () => Date;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<LibraryState>({ status: "loading" });
@@ -82,6 +100,15 @@ export function LibraryPanel({
   const [notice, setNotice] = useState("");
   const [creating, setCreating] = useState(false);
   const campaignMenu = useRef<HTMLButtonElement>(null);
+  const [welcomeOpen, setWelcomeOpen] = useState(welcome);
+  const [recent, setRecent] = useState<readonly RecentCampaign[]>(() =>
+    readRecent(storage),
+  );
+  // The scene to open with a campaign chosen in the welcome dialog.
+  const [pendingScene, setPendingScene] = useState<{
+    readonly slug: string;
+    readonly sceneId: string;
+  } | null>(null);
   const [browserPlacement, setBrowserPlacement] = useHudPlacement(
     "browser",
     BROWSER_DEFAULT,
@@ -162,6 +189,10 @@ export function LibraryPanel({
     }
   };
 
+  useEffect(() => {
+    saveRecent(storage, recent);
+  }, [storage, recent]);
+
   const selectedCampaign =
     state.status === "open"
       ? state.campaigns.find(
@@ -169,6 +200,66 @@ export function LibraryPanel({
         )
       : undefined;
   const campaigns = state.status === "open" ? state.campaigns : [];
+  const root = state.status === "open" ? state.root : null;
+
+  // Every campaign that opens becomes the most recent one on this device.
+  const openSlug = selectedCampaign?.slug;
+  const openName = selectedCampaign?.name;
+  const clock = useRef(now);
+  useEffect(() => {
+    clock.current = now;
+  });
+  useEffect(() => {
+    if (root === null || !openSlug || openName == null) return;
+    setRecent((list) =>
+      recordCampaign(
+        list,
+        { root, slug: openSlug, name: openName },
+        clock.current(),
+      ),
+    );
+  }, [root, openSlug, openName]);
+
+  const welcomeLibrary = ((): WelcomeLibrary => {
+    if (state.status === "loading") return { status: "loading" };
+    if (state.status === "none") return { status: "none" };
+    if (state.status === "error")
+      return {
+        status: "error",
+        message: describeLibraryError(t, state.error),
+      };
+    const listed = recentIn(recent, state.root);
+    return {
+      status: "open",
+      root: state.root,
+      recent: listed.map((entry) => {
+        const campaign = campaigns.find((each) => each.slug === entry.slug);
+        return {
+          slug: entry.slug,
+          name: campaign?.name ?? entry.name,
+          sceneName: entry.sceneName,
+          openedAt: entry.openedAt,
+          problem: !campaign ? "missing" : campaign.problem,
+        };
+      }),
+      others: campaigns.flatMap((campaign) =>
+        campaign.name !== null &&
+        !listed.some((entry) => entry.slug === campaign.slug)
+          ? [{ slug: campaign.slug, name: campaign.name }]
+          : [],
+      ),
+    };
+  })();
+
+  const openFromWelcome = (slug: string) => {
+    const sceneId =
+      root === null
+        ? null
+        : recentIn(recent, root).find((entry) => entry.slug === slug)?.sceneId;
+    setPendingScene(sceneId ? { slug, sceneId } : null);
+    setSelected(slug);
+    setWelcomeOpen(false);
+  };
   const campaignLabel = (campaign: CampaignEntry) =>
     campaign.name ??
     t(`library.campaign.${campaign.problem ?? "invalid"}`, {
@@ -238,7 +329,10 @@ export function LibraryPanel({
                   ]}
                   onSelect={(id) => {
                     if (id === NEW_CAMPAIGN) setCreating(true);
-                    else setSelected(id);
+                    else {
+                      setPendingScene(null);
+                      setSelected(id);
+                    }
                   }}
                 />
                 <Popover
@@ -294,6 +388,7 @@ export function LibraryPanel({
                         <button
                           type="button"
                           onClick={() => {
+                            setPendingScene(null);
                             setSelected(campaign.slug);
                           }}
                         >
@@ -313,10 +408,42 @@ export function LibraryPanel({
               slug={selectedCampaign.slug}
               name={selectedCampaign.name}
               newId={newId}
+              initialSceneId={
+                pendingScene?.slug === selectedCampaign.slug
+                  ? pendingScene.sceneId
+                  : null
+              }
+              onSceneOpen={(scene) => {
+                if (root === null) return;
+                const campaign = { root, slug: selectedCampaign.slug };
+                setRecent((list) =>
+                  recordScene(list, campaign, scene, clock.current()),
+                );
+              }}
             />
           )}
         </HudPanel>
       </ShellPortal>
+      <WelcomeDialog
+        open={welcomeOpen}
+        onClose={() => {
+          setWelcomeOpen(false);
+        }}
+        library={welcomeLibrary}
+        choosing={choosing}
+        notice={notice}
+        onChooseFolder={() => void choose()}
+        onOpen={openFromWelcome}
+        onForget={(slug) => {
+          if (root === null) return;
+          setRecent((list) => forgetCampaign(list, { root, slug }));
+        }}
+        onCreate={async (name) => {
+          const created = await create(name);
+          if (created) setWelcomeOpen(false);
+          return created;
+        }}
+      />
       <ShellPortal slot="notices">
         <p role="status">{notice}</p>
       </ShellPortal>

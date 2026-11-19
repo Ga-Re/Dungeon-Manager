@@ -1,12 +1,26 @@
 // The DM window in the browser harness (T-130a): real UI, in-memory library, no Tauri.
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const HARNESS = "http://localhost:4175/e2e.html";
+
+/** Closes the welcome dialog of every start (T-153) into the empty window. */
+async function closeWelcome(page: Page) {
+  const welcome = page.getByRole("dialog", { name: "Willkommen" });
+  await expect(welcome).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(welcome).toBeHidden();
+}
+
+/** The DM window as after a start, past the welcome dialog. */
+async function openDmWindow(page: Page) {
+  await page.goto(HARNESS);
+  await closeWelcome(page);
+}
 
 test("the DM opens a campaign and a scene and sees its map", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
 
   await expect(
     page.getByRole("heading", { name: "Spielleitung" }),
@@ -30,7 +44,7 @@ test("the DM opens a campaign and a scene and sees its map", async ({
 test("the DM window lists the displays for the player view", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
 
   const displays = page.getByRole("combobox", {
     name: "Display für die Spieleransicht",
@@ -47,7 +61,7 @@ test("the DM window lists the displays for the player view", async ({
 test("the map fills the area right of the data panel and below the ribbon (ADR-0014)", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
@@ -105,7 +119,7 @@ test("the map fills the area right of the data panel and below the ribbon (ADR-0
 test("the theme chosen in the settings survives a restart", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   const html = page.locator("html");
   // Dark workshop on first start (ADR-0015).
   await expect(html).toHaveAttribute("data-dm-theme", "workshop");
@@ -115,6 +129,7 @@ test("the theme chosen in the settings survives a restart", async ({
   await expect(html).toHaveAttribute("data-dm-theme", "parchment");
 
   await page.reload();
+  await closeWelcome(page);
   await expect(html).toHaveAttribute("data-dm-theme", "parchment");
   await page.getByRole("button", { name: "Einstellungen" }).click();
   await expect(
@@ -125,7 +140,7 @@ test("the theme chosen in the settings survives a restart", async ({
 test("ribbon commands work from the keyboard: menu, confirmation popover", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
   await page.getByRole("tab", { name: "Szene" }).click();
@@ -150,7 +165,7 @@ test("ribbon commands work from the keyboard: menu, confirmation popover", async
 test("the DM creates a scene from the browser's context menu, by keyboard", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   const campaign = page.getByRole("treeitem", { name: "Fluch der Krypta" });
   await campaign.focus();
@@ -173,7 +188,7 @@ test("the DM creates a scene from the browser's context menu, by keyboard", asyn
 test("the browser can be dragged and folded, and stays so after a restart", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   const browser = page.getByRole("region", { name: "Browser" });
   const start = await browser.boundingBox();
   if (!start) throw new Error("browser not laid out");
@@ -197,6 +212,7 @@ test("the browser can be dragged and folded, and stays so after a restart", asyn
   await expect(page.getByText("Fluch der Krypta")).toBeHidden();
 
   await page.reload();
+  await closeWelcome(page);
   const again = await page
     .getByRole("region", { name: "Browser" })
     .boundingBox();
@@ -215,7 +231,7 @@ test("the browser stays inside the map area; a smaller window does not change it
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   const browser = page.getByRole("region", { name: "Browser" });
   const grip = page.getByRole("button", { name: /Browser verschieben/ });
   const gripBox = await grip.boundingBox();
@@ -261,7 +277,7 @@ test("the browser stays inside the map area; a smaller window does not change it
 test("selecting a scene in the browser shows its properties on the right", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   const details = page.getByRole("region", { name: "Eigenschaften" });
   await expect(
@@ -280,7 +296,7 @@ test("selecting a scene in the browser shows its properties on the right", async
 test("the properties panel folds and remembers it apart from the browser", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   // The panel belongs to an open campaign.
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   const fold = page.getByRole("button", {
@@ -289,6 +305,7 @@ test("the properties panel folds and remembers it apart from the browser", async
   await fold.click();
   await expect(fold).toHaveAttribute("aria-expanded", "false");
   await page.reload();
+  await closeWelcome(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await expect(
     page.getByRole("button", { name: "Eigenschaften ein- oder ausklappen" }),
@@ -307,7 +324,7 @@ test("the properties panel folds and remembers it apart from the browser", async
 test("the DM plans a session and adds a scene to it from the browser", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("tab", { name: "Szene" }).click();
   await page.getByRole("button", { name: "Neue Session …" }).click();
@@ -332,7 +349,7 @@ test("the DM plans a session and adds a scene to it from the browser", async ({
 test("the interface size scales the chrome but never the map area (T-162)", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
@@ -365,7 +382,7 @@ test("the interface size scales the chrome but never the map area (T-162)", asyn
 test("the DM opens the campaign note from the browser (T-161b)", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   const campaign = page.getByRole("treeitem", { name: "Fluch der Krypta" });
   await campaign.focus();
@@ -383,7 +400,7 @@ test("the DM opens the campaign note from the browser (T-161b)", async ({
 test("a note renders as Markdown with its image, and a wiki link opens the linked note (T-163)", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("treeitem", { name: "Kampagnennotiz" }).click();
   const details = page.getByRole("region", { name: "Eigenschaften" });
@@ -399,7 +416,7 @@ test("a note renders as Markdown with its image, and a wiki link opens the linke
 test("the settings dialog opens with Cmd/Ctrl+, and keeps the keyboard inside (T-155)", async ({
   page,
 }) => {
-  await page.goto(HARNESS);
+  await openDmWindow(page);
   await page.keyboard.press("ControlOrMeta+Comma");
   const dialog = page.getByRole("dialog", { name: "Einstellungen" });
   await expect(dialog).toBeVisible();
@@ -417,4 +434,53 @@ test("the settings dialog opens with Cmd/Ctrl+, and keeps the keyboard inside (T
   await expect(
     page.getByRole("button", { name: "Einstellungen" }),
   ).toBeFocused();
+});
+
+test("the welcome dialog opens the last campaign and scene after a restart (T-153)", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  const welcome = page.getByRole("dialog", { name: "Willkommen" });
+  await welcome.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await expect(welcome).toBeHidden();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+
+  await page.reload();
+  const recent = welcome.getByRole("list", { name: "Zuletzt bearbeitet" });
+  const campaign = recent.getByRole("button", { name: /Fluch der Krypta/ });
+  await expect(campaign).toContainText("Krypta ·");
+  await expect(campaign).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  await expect(welcome).toBeHidden();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  await expect(
+    page.getByRole("treeitem", { name: "Krypta", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+});
+
+test("on the very first start the DM chooses a folder and creates a campaign (T-153)", async ({
+  page,
+}) => {
+  await page.goto(`${HARNESS}?firstStart`);
+  const welcome = page.getByRole("dialog", { name: "Willkommen" });
+  await expect(
+    welcome.getByRole("heading", { name: "Willkommen beim Dungeon Manager" }),
+  ).toBeVisible();
+  await welcome
+    .getByRole("button", { name: "Bibliotheksordner wählen …" })
+    .click();
+
+  const name = welcome.getByRole("textbox", {
+    name: "Name der neuen Kampagne",
+  });
+  await expect(name).toBeFocused();
+  await name.fill("Die erste Runde");
+  await page.keyboard.press("Enter");
+
+  await expect(welcome).toBeHidden();
+  await expect(
+    page.getByRole("treeitem", { name: "Die erste Runde" }),
+  ).toBeVisible();
 });

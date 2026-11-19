@@ -179,11 +179,17 @@ export function CampaignPanel({
   slug,
   name,
   newId,
+  initialSceneId = null,
+  onSceneOpen,
 }: {
   readonly service: LibraryService;
   readonly slug: string;
   readonly name: string;
   readonly newId: () => string;
+  /** A scene to open once the campaign's lists are read (the last one, T-153). */
+  readonly initialSceneId?: string | null;
+  /** Told about each scene that opens, e.g. to remember it as the last one. */
+  readonly onSceneOpen?: (scene: { id: string; name: string }) => void;
 }) {
   const { t, i18n } = useTranslation();
   const readSceneList = useCallback(
@@ -504,6 +510,37 @@ export function CampaignPanel({
     if (openScene?.id === entry.id) return;
     setOpenScene(entry.scene);
   };
+
+  // The last scene opens once, when both lists are first read; a scene that is gone is skipped.
+  const pendingScene = useRef(initialSceneId);
+  useEffect(() => {
+    const sceneId = pendingScene.current;
+    if (!sceneId || !scenes || !sessions) return;
+    pendingScene.current = null;
+    const scene = scenes.find((each) => each.id === sceneId)?.scene;
+    if (!scene) return;
+    const session = sessions.find((each) =>
+      each.session?.sceneIds.includes(sceneId),
+    );
+    const place = sceneNodeId(
+      session ? { sessionId: session.id } : "unsorted",
+      sceneId,
+    );
+    setOpenScene(scene);
+    setOpenAt(place);
+    setInspected(place);
+  }, [scenes, sessions]);
+
+  const sceneOpened = useRef(onSceneOpen);
+  useEffect(() => {
+    sceneOpened.current = onSceneOpen;
+  });
+  const openSceneId = openScene?.id;
+  const openSceneName = openScene?.name;
+  useEffect(() => {
+    if (openSceneId !== undefined && openSceneName !== undefined)
+      sceneOpened.current?.({ id: openSceneId, name: openSceneName });
+  }, [openSceneId, openSceneName]);
 
   /** Commands of a tree item's context menu (T-160b). */
   const commandsFor = (treeId: string): MenuItem[] => {

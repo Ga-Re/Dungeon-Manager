@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Dialog } from "./Dialog.js";
 
@@ -150,6 +150,48 @@ describe("Dialog", () => {
     } finally {
       window.removeEventListener("keydown", shortcut);
     }
+  });
+
+  it("focuses the given element first", () => {
+    function Focused() {
+      const target = useRef<HTMLButtonElement>(null);
+      return (
+        <Dialog
+          open
+          title="Willkommen"
+          closeLabel="Schließen"
+          onClose={vi.fn()}
+          initialFocus={target}
+        >
+          <button type="button">Erste</button>
+          <button type="button" ref={target}>
+            Zuletzt
+          </button>
+        </Dialog>
+      );
+    }
+    render(<Focused />);
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Zuletzt" }),
+    );
+  });
+
+  it("leaves focus on a control that took it when it mounted", () => {
+    function AutoFocused() {
+      const field = useRef<HTMLInputElement>(null);
+      useEffect(() => {
+        field.current?.focus();
+      }, []);
+      return <input aria-label="Name" ref={field} />;
+    }
+    render(
+      <Dialog open title="Willkommen" closeLabel="Schließen" onClose={vi.fn()}>
+        <AutoFocused />
+      </Dialog>,
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole("textbox", { name: "Name" }),
+    );
   });
 
   it("does not close on a press inside the panel", () => {

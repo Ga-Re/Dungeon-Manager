@@ -91,6 +91,23 @@ export async function createE2eLibrary(): Promise<LibraryService> {
   };
 }
 
+/** The very first start (T-153): no library folder chosen yet; the chosen one is empty. */
+export function createFirstStartLibrary(): LibraryService {
+  const fs = createMemoryFileSystem();
+  let root: string | null = null;
+  return {
+    fs,
+    currentRoot: () => Promise.resolve(root),
+    chooseRoot: () => {
+      root = E2E_LIBRARY_ROOT;
+      return Promise.resolve(root);
+    },
+    importMap: () => Promise.resolve(null),
+    readImage: (path) => Promise.reject(new Error(`no image at ${path}`)),
+    onChange: () => Promise.resolve(() => undefined),
+  };
+}
+
 export const e2eDisplays: DisplayService = {
   listDisplays: () =>
     Promise.resolve([
