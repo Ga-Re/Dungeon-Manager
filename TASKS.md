@@ -534,11 +534,33 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-159 Details panel (properties) on the right
 
-- **Status:** todo · **Depends on:** T-158 · **Refs:** ADR-0011, ADR-0014, ADR-0015, ARCHITECTURE §15
-- DM request (2026-11-19): clicking an entry (map, scene, asset, …) in the browser or the catalogue opens a details area on the right of the map area, like Fusion's properties panel. Collapsible and movable like the browser (same mechanics, position per device).
+- **Status:** done · **Depends on:** T-158 · **Refs:** ADR-0011, ADR-0014, ADR-0015, ARCHITECTURE §15
+- DM request (2026-11-19): clicking an entry (map, scene, asset, …) in the browser opens a details area (catalogue entries follow with T-124) on the right of the map area, like Fusion's properties panel. Collapsible and movable like the browser (same mechanics, position per device).
 - **Acceptance criteria**
-  - [ ] Details for a scene and a map (read-only facts first; editing moves in as features need it)
-  - [ ] Collapse, drag, keyboard; component + E2E tests, screenshot
+  - [x] Details for a scene and a map (read-only facts first; editing moves in as features need it)
+  - [x] Collapse, drag, keyboard; component + E2E tests, screenshot
+
+### T-160 Sessions: campaign › sessions › scenes
+
+- **Status:** todo · **Depends on:** T-159 · **Refs:** SPEC 13, ARCHITECTURE §6, ADR-0006
+- DM request (2026-11-19): a campaign is planned in several sessions, each with several scenes; the browser shows Kampagne › Sessions › Szenen, with handouts, puzzles etc. on campaign level.
+- DM decisions (2026-11-19): each session is its own file `campaigns/<slug>/sessions/<id>.json` (name, date, ordered scene list); a scene may appear in several sessions (e.g. not finished last time); scenes in no session are listed under "Ohne Session"; scene files stay unchanged. Handouts & puzzles hang on the campaign (a scene may reference them later, T-137/T-139).
+- **Acceptance criteria**
+  - [ ] Session schema (zod) with tests, storage read/write/list, trash like scenes; no migration of existing files needed
+  - [ ] Browser: Sessions group with sessions and their scenes in order, "Ohne Session"; create/rename/delete a session, add/remove/reorder scenes (context menu + keyboard)
+  - [ ] Component + E2E tests, screenshot
+- **Notes:** New file format: propose the schema to the DM before implementing. Relation to sub-scenes (T-152) is settled in that proposal.
+
+### T-161 Campaign, session and scene notes as Markdown
+
+- **Status:** todo · **Depends on:** T-160 · **Refs:** ADR-0013, ADR-0006, ADR-0005, T-150
+- DM request (2026-11-19): campaign notes, session notes and scene notes, linked to `.md` files so they can be filled remotely (Obsidian or similar; Notion only via files in the synced folder – no cloud APIs, ADR-0005/0013).
+- DM decision (2026-11-19): fixed places plus free links – `notes/campaign.md`, `notes/sessions/<id>.md`, `notes/scenes/<id>.md` (created by the app on demand), and any other `.md` in the vault can be linked as well.
+- **Acceptance criteria**
+  - [ ] Notes open from the browser/details panel (read view first); edits made elsewhere show up without restart
+  - [ ] Linking an existing `.md`; unknown front matter survives a round trip (ADR-0006)
+  - [ ] Tests for paths, linking and missing files
+- **Notes:** File layout change: propose the link field and where `notes/` lives (campaign folder or vault root, T-150) to the DM first.
 
 ### T-155 Settings dialog
 

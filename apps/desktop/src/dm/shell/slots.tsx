@@ -9,6 +9,7 @@ export type ShellSlot =
   | "ribbonDisplay"
   | "canvas"
   | "browser"
+  | "details"
   | "dataPanel"
   | "settings"
   | "notices";

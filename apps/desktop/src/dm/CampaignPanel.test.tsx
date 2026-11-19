@@ -455,4 +455,91 @@ describe("CampaignPanel", () => {
       screen.getByRole("menu", { name: "Befehle für „Szenen“" }),
     ).toBeTruthy();
   });
+
+  test("shows the selected item's facts in the details panel", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/campaign.json": JSON.stringify({
+        schemaVersion: 1,
+        id: "c",
+        name: "Die verlorene Mine",
+        players: [{ id: "p1", name: "Anna", characterName: "Mira" }],
+        visibilityDefaults: { token: "hidden" },
+      }),
+      "campaigns/mine/scenes/a.json": JSON.stringify({
+        ...JSON.parse(sceneFile("a", "Höhle")),
+        map: {
+          kind: "image",
+          asset: {
+            path: "library/maps/hoehle.webp",
+            hash: `sha256:${"a".repeat(64)}`,
+          },
+          grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },
+          levels: [{ id: "ground", name: "Unten" }],
+        },
+      }),
+    });
+    renderCampaign(library);
+    const details = () =>
+      within(screen.getByRole("region", { name: "Eigenschaften" }));
+    expect(details().getByText("Wähle im Browser einen Eintrag.")).toBeTruthy();
+
+    await openScene("Höhle");
+    expect(details().getByText("Höhle")).toBeTruthy();
+    expect(details().getByText("70 px pro Feld")).toBeTruthy();
+    expect(details().getByText("Geöffnet")).toBeTruthy();
+
+    fireEvent.click(
+      // The one in the Karten group (the open scene lists its map file too).
+      within(screen.getByRole("treeitem", { name: "Karten" })).getByText(
+        "hoehle.webp",
+        { selector: ".dm-tree-label" },
+      ),
+    );
+    expect(details().getByText("library/maps/hoehle.webp")).toBeTruthy();
+    expect(details().getByText("Höhle")).toBeTruthy();
+
+    fireEvent.click(
+      await screen.findByText("Anna", { selector: ".dm-tree-label" }),
+    );
+    expect(details().getByText("Mira")).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByText("Kampagneneinstellungen", {
+        selector: ".dm-tree-label",
+      }),
+    );
+    expect(details().getByText("1 Regel")).toBeTruthy();
+    // The scene stays open while something else is inspected.
+    expect(screen.getByText("Geöffnete Szene: Höhle")).toBeTruthy();
+  });
+
+  test("a new scene becomes the selection even after something else was selected", async () => {
+    renderCampaign(fakeLibraryService("/lib"));
+    fireEvent.click(
+      await screen.findByText("Die verlorene Mine", {
+        selector: ".dm-tree-label",
+      }),
+    );
+    const popover = askForNewScene();
+    fireEvent.change(popover.getByLabelText("Name der neuen Szene"), {
+      target: { value: "Gruft" },
+    });
+    fireEvent.click(popover.getByRole("button", { name: "Szene anlegen" }));
+    const scene = await screen.findByRole("treeitem", { name: "Gruft" });
+    expect(scene.getAttribute("aria-selected")).toBe("true");
+    const details = within(
+      screen.getByRole("region", { name: "Eigenschaften" }),
+    );
+    expect(await details.findByText("Geöffnet")).toBeTruthy();
+  });
+
+  test("a selected group says it has no properties", async () => {
+    renderCampaign(fakeLibraryService("/lib"));
+    fireEvent.click(
+      await screen.findByText("Notizen", { selector: ".dm-tree-label" }),
+    );
+    expect(
+      screen.getByText("Für diesen Eintrag gibt es keine Eigenschaften."),
+    ).toBeTruthy();
+  });
 });

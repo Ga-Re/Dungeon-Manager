@@ -183,6 +183,7 @@ label {
 
 /* The HUD floats over the map; the map keeps pointer input everywhere else. */
 .dm-browser,
+.dm-details,
 .dm-notices {
   z-index: var(--dm-z-hud);
   pointer-events: none;
@@ -415,8 +416,10 @@ label {
   font-family: var(--dm-font-heading);
 }
 
-/* The browser slot covers the map area; its tool window positions itself inside (T-158). */
-.dm-browser {
+/* The browser and details slots cover the map area; their tool windows position themselves
+   inside (T-158, T-159). */
+.dm-browser,
+.dm-details {
   position: absolute;
   inset: 0;
 }
@@ -592,4 +595,62 @@ label {
 
 .dm-shell-content {
   display: contents;
+}
+
+/* Details panel (T-159): a solid body under the HUD header, as facts need a calm background. */
+.dm-details-panel .dm-hud-body {
+  margin-top: var(--dm-space-1);
+  padding: var(--dm-space-2) var(--dm-space-3) var(--dm-space-3);
+  background: var(--dm-surface-panel);
+  color: var(--dm-text-primary);
+  border: 1px solid var(--dm-border-subtle);
+  border-radius: var(--dm-radius-sm);
+  box-shadow: var(--dm-shadow-panel);
+}
+
+.dm-details-heading {
+  display: grid;
+  gap: var(--dm-space-1);
+  margin: 0 0 var(--dm-space-2);
+  font-weight: 600;
+}
+
+.dm-details-kind {
+  font-size: var(--dm-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dm-text-secondary);
+}
+
+.dm-details-rows {
+  display: grid;
+  gap: var(--dm-space-2);
+  margin: 0;
+  font-size: var(--dm-font-size-sm);
+}
+
+.dm-details-row {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: var(--dm-space-2);
+}
+
+.dm-details-row dt {
+  color: var(--dm-text-secondary);
+}
+
+.dm-details-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.dm-details-mono {
+  font-family: var(--dm-font-mono);
+}
+
+.dm-details-empty {
+  margin: 0;
+  font-size: var(--dm-font-size-sm);
+  color: var(--dm-text-secondary);
 }
