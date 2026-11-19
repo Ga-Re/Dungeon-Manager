@@ -275,3 +275,30 @@ test("selecting a scene in the browser shows its properties on the right", async
   if (!stage || !box) throw new Error("not laid out");
   expect(stage.x + stage.width - (box.x + box.width)).toBeLessThan(40);
 });
+
+test("the properties panel folds and remembers it apart from the browser", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  // The panel belongs to an open campaign.
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  const fold = page.getByRole("button", {
+    name: "Eigenschaften ein- oder ausklappen",
+  });
+  await fold.click();
+  await expect(fold).toHaveAttribute("aria-expanded", "false");
+  await page.reload();
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await expect(
+    page.getByRole("button", { name: "Eigenschaften ein- oder ausklappen" }),
+  ).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    page.getByRole("button", { name: "Browser ein- oder ausklappen" }),
+  ).toHaveAttribute("aria-expanded", "true");
+  const stored = await page.evaluate(() => ({
+    details: localStorage.getItem("dm.hud.details"),
+    browser: localStorage.getItem("dm.hud.browser"),
+  }));
+  expect(stored.details).toContain('"collapsed":true');
+  expect(stored.browser).toBeNull();
+});

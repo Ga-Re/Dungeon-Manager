@@ -34,7 +34,7 @@ export interface HudPanelProps {
   children: ReactNode;
 }
 
-/** Room kept between the panel and the edges of its area. */
+/** Room kept between the panel and the right and bottom edges of its area. */
 const EDGE = 12;
 
 /** Keyboard step of the grip; Shift moves further. */

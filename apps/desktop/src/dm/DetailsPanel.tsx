@@ -18,7 +18,7 @@ export interface Details {
 
 /**
  * Far right of the map area: the panel's display clamp puts it at the right edge until the DM
- * moves it (T-159).
+ * moves it (T-159). Folding stores this x as it is, so the panel stays right-anchored.
  */
 const DETAILS_DEFAULT = {
   x: Number.MAX_SAFE_INTEGER,
@@ -33,8 +33,11 @@ const DETAILS_DEFAULT = {
  */
 export function DetailsPanel({
   details,
+  selected,
 }: {
   readonly details: Details | null;
+  /** Something is selected, even if it has no facts to show (a group, say). */
+  readonly selected: boolean;
 }) {
   const { t } = useTranslation();
   const [placement, setPlacement] = useHudPlacement("details", DETAILS_DEFAULT);
@@ -64,7 +67,9 @@ export function DetailsPanel({
           </dl>
         </>
       ) : (
-        <p className="dm-details-empty">{t("shell.details.empty")}</p>
+        <p className="dm-details-empty">
+          {selected ? t("shell.details.nothing") : t("shell.details.empty")}
+        </p>
       )}
     </HudPanel>
   );

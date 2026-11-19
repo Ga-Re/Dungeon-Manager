@@ -201,6 +201,8 @@ export function CampaignPanel({
       setNewScene(null);
       setNotice(t("campaign.sceneCreated", { name: scene.name }));
       setOpenScene(scene);
+      // The new scene is what the DM works on now: select it in the tree and the details.
+      setInspected(sceneNode(scene.id));
       await reload();
       return null;
     } catch (error) {
@@ -549,6 +551,9 @@ export function CampaignPanel({
           onDeleted={(scene) => {
             setOpenScene(null);
             setLive(null);
+            setInspected((current) =>
+              current === sceneNode(scene.id) ? null : current,
+            );
             setNotice(t("campaign.sceneDeleted", { name: scene.name }));
             void reload();
           }}
@@ -559,7 +564,10 @@ export function CampaignPanel({
         />
       )}
       <ShellPortal slot="details">
-        <DetailsPanel details={inspected ? describe(inspected) : null} />
+        <DetailsPanel
+          details={inspected ? describe(inspected) : null}
+          selected={inspected !== null}
+        />
       </ShellPortal>
       <ShellPortal slot="notices">
         <p role="status">{notice}</p>

@@ -179,6 +179,7 @@ export const en: Messages = {
       move: "Move properties (arrow keys)",
       fold: "Fold or unfold properties",
       empty: "Select an item in the browser.",
+      nothing: "This item has no properties.",
       campaign: "Campaign",
       scene: "Scene",
       mapKind: "Map",

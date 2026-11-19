@@ -181,6 +181,7 @@ export const de = {
       move: "Eigenschaften verschieben (Pfeiltasten)",
       fold: "Eigenschaften ein- oder ausklappen",
       empty: "Wähle im Browser einen Eintrag.",
+      nothing: "Für diesen Eintrag gibt es keine Eigenschaften.",
       campaign: "Kampagne",
       scene: "Szene",
       mapKind: "Karte",

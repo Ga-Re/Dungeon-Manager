@@ -535,7 +535,7 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-159 Details panel (properties) on the right
 
 - **Status:** done · **Depends on:** T-158 · **Refs:** ADR-0011, ADR-0014, ADR-0015, ARCHITECTURE §15
-- DM request (2026-11-19): clicking an entry (map, scene, asset, …) in the browser or the catalogue opens a details area on the right of the map area, like Fusion's properties panel. Collapsible and movable like the browser (same mechanics, position per device).
+- DM request (2026-11-19): clicking an entry (map, scene, asset, …) in the browser opens a details area (catalogue entries follow with T-124) on the right of the map area, like Fusion's properties panel. Collapsible and movable like the browser (same mechanics, position per device).
 - **Acceptance criteria**
   - [x] Details for a scene and a map (read-only facts first; editing moves in as features need it)
   - [x] Collapse, drag, keyboard; component + E2E tests, screenshot
@@ -560,7 +560,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Notes open from the browser/details panel (read view first); edits made elsewhere show up without restart
   - [ ] Linking an existing `.md`; unknown front matter survives a round trip (ADR-0006)
   - [ ] Tests for paths, linking and missing files
-- **Notes:** File layout change: propose paths and the link field to the DM first; aligns with T-150 (where the vault lives).
+- **Notes:** File layout change: propose the link field and where `notes/` lives (campaign folder or vault root, T-150) to the DM first.
 
 ### T-155 Settings dialog
 

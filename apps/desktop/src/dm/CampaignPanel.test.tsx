@@ -512,4 +512,34 @@ describe("CampaignPanel", () => {
     // The scene stays open while something else is inspected.
     expect(screen.getByText("Geöffnete Szene: Höhle")).toBeTruthy();
   });
+
+  test("a new scene becomes the selection even after something else was selected", async () => {
+    renderCampaign(fakeLibraryService("/lib"));
+    fireEvent.click(
+      await screen.findByText("Die verlorene Mine", {
+        selector: ".dm-tree-label",
+      }),
+    );
+    const popover = askForNewScene();
+    fireEvent.change(popover.getByLabelText("Name der neuen Szene"), {
+      target: { value: "Gruft" },
+    });
+    fireEvent.click(popover.getByRole("button", { name: "Szene anlegen" }));
+    const scene = await screen.findByRole("treeitem", { name: "Gruft" });
+    expect(scene.getAttribute("aria-selected")).toBe("true");
+    const details = within(
+      screen.getByRole("region", { name: "Eigenschaften" }),
+    );
+    expect(await details.findByText("Geöffnet")).toBeTruthy();
+  });
+
+  test("a selected group says it has no properties", async () => {
+    renderCampaign(fakeLibraryService("/lib"));
+    fireEvent.click(
+      await screen.findByText("Notizen", { selector: ".dm-tree-label" }),
+    );
+    expect(
+      screen.getByText("Für diesen Eintrag gibt es keine Eigenschaften."),
+    ).toBeTruthy();
+  });
 });
