@@ -30,6 +30,8 @@ export interface SceneSession {
   readonly notOnTv: boolean;
   /** Saving the last change failed (it stays in memory; the next change or `retrySave` retries). */
   readonly saveFailed: boolean;
+  /** A write is queued or in flight, so the file does not have the latest change yet. */
+  readonly saving: boolean;
   /** Writes the current scene again, e.g. after a failed save. */
   retrySave(): void;
   /**
@@ -57,6 +59,7 @@ export function useSceneSession(
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [notOnTv, setNotOnTv] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [pendingWrites, setPendingWrites] = useState(0);
   const saving = useRef<Promise<unknown>>(Promise.resolve());
   const failed = useRef(false);
 
@@ -107,18 +110,23 @@ export function useSceneSession(
   const save = useCallback(
     (next: Scene) => {
       // Chained, so writes land in the order the DM made the changes.
+      setPendingWrites((count) => count + 1);
       saving.current = saving.current.then(() =>
-        saveScene(service.fs, slug, next).then(
-          () => {
-            failed.current = false;
-            setSaveFailed(false);
-          },
-          (error: unknown) => {
-            console.error("Saving the scene failed.", error);
-            failed.current = true;
-            setSaveFailed(true);
-          },
-        ),
+        saveScene(service.fs, slug, next)
+          .then(
+            () => {
+              failed.current = false;
+              setSaveFailed(false);
+            },
+            (error: unknown) => {
+              console.error("Saving the scene failed.", error);
+              failed.current = true;
+              setSaveFailed(true);
+            },
+          )
+          .finally(() => {
+            setPendingWrites((count) => count - 1);
+          }),
       );
     },
     [service, slug],
@@ -158,6 +166,7 @@ export function useSceneSession(
     canRedo: campaign !== null && history.future.length > 0,
     notOnTv,
     saveFailed,
+    saving: pendingWrites > 0,
     retrySave() {
       save(scene);
     },

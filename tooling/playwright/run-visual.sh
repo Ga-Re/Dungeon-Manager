@@ -13,6 +13,9 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # never runs a native bundler binary built for another OS (macOS host, Linux container).
 pnpm --dir "$ROOT" exec turbo run build --filter=@dungeon-manager/test-fixtures^... --output-logs=errors-only
 pnpm --dir "$ROOT" --filter @dungeon-manager/test-fixtures build:harness
+# The DM-window harness (T-130a) for the zone-layout screenshot, likewise built on the host.
+pnpm --dir "$ROOT" exec turbo run build --filter=@dungeon-manager/desktop^... --output-logs=errors-only
+pnpm --dir "$ROOT" --filter @dungeon-manager/desktop build:e2e
 
 exec docker run --rm --ipc=host --platform linux/amd64 \
   --user "$(id -u):$(id -g)" \

@@ -195,8 +195,9 @@ function themeBlock(theme: ThemeName, indent: string): string {
 }
 
 /**
- * The token sheet as CSS: parchment by default, night when `data-dm-theme="night"` is set on
- * the root element (the DM switches it; ADR-0011).
+ * The token sheet as CSS: parchment by default; night when `data-dm-theme="night"` is set on
+ * the root element, or when it is `"system"` and the OS prefers dark (the DM chooses in the
+ * settings; ADR-0011).
  */
 export function tokensToCss(): string {
   return `/* Generated from packages/ui/src/tokens.ts – do not edit by hand. */
@@ -208,6 +209,12 @@ ${themeBlock("parchment", "  ")}
 
 :root[data-dm-theme="night"] {
 ${themeBlock("night", "  ")}
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-dm-theme="system"] {
+${themeBlock("night", "    ")}
+  }
 }
 `;
 }

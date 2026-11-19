@@ -6,7 +6,8 @@ const TOOLS: readonly MapTool[] = ["pan", "reveal", "hide"];
 const SHAPES: readonly FogShape[] = ["rectangle", "circle", "polygon", "brush"];
 
 /**
- * Fog tools for the open scene (SPEC 4): what dragging does, reveal/cover all, undo/redo.
+ * Fog tools for the open scene (SPEC 4): what dragging does, reveal/cover all (undo/redo are in
+ * the title bar).
  * A labelled group; Tab moves between the controls.
  */
 export function FogToolbar({
@@ -19,10 +20,6 @@ export function FogToolbar({
   disabled,
   onRevealAll,
   onCoverAll,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
 }: {
   readonly tool: MapTool;
   readonly onTool: (tool: MapTool) => void;
@@ -35,10 +32,6 @@ export function FogToolbar({
   readonly disabled: boolean;
   readonly onRevealAll: () => void;
   readonly onCoverAll: () => void;
-  readonly canUndo: boolean;
-  readonly canRedo: boolean;
-  readonly onUndo: () => void;
-  readonly onRedo: () => void;
 }) {
   const { t, i18n } = useTranslation();
   return (
@@ -99,12 +92,6 @@ export function FogToolbar({
       </button>
       <button type="button" disabled={disabled} onClick={onCoverAll}>
         {t("fog.coverAll")}
-      </button>
-      <button type="button" disabled={!canUndo} onClick={onUndo}>
-        {t("fog.undo")}
-      </button>
-      <button type="button" disabled={!canRedo} onClick={onRedo}>
-        {t("fog.redo")}
       </button>
     </div>
   );

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
 /** Props of {@link IconButton}. */
 export interface IconButtonProps extends Omit<
@@ -12,7 +12,8 @@ export interface IconButtonProps extends Omit<
   /** Show the label under the icon (ribbon tools); otherwise it is the tooltip and accessible name. */
   showLabel?: boolean;
   /** For toggle tools: whether the tool is active. Leave out for plain actions. */
-  pressed?: boolean;
+  pressed?: boolean | undefined;
+  ref?: Ref<HTMLButtonElement> | undefined;
 }
 
 /** Button with an icon, used in the ribbon, title bar and dock (ADR-0011). */

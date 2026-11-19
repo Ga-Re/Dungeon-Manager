@@ -121,6 +121,38 @@ export const en: Messages = {
     heading: "Dungeon Manager for players",
     placeholder: "Soon you can join the game table here.",
   },
+  shell: {
+    dataPanel: "Data panel",
+    toggleDataPanel: "Show or hide the data panel (⌘/Ctrl+B)",
+    modes: "Workspace",
+    mode: {
+      scene: "Scene",
+      fog: "Fog",
+      display: "Display",
+    },
+    noScene: "No scene is open. Choose a scene in the data panel.",
+    settings: "Settings",
+    theme: {
+      label: "Appearance",
+      system: "Same as the operating system",
+      light: "Light (parchment)",
+      dark: "Dark (night)",
+    },
+    save: {
+      saved: "Saved",
+      saving: "Saving…",
+      failed: "Not saved",
+    },
+    browser: {
+      title: "Scene",
+      map: "Map",
+      noMap: "No map yet",
+      levels: "Levels",
+      fog: "Fog",
+      fogAreas_one: "{{count}} area revealed",
+      fogAreas_other: "{{count}} areas revealed",
+    },
+  },
   ui: {
     panel: {
       itemCount_one: "{{count}} item",

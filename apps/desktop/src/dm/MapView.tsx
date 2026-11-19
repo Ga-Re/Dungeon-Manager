@@ -423,23 +423,25 @@ export function MapView({
           />
         )}
       </div>
-      <p id="map-view-help" className="map-view-help">
-        {t("mapView.help")}
-      </p>
-      {load === "loading" && <p>{t("mapView.loading")}</p>}
-      {load === "error" && <p role="alert">{t("mapView.error")}</p>}
-      <button type="button" disabled={load !== "ready"} onClick={fit}>
-        {t("mapView.fit")}
-      </button>
-      <button
-        type="button"
-        disabled={load !== "ready"}
-        onClick={() => {
-          change((current) => rotateBy(current, 90));
-        }}
-      >
-        {t("mapView.rotate")}
-      </button>
+      <div className="map-view-dock">
+        <p id="map-view-help" className="map-view-help">
+          {t("mapView.help")}
+        </p>
+        {load === "loading" && <p>{t("mapView.loading")}</p>}
+        {load === "error" && <p role="alert">{t("mapView.error")}</p>}
+        <button type="button" disabled={load !== "ready"} onClick={fit}>
+          {t("mapView.fit")}
+        </button>
+        <button
+          type="button"
+          disabled={load !== "ready"}
+          onClick={() => {
+            change((current) => rotateBy(current, 90));
+          }}
+        >
+          {t("mapView.rotate")}
+        </button>
+      </div>
     </div>
   );
 }

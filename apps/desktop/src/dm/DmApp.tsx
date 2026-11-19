@@ -8,6 +8,9 @@ import {
 import type { LibraryService } from "../platform/library.js";
 import { LibraryPanel } from "./LibraryPanel.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
+import { DmShell } from "./shell/DmShell.js";
+import { ShellPortal } from "./shell/slots.js";
+import { deviceStorage } from "./shell/theme.js";
 
 type DisplayState =
   | { readonly status: "loading" }
@@ -19,10 +22,16 @@ export function DmApp({
   displayService,
   libraryService,
   newId,
+  storage = deviceStorage(),
+  root = document.documentElement,
 }: {
   readonly displayService: DisplayService;
   readonly libraryService: LibraryService;
   readonly newId: () => string;
+  /** Device-local settings storage; the webview's `localStorage` by default. */
+  readonly storage?: Storage | undefined;
+  /** Element that carries the theme attribute; the document root by default. */
+  readonly root?: HTMLElement;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<DisplayState>({ status: "loading" });
@@ -92,57 +101,66 @@ export function DmApp({
 
   return (
     <main>
-      <h1>{t("dm.heading")}</h1>
-      {state.status === "loading" && <p>{t("dm.loadingDisplays")}</p>}
-      {state.status === "error" && (
-        <p role="alert">{describeError(state.error)}</p>
-      )}
-      {state.status === "ready" && state.displays.length === 0 && (
-        <p>{t("dm.noDisplays")}</p>
-      )}
-      {state.status === "ready" && state.displays.length > 0 && (
-        <form onSubmit={(event) => void openPlayerView(event)}>
-          <label>
-            {t("dm.displayLabel")}
-            <select
-              value={selectedId}
-              onChange={(event) => {
-                setSelectedId(event.target.value);
+      <h1 className="visually-hidden">{t("dm.heading")}</h1>
+      <DmShell
+        storage={storage}
+        root={root}
+        dataPanel={<LibraryPanel service={libraryService} newId={newId} />}
+      >
+        <ShellPortal slot="ribbonDisplay">
+          <div className="dm-ribbon-group">
+            {state.status === "loading" && <p>{t("dm.loadingDisplays")}</p>}
+            {state.status === "error" && (
+              <p role="alert">{describeError(state.error)}</p>
+            )}
+            {state.status === "ready" && state.displays.length === 0 && (
+              <p>{t("dm.noDisplays")}</p>
+            )}
+            {state.status === "ready" && state.displays.length > 0 && (
+              <form onSubmit={(event) => void openPlayerView(event)}>
+                <label>
+                  {t("dm.displayLabel")}
+                  <select
+                    value={selectedId}
+                    onChange={(event) => {
+                      setSelectedId(event.target.value);
+                    }}
+                  >
+                    {state.displays.map((display, index) => (
+                      <option key={display.id} value={display.id}>
+                        {t("dm.displayOption", {
+                          name: displayName(display, index),
+                          width: display.width,
+                          height: display.height,
+                        })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="submit" id="open-player-view" disabled={opening}>
+                  {t("dm.openPlayerView")}
+                </button>
+              </form>
+            )}
+            {playerFeed && (
+              <button type="button" onClick={rotateTv}>
+                {t("dm.rotateTv", { degrees: rotation })}
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={state.status === "loading"}
+              onClick={() => {
+                setSearchCount((count) => count + 1);
               }}
             >
-              {state.displays.map((display, index) => (
-                <option key={display.id} value={display.id}>
-                  {t("dm.displayOption", {
-                    name: displayName(display, index),
-                    width: display.width,
-                    height: display.height,
-                  })}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" id="open-player-view" disabled={opening}>
-            {t("dm.openPlayerView")}
-          </button>
-        </form>
-      )}
-      {playerFeed && (
-        <button type="button" onClick={rotateTv}>
-          {t("dm.rotateTv", { degrees: rotation })}
-        </button>
-      )}
-      <button
-        type="button"
-        disabled={state.status === "loading"}
-        onClick={() => {
-          setSearchCount((count) => count + 1);
-        }}
-      >
-        {t("dm.refreshDisplays")}
-      </button>
-      {/* Always rendered: screen readers only announce changes to an existing live region. */}
-      <p role="status">{notice}</p>
-      <LibraryPanel service={libraryService} newId={newId} />
+              {t("dm.refreshDisplays")}
+            </button>
+            {/* Always rendered: screen readers only announce changes to an existing live region. */}
+            <p role="status">{notice}</p>
+          </div>
+        </ShellPortal>
+      </DmShell>
     </main>
   );
 }
