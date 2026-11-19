@@ -513,3 +513,27 @@ test("the workspace selector switches the ribbon by keyboard and is remembered (
   await closeWelcome(page);
   await expect(workspace).toHaveText("Asset Studio");
 });
+
+test("the title bar's menu button opens the welcome dialog again and starts a new campaign (T-130d)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  const menu = page.getByRole("button", { name: "Menü" });
+  await menu.focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("menuitem", { name: "Willkommen …" }).click();
+  const welcome = page.getByRole("dialog", { name: "Willkommen" });
+  await expect(welcome).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(welcome).toBeHidden();
+
+  await menu.click();
+  await page.getByRole("menuitem", { name: "Neue Kampagne …" }).click();
+  const name = page.getByRole("textbox", { name: "Name der neuen Kampagne" });
+  await expect(name).toBeFocused();
+  await name.fill("Zweite Runde");
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("treeitem", { name: "Zweite Runde" }),
+  ).toBeVisible();
+});

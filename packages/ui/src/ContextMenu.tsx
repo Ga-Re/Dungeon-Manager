@@ -1,10 +1,7 @@
 import { MenuList, type MenuItem } from "./MenuList.js";
+import type { MenuPoint } from "./viewport.js";
 
-/** Where a {@link ContextMenu} opens, in viewport pixels. */
-export interface MenuPoint {
-  x: number;
-  y: number;
-}
+export type { MenuPoint } from "./viewport.js";
 
 /** Props of {@link ContextMenu}. */
 export interface ContextMenuProps {
@@ -40,7 +37,7 @@ export function ContextMenu({
       label={label}
       items={items}
       initial="first"
-      style={{ position: "fixed", left: at.x, top: at.y }}
+      at={at}
       onChoose={(item) => {
         returnFocus?.focus();
         onClose();

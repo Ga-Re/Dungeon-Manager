@@ -8,6 +8,7 @@ import {
   type DisplayService,
 } from "../platform/displays.js";
 import type { LibraryService } from "../platform/library.js";
+import type { AppMenuService } from "../platform/app-menu.js";
 import { LibraryPanel } from "./LibraryPanel.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 import { DmShell } from "./shell/DmShell.js";
@@ -27,6 +28,7 @@ export function DmApp({
   storage = deviceStorage(),
   root = document.documentElement,
   welcome = true,
+  appMenu,
 }: {
   readonly displayService: DisplayService;
   readonly libraryService: LibraryService;
@@ -37,6 +39,8 @@ export function DmApp({
   readonly root?: HTMLElement;
   /** Open the welcome dialog first (T-153); on by default, as on every start. */
   readonly welcome?: boolean;
+  /** The native menu bar (macOS, T-130d); without it the title bar has a menu button. */
+  readonly appMenu?: AppMenuService | undefined;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<DisplayState>({ status: "loading" });
@@ -106,7 +110,7 @@ export function DmApp({
   return (
     <main>
       <h1 className="visually-hidden">{t("dm.heading")}</h1>
-      <DmShell storage={storage} root={root}>
+      <DmShell storage={storage} root={root} appMenu={appMenu}>
         <LibraryPanel
           service={libraryService}
           newId={newId}
