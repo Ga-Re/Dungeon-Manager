@@ -1,7 +1,9 @@
 import { IconButton, Menu } from "@dungeon-manager/ui";
 import {
   BookMarked,
+  BookOpen,
   Boxes,
+  FolderPlus,
   Map as MapIcon,
   PanelLeft,
   Settings,
@@ -19,6 +21,12 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { ShellSlotsContext, type ShellSlot } from "./slots.js";
+import {
+  isAppCommand,
+  type AppMenuLabels,
+  type AppMenuService,
+} from "../../platform/app-menu.js";
+import { AppCommandsContext, createAppCommands } from "./app-commands.js";
 import { HudLayoutContext, useHudLayoutStore } from "./hud-layout.js";
 import { FogLookContext } from "./fog-look.js";
 import {
@@ -80,6 +88,7 @@ export function DmShell({
   children,
   storage,
   root,
+  appMenu,
 }: {
   /** Content that only portals into slots (library, campaign, display controls). */
   readonly children?: ReactNode;
@@ -87,6 +96,8 @@ export function DmShell({
   readonly storage: Storage | undefined;
   /** Element that carries the theme attribute (the document root). */
   readonly root: HTMLElement;
+  /** The native menu bar (macOS); without one, the title bar has a menu button (T-130d). */
+  readonly appMenu?: AppMenuService | undefined;
 }) {
   const { t } = useTranslation();
   const [panelOpen, setPanelOpen] = useState(true);
@@ -99,6 +110,12 @@ export function DmShell({
     saveWorkspace(storage, id);
   };
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const commands = useMemo(createAppCommands, []);
+  // With a menu service, whether it shows a menu bar is open until it says so: no menu button
+  // flashes up on macOS before the menu bar is there.
+  const [nativeMenu, setNativeMenu] = useState<boolean | "pending">(
+    appMenu ? "pending" : false,
+  );
   const [theme, setTheme] = useThemeSetting(storage, root);
   const [uiScale, setUiScale] = useUiScale(storage, root);
   const [fogLook, setFogLook] = useState(() => readFogLook(storage));
@@ -169,6 +186,67 @@ export function DmShell({
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [togglePanel]);
+
+  useEffect(() => {
+    const removeCommand = commands.register("settings", () => {
+      setSettingsOpen(true);
+    });
+    const removeModal = commands.registerModal(() => {
+      setSettingsOpen(false);
+    });
+    return () => {
+      removeCommand();
+      removeModal();
+    };
+  }, [commands]);
+
+  // The native menu bar, again when the language changes; a menu button where there is none.
+  useEffect(() => {
+    if (!appMenu) return;
+    let active = true;
+    const labels: AppMenuLabels = {
+      appName: t("app.title"),
+      about: t("shell.appMenu.about"),
+      settings: t("shell.appMenu.settings"),
+      services: t("shell.appMenu.services"),
+      hide: t("shell.appMenu.hide"),
+      hideOthers: t("shell.appMenu.hideOthers"),
+      showAll: t("shell.appMenu.showAll"),
+      quit: t("shell.appMenu.quit"),
+      file: t("shell.appMenu.file"),
+      newCampaign: t("shell.appMenu.newCampaign"),
+      welcome: t("shell.appMenu.welcome"),
+      closeWindow: t("shell.appMenu.closeWindow"),
+      edit: t("shell.appMenu.edit"),
+      undo: t("shell.appMenu.undo"),
+      redo: t("shell.appMenu.redo"),
+      cut: t("shell.appMenu.cut"),
+      copy: t("shell.appMenu.copy"),
+      paste: t("shell.appMenu.paste"),
+      selectAll: t("shell.appMenu.selectAll"),
+      window: t("shell.appMenu.window"),
+      minimize: t("shell.appMenu.minimize"),
+      zoom: t("shell.appMenu.zoom"),
+      fullscreen: t("shell.appMenu.fullscreen"),
+    };
+    appMenu
+      .install(labels, (command) => {
+        commands.run(command);
+      })
+      .then(
+        (installed) => {
+          if (active) setNativeMenu(installed);
+        },
+        (error: unknown) => {
+          // Without the menu bar the menu button offers the same commands.
+          console.error("The app menu could not be installed.", error);
+          if (active) setNativeMenu(false);
+        },
+      );
+    return () => {
+      active = false;
+    };
+  }, [appMenu, commands, t]);
 
   const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const index = MODES.indexOf(mode);
@@ -320,6 +398,32 @@ export function DmShell({
               onClick={togglePanel}
             />
             <span className="dm-app-name">{t("app.title")}</span>
+            {nativeMenu === false && (
+              <Menu
+                label={t("shell.appMenu.button")}
+                items={[
+                  {
+                    id: "newCampaign",
+                    label: t("shell.appMenu.newCampaign"),
+                    icon: <FolderPlus />,
+                  },
+                  {
+                    id: "welcome",
+                    label: t("shell.appMenu.welcome"),
+                    icon: <BookOpen />,
+                  },
+                  {
+                    id: "settings",
+                    label: t("shell.appMenu.settings"),
+                    icon: <Settings />,
+                  },
+                ]}
+                onSelect={(id) => {
+                  if (isAppCommand(id)) commands.run(id);
+                }}
+                className="dm-app-menu"
+              />
+            )}
             <div ref={slotRefs.titleScene} className="dm-titlebar-scene" />
             <div className="dm-settings">
               <IconButton
@@ -443,7 +547,9 @@ export function DmShell({
           {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
           <div className="dm-shell-content">
             {/* Context passes through portals: what the children render gets it too. */}
-            <FogLookContext value={fogLook}>{children}</FogLookContext>
+            <AppCommandsContext value={commands}>
+              <FogLookContext value={fogLook}>{children}</FogLookContext>
+            </AppCommandsContext>
           </div>
         </div>
       </HudLayoutContext>

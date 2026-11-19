@@ -8,6 +8,7 @@ import type { DisplayService } from "../platform/displays.js";
 import type { LibraryService } from "../platform/library.js";
 import type { MapViewService } from "../platform/map-images.js";
 import type { PlayerFeedSender } from "../platform/player-feed.js";
+import type { AppMenuService } from "../platform/app-menu.js";
 import "@dungeon-manager/ui/styles/tokens.css";
 import "@dungeon-manager/ui/styles/components.css";
 import "../dm.css";
@@ -24,6 +25,8 @@ export interface DmWindowServices {
   readonly mapViewService: MapViewService;
   readonly playerFeed: PlayerFeedSender | null;
   readonly newId: () => string;
+  /** The native menu bar; the E2E harness has none and shows the menu button. */
+  readonly appMenu?: AppMenuService;
 }
 
 /** Renders the DM window into `#root`. */
@@ -47,6 +50,7 @@ export function renderDmWindow(services: DmWindowServices): void {
               displayService={services.displayService}
               libraryService={services.libraryService}
               newId={services.newId}
+              appMenu={services.appMenu}
             />
           </MapViewContext>
         </PlayerFeedContext>

@@ -24,6 +24,7 @@ import {
 } from "./recent-campaigns.js";
 import { WelcomeDialog, type WelcomeLibrary } from "./WelcomeDialog.js";
 import { useHudPlacement } from "./shell/hud-layout.js";
+import { useAppCommand, useAppModal } from "./shell/app-commands.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
 
@@ -250,6 +251,19 @@ export function LibraryPanel({
       ),
     };
   })();
+
+  // The app menu (T-130d): a new campaign is named in the browser's popover; without an open
+  // library (e.g. no folder yet) the welcome dialog guides there first.
+  useAppCommand("newCampaign", () => {
+    if (state.status === "open") setCreating(true);
+    else setWelcomeOpen(true);
+  });
+  useAppCommand("welcome", () => {
+    setWelcomeOpen(true);
+  });
+  useAppModal(() => {
+    setWelcomeOpen(false);
+  });
 
   const openFromWelcome = (slug: string) => {
     const sceneId =

@@ -1199,3 +1199,14 @@ button.dm-welcome-campaign:hover {
   font-variant-numeric: tabular-nums;
   color: var(--dm-text-secondary);
 }
+
+/* The app menu button (T-130d) where there is no native menu bar (Windows, Linux). */
+.dm-app-menu .dm-menu-button {
+  padding: var(--dm-space-1) var(--dm-space-2);
+  font-size: var(--dm-font-size-sm);
+  color: var(--dm-text-on-chrome);
+}
+
+.dm-app-menu .dm-menu-list {
+  left: 0;
+}

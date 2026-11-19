@@ -1,11 +1,11 @@
 import {
   useEffect,
   useRef,
-  type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
   type RefObject,
 } from "react";
+import { useClampedPoint, type MenuPoint } from "./viewport.js";
 
 /** One command of a {@link Menu} or {@link ContextMenu}. */
 export interface MenuItem {
@@ -33,7 +33,8 @@ export interface MenuListProps {
   onDismiss: (reason: MenuDismissal) => void;
   /** Presses on this element (e.g. the menu button) do not count as outside. */
   owner?: RefObject<HTMLElement | null> | undefined;
-  style?: CSSProperties | undefined;
+  /** Open at a viewport point (a context menu), kept inside the window; else under its owner. */
+  at?: MenuPoint | undefined;
 }
 
 /**
@@ -49,9 +50,10 @@ export function MenuList({
   onChoose,
   onDismiss,
   owner,
-  style,
+  at,
 }: MenuListProps) {
   const menu = useRef<HTMLDivElement>(null);
+  const point = useClampedPoint(menu, at);
   const entries = useRef<(HTMLButtonElement | null)[]>([]);
   const dismiss = useRef(onDismiss);
   useEffect(() => {
@@ -123,7 +125,7 @@ export function MenuList({
       role="menu"
       aria-label={label}
       className="dm-menu-list"
-      style={style}
+      style={point && { position: "fixed", left: point.x, top: point.y }}
       onKeyDown={onKeyDown}
     >
       {items.map((item, index) => (

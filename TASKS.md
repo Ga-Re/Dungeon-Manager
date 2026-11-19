@@ -677,12 +677,20 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-130d App menu: macOS menu bar, Windows menu button
 
-- **Status:** todo · **Depends on:** T-130c · **Refs:** ARCHITECTURE §15, ADR-0011
+- **Status:** done · **Depends on:** T-130c · **Refs:** ARCHITECTURE §15, ADR-0011
 - **New campaign** (and later more app commands such as the welcome dialog of T-153) on macOS from the native menu bar (Tauri menu, e.g. "Ablage → Neue Kampagne"); on Windows from a menu button in the title bar (DM decision, 2026-11-19).
 - **Acceptance criteria**
-  - [ ] Native macOS menu command reaches the DM window (Rust test or smoke test)
-  - [ ] Windows menu button covered by a component test; menu labels translated
+  - [ ] Native macOS menu command reaches the DM window (Rust test or smoke test) – **pending DM decision**: the menu is built in the DM window (translated labels), not in Rust, and the smoke test cannot run on macOS; PR #58 proposes a test against a mocked Tauri menu module plus a manual check on macOS
+  - [x] Windows menu button covered by a component test; menu labels translated
 - **Notes:** From the T-130c review: context menus and popovers opened at a point are not yet kept inside the viewport (a low tree item with Shift+F10 can push the new-scene form off-screen) – clamp them when the menus are built here.
+- Done in T-130d: context menus and popovers opened at a point are clamped to the viewport. Menu commands close open dialogs first (the native menu bar works while a modal is open).
+
+### T-166 Keep popovers inside the window when they grow
+
+- **Status:** todo · **Depends on:** T-130d · **Refs:** ADR-0011, `packages/ui/src/viewport.ts`
+- From the T-130d review: the viewport clamp runs once per opening point. A popover that grows while open (e.g. a form's error message near the bottom) or a window resized while it is open can still leave the window.
+- **Acceptance criteria**
+  - [ ] Re-clamp on content size changes (`ResizeObserver`, where available) and on window resize; component tests
 
 ### T-152 Sub-scenes
 

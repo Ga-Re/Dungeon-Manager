@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import type { MenuPoint } from "./ContextMenu.js";
+import { useClampedPoint } from "./viewport.js";
 
 /** Props of {@link Popover}. */
 export interface PopoverProps {
@@ -37,6 +38,8 @@ export function Popover({
   children,
 }: PopoverProps) {
   const panel = useRef<HTMLDivElement>(null);
+  // Opened at a point (e.g. a low tree item's context menu): kept inside the window.
+  const point = useClampedPoint(panel, open ? at : undefined);
   // The latest callback without re-subscribing the listeners on every render.
   const close = useRef(onClose);
   useEffect(() => {
@@ -90,7 +93,7 @@ export function Popover({
       ]
         .filter(Boolean)
         .join(" ")}
-      style={at && { left: at.x, top: at.y }}
+      style={at && { left: (point ?? at).x, top: (point ?? at).y }}
     >
       {children}
     </div>
