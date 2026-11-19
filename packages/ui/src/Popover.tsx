@@ -39,8 +39,18 @@ export function Popover({
     close.current = onClose;
   });
 
+  // Focus goes back to the anchor only once the owner really closed it (it may refuse, e.g.
+  // while busy) – otherwise focus would leave a popover that is still open.
+  const returnFocus = useRef(false);
+  useEffect(() => {
+    if (open || !returnFocus.current) return;
+    returnFocus.current = false;
+    anchor.current?.focus();
+  }, [open, anchor]);
+
   useEffect(() => {
     if (!open) return;
+    returnFocus.current = false;
     const within = (target: EventTarget | null) =>
       target instanceof Node &&
       (panel.current?.contains(target) === true ||
@@ -48,8 +58,8 @@ export function Popover({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || !within(event.target)) return;
       event.preventDefault();
+      returnFocus.current = true;
       close.current();
-      anchor.current?.focus();
     };
     const onPointerDown = (event: PointerEvent) => {
       if (!within(event.target)) close.current();

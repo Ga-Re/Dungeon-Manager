@@ -116,6 +116,26 @@ describe("Popover", () => {
     );
   });
 
+  it("closes on Escape from its anchor", () => {
+    render(<PopoverHarness />);
+    const anchor = screen.getByRole("button", { name: "Einstellungen" });
+    fireEvent.keyDown(anchor, { key: "Escape" });
+    expect(screen.queryByRole("group", { name: "Darstellung" })).toBeNull();
+  });
+
+  it("keeps focus inside when the owner refuses to close", () => {
+    const anchor = { current: null };
+    render(
+      <Popover open anchor={anchor} label="Karte ändern" onClose={vi.fn()}>
+        <input aria-label="Name" />
+      </Popover>,
+    );
+    const field = screen.getByRole("textbox", { name: "Name" });
+    field.focus();
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(document.activeElement).toBe(field);
+  });
+
   it("leaves Escape elsewhere to its owner", () => {
     const onClose = vi.fn();
     render(<PopoverHarness onClose={onClose} />);

@@ -503,6 +503,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Data panel shows the catalogue scaffold; the library folder can be changed in the settings
   - [ ] Native macOS menu command reaches the DM window (Rust test or smoke test); Windows menu button covered by a component test
   - [ ] Smoke test, E2E and screenshot updated
+- **Notes:** From the T-130b review: opening a group menu while that group's popover is open draws both on top of each other – close the popover when the menu opens.
 
 ### T-152 Sub-scenes
 

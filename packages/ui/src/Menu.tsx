@@ -58,7 +58,9 @@ export function Menu({
 
   useEffect(() => {
     if (!open) return;
-    const list = entries.current;
+    const list = entries.current.filter(
+      (entry): entry is HTMLButtonElement => entry !== null,
+    );
     (initial === "first" ? list[0] : list.at(-1))?.focus();
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
@@ -119,7 +121,9 @@ export function Menu({
         closeToButton();
         break;
       case "Tab":
-        // Focus moves on to the next control as usual; the menu just closes.
+        // From the button, the browser's own Tab then reaches the control after the menu;
+        // the focused item is about to leave the DOM.
+        button.current?.focus();
         setOpen(false);
         return;
       default:

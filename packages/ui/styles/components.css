@@ -327,7 +327,8 @@
   accent-color: var(--dm-accent);
 }
 
-:where(.dm-ui) :where(button, input, select):focus-visible {
+:where(.dm-ui)
+  :where(button:focus-visible, input:focus-visible, select:focus-visible) {
   outline: var(--dm-focus-width) solid var(--dm-focus);
   outline-offset: 1px;
 }
@@ -470,7 +471,7 @@
   border-right: 1px solid var(--dm-border-subtle);
 }
 
-.dm-ribbon-group:last-child {
+.dm-ribbon-group:last-of-type {
   border-right: 0;
 }
 

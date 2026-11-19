@@ -271,7 +271,7 @@ export function OpenScenePanel({
           <Popover
             open={confirmingDelete}
             onClose={() => {
-              setConfirmingDelete(false);
+              if (!busy) setConfirmingDelete(false);
             }}
             anchor={sceneMenuButton}
             label={t("campaign.confirmDelete", { name: scene.name })}

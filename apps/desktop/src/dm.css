@@ -271,13 +271,13 @@ label {
 }
 
 .dm-ribbon-tab {
-  max-width: none;
   padding: var(--dm-space-2) var(--dm-space-3);
   font-size: var(--dm-font-size-sm);
   background: none;
   color: var(--dm-text-secondary);
   border: 0;
   border-bottom: 2px solid transparent;
+  border-radius: 0;
   cursor: pointer;
 }
 
