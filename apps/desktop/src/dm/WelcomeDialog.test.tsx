@@ -140,7 +140,10 @@ describe("WelcomeDialog", () => {
       name: /Die verlorene Mine/,
     });
     expect(mine.textContent).toMatch(/Zwergenhalle · 19\. Nov\. 2026/);
-    expect(document.activeElement).toBe(mine);
+    // Focus moves once the library is read (an effect after the list appears).
+    await waitFor(() => {
+      expect(document.activeElement).toBe(mine);
+    });
     expect(
       within(recent).getByText("Nicht mehr in dieser Bibliothek"),
     ).toBeTruthy();

@@ -496,7 +496,14 @@ test("the workspace selector switches the ribbon by keyboard and is remembered (
 
   await workspace.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("menuitem", { name: "Map Forge" })).toBeFocused();
+  await expect(
+    page.getByRole("menuitemradio", { name: "Map Forge" }),
+  ).toBeFocused();
+  await expect(
+    page
+      .getByRole("menu", { name: "Arbeitsbereich" })
+      .getByRole("menuitemradio", { name: "Game Mode" }),
+  ).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
 
@@ -564,7 +571,7 @@ test("the ribbon keeps one height in every tab and workspace, so the map never m
     .getByRole("group", { name: "Arbeitsbereich" })
     .getByRole("button");
   await workspace.click();
-  await page.getByRole("menuitem", { name: "Map Forge" }).click();
+  await page.getByRole("menuitemradio", { name: "Map Forge" }).click();
   expect(await height()).toBeCloseTo(first, 0);
 });
 

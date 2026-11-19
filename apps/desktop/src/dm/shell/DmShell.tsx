@@ -471,10 +471,12 @@ export function DmShell({
                 </span>
                 <Menu
                   label={t(`shell.workspace.${workspace}`)}
+                  menuLabel={t("shell.workspace.label")}
                   items={WORKSPACES.map((each) => ({
                     id: each,
                     label: t(`shell.workspace.${each}`),
                     icon: WORKSPACE_ICON[each],
+                    checked: each === workspace,
                   }))}
                   onSelect={chooseWorkspace}
                   className="dm-workspace-menu"

@@ -29,6 +29,37 @@ describe("Menu", () => {
     expect(document.activeElement).toBe(menuButton());
   });
 
+  it("can name its open menu apart from the button and mark the current choice (T-164)", () => {
+    render(
+      <Menu
+        label="Game Mode"
+        menuLabel="Arbeitsbereich"
+        items={[
+          { id: "forge", label: "Map Forge", checked: false },
+          { id: "game", label: "Game Mode", checked: true },
+        ]}
+        onSelect={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Game Mode" }));
+    const menu = screen.getByRole("menu", { name: "Arbeitsbereich" });
+    const choices = within(menu).getAllByRole("menuitemradio");
+    expect(choices.map((each) => each.getAttribute("aria-checked"))).toEqual([
+      "false",
+      "true",
+    ]);
+    // The current one shows a check mark, the others keep its room.
+    expect(choices[1]?.querySelector(".dm-menu-item-check svg")).not.toBeNull();
+    expect(choices[0]?.querySelector(".dm-menu-item-check svg")).toBeNull();
+  });
+
+  it("keeps plain commands as menu items", () => {
+    render(<Menu label="Szene" items={ITEMS} onSelect={vi.fn()} />);
+    fireEvent.click(menuButton());
+    expect(screen.getAllByRole("menuitem")).toHaveLength(3);
+    expect(screen.queryAllByRole("menuitemradio")).toHaveLength(0);
+  });
+
   it("moves with the arrow keys, Home and End, wrapping around", () => {
     render(<Menu label="Szene" items={ITEMS} onSelect={vi.fn()} />);
     fireEvent.keyDown(menuButton(), { key: "ArrowUp" });
