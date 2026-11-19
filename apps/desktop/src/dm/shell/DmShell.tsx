@@ -39,8 +39,9 @@ function isPanelShortcut(event: globalThis.KeyboardEvent): boolean {
 }
 
 /**
- * Zone layout of the DM window (ADR-0011, ARCHITECTURE §15): the map fills the window; title
- * bar, ribbon, data panel and scene browser float over it. Nested components place their parts
+ * Zone layout of the DM window (ADR-0011, ADR-0014, ARCHITECTURE §15): title bar on top, the
+ * data panel as a full-height left column, the ribbon right of it and the map in the rest; the
+ * scene browser, dock and notices float over the map. Nested components place their parts
  * with `ShellPortal`.
  */
 export function DmShell({
@@ -135,61 +136,67 @@ export function DmShell({
         className="dm-shell dm-ui"
         data-panel={panelOpen ? "open" : "closed"}
       >
-        <div ref={slotRefs.canvas} className="dm-canvas">
-          <p className="dm-canvas-empty">{t("shell.noScene")}</p>
-        </div>
-        <div className="dm-overlay">
-          <header className="dm-titlebar">
+        <header className="dm-titlebar">
+          <IconButton
+            ref={panelButton}
+            icon={<PanelLeft />}
+            label={t("shell.toggleDataPanel")}
+            pressed={panelOpen}
+            aria-controls={`${idPrefix}-panel`}
+            onClick={togglePanel}
+          />
+          <span className="dm-app-name">{t("app.title")}</span>
+          <div ref={slotRefs.titleScene} className="dm-titlebar-scene" />
+          <div className="dm-settings">
             <IconButton
-              ref={panelButton}
-              icon={<PanelLeft />}
-              label={t("shell.toggleDataPanel")}
-              pressed={panelOpen}
-              aria-controls={`${idPrefix}-panel`}
-              onClick={togglePanel}
+              ref={settingsButton}
+              icon={<Settings />}
+              label={t("shell.settings")}
+              aria-expanded={settingsOpen}
+              aria-controls={`${idPrefix}-settings`}
+              onClick={() => {
+                setSettingsOpen((open) => !open);
+              }}
             />
-            <span className="dm-app-name">{t("app.title")}</span>
-            <div ref={slotRefs.titleScene} className="dm-titlebar-scene" />
-            <div className="dm-settings">
-              <IconButton
-                ref={settingsButton}
-                icon={<Settings />}
-                label={t("shell.settings")}
-                aria-expanded={settingsOpen}
-                aria-controls={`${idPrefix}-settings`}
-                onClick={() => {
-                  setSettingsOpen((open) => !open);
-                }}
-              />
-              <Popover
-                open={settingsOpen}
-                onClose={() => {
-                  setSettingsOpen(false);
-                }}
-                anchor={settingsButton}
-                label={t("shell.settings")}
-                id={`${idPrefix}-settings`}
-              >
-                <fieldset className="dm-settings-group">
-                  <legend>{t("shell.theme.label")}</legend>
-                  {THEME_SETTINGS.map((each) => (
-                    <label key={each}>
-                      <input
-                        type="radio"
-                        name={`${idPrefix}-theme`}
-                        checked={theme === each}
-                        onChange={() => {
-                          setTheme(each);
-                        }}
-                      />
-                      {t(`shell.theme.${each}`)}
-                    </label>
-                  ))}
-                </fieldset>
-                <div ref={slotRefs.settings} className="dm-settings-more" />
-              </Popover>
-            </div>
-          </header>
+            <Popover
+              open={settingsOpen}
+              onClose={() => {
+                setSettingsOpen(false);
+              }}
+              anchor={settingsButton}
+              label={t("shell.settings")}
+              id={`${idPrefix}-settings`}
+            >
+              <fieldset className="dm-settings-group">
+                <legend>{t("shell.theme.label")}</legend>
+                {THEME_SETTINGS.map((each) => (
+                  <label key={each}>
+                    <input
+                      type="radio"
+                      name={`${idPrefix}-theme`}
+                      checked={theme === each}
+                      onChange={() => {
+                        setTheme(each);
+                      }}
+                    />
+                    {t(`shell.theme.${each}`)}
+                  </label>
+                ))}
+              </fieldset>
+              <div ref={slotRefs.settings} className="dm-settings-more" />
+            </Popover>
+          </div>
+        </header>
+        <aside
+          ref={dataPanelRef}
+          id={`${idPrefix}-panel`}
+          aria-label={t("shell.dataPanel")}
+          className="dm-datapanel"
+          hidden={!panelOpen}
+        >
+          <div ref={slotRefs.dataPanel} />
+        </aside>
+        <div className="dm-main">
           <div className="dm-ribbon">
             <div
               role="tablist"
@@ -232,21 +239,17 @@ export function DmShell({
               />
             ))}
           </div>
-          <div className="dm-workspace">
-            <aside
-              ref={dataPanelRef}
-              id={`${idPrefix}-panel`}
-              aria-label={t("shell.dataPanel")}
-              className="dm-datapanel"
-              hidden={!panelOpen}
-            >
-              <div ref={slotRefs.dataPanel} />
-            </aside>
+          {/* The map area: the canvas fills it, HUD parts float over it (ADR-0014). */}
+          <div className="dm-stage">
+            <div ref={slotRefs.canvas} className="dm-canvas">
+              <p className="dm-canvas-empty">{t("shell.noScene")}</p>
+            </div>
             <div ref={slotRefs.browser} className="dm-browser" />
+            <div ref={slotRefs.notices} className="dm-notices" />
           </div>
-          <div ref={slotRefs.notices} className="dm-notices" />
         </div>
-        {children}
+        {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
+        <div className="dm-shell-content">{children}</div>
       </div>
     </ShellSlotsContext>
   );
