@@ -718,9 +718,10 @@ describe("level.show", () => {
     const result = ok(
       apply(state, { type: "level.show", levelId: "cellar" }, ctx),
     );
+    // The ground floor was on the TV before (the first level, without `table`): released too.
     expect(result.state.scene.table).toEqual({
       levelId: "cellar",
-      shownLevelIds: ["cellar"],
+      shownLevelIds: ["ground", "cellar"],
     });
     expect(result.events).toEqual([
       { at: 1_000, type: "level.shown", levelId: "cellar" },
@@ -732,7 +733,7 @@ describe("level.show", () => {
     );
     expect(back.scene.table).toEqual({
       levelId: "cellar",
-      shownLevelIds: ["cellar", "ground"],
+      shownLevelIds: ["ground", "cellar"],
     });
   });
 

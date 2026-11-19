@@ -190,6 +190,12 @@ export const en: Messages = {
     zoomIn: "Zoom in",
     zoomOut: "Zoom out",
   },
+  level: {
+    group: "Level",
+    pick: "Level to edit",
+    showOnTv: "Show on TV",
+    onTv: "On the TV: {{name}}",
+  },
   fog: {
     tool: "Tool",
     tools: {
@@ -388,6 +394,8 @@ export const en: Messages = {
       map: "Map",
       noMap: "No map yet",
       levels: "Levels",
+      levelOnTv: "on the TV",
+      levelReleased: "released",
       fog: "Fog",
       fogAreas_one: "{{count}} area revealed",
       fogAreas_other: "{{count}} areas revealed",

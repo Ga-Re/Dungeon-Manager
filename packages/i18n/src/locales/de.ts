@@ -191,6 +191,12 @@ export const de = {
     zoomIn: "Vergrößern",
     zoomOut: "Verkleinern",
   },
+  level: {
+    group: "Ebene",
+    pick: "Ebene zum Bearbeiten",
+    showOnTv: "Auf TV zeigen",
+    onTv: "Auf dem TV: {{name}}",
+  },
   fog: {
     tool: "Werkzeug",
     tools: {
@@ -390,6 +396,8 @@ export const de = {
       map: "Karte",
       noMap: "Noch keine Karte",
       levels: "Ebenen",
+      levelOnTv: "auf dem TV",
+      levelReleased: "freigegeben",
       fog: "Nebel",
       fogAreas_one: "{{count}} Bereich aufgedeckt",
       fogAreas_other: "{{count}} Bereiche aufgedeckt",

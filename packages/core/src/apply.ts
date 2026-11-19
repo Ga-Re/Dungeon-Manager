@@ -9,6 +9,7 @@ import type {
 } from "@dungeon-manager/schema";
 import type { Command, DomainEvent, RejectionReason } from "./commands.js";
 import { EMPTY_LEVEL_FOG, hideArea, revealArea } from "./fog.js";
+import { tableLevels } from "./projection.js";
 import type { Ctx, SessionState } from "./state.js";
 
 /** The new state and what happened, or why the command was rejected (state unchanged). */
@@ -107,8 +108,11 @@ function applyChange(state: SessionState, command: Command): Change {
     case "level.show": {
       if (!scene.map) return "noMap";
       if (!hasLevel(scene, command.levelId)) return "unknownLevel";
-      const shown = new Set(scene.table?.shownLevelIds);
-      shown.add(command.levelId);
+      // Already on the TV: nothing changes, nothing to undo (T-118c).
+      if (scene.table?.levelId === command.levelId)
+        return { state, events: [] };
+      // What was shown so far stays released – also the first level, shown without `table`.
+      const shown = new Set([...tableLevels(scene).released, command.levelId]);
       return {
         state: withScene(state, {
           table: { levelId: command.levelId, shownLevelIds: [...shown] },

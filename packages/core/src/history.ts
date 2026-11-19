@@ -19,7 +19,10 @@ export function createHistory(): History {
   return { past: [], future: [] };
 }
 
-/** Applies a command and records the previous state for undo; a new command clears redo. */
+/**
+ * Applies a command and records the previous state for undo; a new command clears redo. A
+ * command that changes nothing (same state back) leaves the history as it is.
+ */
 export function execute(
   state: SessionState,
   history: History,
@@ -35,6 +38,8 @@ export function execute(
   | { readonly ok: false; readonly reason: RejectionReason } {
   const result = apply(state, command, ctx);
   if (!result.ok) return result;
+  if (result.state === state)
+    return { ok: true, state, events: result.events, history };
   return {
     ok: true,
     state: result.state,

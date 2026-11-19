@@ -163,12 +163,21 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-118c Level switcher in the DM window
 
-- **Status:** todo · **Depends on:** T-118a · **Refs:** SPEC §3.1, ADR-0011
-- With more than one level, the DM picks the level to work on (fog, tokens) and shows it on the TV (`level.show`); the browser marks the current and the released levels.
+- **Status:** done · **Depends on:** T-118a · **Refs:** SPEC §3.1, ADR-0011
+- DM decision (2026-11-20): the working level and the TV's level are separate; showing is its own command. With more than one level, the DM picks the level to work on (fog, tokens) and shows it on the TV (`level.show`); the browser marks the current and the released levels.
 - **Acceptance criteria**
-  - [ ] Switching the TV's level from the DM window (component + E2E test); hidden while the map has one level
-  - [ ] Fog tools work on the level the DM has picked, and the DM window shows that level's own image when it has one
+  - [x] Switching the TV's level from the DM window (component + E2E test); hidden while the map has one level
+  - [x] Fog tools work on the level the DM has picked, and the DM window shows that level's own image when it has one
 - **Notes:** From the T-118a review: showing the level already current still adds an undo step (make it a no-op); a level image is loaded with the map's `kind` (video vs image), so a PNG level on a video map fails to load (fail-closed) – check the file type per level.
+- Done in T-118c: both review notes of T-118a (no-op `level.show`, file type per level).
+
+### T-118d Add and rename levels
+
+- **Status:** todo · **Depends on:** T-118c · **Refs:** SPEC §3.1, ADR-0012
+- DM decision (2026-11-20): the DM adds a level (name, optionally its own image or video of the map's size) and renames levels from the "Ebene" group; deleting waits for the sidecar files (T-134), as fog, tokens and released levels refer to level ids.
+- **Acceptance criteria**
+  - [ ] Add a level with or without its own file; a file of another size is refused with an actionable message (component + E2E test)
+  - [ ] Rename a level; the new name reaches the TV's projection only for released levels
 
 ### T-119 Case-insensitive id collisions in file names
 
