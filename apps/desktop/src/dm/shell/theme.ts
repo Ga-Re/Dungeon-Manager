@@ -11,8 +11,8 @@ export const THEME_SETTINGS: readonly ThemeSetting[] = [
 
 const STORAGE_KEY = "dm.theme";
 
-/** Parchment unless the DM chose otherwise on this device (ADR-0011: parchment is the default). */
-const DEFAULT_THEME: ThemeSetting = "light";
+/** Dark (workshop) unless the DM chose otherwise on this device (ADR-0015). */
+const DEFAULT_THEME: ThemeSetting = "dark";
 
 /** The webview's `localStorage`; even reading it throws when storage is disabled. */
 export function deviceStorage(): Storage | undefined {
@@ -51,7 +51,11 @@ function saveThemeSetting(storage: Storage | undefined, setting: ThemeSetting) {
 /** Sets the theme attribute the token sheet reacts to (`packages/ui/styles/tokens.css`). */
 export function applyTheme(setting: ThemeSetting, root: HTMLElement): void {
   root.dataset["dmTheme"] =
-    setting === "light" ? "parchment" : setting === "dark" ? "night" : "system";
+    setting === "light"
+      ? "parchment"
+      : setting === "dark"
+        ? "workshop"
+        : "system";
 }
 
 /** The current setting and a setter that applies and stores it. */

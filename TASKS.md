@@ -513,9 +513,36 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Screenshot golden updated; ARCHITECTURE §15 and the ui-design skill describe the docked zones
 - **Notes:** "Einpassen" needed no code change: it fits to the canvas size, which now is the visible map area (E2E checks the canvas against panel and ribbon; the fit itself is covered by the camera unit tests). Whether a fold should keep the view's centre is left for later.
 
+### T-157 Workshop theme (dark default) and reduced parchment
+
+- **Status:** done · **Depends on:** T-154 · **Refs:** ADR-0015 (Proposed), ADR-0011, ARCHITECTURE §15
+- DM feedback (2026-11-19): the look is "too playful and simple"; Fusion feels tidier. DM decision after the style mock-up: **both directions as themes** – dark "workshop" (default) and reduced light "parchment"; the old night variant goes.
+- **Acceptance criteria**
+  - [x] Token themes `workshop` (default) and `parchment`, both WCAG AA (pair tests); setting "OS / Hell / Dunkel" maps light → parchment, dark → workshop; first start is dark
+  - [x] Flatter base: sans-serif headings, small-caps captions, smaller radii and shadows; components only through tokens
+  - [x] Screenshot golden in the default theme; ARCHITECTURE §15 and the ui-design skill updated
+
+### T-158 Scene browser: campaign tree, transparent, collapsible, movable
+
+- **Status:** todo · **Depends on:** T-157 · **Refs:** ADR-0011, ADR-0014, ARCHITECTURE §15
+- DM request (2026-11-19, Fusion browser as reference): the tree starts with the current campaign, below it the campaign settings, then scenes, notes and later more groups. The browser has no panel background (transparent over the map, only a small header bar), can be collapsed, and can be dragged freely over the map area; position and collapsed state are remembered per device (DM decision), with a reset in the settings.
+- **Acceptance criteria**
+  - [ ] Tree: campaign → Kampagneneinstellungen, Szenen (open scene with its content), Notizen, …; keyboard and screen-reader accessible as today
+  - [ ] Transparent body readable over any map (text shadow or scrim; WCAG AA checked on light and dark maps)
+  - [ ] Collapse/expand, drag by the header grip within the map area, keyboard alternative; position per device; component + E2E tests
+- **Notes:** Which groups besides scenes and notes, and what the campaign settings contain, is settled with the DM in the plan.
+
+### T-159 Details panel (properties) on the right
+
+- **Status:** todo · **Depends on:** T-158 · **Refs:** ADR-0011, ADR-0014, ARCHITECTURE §15
+- DM request (2026-11-19): clicking an entry (map, scene, asset, …) in the browser or the catalogue opens a details area on the right of the map area, like Fusion's properties panel. Collapsible and movable like the browser (same mechanics, position per device).
+- **Acceptance criteria**
+  - [ ] Details for a scene and a map (read-only facts first; editing moves in as features need it)
+  - [ ] Collapse, drag, keyboard; component + E2E tests, screenshot
+
 ### T-155 Settings dialog
 
-- **Status:** todo · **Depends on:** T-154 · **Refs:** ADR-0011 (layer 50), ARCHITECTURE §6.2, §15
+- **Status:** todo · **Depends on:** T-159 · **Refs:** ADR-0011 (layer 50), ARCHITECTURE §6.2, §15
 - DM request (2026-11-19): a full settings window for all global settings. DM decision: a large dialog inside the DM window with categories on the left (Darstellung, Bibliothek, Nebel & Animation, Spieleransicht, …) and their settings on the right; opened from the gear, Cmd/Ctrl+, and later the app menu (T-130d). The gear popover's theme and library folder move into it.
 - **Acceptance criteria**
   - [ ] Modal dialog with focus trap, Escape closes, categories keyboard navigable; translated

@@ -292,9 +292,13 @@ label {
   border-bottom: 1px solid var(--dm-border-subtle);
 }
 
+/* Small caps tabs and captions keep the ribbon calm (ADR-0015). */
 .dm-ribbon-tab {
   padding: var(--dm-space-2) var(--dm-space-3);
-  font-size: var(--dm-font-size-sm);
+  font-size: var(--dm-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   background: none;
   color: var(--dm-text-secondary);
   border: 0;
@@ -557,6 +561,10 @@ label {
 
 .dm-catalog-head h2 {
   margin: 0;
+  font-size: var(--dm-font-size-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dm-text-secondary);
 }
 
 .dm-catalog-group {

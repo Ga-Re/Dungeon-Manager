@@ -163,7 +163,7 @@ export const en: Messages = {
       label: "Appearance",
       system: "Same as the operating system",
       light: "Light (parchment)",
-      dark: "Dark (night)",
+      dark: "Dark (workshop)",
     },
     save: {
       saved: "Saved",

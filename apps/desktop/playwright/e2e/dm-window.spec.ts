@@ -106,17 +106,18 @@ test("the theme chosen in the settings survives a restart", async ({
 }) => {
   await page.goto(HARNESS);
   const html = page.locator("html");
+  // Dark workshop on first start (ADR-0015).
+  await expect(html).toHaveAttribute("data-dm-theme", "workshop");
+
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("radio", { name: "Hell (Pergament)" }).check();
   await expect(html).toHaveAttribute("data-dm-theme", "parchment");
 
-  await page.getByRole("button", { name: "Einstellungen" }).click();
-  await page.getByRole("radio", { name: "Dunkel (Nacht)" }).check();
-  await expect(html).toHaveAttribute("data-dm-theme", "night");
-
   await page.reload();
-  await expect(html).toHaveAttribute("data-dm-theme", "night");
+  await expect(html).toHaveAttribute("data-dm-theme", "parchment");
   await page.getByRole("button", { name: "Einstellungen" }).click();
   await expect(
-    page.getByRole("radio", { name: "Dunkel (Nacht)" }),
+    page.getByRole("radio", { name: "Hell (Pergament)" }),
   ).toBeChecked();
 });
 

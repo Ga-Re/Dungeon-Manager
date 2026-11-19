@@ -23,15 +23,16 @@ function storageWith(value: string | null): Storage {
 }
 
 describe("readThemeSetting", () => {
-  it("defaults to parchment (light) without a stored choice", () => {
-    expect(readThemeSetting(storageWith(null))).toBe("light");
-    expect(readThemeSetting(undefined)).toBe("light");
+  it("defaults to the workshop (dark) theme without a stored choice (ADR-0015)", () => {
+    expect(readThemeSetting(storageWith(null))).toBe("dark");
+    expect(readThemeSetting(undefined)).toBe("dark");
   });
 
   it("returns a stored choice and ignores unknown values", () => {
     expect(readThemeSetting(storageWith("system"))).toBe("system");
     expect(readThemeSetting(storageWith("dark"))).toBe("dark");
-    expect(readThemeSetting(storageWith("purple"))).toBe("light");
+    expect(readThemeSetting(storageWith("light"))).toBe("light");
+    expect(readThemeSetting(storageWith("purple"))).toBe("dark");
   });
 
   it("falls back to the default when storage is unavailable", () => {
@@ -39,7 +40,7 @@ describe("readThemeSetting", () => {
     broken.getItem = () => {
       throw new Error("SecurityError");
     };
-    expect(readThemeSetting(broken)).toBe("light");
+    expect(readThemeSetting(broken)).toBe("dark");
   });
 });
 
@@ -49,7 +50,7 @@ describe("applyTheme", () => {
     applyTheme("light", root);
     expect(root.dataset["dmTheme"]).toBe("parchment");
     applyTheme("dark", root);
-    expect(root.dataset["dmTheme"]).toBe("night");
+    expect(root.dataset["dmTheme"]).toBe("workshop");
     applyTheme("system", root);
     expect(root.dataset["dmTheme"]).toBe("system");
   });

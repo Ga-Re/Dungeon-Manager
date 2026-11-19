@@ -15,7 +15,7 @@ export interface FloatingPanelProps {
   children: ReactNode;
 }
 
-/** Framed parchment panel that floats over the map (scene browser, data panel; ADR-0011). */
+/** Framed panel that floats over the map (scene browser; ADR-0011, ADR-0015). */
 export function FloatingPanel({
   title,
   count,

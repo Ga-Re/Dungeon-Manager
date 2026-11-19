@@ -486,6 +486,13 @@
   min-height: 3rem;
 }
 
+/* The caption menu button reads like the plain caption. */
+.dm-ribbon-group-caption .dm-menu-button {
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
 .dm-ribbon-group-caption {
   font-size: var(--dm-font-size-xs);
   letter-spacing: 0.04em;
