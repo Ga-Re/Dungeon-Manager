@@ -24,7 +24,8 @@ describe("session document (T-160)", () => {
   });
 
   it("makes the date optional", () => {
-    const { date: _date, ...withoutDate } = session;
+    const withoutDate: Record<string, unknown> = { ...session };
+    delete withoutDate["date"];
     expect(sessionSchema.parse(withoutDate)).toEqual(withoutDate);
   });
 
