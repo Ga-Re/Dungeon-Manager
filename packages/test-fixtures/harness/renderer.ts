@@ -208,10 +208,61 @@ async function fadeFailClosedScenario(canvas: HTMLCanvasElement) {
   document.body.dataset["between"] = String(between);
 }
 
+const LEFT_ROOM = { outer: rect(100, 100, 500, 400), holes: [] };
+const CORRIDOR = { outer: rect(600, 250, 400, 100), holes: [] };
+const RIGHT_ROOM = { outer: rect(1000, 100, 500, 800), holes: [] };
+
+/** Before and after of the "spread-" scenarios (T-167). */
+const SPREADS = {
+  // The corridor and the right room open from the left room they touch.
+  "spread-adjacent": {
+    before: [LEFT_ROOM],
+    after: [LEFT_ROOM, CORRIDOR, RIGHT_ROOM],
+  },
+  // The right room touches nothing revealed: it clears from its middle.
+  "spread-isolated": { before: [LEFT_ROOM], after: [LEFT_ROOM, RIGHT_ROOM] },
+  // Hiding the corridor and the right room: the fog comes in from the fog around them.
+  "spread-hide": {
+    before: [LEFT_ROOM, CORRIDOR, RIGHT_ROOM],
+    after: [LEFT_ROOM],
+  },
+} as const;
+
+/**
+ * "spread-…" (T-167): a fog change with soft edges, frozen half-way (the renderer's clock is
+ * the harness's), so the screenshot shows where the change starts.
+ */
+async function spreadScenario(
+  scenario: keyof typeof SPREADS,
+  canvas: HTMLCanvasElement,
+) {
+  let time = 0;
+  const renderer = await createRenderer({
+    canvas,
+    size: view,
+    resolution: 1,
+    now: () => time,
+  });
+  const { before, after } = SPREADS[scenario];
+  renderer.setFog(before, { opacity: 1, softEdge: SOFT_EDGE });
+  renderer.setMap(drawFixtureMap());
+  renderer.setCamera(cameraFor("fit"));
+  await renderer.drawn();
+  renderer.setFog(after, { opacity: 1, softEdge: SOFT_EDGE, fade: 1000 });
+  // Eased, 206 of 1000 ms is half-way (1 − 0.794³ ≈ 0.5).
+  time = 206;
+  await renderer.drawn();
+}
+
 async function main() {
   const canvas = document.querySelector("canvas");
   if (!canvas) throw new Error("canvas missing");
   const scenario = location.hash.slice(1);
+  if (scenario in SPREADS) {
+    await spreadScenario(scenario as keyof typeof SPREADS, canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
   if (scenario === "fade-fail-closed") {
     await fadeFailClosedScenario(canvas);
     document.body.dataset["ready"] = "true";

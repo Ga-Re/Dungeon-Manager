@@ -30,6 +30,16 @@ for (const scenario of [
   });
 }
 
+// Spreading fog (T-167), frozen half-way: a reveal opens from the revealed room it touches, an
+// isolated one from its middle; a hide comes in from the fog side.
+for (const scenario of ["spread-adjacent", "spread-isolated", "spread-hide"]) {
+  test(`fog change: ${scenario}`, async ({ page }) => {
+    await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
+    await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
+    await expect(page).toHaveScreenshot(`${scenario}.png`);
+  });
+}
+
 // Video maps (T-105c, ADR-0010): the video under opaque fog, also rotated; without any fog the
 // video must stay hidden (black screen).
 for (const scenario of [

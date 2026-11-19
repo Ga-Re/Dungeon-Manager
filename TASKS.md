@@ -694,13 +694,14 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-167 Fog spreads from the revealed edge
 
-- **Status:** todo · **Depends on:** T-136b · **Refs:** SPEC §4, ARCHITECTURE §8, §11
+- **Status:** done · **Depends on:** T-136b · **Refs:** SPEC §4, ARCHITECTURE §8, §11
 - Replaces the cross-fade of T-136b (DM decision, 2026-11-19). A reveal that touches already revealed area spreads from that edge across the new area; one that touches none clears from its centre outward. Hiding spreads from the fog side back over the area. The duration setting of T-136b sets the speed.
 - **Acceptance criteria**
-  - [ ] Spread direction for the three cases (adjacent reveal, isolated reveal, hide) covered by unit tests of a pure distance-field function and by renderer screenshot tests
-  - [ ] Fail-closed as in T-136b: a pixel fogged before and after a change never shows the map; the first fog of a scene and a new map never animate
+  - [x] Spread direction for the three cases (adjacent reveal, isolated reveal, hide) covered by unit tests of a pure distance-field function and by renderer screenshot tests
+  - [x] Fail-closed as in T-136b: a pixel fogged before and after a change never shows the map; the first fog of a scene and a new map never animate
   - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11
 - **Notes:** From the DM (2026-11-19).
+- The benchmark criterion stays open until the DM has measured it on the reference notebook (as for T-136b). The spread order costs about 5 ms per change on a 256² grid (Node), once per change.
 
 ### T-130d App menu: macOS menu bar, Windows menu button
 
