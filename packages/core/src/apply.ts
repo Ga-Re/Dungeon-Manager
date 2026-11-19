@@ -104,6 +104,18 @@ function applyChange(state: SessionState, command: Command): Change {
         ],
       };
     }
+    case "level.show": {
+      if (!scene.map) return "noMap";
+      if (!hasLevel(scene, command.levelId)) return "unknownLevel";
+      const shown = new Set(scene.table?.shownLevelIds);
+      shown.add(command.levelId);
+      return {
+        state: withScene(state, {
+          table: { levelId: command.levelId, shownLevelIds: [...shown] },
+        }),
+        events: [{ type: "level.shown", levelId: command.levelId }],
+      };
+    }
     case "visibility.set": {
       const { target, elementType, visibility } = command;
       const event = {

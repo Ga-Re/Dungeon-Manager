@@ -28,6 +28,7 @@ function sceneWith(path: string): ViewerScene {
     map: {
       kind: "image",
       asset: { path, hash: `sha256:${"a".repeat(64)}` },
+      currentLevelId: "ground",
       grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
       levels: [{ id: "ground", name: "Erdgeschoss" }],
     },
@@ -242,6 +243,49 @@ describe("PlayerApp", () => {
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
       fade: 0,
+    });
+  });
+
+  test("shows the TV's level: its fog and its own image, without a fade", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const scene = sceneWith("library/maps/a.png");
+    const map = scene.map;
+    if (!map) throw new Error("the sample scene has a map");
+    const cellar = {
+      ...scene,
+      map: {
+        ...map,
+        currentLevelId: "cellar",
+        levels: [
+          ...map.levels,
+          {
+            id: "cellar",
+            name: "Keller",
+            asset: {
+              path: "library/maps/cellar.png",
+              hash: `sha256:${"b".repeat(64)}`,
+            },
+          },
+        ],
+      },
+      fog: { ...scene.fog, cellar: { revealed: [], remembered: [] } },
+    };
+    feed.send({ v: 1, scene, rotation: 0 });
+    await waitFor(() => {
+      expect(maps.view.setMap).toHaveBeenLastCalledWith(image);
+    });
+    feed.send({ v: 1, scene: cellar, rotation: 0 });
+    expect(maps.view.setFog).toHaveBeenLastCalledWith([], {
+      softEdge: 25,
+      fade: 0,
+    });
+    await waitFor(() => {
+      expect(maps.service.loadImage).toHaveBeenLastCalledWith(
+        "library/maps/cellar.png",
+      );
     });
   });
 

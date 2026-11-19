@@ -151,14 +151,23 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] No event reveals a token, HP number or name that `projectForViewer` hides (property-based tests)
 - **Notes:** From the T-102a review; needed before events leave the host (companion, session log on the TV).
 
-### T-118 Companion-safe map delivery and released levels
+### T-118a Current and released levels
 
-- **Status:** todo · **Depends on:** T-102b · **Refs:** ARCHITECTURE §5.1, SPEC §2.4, §3.1
-- The projection currently sends the map asset reference and every level (id, name, asset), whatever has been revealed. Fine for the host-rendered TV; a companion could fetch the whole un-fogged map and read level names like "Geheimgang". Add a "current/released levels" concept to the scene and send companions only fog-composited (or tiled) images of released levels.
+- **Status:** done · **Depends on:** T-102b · **Refs:** ARCHITECTURE §5.1, SPEC §2.4, §3.1
+- The projection sends the map asset reference and every level (id, name, asset, fog), whatever has been shown; a companion could fetch the whole un-fogged map and read level names like "Geheimgang". The scene gets the level shown on the TV and the levels shown so far (optional field, no schema version bump – DM decision, 2026-11-19); a level once shown stays released for players (DM decision, 2026-11-19).
 - **Acceptance criteria**
-  - [ ] Companion projections contain no asset reference to un-fogged map files and no unreleased level
-  - [ ] The table view shows the scene's current level
-- **Notes:** From the T-102b review; must be done before companions show maps (stage 3). From T-117: `projectEvents` passes fog events for every level, like `projectForViewer` passes every level's fog today; restrict both to released levels.
+  - [x] A `level.show` command switches the TV's level and releases it; undo restores the previous level and release
+  - [x] Viewer projections and projected events contain no unreleased level (name, fog, tokens); player (companion) projections contain no asset reference to map or level files (property tests)
+  - [x] The table view shows the scene's current level (its fog, and its own image when it has one)
+- **Notes:** Split from T-118 (DM decision, 2026-11-19): the fog-composited images companions need come with their map view in stage 3 (T-118b). There is no level switcher in the DM window yet (T-118c).
+
+### T-118c Level switcher in the DM window
+
+- **Status:** todo · **Depends on:** T-118a · **Refs:** SPEC §3.1, ADR-0011
+- With more than one level, the DM picks the level to work on (fog, tokens) and shows it on the TV (`level.show`); the browser marks the current and the released levels.
+- **Acceptance criteria**
+  - [ ] Switching the TV's level from the DM window (component + E2E test); hidden while the map has one level
+  - [ ] Fog tools work on the level the DM has picked, and the DM window shows that level's own image when it has one
 
 ### T-119 Case-insensitive id collisions in file names
 
@@ -675,6 +684,16 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11 (≤ 1 % missed refreshes at 60 Hz), measured by the DM on the reference notebook
 - **Notes:** The benchmark criterion stays open until the DM has measured it on the reference notebook (it needs the TV; CI has no usable GPU).
 
+### T-167 Fog spreads from the revealed edge
+
+- **Status:** todo · **Depends on:** T-136b · **Refs:** SPEC §4, ARCHITECTURE §8, §11
+- Replaces the cross-fade of T-136b (DM decision, 2026-11-19). A reveal that touches already revealed area spreads from that edge across the new area; one that touches none clears from its centre outward. Hiding spreads from the fog side back over the area. The duration setting of T-136b sets the speed.
+- **Acceptance criteria**
+  - [ ] Spread direction for the three cases (adjacent reveal, isolated reveal, hide) covered by unit tests of a pure distance-field function and by renderer screenshot tests
+  - [ ] Fail-closed as in T-136b: a pixel fogged before and after a change never shows the map; the first fog of a scene and a new map never animate
+  - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11
+- **Notes:** From the DM (2026-11-19).
+
 ### T-130d App menu: macOS menu bar, Windows menu button
 
 - **Status:** done · **Depends on:** T-130c · **Refs:** ARCHITECTURE §15, ADR-0011
@@ -727,6 +746,16 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] `SessionState` carries the resolved map, `projectForViewer` takes it as input, and the existing projection property tests still pass
   - [ ] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (regression test); the catalog ignores sidecars and maps sidecar conflict copies back to their original
 - **Notes:** From the DM planning interview (2026-11-18). ADR-0012 accepted by the DM (2026-11-18), incl. "global edits reach the live scene only after confirmation".
+
+### T-168 Animated fog effects per map
+
+- **Status:** todo · **Depends on:** T-134, T-136a, T-160a · **Refs:** SPEC §4, ARCHITECTURE §8, §11
+- The fog of a map can carry an animated effect: drifting mist, snow flurry, smoke and ash, darkness (first set – DM decision, 2026-11-19). Set on the map (sidecar, T-134) and adjustable during a session (session override); shown on the TV, previewed in the DM window. GPU shaders, no per-frame CPU work.
+- **Acceptance criteria**
+  - [ ] Effect and strength stored in the map sidecar and overridable per session (schema + storage tests)
+  - [ ] The effect animates only over fogged area and never makes fog transparent (screenshot tests)
+  - [ ] The benchmark scene with each effect stays within ARCHITECTURE §11
+- **Notes:** From the DM (2026-11-19).
 
 ### T-135 Selectable scene transitions
 
@@ -792,6 +821,14 @@ New tasks discovered during work are appended to the right stage with status `to
 ---
 
 ## Stage 3 – Networked at the table
+
+### T-118b Fog-composited maps for companions
+
+- **Status:** todo · **Depends on:** T-118a · **Refs:** ARCHITECTURE §5.1, SPEC §2.4
+- Companions never get map files: the host renders the released levels with their fog (or tiles of them) and serves those images instead.
+- **Acceptance criteria**
+  - [ ] A companion can show the released levels; no request path reaches an un-fogged map file (tests)
+- **Notes:** Split from T-118 (DM decision, 2026-11-19); needed when companions show maps.
 
 ### T-151 DM remote as a mode of the web app
 

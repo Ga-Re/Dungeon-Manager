@@ -11,6 +11,7 @@ const scene: ViewerScene = {
       path: "library/maps/hoehle.png",
       hash: `sha256:${"a".repeat(64)}`,
     },
+    currentLevelId: "ground",
     grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
     levels: [{ id: "ground", name: "Erdgeschoss" }],
   },

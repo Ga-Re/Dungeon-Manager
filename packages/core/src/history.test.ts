@@ -90,3 +90,16 @@ describe("history", () => {
     expect(redo(state, createHistory())).toBeNull();
   });
 });
+
+describe("history of the TV's level", () => {
+  test("undo restores the previous level and release", () => {
+    const shown = execute(
+      state,
+      createHistory(),
+      { type: "level.show", levelId: "cellar" },
+      ctx,
+    );
+    if (!shown.ok) throw new Error(shown.reason);
+    expect(undo(shown.state, shown.history)?.state.scene.table).toBeUndefined();
+  });
+});

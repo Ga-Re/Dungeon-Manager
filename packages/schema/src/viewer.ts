@@ -66,12 +66,16 @@ export const viewerSceneSchema = z.strictObject({
   map: z
     .strictObject({
       kind: z.enum(["image", "video"]),
-      asset: assetRefSchema.strict(),
+      /** Only for the host-rendered table view: a companion must never fetch an un-fogged map. */
+      asset: assetRefSchema.strict().optional(),
+      /** The level on the TV; always one of `levels`. */
+      currentLevelId: idSchema,
       grid: z.strictObject({
         cellSizePx: z.number(),
         offsetXPx: z.number(),
         offsetYPx: z.number(),
       }),
+      /** The released levels only (shown on the TV so far). */
       levels: z.array(
         z.strictObject({
           id: idSchema,
@@ -131,6 +135,11 @@ export const viewerEventSchema = z.union([
   z.strictObject({
     ...viewerEventBase,
     type: z.literal("fog.hidden"),
+    levelId: idSchema,
+  }),
+  z.strictObject({
+    ...viewerEventBase,
+    type: z.literal("level.shown"),
     levelId: idSchema,
   }),
   z.strictObject({

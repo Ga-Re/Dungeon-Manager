@@ -39,6 +39,7 @@ const everyCommand: Command[] = [
   { type: "initiative.next" },
   { type: "hp.change", combatantId: "goblin", amount: -1 },
   { type: "hp.setTemp", combatantId: "goblin", temp: 2 },
+  { type: "level.show", levelId: "cellar" },
 ];
 
 describe("canApply", () => {

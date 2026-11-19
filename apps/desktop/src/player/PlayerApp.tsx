@@ -11,6 +11,14 @@ import {
 } from "../fog-settings.js";
 import { deviceStorage } from "../dm/shell/theme.js";
 
+type ShownMap = NonNullable<NonNullable<PlayerViewMessage["scene"]>["map"]>;
+
+/** The file shown for the TV's level: the level's own image, else the map's (T-118a). */
+function imageOf(map: ShownMap | null | undefined): string | undefined {
+  const level = map?.levels.find(({ id }) => id === map.currentLevelId);
+  return (level?.asset ?? map?.asset)?.path;
+}
+
 const windowSize = (): Size => ({
   width: window.innerWidth,
   height: window.innerHeight,
@@ -73,7 +81,7 @@ export function PlayerApp({
       fades: boolean,
     ) => {
       const map = shown.scene?.map ?? null;
-      const level = map?.levels[0]?.id;
+      const level = map?.currentLevelId;
       view.setFog(
         level === undefined ? [] : (shown.scene?.fog[level]?.revealed ?? []),
         {
@@ -91,18 +99,21 @@ export function PlayerApp({
     });
 
     const show = (next: PlayerViewMessage) => {
-      const previousPath = message?.scene?.map?.asset.path;
+      const previousPath = imageOf(message?.scene?.map);
+      const path = imageOf(next.scene?.map);
+      // Another level is another floor: its fog appears at once, like a new scene's.
       const sameScene =
         message?.scene != null &&
         message.scene.id === next.scene?.id &&
-        previousPath === next.scene.map?.asset.path;
+        previousPath === path &&
+        message.scene.map?.currentLevelId === next.scene.map?.currentLevelId;
       message = next;
       const view = renderer;
       if (!view) return;
       const map = next.scene?.map ?? null;
       // Fog first: everything not revealed on the shown level stays covered.
       applyFog(view, next, sameScene);
-      if (!map) {
+      if (!map || path === undefined) {
         // Also cancels a map still loading for the previous scene.
         loading++;
         mapSize = null;
@@ -110,7 +121,7 @@ export function PlayerApp({
         mark("none");
         return;
       }
-      if (map.asset.path === previousPath && mapSize) {
+      if (path === previousPath && mapSize) {
         fit();
         return;
       }
@@ -120,9 +131,7 @@ export function PlayerApp({
       mapSize = null;
       const request = ++loading;
       const loaded =
-        map.kind === "video"
-          ? maps.loadVideo(map.asset.path)
-          : maps.loadImage(map.asset.path);
+        map.kind === "video" ? maps.loadVideo(path) : maps.loadImage(path);
       loaded.then(
         (media) => {
           if (!active || request !== loading) {
