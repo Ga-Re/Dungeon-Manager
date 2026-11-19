@@ -503,9 +503,27 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Smoke test, E2E and screenshot updated
 - **Notes:** Split (DM, 2026-11-19): native menus moved to T-130d. The T-130b review note (a group menu opened over its group's popover) is fixed here: the menu closes the popover when it opens.
 
+### T-154 Docked data panel and ribbon
+
+- **Status:** in-progress · **Depends on:** T-130c · **Refs:** ADR-0014 (Proposed), ADR-0011, ARCHITECTURE §15
+- DM request (2026-11-19): the data panel takes the full height as its own column instead of lying over the map, and "Einpassen" must not fit the map under the ribbon. DM decision: dock the data panel and the ribbon; the map fills the remaining area; scene browser, dock and notices keep floating over the map (ADR-0014).
+- **Acceptance criteria**
+  - [ ] Title bar full width; data panel a full-height left column (Cmd/Ctrl+B folds it); ribbon right of it; the canvas fills exactly the rest (E2E via bounding boxes, panel open and folded)
+  - [ ] "Einpassen" fits the map into the visible map area; the view follows canvas resizes (panel fold, window resize)
+  - [ ] Screenshot golden updated; ARCHITECTURE §15 and the ui-design skill describe the docked zones
+
+### T-155 Settings dialog
+
+- **Status:** todo · **Depends on:** T-154 · **Refs:** ADR-0011 (layer 50), ARCHITECTURE §6.2, §15
+- DM request (2026-11-19): a full settings window for all global settings. DM decision: a large dialog inside the DM window with categories on the left (Darstellung, Bibliothek, Nebel & Animation, Spieleransicht, …) and their settings on the right; opened from the gear, Cmd/Ctrl+, and later the app menu (T-130d). The gear popover's theme and library folder move into it.
+- **Acceptance criteria**
+  - [ ] Modal dialog with focus trap, Escape closes, categories keyboard navigable; translated
+  - [ ] Theme and library folder work from the dialog; a settings registry makes adding a category a small change (component tests)
+  - [ ] E2E and screenshot
+
 ### T-153 Welcome dialog with recent campaigns
 
-- **Status:** todo · **Depends on:** T-130c · **Refs:** ARCHITECTURE §6.2, §15, ADR-0011
+- **Status:** todo · **Depends on:** T-155 · **Refs:** ARCHITECTURE §6.2, §15, ADR-0011
 - On every start the DM window shows a welcome dialog, similar to Inkscape/Illustrator (DM request, 2026-11-19).
 - DM decisions (2026-11-19):
   - **List + actions:** recently edited campaigns with name, last opened scene and date; buttons "Neue Kampagne", "Andere Kampagne öffnen …" and the library folder. Previews/tiles come once T-124 produces previews.
@@ -515,6 +533,28 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Dialog lists recent campaigns, most recent first; missing or unreadable campaigns are shown as such and can be removed from the list
   - [ ] Choosing one opens the campaign and its last scene; new campaign and other campaign work from the dialog
   - [ ] Keyboard and screen-reader accessible modal (focus trap, Escape closes into the empty window); component + E2E tests, screenshot
+
+### T-156 Workspaces
+
+- **Status:** todo · **Depends on:** T-153 · **Refs:** ADR-0011, ADR-0014, ARCHITECTURE §15
+- DM request (2026-11-19, with their mock-up): a workspace selector at the left end of the ribbon ("ARBEITSBEREICH / MAP FORGE ▾"); each workspace has its own ribbon tabs.
+- DM decisions (2026-11-19): four workspaces – **Map Forge** (edit maps), **Asset Studio** (edit assets), **Campaign Atlas** (edit the current campaign), **Game Mode** (run the session). Game Mode gets today's tabs (Szene, Nebel, Anzeige); the others show a "coming" hint until their own tasks fill them. The app starts in the last used workspace (per device), Game Mode on first start.
+- **Acceptance criteria**
+  - [ ] Selector keyboard accessible (Menu), workspace switch changes the tabs; last workspace remembered per device
+  - [ ] Component + E2E tests, screenshot
+- **Notes:** What each workspace contains (tabs, tools, data panel content) is planned with the DM per workspace before its content task.
+
+### T-136 Soft fog fades and edges
+
+- **Status:** todo · **Depends on:** T-108b, T-155 · **Refs:** SPEC 4, ARCHITECTURE §8, §11
+- Fog changes fade in/out instead of popping, and the fog has soft edges (DM request, 2026-11-19: no hard edges, no hard pop).
+- DM decisions (2026-11-19): a **transition duration** slider 0–3 s (0 = off, default ~0.65 s ease-out) and a **soft edges** switch in the settings dialog (T-155) under "Nebel"; stored **per device** like the theme (no file format change). Moved ahead of T-109; memory fog gets its fade when it arrives.
+- **Acceptance criteria**
+  - [ ] Fades for manual reveals/hides and room reveals; setting off = current hard behaviour
+  - [ ] Soft edges never reveal more than the hard polygon (fail-closed: the blur falls inside the hidden side; screenshot test)
+  - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11 (≤ 1 % missed refreshes at 60 Hz)
+- **Implementation hint:** if a real-time blur misses the budget, use a precomputed soft mask.
+- **Notes:** From the DM planning interview (2026-11-18).
 
 ### T-130d App menu: macOS menu bar, Windows menu button
 
@@ -567,17 +607,6 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Fail-closed for both scenes: each is drawn only with its own fog set (screenshot/E2E test mid-transition)
   - [ ] Benchmark incl. a video-to-video crossfade stays within ARCHITECTURE §11 (≤ 1 % missed refreshes); a crossfade between two videos needs a second `<video>` element under the canvas (extends ADR-0010's single slot)
 - **Notes:** From the DM planning interview (2026-11-18). Themed transitions are T-147.
-
-### T-136 Soft fog fades and edges
-
-- **Status:** todo · **Depends on:** T-108b, T-109 · **Refs:** SPEC 4, ARCHITECTURE §8, §11
-- Fog changes fade in/out (~650 ms ease-out) instead of popping; optional soft edges. A setting switches both off.
-- **Acceptance criteria**
-  - [ ] Fades for manual reveals/hides and room reveals; setting off = current hard behaviour
-  - [ ] Soft edges never reveal more than the hard polygon (fail-closed: the blur falls inside the hidden side; screenshot test)
-  - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11 (≤ 1 % missed refreshes at 60 Hz)
-- **Implementation hint:** if a real-time blur misses the budget, use a precomputed soft mask.
-- **Notes:** From the DM planning interview (2026-11-18).
 
 ### T-115 MVP end-to-end flow
 

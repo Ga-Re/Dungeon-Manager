@@ -291,9 +291,9 @@ A benchmark scene in `test-fixtures` plus a script that records frame times is p
 
 ## 15. UI shell & design system
 
-_Decided in ADR-0011; binding details in `.claude/skills/ui-design/SKILL.md`._
+_Decided in ADR-0011 and ADR-0014 (docked zones, Proposed); binding details in `.claude/skills/ui-design/SKILL.md`._
 
-- **DM window zones:** the map viewport fills the whole window; collapsible left data panel (library, campaign); top ribbon grouped by workflow mode; floating scene browser (top left); floating navigation/display dock (bottom centre); right-click context menu. Features are placed in a zone and never resize the canvas; the data panel and ribbon overlay it, so the canvas stays full-window when they open or close.
+- **DM window zones (ADR-0014):** a full-width title bar; below it the data panel (catalogue) as a full-height left column that folds away with Cmd/Ctrl+B; the ribbon grouped by workflow mode right of it; the map canvas fills exactly the remaining area, so fit, zoom and centring need no insets. Floating over the map: the scene browser (top left of the map area), the navigation/display dock (bottom centre), notices, context menus and popovers. Features are placed in a zone; nothing else resizes the canvas, and the renderer follows the canvas size when the panel folds or the window resizes.
 - **Player window:** unchanged – chrome-free fullscreen, no design-system UI.
 - **Implementation (T-130):** `DmShell` owns the zones and exposes them as slots; components keep their state where it lives (e.g. the open scene in the data panel) and render their parts into a zone with `ShellPortal` (React portal). Outside a shell they render in place, so component tests need no shell. The title bar shows a save status (scenes save on every change), undo/redo and the open scene's tab; the ribbon modes are Szene, Nebel and Anzeige.
 - **Controls (T-130b):** ribbon tools sit in `RibbonGroup`s (large icon over a short label, caption below; a caption with ▾ is a `Menu` of less frequent commands). Short follow-up steps (confirm delete, map change) open in a `Popover` under their group instead of growing the ribbon. Plain buttons, fields and selects inside `.dm-ui` get their base look from `components.css` with zero specificity (`:where()`), so component classes always win.

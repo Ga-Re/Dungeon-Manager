@@ -43,7 +43,7 @@ test("the DM window lists the displays for the player view", async ({
   ).toBeVisible();
 });
 
-test("the map fills the window whether the data panel is open or closed", async ({
+test("the map fills the area right of the data panel and below the ribbon (ADR-0014)", async ({
   page,
 }) => {
   await page.goto(HARNESS);
@@ -53,22 +53,48 @@ test("the map fills the window whether the data panel is open or closed", async 
 
   const viewport = page.viewportSize();
   if (!viewport) throw new Error("no viewport");
-  const mapFillsWindow = async () => {
-    const box = await page.locator(".map-view-canvas canvas").boundingBox();
-    expect(box).toEqual({ x: 0, y: 0, ...viewport });
+  const box = async (selector: string) => {
+    const found = await page.locator(selector).boundingBox();
+    if (!found) throw new Error(`${selector} not laid out`);
+    return found;
+  };
+  /** The canvas starts where panel and ribbon end and reaches the window's right and bottom. */
+  const mapFillsFreeArea = async (panelOpen: boolean) => {
+    const canvas = await box(".map-view-canvas canvas");
+    const ribbon = await box(".dm-ribbon");
+    const left = panelOpen ? (await box(".dm-datapanel")).width : 0;
+    expect(canvas.x).toBeCloseTo(left, 0);
+    expect(canvas.y).toBeCloseTo(ribbon.y + ribbon.height, 0);
+    expect(canvas.x + canvas.width).toBeCloseTo(viewport.width, 0);
+    expect(canvas.y + canvas.height).toBeCloseTo(viewport.height, 0);
+    expect(ribbon.x).toBeCloseTo(left, 0);
+    return canvas.width;
   };
   const panel = page.getByRole("complementary", { name: "Datenpanel" });
 
   await expect(panel).toBeVisible();
-  await mapFillsWindow();
+  // The panel spans everything below the title bar.
+  const panelBox = await box(".dm-datapanel");
+  const titlebar = await box(".dm-titlebar");
+  expect(panelBox.y).toBeCloseTo(titlebar.height, 0);
+  expect(panelBox.y + panelBox.height).toBeCloseTo(viewport.height, 0);
+  const narrow = await mapFillsFreeArea(true);
+
   await page
     .getByRole("button", { name: /Datenpanel ein- oder ausblenden/ })
     .click();
   await expect(panel).toBeHidden();
-  await mapFillsWindow();
+  // The renderer follows the canvas size on the next frame.
+  await expect
+    .poll(async () => (await box(".map-view-canvas canvas")).width)
+    .toBeGreaterThan(narrow);
+  await mapFillsFreeArea(false);
   await page.keyboard.press("ControlOrMeta+KeyB");
   await expect(panel).toBeVisible();
-  await mapFillsWindow();
+  await expect
+    .poll(async () => (await box(".map-view-canvas canvas")).width)
+    .toBeCloseTo(narrow, 0);
+  await mapFillsFreeArea(true);
 });
 
 test("the theme chosen in the settings survives a restart", async ({
