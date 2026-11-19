@@ -606,7 +606,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Modal dialog with focus trap, Escape closes, categories keyboard navigable; translated
   - [x] Theme and library folder work from the dialog; a settings registry makes adding a category a small change (component tests)
   - [x] E2E and screenshot
-- Nebel & Animation and Spieleransicht have no settings yet; they join with T-136 and the player-view settings.
+- Nebel & Animation joined with T-136a; Spieleransicht has no settings yet and joins with the player-view settings.
 
 ### T-153 Welcome dialog with recent campaigns
 
@@ -644,17 +644,27 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] `Menu` takes a separate accessible name for the open menu and checkable items (`menuitemradio` with `aria-checked`, a visible check)
   - [ ] The workspace selector uses both; component tests
 
-### T-136 Soft fog fades and edges
+### T-136a Soft fog edges
 
-- **Status:** todo · **Depends on:** T-108b, T-155 · **Refs:** SPEC 4, ARCHITECTURE §8, §11
-- Fog changes fade in/out instead of popping, and the fog has soft edges (DM request, 2026-11-19: no hard edges, no hard pop).
-- DM decisions (2026-11-19): a **transition duration** slider 0–3 s (0 = off, default ~0.65 s ease-out) and a **soft edges** switch in the settings dialog (T-155) under "Nebel"; stored **per device** like the theme (no file format change). Moved ahead of T-109; memory fog gets its fade when it arrives.
+- **Status:** done · **Depends on:** T-108b, T-155 · **Refs:** SPEC 4, ARCHITECTURE §8, §11
+- Split from T-136 (DM decision, 2026-11-19): soft edges first, fades in T-136b.
+- The fog has soft edges (DM request, 2026-11-19: no hard edges, no hard pop). A **soft edges** switch in the settings dialog (T-155) under "Nebel & Animation", stored **per device** like the theme (no file format change); on by default.
 - **Acceptance criteria**
-  - [ ] Fades for manual reveals/hides and room reveals; setting off = current hard behaviour
-  - [ ] Soft edges never reveal more than the hard polygon (fail-closed: the blur falls inside the hidden side; screenshot test)
-  - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11 (≤ 1 % missed refreshes at 60 Hz)
+  - [x] Soft edges never reveal more than the hard polygon (fail-closed: the softening lies inside the revealed area; pixel test and screenshot)
+  - [x] Switch off = current hard behaviour; the setting applies in the DM and the player window at once
+  - [x] The soft mask is computed once per fog change, not per frame (ARCHITECTURE §11; the benchmark on the reference notebook is run by the DM)
 - **Implementation hint:** if a real-time blur misses the budget, use a precomputed soft mask.
 - **Notes:** From the DM planning interview (2026-11-18).
+
+### T-136b Soft fog fades
+
+- **Status:** todo · **Depends on:** T-136a · **Refs:** SPEC 4, ARCHITECTURE §8, §11
+- Fog changes fade in/out instead of popping. A **transition duration** slider 0–3 s (0 = off, default ~0.65 s ease-out) in "Nebel & Animation", per device. Moved ahead of T-109; memory fog gets its fade when it arrives.
+- DM decision (2026-11-19): hiding fades too (the area stays visible on the TV for the fade's duration, fading out); the first fog of a scene and a new map never fade (fail-closed).
+- **Acceptance criteria**
+  - [ ] Fades for manual reveals/hides and room reveals; duration 0 = current hard behaviour
+  - [ ] A pixel that is fogged before and after a change never shows the map during the fade
+  - [ ] With the effect on, the benchmark scene stays within ARCHITECTURE §11 (≤ 1 % missed refreshes at 60 Hz), measured by the DM on the reference notebook
 
 ### T-130d App menu: macOS menu bar, Windows menu button
 

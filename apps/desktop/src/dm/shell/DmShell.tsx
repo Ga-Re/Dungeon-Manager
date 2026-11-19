@@ -20,6 +20,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { ShellSlotsContext, type ShellSlot } from "./slots.js";
 import { HudLayoutContext, useHudLayoutStore } from "./hud-layout.js";
+import { SoftEdgesContext } from "./fog-look.js";
+import { readSoftEdges, saveSoftEdges } from "../../fog-settings.js";
 import { SettingsDialog, type SettingsCategory } from "./SettingsDialog.js";
 import { THEME_SETTINGS, useThemeSetting } from "./theme.js";
 import { UI_SCALES, useUiScale } from "./ui-scale.js";
@@ -93,6 +95,7 @@ export function DmShell({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useThemeSetting(storage, root);
   const [uiScale, setUiScale] = useUiScale(storage, root);
+  const [softEdges, setSoftEdges] = useState(() => readSoftEdges(storage));
   const hudLayout = useHudLayoutStore(storage);
   const [slots, setSlots] = useState<Partial<Record<ShellSlot, HTMLElement>>>(
     {},
@@ -223,6 +226,28 @@ export function DmShell({
       ),
     },
     {
+      id: "fog",
+      label: t("shell.settingsCategory.fog"),
+      content: (
+        <fieldset className="dm-settings-group">
+          <legend>{t("shell.fogLook.label")}</legend>
+          <label>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={softEdges}
+              onChange={(event) => {
+                setSoftEdges(event.target.checked);
+                saveSoftEdges(storage, event.target.checked);
+              }}
+            />
+            {t("shell.fogLook.softEdges")}
+          </label>
+          <p className="dm-settings-hint">{t("shell.fogLook.softEdgesHint")}</p>
+        </fieldset>
+      ),
+    },
+    {
       id: "library",
       label: t("shell.settingsCategory.library"),
       // The library panel puts the folder choice here (it owns the library state).
@@ -251,143 +276,145 @@ export function DmShell({
   return (
     <ShellSlotsContext value={slots}>
       <HudLayoutContext value={hudLayout}>
-        <div
-          className="dm-shell dm-ui"
-          data-panel={panelOpen ? "open" : "closed"}
-        >
-          <header className="dm-titlebar">
-            <IconButton
-              ref={panelButton}
-              icon={<PanelLeft />}
-              label={t("shell.toggleDataPanel")}
-              pressed={panelOpen}
-              aria-controls={`${idPrefix}-panel`}
-              onClick={togglePanel}
-            />
-            <span className="dm-app-name">{t("app.title")}</span>
-            <div ref={slotRefs.titleScene} className="dm-titlebar-scene" />
-            <div className="dm-settings">
-              <IconButton
-                ref={settingsButton}
-                icon={<Settings />}
-                label={t("shell.settings")}
-                aria-haspopup="dialog"
-                onClick={() => {
-                  setSettingsOpen((open) => !open);
-                }}
-              />
-              <SettingsDialog
-                open={settingsOpen}
-                onClose={() => {
-                  setSettingsOpen(false);
-                }}
-                returnFocus={settingsButton}
-                categories={settingsCategories}
-              />
-            </div>
-          </header>
-          <aside
-            ref={dataPanelRef}
-            id={`${idPrefix}-panel`}
-            aria-label={t("shell.dataPanel")}
-            className="dm-datapanel"
-            hidden={!panelOpen}
+        <SoftEdgesContext value={softEdges}>
+          <div
+            className="dm-shell dm-ui"
+            data-panel={panelOpen ? "open" : "closed"}
           >
-            <div ref={slotRefs.dataPanel} />
-          </aside>
-          <div className="dm-main">
-            <div className="dm-ribbon">
-              {/* Each workspace has its own tabs (T-156); Game Mode has today's tools. */}
-              <div
-                role="group"
-                aria-labelledby={`${idPrefix}-workspace`}
-                className="dm-workspace"
-              >
-                <span
-                  id={`${idPrefix}-workspace`}
-                  className="dm-workspace-caption"
-                >
-                  {t("shell.workspace.label")}
-                </span>
-                <Menu
-                  label={t(`shell.workspace.${workspace}`)}
-                  items={WORKSPACES.map((each) => ({
-                    id: each,
-                    label: t(`shell.workspace.${each}`),
-                    icon: WORKSPACE_ICON[each],
-                  }))}
-                  onSelect={chooseWorkspace}
-                  className="dm-workspace-menu"
+            <header className="dm-titlebar">
+              <IconButton
+                ref={panelButton}
+                icon={<PanelLeft />}
+                label={t("shell.toggleDataPanel")}
+                pressed={panelOpen}
+                aria-controls={`${idPrefix}-panel`}
+                onClick={togglePanel}
+              />
+              <span className="dm-app-name">{t("app.title")}</span>
+              <div ref={slotRefs.titleScene} className="dm-titlebar-scene" />
+              <div className="dm-settings">
+                <IconButton
+                  ref={settingsButton}
+                  icon={<Settings />}
+                  label={t("shell.settings")}
+                  aria-haspopup="dialog"
+                  onClick={() => {
+                    setSettingsOpen((open) => !open);
+                  }}
+                />
+                <SettingsDialog
+                  open={settingsOpen}
+                  onClose={() => {
+                    setSettingsOpen(false);
+                  }}
+                  returnFocus={settingsButton}
+                  categories={settingsCategories}
                 />
               </div>
-              <div className="dm-ribbon-body">
-                {inGame ? (
-                  <div
-                    role="tablist"
-                    aria-label={t("shell.modes")}
-                    className="dm-ribbon-tabs"
+            </header>
+            <aside
+              ref={dataPanelRef}
+              id={`${idPrefix}-panel`}
+              aria-label={t("shell.dataPanel")}
+              className="dm-datapanel"
+              hidden={!panelOpen}
+            >
+              <div ref={slotRefs.dataPanel} />
+            </aside>
+            <div className="dm-main">
+              <div className="dm-ribbon">
+                {/* Each workspace has its own tabs (T-156); Game Mode has today's tools. */}
+                <div
+                  role="group"
+                  aria-labelledby={`${idPrefix}-workspace`}
+                  className="dm-workspace"
+                >
+                  <span
+                    id={`${idPrefix}-workspace`}
+                    className="dm-workspace-caption"
                   >
-                    {MODES.map((each) => (
-                      <button
-                        key={each}
-                        ref={(element) => {
-                          if (element) tabs.current.set(each, element);
-                          else tabs.current.delete(each);
-                        }}
-                        type="button"
-                        role="tab"
-                        id={`${idPrefix}-tab-${each}`}
-                        aria-selected={mode === each}
-                        aria-controls={`${idPrefix}-mode-${each}`}
-                        tabIndex={mode === each ? 0 : -1}
-                        className="dm-ribbon-tab"
-                        onClick={() => {
-                          setMode(each);
-                        }}
-                        onKeyDown={onTabKeyDown}
-                      >
-                        {t(`shell.mode.${each}`)}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="dm-ribbon-tabs" />
-                )}
-                {/* Always mounted, only hidden: the tools portaled here keep their state. */}
-                {MODES.map((each) => (
-                  <div
-                    key={each}
-                    ref={slotRefs[MODE_SLOT[each]]}
-                    id={`${idPrefix}-mode-${each}`}
-                    role={inGame ? "tabpanel" : undefined}
-                    aria-labelledby={
-                      inGame ? `${idPrefix}-tab-${each}` : undefined
-                    }
-                    hidden={!inGame || mode !== each}
-                    className="dm-ribbon-panel"
-                    data-empty={t("shell.noScene")}
+                    {t("shell.workspace.label")}
+                  </span>
+                  <Menu
+                    label={t(`shell.workspace.${workspace}`)}
+                    items={WORKSPACES.map((each) => ({
+                      id: each,
+                      label: t(`shell.workspace.${each}`),
+                      icon: WORKSPACE_ICON[each],
+                    }))}
+                    onSelect={chooseWorkspace}
+                    className="dm-workspace-menu"
                   />
-                ))}
-                {!inGame && (
-                  <p className="dm-ribbon-panel dm-ribbon-coming">
-                    {t(`shell.workspace.coming.${workspace}`)}
-                  </p>
-                )}
+                </div>
+                <div className="dm-ribbon-body">
+                  {inGame ? (
+                    <div
+                      role="tablist"
+                      aria-label={t("shell.modes")}
+                      className="dm-ribbon-tabs"
+                    >
+                      {MODES.map((each) => (
+                        <button
+                          key={each}
+                          ref={(element) => {
+                            if (element) tabs.current.set(each, element);
+                            else tabs.current.delete(each);
+                          }}
+                          type="button"
+                          role="tab"
+                          id={`${idPrefix}-tab-${each}`}
+                          aria-selected={mode === each}
+                          aria-controls={`${idPrefix}-mode-${each}`}
+                          tabIndex={mode === each ? 0 : -1}
+                          className="dm-ribbon-tab"
+                          onClick={() => {
+                            setMode(each);
+                          }}
+                          onKeyDown={onTabKeyDown}
+                        >
+                          {t(`shell.mode.${each}`)}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="dm-ribbon-tabs" />
+                  )}
+                  {/* Always mounted, only hidden: the tools portaled here keep their state. */}
+                  {MODES.map((each) => (
+                    <div
+                      key={each}
+                      ref={slotRefs[MODE_SLOT[each]]}
+                      id={`${idPrefix}-mode-${each}`}
+                      role={inGame ? "tabpanel" : undefined}
+                      aria-labelledby={
+                        inGame ? `${idPrefix}-tab-${each}` : undefined
+                      }
+                      hidden={!inGame || mode !== each}
+                      className="dm-ribbon-panel"
+                      data-empty={t("shell.noScene")}
+                    />
+                  ))}
+                  {!inGame && (
+                    <p className="dm-ribbon-panel dm-ribbon-coming">
+                      {t(`shell.workspace.coming.${workspace}`)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {/* The map area: the canvas fills it, HUD parts float over it (ADR-0014). */}
+              <div className="dm-stage">
+                <div ref={slotRefs.canvas} className="dm-canvas">
+                  <p className="dm-canvas-empty">{t("shell.noScene")}</p>
+                </div>
+                <div ref={slotRefs.browser} className="dm-browser" />
+                <div ref={slotRefs.details} className="dm-details" />
+                <div ref={slotRefs.notices} className="dm-notices" />
               </div>
             </div>
-            {/* The map area: the canvas fills it, HUD parts float over it (ADR-0014). */}
-            <div className="dm-stage">
-              <div ref={slotRefs.canvas} className="dm-canvas">
-                <p className="dm-canvas-empty">{t("shell.noScene")}</p>
-              </div>
-              <div ref={slotRefs.browser} className="dm-browser" />
-              <div ref={slotRefs.details} className="dm-details" />
-              <div ref={slotRefs.notices} className="dm-notices" />
-            </div>
+            {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
+            <div className="dm-shell-content">{children}</div>
           </div>
-          {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
-          <div className="dm-shell-content">{children}</div>
-        </div>
+        </SoftEdgesContext>
       </HudLayoutContext>
     </ShellSlotsContext>
   );

@@ -67,6 +67,7 @@ export function MapView({
   tool = "pan",
   shape = "rectangle",
   brushRadius = 50,
+  softEdge = 0,
   onArea,
   onMapSize,
 }: {
@@ -81,6 +82,8 @@ export function MapView({
   readonly shape?: FogShape;
   /** Brush radius in map pixels. */
   readonly brushRadius?: number;
+  /** Soft fog edge in map pixels (T-136a); 0 draws hard edges. */
+  readonly softEdge?: number;
   /** An area the DM marked with the reveal or hide tool, in map pixels. */
   readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
   readonly onMapSize?: (size: Size) => void;
@@ -108,6 +111,9 @@ export function MapView({
   }, [tool, shape]);
   const fogNow = useRef(fog);
   fogNow.current = fog;
+  const fogOptions = { opacity: DM_FOG_OPACITY, softEdge };
+  const fogOptionsNow = useRef(fogOptions);
+  fogOptionsNow.current = fogOptions;
 
   // The view follows the size of its box.
   useEffect(() => {
@@ -159,7 +165,7 @@ export function MapView({
         const current = sizeNow.current ?? initial;
         renderer.current = view;
         view.resize(current);
-        view.setFog(fogNow.current, { opacity: DM_FOG_OPACITY });
+        view.setFog(fogNow.current, fogOptionsNow.current);
         let imageSize: Size;
         if (loaded instanceof HTMLVideoElement) {
           canvas.before(loaded);
@@ -216,8 +222,8 @@ export function MapView({
   }, [camera]);
 
   useEffect(() => {
-    renderer.current?.setFog(fog, { opacity: DM_FOG_OPACITY });
-  }, [fog]);
+    renderer.current?.setFog(fog, { opacity: DM_FOG_OPACITY, softEdge });
+  }, [fog, softEdge]);
 
   // Functional updates: event handlers (also the native wheel listener) never see a stale camera.
   const change = (update: (current: Camera, view: Size) => Camera) => {

@@ -211,7 +211,10 @@ describe("MapView", () => {
       expect(fake.camera()).toBeDefined();
     });
     // The DM sees the fog see-through.
-    expect(fake.view.setFog).toHaveBeenLastCalledWith([], { opacity: 0.55 });
+    expect(fake.view.setFog).toHaveBeenLastCalledWith([], {
+      opacity: 0.55,
+      softEdge: 0,
+    });
 
     // Fitted: zoom 0.5, map centre (800, 400) in the view centre (400, 200).
     fireEvent.pointerDown(area(), {

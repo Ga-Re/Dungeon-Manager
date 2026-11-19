@@ -54,14 +54,62 @@ const REVEALED_NESTED = [
   { outer: rect(300, 300, 200, 200), holes: [] },
 ];
 
-/** Fog per scenario: the player view sees opaque fog, the DM view a see-through version. */
+/** Width of the soft fog edge in the "-soft" scenarios (T-136a), in map pixels. */
+const SOFT_EDGE = 40;
+
+/**
+ * Fog per scenario: the player view sees opaque fog, the DM view a see-through version; "-soft"
+ * scenarios have soft edges.
+ */
 function fogFor(scenario: string) {
+  const softEdge = scenario.includes("-soft") ? SOFT_EDGE : 0;
   if (scenario.startsWith("player-nested"))
-    return { revealed: REVEALED_NESTED, opacity: 1 };
-  if (scenario.startsWith("player")) return { revealed: REVEALED, opacity: 1 };
+    return { revealed: REVEALED_NESTED, opacity: 1, softEdge };
+  if (scenario.startsWith("player"))
+    return { revealed: REVEALED, opacity: 1, softEdge };
   if (scenario.startsWith("dm-fog"))
-    return { revealed: REVEALED, opacity: 0.5 };
+    return { revealed: REVEALED, opacity: 0.5, softEdge };
   return null;
+}
+
+/** The canvas's pixels right after a draw, before the browser composites (and clears) them. */
+function capture(canvas: HTMLCanvasElement): Uint8ClampedArray {
+  const copy = document.createElement("canvas");
+  copy.width = canvas.width;
+  copy.height = canvas.height;
+  const context = copy.getContext("2d");
+  if (!context) throw new Error("2D canvas missing");
+  context.drawImage(canvas, 0, 0);
+  return context.getImageData(0, 0, copy.width, copy.height).data;
+}
+
+/**
+ * "fail-closed" (T-136a): draws the nested fog hard, then soft, and counts pixels that the soft
+ * fog shows although the hard fog covers them (must be none) and pixels it softens (must be
+ * some). The results land in `data-violations` and `data-softened`.
+ */
+async function failClosedScenario(canvas: HTMLCanvasElement) {
+  const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
+  renderer.setFog(REVEALED_NESTED, { opacity: 1 });
+  renderer.setMap(drawFixtureMap());
+  renderer.setCamera(cameraFor("zoomed"));
+  await renderer.drawn();
+  const hard = capture(canvas);
+  renderer.setFog(REVEALED_NESTED, { opacity: 1, softEdge: SOFT_EDGE });
+  await renderer.drawn();
+  const soft = capture(canvas);
+  let violations = 0;
+  let softened = 0;
+  for (let index = 0; index < hard.length; index += 4) {
+    const hidden =
+      hard[index] === 0 && hard[index + 1] === 0 && hard[index + 2] === 0;
+    const shown =
+      soft[index] !== 0 || soft[index + 1] !== 0 || soft[index + 2] !== 0;
+    if (hidden && shown) violations++;
+    if (!hidden && soft[index] !== hard[index]) softened++;
+  }
+  document.body.dataset["violations"] = String(violations);
+  document.body.dataset["softened"] = String(softened);
 }
 
 /** The video fixture (`pages/media/fixture-map.webm`, 320 × 200) and what is revealed of it. */
@@ -111,6 +159,11 @@ async function main() {
   const canvas = document.querySelector("canvas");
   if (!canvas) throw new Error("canvas missing");
   const scenario = location.hash.slice(1);
+  if (scenario === "fail-closed") {
+    await failClosedScenario(canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
   if (scenario.includes("video")) {
     await videoScenario(scenario, canvas);
     document.body.dataset["ready"] = "true";
@@ -119,10 +172,18 @@ async function main() {
   const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
   // The player view always gets its fog with (never after) the map.
   const fog = fogFor(scenario);
-  if (fog) renderer.setFog(fog.revealed, { opacity: fog.opacity });
+  if (fog)
+    renderer.setFog(fog.revealed, {
+      opacity: fog.opacity,
+      softEdge: fog.softEdge,
+    });
   renderer.setMap(drawFixtureMap());
   renderer.setCamera(
-    cameraFor(scenario.replace(/^(player-nested|player|dm-fog)-?/, "")),
+    cameraFor(
+      scenario
+        .replace(/^(player-nested|player|dm-fog)-?/, "")
+        .replace("soft", ""),
+    ),
   );
   await renderer.drawn();
   document.body.dataset["ready"] = "true";

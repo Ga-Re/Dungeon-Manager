@@ -18,6 +18,10 @@ for (const scenario of [
   "player-rotated",
   "player-nested",
   "dm-fog",
+  // Soft edges (T-136a): softened inside the revealed area only.
+  "player-soft",
+  "player-nested-soft",
+  "dm-fog-soft",
 ]) {
   test(`player view: ${scenario}`, async ({ page }) => {
     await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
@@ -39,3 +43,13 @@ for (const scenario of [
     await expect(page).toHaveScreenshot(`${scenario}.png`);
   });
 }
+
+// Soft edges never show what the hard fog covers (T-136a, fail-closed): the same nested fog,
+// drawn hard and then soft, compared pixel by pixel – zoomed in, so edges span many pixels.
+test("soft fog edges never reveal more than hard ones", async ({ page }) => {
+  await page.goto(`${fixturePage("renderer.html")}#fail-closed`);
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true");
+  await expect(body).toHaveAttribute("data-violations", "0");
+  expect(Number(await body.getAttribute("data-softened"))).toBeGreaterThan(0);
+});

@@ -8,6 +8,7 @@ import { fakeMapService } from "../fake-renderer.test-data.js";
 import { createI18n } from "@dungeon-manager/ui";
 import type { PlayerFeedReceiver } from "../platform/player-feed.js";
 import { PlayerApp } from "./PlayerApp.js";
+import { memoryStorage } from "../dm/memory-storage.test-data.js";
 
 const revealed = [
   {
@@ -59,7 +60,11 @@ function renderPlayer(load = () => Promise.resolve(image)) {
   const feed = fakeFeed();
   const result = render(
     <I18nextProvider i18n={createI18n()}>
-      <PlayerApp feed={feed.feed} maps={maps.service} />
+      <PlayerApp
+        feed={feed.feed}
+        maps={maps.service}
+        storage={memoryStorage()}
+      />
     </I18nextProvider>,
   );
   return { maps, feed, ...result };
@@ -89,7 +94,10 @@ describe("PlayerApp", () => {
       maps.view.setFog.mock.invocationCallOrder.at(-1) ?? Infinity;
     const mapOrder =
       maps.view.setMap.mock.invocationCallOrder.at(-1) ?? -Infinity;
-    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed);
+    // Soft edges are on by default: 0.4 of the 100 px cell.
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      softEdge: 40,
+    });
     expect(fogOrder).toBeLessThan(mapOrder);
     expect(maps.service.loadImage).toHaveBeenCalledWith("library/maps/a.png");
     expect(maps.camera()?.rotation).toBe(90);
@@ -119,7 +127,7 @@ describe("PlayerApp", () => {
 
     feed.send({ v: 1, scene: null, rotation: 0 });
     expect(maps.view.setMap).toHaveBeenLastCalledWith(null);
-    expect(maps.view.setFog).toHaveBeenLastCalledWith([]);
+    expect(maps.view.setFog).toHaveBeenLastCalledWith([], { softEdge: 0 });
   });
 
   test("closing a scene cancels a map that is still loading", async () => {
@@ -185,12 +193,34 @@ describe("PlayerApp", () => {
       );
     });
     const video = maps.view.setVideo.mock.calls.at(-1)?.[0];
-    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed);
+    // Soft edges are on by default: 0.4 of the 100 px cell.
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      softEdge: 40,
+    });
     expect(video?.isConnected).toBe(true);
     expect(screen.getByRole("main").dataset["showing"]).toBe("map");
 
     feed.send({ v: 1, scene: null, rotation: 0 });
     expect(maps.view.setVideo).toHaveBeenLastCalledWith(null);
     expect(video?.isConnected).toBe(false);
+  });
+
+  test("redraws the fog with hard edges when the DM switches soft edges off", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(maps.view.setFog).toHaveBeenCalled();
+    });
+    feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      softEdge: 40,
+    });
+
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "dm.fog.softEdges", newValue: "off" }),
+    );
+
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      softEdge: 0,
+    });
   });
 });

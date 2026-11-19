@@ -217,6 +217,7 @@ export const en: Messages = {
     settingsClose: "Close settings",
     settingsCategories: "Categories",
     settingsCategory: {
+      fog: "Fog & animation",
       appearance: "Appearance",
       library: "Library",
       layout: "Tool windows",
@@ -224,6 +225,12 @@ export const en: Messages = {
     uiScale: {
       label: "Interface size",
       percent: "{{percent}}%",
+    },
+    fogLook: {
+      label: "Fog",
+      softEdges: "Soft edges",
+      softEdgesHint:
+        "The fog fades out softly at the edges of revealed areas – on this device and the TV. It never shows more than with hard edges.",
     },
     layout: {
       hint: "Browser and properties return to their default places, unfolded.",
