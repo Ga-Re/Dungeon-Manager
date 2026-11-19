@@ -8,9 +8,13 @@ import type { PlatformFamily } from "./tauri-displays.js";
  * commands, quit) and adds the app's commands. Elsewhere there is no menu bar.
  */
 export function createTauriAppMenu(platform: PlatformFamily): AppMenuService {
+  // The menu bar shown now; a newer one (new language) replaces and closes it.
+  let current: Menu | null = null;
+  let installs = 0;
   return {
     async install(labels, onCommand) {
       if (platform !== "macos") return false;
+      const install = ++installs;
       const menu = await Menu.new({
         items: [
           {
@@ -80,7 +84,15 @@ export function createTauriAppMenu(platform: PlatformFamily): AppMenuService {
           },
         ],
       });
+      // Two quick language changes: only the newest menu may become the menu bar.
+      if (install !== installs) {
+        await menu.close();
+        return true;
+      }
       await menu.setAsAppMenu();
+      const previous = current;
+      current = menu;
+      await previous?.close();
       return true;
     },
   };

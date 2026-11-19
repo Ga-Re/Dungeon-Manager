@@ -6,13 +6,17 @@ import { createTauriAppMenu } from "./tauri-app-menu.js";
 const tauri = vi.hoisted(() => ({
   created: [] as unknown[],
   setAsAppMenu: vi.fn(() => Promise.resolve(null)),
+  close: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("@tauri-apps/api/menu", () => ({
   Menu: {
     new: vi.fn((options: unknown) => {
       tauri.created.push(options);
-      return Promise.resolve({ setAsAppMenu: tauri.setAsAppMenu });
+      return Promise.resolve({
+        setAsAppMenu: tauri.setAsAppMenu,
+        close: tauri.close,
+      });
     }),
   },
 }));
@@ -60,6 +64,16 @@ describe("the native app menu (T-130d)", () => {
   beforeEach(() => {
     tauri.created.length = 0;
     tauri.setAsAppMenu.mockClear();
+    tauri.close.mockClear();
+  });
+
+  it("closes the previous menu bar when a new one (new language) replaces it", async () => {
+    const menu = createTauriAppMenu("macos");
+    await menu.install(LABELS, vi.fn());
+    expect(tauri.close).not.toHaveBeenCalled();
+    await menu.install({ ...LABELS, file: "File" }, vi.fn());
+    expect(tauri.setAsAppMenu).toHaveBeenCalledTimes(2);
+    expect(tauri.close).toHaveBeenCalledOnce();
   });
 
   it("on macOS becomes the menu bar, in the DM's language, with the system items kept", async () => {

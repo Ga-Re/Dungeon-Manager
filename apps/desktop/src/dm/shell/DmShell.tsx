@@ -111,7 +111,11 @@ export function DmShell({
   };
   const [settingsOpen, setSettingsOpen] = useState(false);
   const commands = useMemo(createAppCommands, []);
-  const [nativeMenu, setNativeMenu] = useState(false);
+  // With a menu service, whether it shows a menu bar is open until it says so: no menu button
+  // flashes up on macOS before the menu bar is there.
+  const [nativeMenu, setNativeMenu] = useState<boolean | "pending">(
+    appMenu ? "pending" : false,
+  );
   const [theme, setTheme] = useThemeSetting(storage, root);
   const [uiScale, setUiScale] = useUiScale(storage, root);
   const [fogLook, setFogLook] = useState(() => readFogLook(storage));
@@ -183,13 +187,18 @@ export function DmShell({
     };
   }, [togglePanel]);
 
-  useEffect(
-    () =>
-      commands.register("settings", () => {
-        setSettingsOpen(true);
-      }),
-    [commands],
-  );
+  useEffect(() => {
+    const removeCommand = commands.register("settings", () => {
+      setSettingsOpen(true);
+    });
+    const removeModal = commands.registerModal(() => {
+      setSettingsOpen(false);
+    });
+    return () => {
+      removeCommand();
+      removeModal();
+    };
+  }, [commands]);
 
   // The native menu bar, again when the language changes; a menu button where there is none.
   useEffect(() => {
@@ -389,7 +398,7 @@ export function DmShell({
               onClick={togglePanel}
             />
             <span className="dm-app-name">{t("app.title")}</span>
-            {!nativeMenu && (
+            {nativeMenu === false && (
               <Menu
                 label={t("shell.appMenu.button")}
                 items={[

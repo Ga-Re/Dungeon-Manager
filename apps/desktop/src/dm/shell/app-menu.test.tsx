@@ -26,7 +26,7 @@ const campaign = JSON.stringify({
   visibilityDefaults: {},
 });
 
-function renderWindow(appMenu?: AppMenuService) {
+function renderWindow(appMenu?: AppMenuService, welcome = false) {
   const library = fakeLibraryService("/lib", {
     "campaigns/mine/campaign.json": campaign,
   });
@@ -37,7 +37,11 @@ function renderWindow(appMenu?: AppMenuService) {
         root={document.createElement("html")}
         appMenu={appMenu}
       >
-        <LibraryPanel service={library.service} newId={() => "id-1"} />
+        <LibraryPanel
+          service={library.service}
+          newId={() => "id-1"}
+          welcome={welcome}
+        />
       </DmShell>
     </I18nextProvider>,
   );
@@ -113,6 +117,36 @@ describe("app menu (T-130d)", () => {
     expect(
       await screen.findByRole("dialog", { name: "Willkommen" }),
     ).toBeTruthy();
+  });
+
+  it("closes the welcome dialog of the start before a menu command runs", async () => {
+    const native = fakeNativeMenu();
+    renderWindow(native.service, true);
+    await screen.findByRole("list", { name: "Kampagnen in dieser Bibliothek" });
+    await waitFor(() => {
+      expect(native.labels()).not.toBeNull();
+    });
+
+    native.send("newCampaign");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    const field = screen.getByRole("textbox", {
+      name: "Name der neuen Kampagne",
+    });
+    expect(document.activeElement).toBe(field);
+
+    // One dialog at a time: the settings replace the welcome dialog.
+    native.send("welcome");
+    expect(
+      await screen.findByRole("dialog", { name: "Willkommen" }),
+    ).toBeTruthy();
+    native.send("settings");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Willkommen" })).toBeNull();
+    });
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.getByRole("dialog", { name: "Einstellungen" })).toBeTruthy();
   });
 
   it("falls back to the menu button when the menu bar cannot be installed", async () => {

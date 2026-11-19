@@ -24,7 +24,7 @@ import {
 } from "./recent-campaigns.js";
 import { WelcomeDialog, type WelcomeLibrary } from "./WelcomeDialog.js";
 import { useHudPlacement } from "./shell/hud-layout.js";
-import { useAppCommand } from "./shell/app-commands.js";
+import { useAppCommand, useAppModal } from "./shell/app-commands.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
 
@@ -260,6 +260,9 @@ export function LibraryPanel({
   });
   useAppCommand("welcome", () => {
     setWelcomeOpen(true);
+  });
+  useAppModal(() => {
+    setWelcomeOpen(false);
   });
 
   const openFromWelcome = (slug: string) => {
