@@ -292,7 +292,7 @@ label {
   border-bottom: 1px solid var(--dm-border-subtle);
 }
 
-/* Small caps tabs and captions keep the ribbon calm (ADR-0015). */
+/* Small uppercase tabs and captions keep the ribbon calm (ADR-0015). */
 .dm-ribbon-tab {
   padding: var(--dm-space-2) var(--dm-space-3);
   font-size: var(--dm-font-size-xs);

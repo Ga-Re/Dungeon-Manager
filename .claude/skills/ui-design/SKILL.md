@@ -21,8 +21,8 @@ Dungeon Manager combines two distinct paradigms:
 
 2. **Visual Aesthetic (Professional CAD look with a fantasy accent, ADR-0015):**
    - **Surfaces:** Two themes from tokens: the default dark "workshop" (slate surfaces, gold accent) and a reduced light "parchment". Panels are flat with thin borders; floating parts over the map use a small header bar and, where possible, a transparent body (Fusion-style browser).
-   - **Tree Views & Lists:** File and entity trees (`LibraryPanel`, Scene Browser) use clear vertical/horizontal connector lines with distinct node markers, bold readable serif/sans-serif headers, and thematic iconography (folders, maps, tokens).
-   - **Professional, restrained finish:** follow ADR-0011 "Design references" and ADR-0015 – no illustrative decoration, one line-icon set, one sans-serif family for labels and headings (no serif), small-caps captions and tabs, monospace only for file names and values, thin borders, small radii, soft low shadows only on floating parts, 4/8 px spacing grid, one accent for active/selected states.
+   - **Tree Views & Lists:** File and entity trees (`LibraryPanel`, Scene Browser) use clear vertical/horizontal connector lines with distinct node markers, bold readable sans-serif headers, and thematic iconography (folders, maps, tokens).
+   - **Professional, restrained finish:** follow ADR-0011 "Design references" and ADR-0015 – no illustrative decoration, one line-icon set, one sans-serif family for labels and headings (no serif), small uppercase captions and tabs, monospace only for file names and values, thin borders, small radii, soft low shadows only on floating parts, 4/8 px spacing grid, one accent for active/selected states.
    - **Readability First:** Usability in a dim room first. Maintain high contrast (WCAG AA minimum) in both themes; text over the map needs a scrim or shadow.
 
 ## 2. Design System Architecture & Rules
@@ -50,4 +50,4 @@ Whenever you are asked a design question or tasked with building/modifying UI:
 1. **Check Current State:** Inspect `packages/ui/src/`, `apps/desktop/src/styles.css`, and the relevant component in `apps/desktop/src/dm/` or `apps/desktop/src/player/`.
 2. **Map to Fusion 360 Zones:** Decide which spatial zone the feature belongs to (Data Panel, Top Ribbon, Floating Scene Browser, Bottom Dock, or Radial Menu). Do not invent ad-hoc inline forms that push the canvas around.
 3. **Apply Styling via Tokens:** Use the theme tokens (both themes) and the shared primitives. If a token does not exist yet because the design is still evolving, propose and add the CSS custom property to the root token sheet first.
-4. **Verify Accessibility & Tests:** Ensure semantic HTML (`role`, `aria-label` via `t(...)`), keyboard navigation, and update Vitest / Playwright visual tests if layout or golden screenshots (`pnpm test:visual`) are affected.S
+4. **Verify Accessibility & Tests:** Ensure semantic HTML (`role`, `aria-label` via `t(...)`), keyboard navigation, and update Vitest / Playwright visual tests if layout or golden screenshots (`pnpm test:visual`) are affected.

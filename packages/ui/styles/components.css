@@ -81,7 +81,8 @@
   height: 28px;
 }
 
-/* Explicit text colour: the button may sit on the dark title bar, the hover surface is light. */
+/* Explicit text colour: the button may sit on the title bar, whose text colour differs from the
+   raised hover surface. */
 .dm-icon-button:hover {
   background: var(--dm-surface-raised);
   border-color: var(--dm-border-subtle);

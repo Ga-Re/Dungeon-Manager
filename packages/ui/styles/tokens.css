@@ -31,7 +31,7 @@
   --dm-overlay-reveal-stroke: rgb(255 255 255 / 0.35);
   --dm-overlay-hide-fill: rgb(0 0 0 / 0.45);
   --dm-overlay-hide-stroke: rgb(0 0 0 / 0.5);
-  --dm-surface-chrome: #1b1f26;
+  --dm-surface-chrome: #14171c;
   --dm-surface-panel: #22272f;
   --dm-surface-raised: #2c323c;
   --dm-surface-sunken: #181c22;
@@ -45,12 +45,12 @@
   --dm-border-strong: #8b95a4;
   --dm-border-subtle: #363d48;
   --dm-accent: #d9a441;
-  --dm-accent-soft: #4a3c1f;
+  --dm-accent-soft: #3f331b;
   --dm-accent-line: #d9a441;
   --dm-focus: #5cb8be;
   --dm-danger: #f09a86;
   --dm-success: #8fcf9a;
-  --dm-shadow-panel: 0 4px 14px rgb(0 0 0 / 0.35);
+  --dm-shadow-panel: 0 2px 8px rgb(0 0 0 / 0.4);
   color-scheme: dark;
 }
 

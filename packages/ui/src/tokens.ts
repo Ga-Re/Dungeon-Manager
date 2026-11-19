@@ -36,7 +36,7 @@ export type ThemeName = "workshop" | "parchment";
 /** Colour values per theme. */
 export const THEMES: Record<ThemeName, Record<ColorToken, string>> = {
   workshop: {
-    "surface-chrome": "#1b1f26",
+    "surface-chrome": "#14171c",
     "surface-panel": "#22272f",
     "surface-raised": "#2c323c",
     "surface-sunken": "#181c22",
@@ -50,7 +50,7 @@ export const THEMES: Record<ThemeName, Record<ColorToken, string>> = {
     "border-strong": "#8b95a4",
     "border-subtle": "#363d48",
     accent: "#d9a441",
-    "accent-soft": "#4a3c1f",
+    "accent-soft": "#3f331b",
     "accent-line": "#d9a441",
     focus: "#5cb8be",
     danger: "#f09a86",
@@ -92,6 +92,9 @@ export const COLOR_PAIRS: readonly (readonly [
   ["text-primary", "surface-raised", 4.5],
   ["text-primary", "surface-sunken", 4.5],
   ["text-primary", "accent-soft", 4.5],
+  ["text-muted", "accent-soft", 4.5],
+  ["text-on-chrome-muted", "surface-canvas", 4.5],
+  ["accent", "surface-chrome", 4.5],
   ["text-secondary", "surface-panel", 4.5],
   ["text-secondary", "surface-raised", 4.5],
   ["text-secondary", "surface-sunken", 4.5],
@@ -113,11 +116,12 @@ export const COLOR_PAIRS: readonly (readonly [
   ["focus", "surface-raised", 3],
   ["focus", "surface-chrome", 3],
   ["focus", "surface-canvas", 3],
+  ["focus", "accent-soft", 3],
 ];
 
 /** Theme-dependent values that are not plain colours. */
 const SHADOWS: Record<ThemeName, string> = {
-  workshop: "0 4px 14px rgb(0 0 0 / 0.35)",
+  workshop: "0 2px 8px rgb(0 0 0 / 0.4)",
   parchment: "0 2px 8px rgb(30 22 10 / 0.14)",
 };
 
@@ -130,7 +134,7 @@ const SHARED: Record<string, string> = {
   "space-5": "24px",
   "space-6": "32px",
   // System fonts for now (DM decision 2026-11-18); real faces later by changing these only.
-  // One family for labels and headings (ADR-0015); captions are small caps.
+  // One family for labels and headings (ADR-0015); captions are small uppercase.
   "font-ui": 'system-ui, -apple-system, "Segoe UI", sans-serif',
   "font-heading": 'system-ui, -apple-system, "Segoe UI", sans-serif',
   "font-mono": "ui-monospace, Menlo, Consolas, monospace",
