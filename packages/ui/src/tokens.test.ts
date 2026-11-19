@@ -50,6 +50,24 @@ describe("tokensToCss", () => {
     }
   });
 
+  it("is the workshop theme by default and parchment on request or for a light OS (ADR-0015)", () => {
+    const root = css.slice(0, css.indexOf(':root[data-dm-theme="parchment"]'));
+    expect(root).toContain(
+      `--dm-surface-panel: ${THEMES.workshop["surface-panel"]};`,
+    );
+    expect(root).toContain("color-scheme: dark;");
+    expect(css).toMatch(
+      /:root\[data-dm-theme="parchment"\] \{[^}]*color-scheme: light;/,
+    );
+    expect(css).toMatch(
+      /@media \(prefers-color-scheme: light\) \{\s*:root\[data-dm-theme="system"\]/,
+    );
+  });
+
+  it("uses one type family for labels and headings (ADR-0015)", () => {
+    expect(css).not.toMatch(/--dm-font-heading:[^;]*(?<!sans-)serif;/);
+  });
+
   it("defines the z-index layering contract (ADR-0011)", () => {
     expect(css).toContain("--dm-z-canvas: 0;");
     expect(css).toContain("--dm-z-overlay: 10;");

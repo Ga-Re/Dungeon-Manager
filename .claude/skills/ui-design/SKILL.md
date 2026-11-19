@@ -19,11 +19,11 @@ Dungeon Manager combines two distinct paradigms:
    - **Floating Navigation & Display Dock (Bottom Center, `#8`):** Houses zoom, pan, fit-to-screen, rotation controls (`90°`), and live `PlayerFeed` projection status.
    - **Radial / Marking Context Menu (Right-Click, `#6`):** Fast, cursor-centered access to frequent actions (Undo/Redo, Reveal/Hide Fog, Rotate, Reset View).
 
-2. **Visual Aesthetic (Tactile Fantasy / Parchment UI):**
-   - **Surfaces:** Floating panels and dialogs use warm parchment/vellum textures or warm stone tones framed by dark forged-iron/slate borders with subtle inner glow and drop shadows over the canvas.
-   - **Tree Views & Lists:** File and entity trees (`LibraryPanel`, Scene Browser) use clear vertical/horizontal connector lines with distinct node markers, bold readable serif/sans-serif headers, and thematic iconography (folders, maps, tokens).
-   - **Professional, restrained finish:** follow ADR-0011 "Design references" – no illustrative decoration, one line-icon set, sans-serif labels / serif headings / monospace only for file names and values, thin borders and soft shadows, 4/8 px spacing grid, plus a dimmed "night" variant of the parchment surfaces.
-   - **Readability First:** Fantasy flair must never compromise usability in a dim room. Maintain high contrast (WCAG AA minimum) between text and parchment/dark surfaces.
+2. **Visual Aesthetic (Professional CAD look with a fantasy accent, ADR-0015):**
+   - **Surfaces:** Two themes from tokens: the default dark "workshop" (slate surfaces, gold accent) and a reduced light "parchment". Panels are flat with thin borders; floating parts over the map use a small header bar and, where possible, a transparent body (Fusion-style browser).
+   - **Tree Views & Lists:** File and entity trees (`LibraryPanel`, Scene Browser) use clear vertical/horizontal connector lines with distinct node markers, bold readable sans-serif headers, and thematic iconography (folders, maps, tokens).
+   - **Professional, restrained finish:** follow ADR-0011 "Design references" and ADR-0015 – no illustrative decoration, one line-icon set, one sans-serif family for labels and headings (no serif), small uppercase captions and tabs, monospace only for file names and values, thin borders, small radii, soft low shadows only on floating parts, 4/8 px spacing grid, one accent for active/selected states.
+   - **Readability First:** Usability in a dim room first. Maintain high contrast (WCAG AA minimum) in both themes; text over the map needs a scrim or shadow.
 
 ## 2. Design System Architecture & Rules
 
@@ -49,5 +49,5 @@ Whenever you are asked a design question or tasked with building/modifying UI:
 
 1. **Check Current State:** Inspect `packages/ui/src/`, `apps/desktop/src/styles.css`, and the relevant component in `apps/desktop/src/dm/` or `apps/desktop/src/player/`.
 2. **Map to Fusion 360 Zones:** Decide which spatial zone the feature belongs to (Data Panel, Top Ribbon, Floating Scene Browser, Bottom Dock, or Radial Menu). Do not invent ad-hoc inline forms that push the canvas around.
-3. **Apply Fantasy Styling via Tokens:** Use the established parchment/frame tokens and tree-connector patterns. If a token does not exist yet because the design is still evolving, propose and add the CSS custom property to the root token sheet first.
-4. **Verify Accessibility & Tests:** Ensure semantic HTML (`role`, `aria-label` via `t(...)`), keyboard navigation, and update Vitest / Playwright visual tests if layout or golden screenshots (`pnpm test:visual`) are affected.S
+3. **Apply Styling via Tokens:** Use the theme tokens (both themes) and the shared primitives. If a token does not exist yet because the design is still evolving, propose and add the CSS custom property to the root token sheet first.
+4. **Verify Accessibility & Tests:** Ensure semantic HTML (`role`, `aria-label` via `t(...)`), keyboard navigation, and update Vitest / Playwright visual tests if layout or golden screenshots (`pnpm test:visual`) are affected.

@@ -1,6 +1,6 @@
 # ADR-0014: Docked data panel and ribbon; the map fills the remaining area
 
-- **Status:** Proposed
+- **Status:** Accepted (DM, 2026-11-19)
 - **Date:** 2026-11-19
 - **Deciders:** DM (product owner), agent
 - **Supersedes:** the "Zones" rule of ADR-0011 ("the map viewport fills the whole window"); everything else in ADR-0011 stays in force.

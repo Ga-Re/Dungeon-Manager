@@ -28,52 +28,54 @@ export type ColorToken =
   | "danger"
   | "success";
 
-/** Theme names; `parchment` is the default, `night` the dimmed variant for a dark room. */
-export type ThemeName = "parchment" | "night";
+/**
+ * Theme names (ADR-0015): `workshop` is the dark default, `parchment` the light theme.
+ */
+export type ThemeName = "workshop" | "parchment";
 
 /** Colour values per theme. */
 export const THEMES: Record<ThemeName, Record<ColorToken, string>> = {
+  workshop: {
+    "surface-chrome": "#14171c",
+    "surface-panel": "#22272f",
+    "surface-raised": "#2c323c",
+    "surface-sunken": "#181c22",
+    "surface-canvas": "#111418",
+    "text-primary": "#e6e9ee",
+    "text-secondary": "#b9c0ca",
+    "text-muted": "#9aa3af",
+    "text-on-chrome": "#eef0f3",
+    "text-on-chrome-muted": "#9aa3af",
+    "text-on-accent": "#1b1f26",
+    "border-strong": "#8b95a4",
+    "border-subtle": "#363d48",
+    accent: "#d9a441",
+    "accent-soft": "#3f331b",
+    "accent-line": "#d9a441",
+    focus: "#5cb8be",
+    danger: "#f09a86",
+    success: "#8fcf9a",
+  },
   parchment: {
-    "surface-chrome": "#1e232d",
-    "surface-panel": "#efe6d2",
-    "surface-raised": "#f7f0e1",
-    "surface-sunken": "#e2d5b9",
+    "surface-chrome": "#20242b",
+    "surface-panel": "#efe8da",
+    "surface-raised": "#f8f4ec",
+    "surface-sunken": "#e6dcc8",
     "surface-canvas": "#16140f",
-    "text-primary": "#2a2219",
-    "text-secondary": "#54473a",
-    "text-muted": "#625341",
-    "text-on-chrome": "#ece5d5",
-    "text-on-chrome-muted": "#a9a294",
-    "text-on-accent": "#2a2219",
-    "border-strong": "#3b3226",
-    "border-subtle": "#c4b28c",
+    "text-primary": "#2b2620",
+    "text-secondary": "#4f473b",
+    "text-muted": "#5e5546",
+    "text-on-chrome": "#eceef1",
+    "text-on-chrome-muted": "#a3a9b3",
+    "text-on-accent": "#2b2620",
+    "border-strong": "#6b5e48",
+    "border-subtle": "#cdbfa3",
     accent: "#e2a62b",
-    "accent-soft": "#f3d48a",
-    "accent-line": "#9c6f17",
+    "accent-soft": "#f1dca8",
+    "accent-line": "#8a5a12",
     focus: "#2a7f86",
     danger: "#9e3324",
     success: "#2e6034",
-  },
-  night: {
-    "surface-chrome": "#12151b",
-    "surface-panel": "#37312a",
-    "surface-raised": "#423b32",
-    "surface-sunken": "#2b2620",
-    "surface-canvas": "#0d0c09",
-    "text-primary": "#eee3cb",
-    "text-secondary": "#cdbf9f",
-    "text-muted": "#bcae92",
-    "text-on-chrome": "#e6dfcf",
-    "text-on-chrome-muted": "#9c9586",
-    "text-on-accent": "#1c170f",
-    "border-strong": "#9a8a6d",
-    "border-subtle": "#5d5141",
-    accent: "#d9a237",
-    "accent-soft": "#4d3d1c",
-    "accent-line": "#d0a24a",
-    focus: "#5cb8be",
-    danger: "#f09a86",
-    success: "#8cc792",
   },
 };
 
@@ -90,6 +92,9 @@ export const COLOR_PAIRS: readonly (readonly [
   ["text-primary", "surface-raised", 4.5],
   ["text-primary", "surface-sunken", 4.5],
   ["text-primary", "accent-soft", 4.5],
+  ["text-muted", "accent-soft", 4.5],
+  ["text-on-chrome-muted", "surface-canvas", 4.5],
+  ["accent", "surface-chrome", 4.5],
   ["text-secondary", "surface-panel", 4.5],
   ["text-secondary", "surface-raised", 4.5],
   ["text-secondary", "surface-sunken", 4.5],
@@ -111,12 +116,13 @@ export const COLOR_PAIRS: readonly (readonly [
   ["focus", "surface-raised", 3],
   ["focus", "surface-chrome", 3],
   ["focus", "surface-canvas", 3],
+  ["focus", "accent-soft", 3],
 ];
 
 /** Theme-dependent values that are not plain colours. */
 const SHADOWS: Record<ThemeName, string> = {
-  parchment: "0 2px 6px rgb(30 22 10 / 0.18)",
-  night: "0 2px 8px rgb(0 0 0 / 0.45)",
+  workshop: "0 2px 8px rgb(0 0 0 / 0.4)",
+  parchment: "0 2px 8px rgb(30 22 10 / 0.14)",
 };
 
 /** Values shared by both themes: spacing (4/8 px grid), type, radii, layering, map overlays. */
@@ -128,17 +134,18 @@ const SHARED: Record<string, string> = {
   "space-5": "24px",
   "space-6": "32px",
   // System fonts for now (DM decision 2026-11-18); real faces later by changing these only.
+  // One family for labels and headings (ADR-0015); captions are small uppercase.
   "font-ui": 'system-ui, -apple-system, "Segoe UI", sans-serif',
-  "font-heading": 'Georgia, "Times New Roman", serif',
+  "font-heading": 'system-ui, -apple-system, "Segoe UI", sans-serif',
   "font-mono": "ui-monospace, Menlo, Consolas, monospace",
   "font-size-xs": "0.75rem",
   "font-size-sm": "0.875rem",
   "font-size-md": "1rem",
   "font-size-lg": "1.125rem",
   "font-size-xl": "1.5rem",
-  "radius-sm": "4px",
-  "radius-md": "6px",
-  "radius-lg": "8px",
+  "radius-sm": "2px",
+  "radius-md": "3px",
+  "radius-lg": "4px",
   "radius-pill": "999px",
   "focus-width": "2px",
   // Layering contract (ADR-0011): canvas · overlays · HUD · ribbon/data panel · popovers · modals.
@@ -190,30 +197,30 @@ function themeBlock(theme: ThemeName, indent: string): string {
   return [
     declarations(THEMES[theme], indent),
     `${indent}--dm-shadow-panel: ${SHADOWS[theme]};`,
-    `${indent}color-scheme: ${theme === "night" ? "dark" : "light"};`,
+    `${indent}color-scheme: ${theme === "workshop" ? "dark" : "light"};`,
   ].join("\n");
 }
 
 /**
- * The token sheet as CSS: parchment by default; night when `data-dm-theme="night"` is set on
- * the root element, or when it is `"system"` and the OS prefers dark (the DM chooses in the
- * settings; ADR-0011).
+ * The token sheet as CSS: workshop (dark) by default; parchment when `data-dm-theme="parchment"`
+ * is set on the root element, or when it is `"system"` and the OS prefers light (the DM chooses
+ * in the settings; ADR-0015).
  */
 export function tokensToCss(): string {
   return `/* Generated from packages/ui/src/tokens.ts – do not edit by hand. */
 
 :root {
 ${declarations(SHARED, "  ")}
+${themeBlock("workshop", "  ")}
+}
+
+:root[data-dm-theme="parchment"] {
 ${themeBlock("parchment", "  ")}
 }
 
-:root[data-dm-theme="night"] {
-${themeBlock("night", "  ")}
-}
-
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root[data-dm-theme="system"] {
-${themeBlock("night", "    ")}
+${themeBlock("parchment", "    ")}
   }
 }
 `;

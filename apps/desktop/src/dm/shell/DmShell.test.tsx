@@ -135,11 +135,11 @@ describe("DmShell", () => {
     fireEvent.click(gear);
     expect(gear.getAttribute("aria-expanded")).toBe("true");
     expect(
-      screen.getByRole("radio", { name: "Hell (Pergament)" }),
+      screen.getByRole("radio", { name: "Dunkel (Werkstatt)" }),
     ).toHaveProperty("checked", true);
-    fireEvent.click(screen.getByRole("radio", { name: "Dunkel (Nacht)" }));
-    expect(root.dataset["dmTheme"]).toBe("night");
-    expect(storage.getItem("dm.theme")).toBe("dark");
+    fireEvent.click(screen.getByRole("radio", { name: "Hell (Pergament)" }));
+    expect(root.dataset["dmTheme"]).toBe("parchment");
+    expect(storage.getItem("dm.theme")).toBe("light");
     fireEvent.click(
       screen.getByRole("radio", { name: "Wie das Betriebssystem" }),
     );
@@ -150,7 +150,7 @@ describe("DmShell", () => {
     setup();
     const gear = screen.getByRole("button", { name: "Einstellungen" });
     const themeRadio = () =>
-      screen.queryByRole("radio", { name: "Dunkel (Nacht)" });
+      screen.queryByRole("radio", { name: "Dunkel (Werkstatt)" });
     fireEvent.click(gear);
     fireEvent.keyDown(themeRadio() ?? gear, { key: "Escape" });
     expect(themeRadio()).toBeNull();
@@ -164,7 +164,9 @@ describe("DmShell", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
     fireEvent.keyDown(screen.getByTestId("map"), { key: "Escape" });
-    expect(screen.getByRole("radio", { name: "Dunkel (Nacht)" })).toBeTruthy();
+    expect(
+      screen.getByRole("radio", { name: "Dunkel (Werkstatt)" }),
+    ).toBeTruthy();
   });
 
   it("keeps focus on the toggle when hiding a panel that had it", () => {

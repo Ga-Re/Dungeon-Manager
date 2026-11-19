@@ -165,7 +165,7 @@ export const de = {
       label: "Darstellung",
       system: "Wie das Betriebssystem",
       light: "Hell (Pergament)",
-      dark: "Dunkel (Nacht)",
+      dark: "Dunkel (Werkstatt)",
     },
     save: {
       saved: "Gespeichert",

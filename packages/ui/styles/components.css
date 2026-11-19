@@ -81,7 +81,8 @@
   height: 28px;
 }
 
-/* Explicit text colour: the button may sit on the dark title bar, the hover surface is light. */
+/* Explicit text colour: the button may sit on the title bar, whose text colour differs from the
+   raised hover surface. */
 .dm-icon-button:hover {
   background: var(--dm-surface-raised);
   border-color: var(--dm-border-subtle);
@@ -484,6 +485,13 @@
   align-items: center;
   gap: var(--dm-space-2);
   min-height: 3rem;
+}
+
+/* The caption menu button reads like the plain caption. */
+.dm-ribbon-group-caption .dm-menu-button {
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
 }
 
 .dm-ribbon-group-caption {
