@@ -3,9 +3,10 @@ import type { AssetRef, Polygon, Scene } from "@dungeon-manager/schema";
 import {
   deleteScene,
   loadScene,
+  reparentScene,
   saveScene,
-  withMap,
   type MapReset,
+  withMap,
 } from "@dungeon-manager/storage";
 import { IconButton, Popover, RibbonGroup } from "@dungeon-manager/ui";
 import { ImagePlus, Trash2 } from "lucide-react";
@@ -56,6 +57,18 @@ function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
   return null;
 }
 
+/** The sub-scenes of the open scene (T-152). */
+export interface SubScenes {
+  /** Its direct sub-scenes: they move up to `parentSceneId` when the DM keeps them. */
+  readonly direct: readonly string[];
+  /** All sub-scenes below it, parents before children: they go when the DM deletes them too. */
+  readonly all: readonly string[];
+  /** The open scene's own parent, or `null` at the top. */
+  readonly parentSceneId: string | null;
+}
+
+const NO_SUB_SCENES: SubScenes = { direct: [], all: [], parentSceneId: null };
+
 /**
  * The open scene: its map with fog tools (reveal/hide, undo), changing its map, deleting it (to
  * the trash, after confirming) and closing it. Fog edits are saved and reach the TV at once.
@@ -69,6 +82,7 @@ export function OpenScenePanel({
   onChanged,
   onDeleted,
   onClose,
+  subScenes = NO_SUB_SCENES,
 }: {
   readonly service: LibraryService;
   readonly slug: string;
@@ -79,11 +93,15 @@ export function OpenScenePanel({
   readonly onChanged: (scene: Scene) => void;
   readonly onDeleted: (scene: Scene) => void;
   readonly onClose: () => void;
+  /** The scene's sub-scenes (T-152): asked about when it is deleted. */
+  readonly subScenes?: SubScenes;
 }) {
   const { t } = useTranslation();
   const fogLook = useContext(FogLookContext);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // DM decision (T-152): keeping the sub-scenes is preselected.
+  const [keepSubScenes, setKeepSubScenes] = useState(true);
   const [error, setError] = useState("");
   const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
   const session = useSceneSession(service, slug, opened);
@@ -197,6 +215,17 @@ export function OpenScenePanel({
     run(async () => {
       // A save still in flight would otherwise bring the file back after it went to the trash.
       await session.flush();
+      // Sub-scenes first, so a failure leaves the scene itself in place.
+      if (keepSubScenes)
+        for (const child of subScenes.direct)
+          await reparentScene(service.fs, slug, child, subScenes.parentSceneId);
+      else
+        for (const each of [...subScenes.all].reverse()) {
+          // Already gone (e.g. trashed by an earlier try that failed later): nothing to do.
+          if ((await loadScene(service.fs, slug, each)).status === "missing")
+            continue;
+          await deleteScene(service.fs, slug, each);
+        }
       await deleteScene(service.fs, slug, scene.id);
       onDeleted(scene);
     });
@@ -242,6 +271,8 @@ export function OpenScenePanel({
               },
             ],
             onSelect: () => {
+              // Every time anew: keeping the sub-scenes is preselected (T-152).
+              setKeepSubScenes(true);
               setConfirmingDelete(true);
             },
             buttonRef: sceneMenuButton,
@@ -298,6 +329,37 @@ export function OpenScenePanel({
             align="start"
           >
             <p>{t("campaign.confirmDelete", { name: scene.name })}</p>
+            {subScenes.all.length > 0 && (
+              <fieldset>
+                <legend>
+                  {t("campaign.subScenesOnDelete", {
+                    count: subScenes.all.length,
+                  })}
+                </legend>
+                <label>
+                  <input
+                    type="radio"
+                    name="sub-scenes-on-delete"
+                    checked={keepSubScenes}
+                    onChange={() => {
+                      setKeepSubScenes(true);
+                    }}
+                  />
+                  {t("campaign.keepSubScenes")}
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="sub-scenes-on-delete"
+                    checked={!keepSubScenes}
+                    onChange={() => {
+                      setKeepSubScenes(false);
+                    }}
+                  />
+                  {t("campaign.deleteSubScenes")}
+                </label>
+              </fieldset>
+            )}
             <div className="dm-popover-actions">
               <button
                 ref={confirmButton}

@@ -31,7 +31,11 @@ export const campaignSchema = z.looseObject({
   notes: noteLinksSchema,
 });
 
-/** `campaigns/<slug>/scenes/<id>.json`. */
+/**
+ * `campaigns/<slug>/scenes/<id>.json`. A sub-scene (T-152) names its parent in
+ * `parentSceneId`: optional and additive, so no version bump – older readers keep it (DM
+ * decision, 2026-11-19). It is its own scene with its own map, fog and tokens.
+ */
 export const sceneSchema = z.looseObject({
   schemaVersion: z.literal(SCENE_VERSION),
   id: idSchema,
@@ -41,6 +45,8 @@ export const sceneSchema = z.looseObject({
   fog: fogStateSchema,
   initiative: initiativeStateSchema.nullable(),
   notes: noteLinksSchema,
+  // A scene naming itself (a loop) stays readable: the browser shows it at the top.
+  parentSceneId: idSchema.optional(),
 });
 
 /** A calendar day as `YYYY-MM-DD` that really exists (no 30 February). */

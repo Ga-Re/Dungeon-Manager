@@ -9,6 +9,7 @@ import {
 } from "@dungeon-manager/schema";
 import {
   listSessions,
+  loadScene,
   loadSession,
   saveCampaign,
   saveScene,
@@ -90,6 +91,8 @@ export async function createScene(
     readonly id: string;
     readonly name: string;
     readonly map?: MapSpec | null;
+    /** Makes it a sub-scene of this scene (T-152). */
+    readonly parentSceneId?: string | undefined;
   },
 ): Promise<Scene> {
   if (scene.name.trim() === "") throw new Error("A scene needs a name");
@@ -101,6 +104,7 @@ export async function createScene(
     tokens: [],
     fog: { levels: {} },
     initiative: null,
+    ...(scene.parentSceneId ? { parentSceneId: scene.parentSceneId } : {}),
   };
   await saveScene(fs, slug, created);
   return created;
@@ -198,6 +202,27 @@ export function newMap(
     grid: placeholderGrid(),
     levels: [{ id: level.id, name: level.name }],
   };
+}
+
+/**
+ * Makes a scene a sub-scene of `parentSceneId`, or a top-level scene with `null` (T-152), e.g.
+ * when its parent is deleted and the DM keeps its sub-scenes. Everything else in the file is
+ * kept as it is. @throws when the scene cannot be read or written
+ */
+export async function reparentScene(
+  fs: FileSystem,
+  slug: string,
+  sceneId: string,
+  parentSceneId: string | null,
+): Promise<Scene> {
+  const loaded = await loadScene(fs, slug, sceneId);
+  if (loaded.status !== "ok")
+    throw new Error(`Scene ${sceneId} cannot be read (${loaded.status})`);
+  const next: Scene = { ...loaded.value };
+  if (parentSceneId) next.parentSceneId = parentSceneId;
+  else delete next.parentSceneId;
+  await saveScene(fs, slug, next);
+  return next;
 }
 
 /**

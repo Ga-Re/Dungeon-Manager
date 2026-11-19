@@ -694,12 +694,14 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-152 Sub-scenes
 
-- **Status:** todo · **Depends on:** T-130c · **Refs:** SPEC 2.1, ARCHITECTURE §6
+- **Status:** done · **Depends on:** T-130c · **Refs:** SPEC 2.1, ARCHITECTURE §6
 - A scene can have sub-scenes (e.g. "Krypta › Geheimkammer"), created by right-clicking a scene in the scene browser and shown nested under it.
 - **Acceptance criteria**
-  - [ ] Scene schema gains an optional parent scene reference, with a migration and schema tests
-  - [ ] Browser shows sub-scenes nested; deleting a scene with sub-scenes asks what happens to them
+  - [x] Scene schema gains an optional parent scene reference, with a migration and schema tests – DM decision: additive optional `parentSceneId`, no version bump, so no migration is needed (like the `notes` list of T-161a)
+  - [x] Browser shows sub-scenes nested; deleting a scene with sub-scenes asks what happens to them
 - **Notes:** DM request (2026-11-19). File format change: propose the schema field, migration and delete behaviour to the DM before implementing.
+- DM decisions (2026-11-19): optional `parentSceneId` in the scene file, no version bump; a sub-scene is its own scene (own map, fog, tokens); any depth (a missing parent or a loop makes it top-level); deleting asks – keep (preselected, one level up) or delete too (into the trash).
+- Not in this task: moving an existing scene under another one (only new sub-scenes); a later task if needed.
 
 ### T-131 Fog tools in the ribbon and navigation dock
 

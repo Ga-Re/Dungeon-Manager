@@ -65,7 +65,8 @@ import {
   type SceneEntry,
   type SessionEntry,
 } from "./campaign-data.js";
-import { buildCampaignTree, scenesInSessions } from "./campaign-tree.js";
+import { buildCampaignTree } from "./campaign-tree.js";
+import { sceneHierarchy, scenePlaces, topScenes } from "./scene-hierarchy.js";
 import { describeLibraryError } from "./describe-error.js";
 import { noteTitle } from "./file-name.js";
 import { describeItem } from "./details.js";
@@ -88,6 +89,7 @@ import {
   sceneNodeId,
   sessionNodeId,
   type NoteOwnerRef,
+  type SceneSlot,
 } from "./tree-ids.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
 
@@ -143,6 +145,8 @@ type Dialog =
       readonly origin: Origin;
       /** Add the new scene to this session. */
       readonly sessionId?: string;
+      /** Make it a sub-scene of this scene (T-152), shown under it at `slot`. */
+      readonly parent?: { readonly sceneId: string; readonly slot: SceneSlot };
     }
   | { readonly kind: "newSession"; readonly origin: Origin }
   | {
@@ -352,16 +356,12 @@ export function CampaignPanel({
     };
   };
 
-  const planned = scenesInSessions(sessions);
-  /** The tree places of a scene: each session it is in, else "Ohne Session". */
-  const placesOf = (sceneId: string): string[] => {
-    const inSessions = (sessions ?? [])
-      .filter((entry) => entry.session?.sceneIds.includes(sceneId))
-      .map((entry) => sceneNodeId({ sessionId: entry.id }, sceneId));
-    return inSessions.length > 0 || planned.has(sceneId)
-      ? inSessions
-      : [sceneNodeId("unsorted", sceneId)];
-  };
+  const hierarchy = sceneHierarchy(scenes ?? []);
+  /** The tree places of a scene: its sessions, "Ohne Session", or under its parent (T-152). */
+  const placesOf = (sceneId: string): string[] =>
+    scenePlaces(hierarchy, scenes ?? [], sessions ?? [], sceneId).map((slot) =>
+      sceneNodeId(slot, sceneId),
+    );
   const openNodeId = (() => {
     if (!openScene) return null;
     const places = placesOf(openScene.id);
@@ -446,10 +446,12 @@ export function CampaignPanel({
 
   const create = async (sceneName: string, map: AssetRef | null) => {
     const target = dialog?.kind === "newScene" ? dialog.sessionId : undefined;
+    const parent = dialog?.kind === "newScene" ? dialog.parent : undefined;
     try {
       const scene = await createScene(service.fs, slug, {
         id: newId(),
         name: sceneName,
+        parentSceneId: parent?.sceneId,
         map:
           // The level id only has to be unique within this scene.
           map && newMap(map, { id: newId(), name: t("campaign.defaultLevel") }),
@@ -464,8 +466,13 @@ export function CampaignPanel({
           ? t("campaign.sceneCreatedNotAdded", { name: scene.name, problem })
           : t("campaign.sceneCreated", { name: scene.name }),
       );
+      // A sub-scene shows under its parent, where the DM created it.
       const place = sceneNodeId(
-        target && !problem ? { sessionId: target } : "unsorted",
+        parent
+          ? parent.slot
+          : target && !problem
+            ? { sessionId: target }
+            : "unsorted",
         scene.id,
       );
       setOpenScene(scene);
@@ -521,13 +528,10 @@ export function CampaignPanel({
     pendingScene.current = null;
     const scene = scenes.find((each) => each.id === sceneId)?.scene;
     if (!scene) return;
-    const session = (sessions ?? []).find((each) =>
-      each.session?.sceneIds.includes(sceneId),
-    );
-    const place = sceneNodeId(
-      session ? { sessionId: session.id } : "unsorted",
-      sceneId,
-    );
+    const slot =
+      scenePlaces(sceneHierarchy(scenes), scenes, sessions ?? [], sceneId)[0] ??
+      "unsorted";
+    const place = sceneNodeId(slot, sceneId);
     setOpenScene(scene);
     setOpenAt(place);
     setInspected(place);
@@ -620,6 +624,14 @@ export function CampaignPanel({
         ...noteCommands,
       ];
     if (item.kind === "scene") {
+      const newSubScene = {
+        id: "newSubScene",
+        label: t("campaign.newSubScene"),
+        icon: <FilePlus />,
+        disabled: !scenes?.some(
+          (each) => each.id === item.sceneId && each.scene,
+        ),
+      };
       const others = (sessions ?? []).filter(
         (entry) =>
           entry.session && !entry.session.sceneIds.includes(item.sceneId),
@@ -630,29 +642,40 @@ export function CampaignPanel({
         icon: <ListPlus />,
         disabled: others.length === 0,
       };
-      if (item.slot === "unsorted") return [addTo, newScene, ...noteCommands];
+      if (item.slot === "unsorted")
+        return [addTo, newScene, newSubScene, ...noteCommands];
       const ids = sessionById(item.slot.sessionId)?.sceneIds ?? [];
       const index = ids.indexOf(item.sceneId);
+      // Shown under its parent (T-152), not at the session's top: its place in the session
+      // list changes nothing visible, so moving and removing do not apply here.
+      const nested = !topScenes(
+        hierarchy,
+        scenes ?? [],
+        sessions ?? [],
+        item.slot,
+      ).includes(item.sceneId);
       return [
         {
           id: "moveUp",
           label: t("campaign.moveUp"),
           icon: <ArrowUp />,
-          disabled: index <= 0,
+          disabled: nested || index <= 0,
         },
         {
           id: "moveDown",
           label: t("campaign.moveDown"),
           icon: <ArrowDown />,
-          disabled: index < 0 || index >= ids.length - 1,
+          disabled: nested || index < 0 || index >= ids.length - 1,
         },
         {
           id: "removeFromSession",
           label: t("campaign.removeFromSession"),
           icon: <ListMinus />,
+          disabled: nested || index < 0,
         },
         addTo,
         newScene,
+        newSubScene,
         ...noteCommands,
       ];
     }
@@ -749,6 +772,14 @@ export function CampaignPanel({
           origin,
           ...(sessionOfItem ? { sessionId: sessionOfItem } : {}),
         });
+        return;
+      case "newSubScene":
+        if (item.kind === "scene")
+          setDialog({
+            kind: "newScene",
+            origin,
+            parent: { sceneId: item.sceneId, slot: item.slot },
+          });
         return;
       case "newSession":
         setDialog({ kind: "newSession", origin });
@@ -908,16 +939,18 @@ export function CampaignPanel({
   };
 
   const dialogLabel = (current: Dialog) =>
-    t(
-      {
-        newScene: "campaign.newScene",
-        newSession: "campaign.newSession",
-        editSession: "campaign.editSession",
-        deleteSession: "campaign.deleteSession",
-        addToSession: "campaign.addToSession",
-        linkNote: "campaign.linkNote",
-      }[current.kind],
-    );
+    current.kind === "newScene" && current.parent
+      ? t("campaign.newSubScene")
+      : t(
+          {
+            newScene: "campaign.newScene",
+            newSession: "campaign.newSession",
+            editSession: "campaign.editSession",
+            deleteSession: "campaign.deleteSession",
+            addToSession: "campaign.addToSession",
+            linkNote: "campaign.linkNote",
+          }[current.kind],
+        );
 
   /** A note's details carry its text. */
   const withNoteBody = (details: ReturnType<typeof describeItem>) =>
@@ -1064,6 +1097,11 @@ export function CampaignPanel({
           slug={slug}
           scene={openScene}
           newId={newId}
+          subScenes={{
+            direct: hierarchy.childrenOf(openScene.id),
+            all: hierarchy.descendantsOf(openScene.id),
+            parentSceneId: hierarchy.parentOf(openScene.id),
+          }}
           onSceneChange={(scene, revealed) => {
             setLive({ scene, revealed });
           }}
