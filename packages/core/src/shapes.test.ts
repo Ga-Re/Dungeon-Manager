@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, test } from "vitest";
 import { isInside } from "./fog.js";
-import { circleArea, ringArea, strokeArea } from "./index.js";
+import { circleArea, ringArea, roundedRectArea, strokeArea } from "./index.js";
 
 const close = (a: number, b: number) => Math.abs(a - b) < 1e-6;
 
@@ -19,6 +19,48 @@ describe("circleArea", () => {
     expect(isInside([circle], [0, 0])).toBe(true);
     expect(isInside([circle], [9, 0])).toBe(true);
     expect(isInside([circle], [10.5, 0])).toBe(false);
+  });
+});
+
+describe("roundedRectArea", () => {
+  test("a rectangle with its corners cut round, inside the rectangle", () => {
+    const area = roundedRectArea([0, 0], [100, 60], 10);
+    expect(area.holes).toEqual([]);
+    for (const [x, y] of area.outer) {
+      expect(x).toBeGreaterThanOrEqual(-1e-9);
+      expect(x).toBeLessThanOrEqual(100 + 1e-9);
+      expect(y).toBeGreaterThanOrEqual(-1e-9);
+      expect(y).toBeLessThanOrEqual(60 + 1e-9);
+    }
+    // The sides stay straight up to the rounding; the very corner is cut off.
+    expect(isInside([area], [50, 1])).toBe(true);
+    expect(isInside([area], [1, 30])).toBe(true);
+    expect(isInside([area], [1, 1])).toBe(false);
+    expect(isInside([area], [99, 59])).toBe(false);
+    // A quarter circle per corner: the corner square loses (1 − π/4)·r² each (a little more,
+    // as the arcs are chords).
+    expect(ringArea(area.outer)).toBeCloseTo(
+      6000 - 4 * (1 - Math.PI / 4) * 100,
+      -1,
+    );
+  });
+
+  test("takes the corners in any order and never rounds more than half the shorter side", () => {
+    const area = roundedRectArea([100, 60], [0, 0], 500);
+    expect(ringArea(area.outer)).toBeLessThan(6000);
+    expect(isInside([area], [50, 30])).toBe(true);
+    // Rounded by 30 (half of 60): the ends are half circles.
+    expect(isInside([area], [3, 30])).toBe(true);
+    expect(isInside([area], [3, 5])).toBe(false);
+  });
+
+  test("a plain rectangle without rounding", () => {
+    expect(roundedRectArea([0, 0], [10, 20], 0).outer).toEqual([
+      [0, 0],
+      [10, 0],
+      [10, 20],
+      [0, 20],
+    ]);
   });
 });
 

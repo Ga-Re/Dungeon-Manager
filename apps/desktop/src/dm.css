@@ -78,6 +78,16 @@ label {
   fill: none;
 }
 
+/* The brush's outline at the pointer (T-170): how big it paints, without hiding the map. */
+.map-view-preview .map-view-preview-cursor {
+  fill: none;
+  stroke: var(--dm-overlay-reveal-stroke);
+}
+
+.map-view-preview-hide .map-view-preview-cursor {
+  stroke: var(--dm-overlay-hide-stroke);
+}
+
 .map-view-preview .map-view-preview-dab {
   stroke: none;
 }

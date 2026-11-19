@@ -48,6 +48,44 @@ describe("dragArea", () => {
   });
 });
 
+describe("rounded rectangles (T-170)", () => {
+  test("a rectangle with rounded corners spans the drag in map pixels", () => {
+    const area = dragArea(
+      "rectangle",
+      { x: 400, y: 200 },
+      { x: 500, y: 300 },
+      camera,
+      view,
+      10,
+    );
+    // Screen (400,200)–(500,300) is map (800,400)–(850,450).
+    expect(area?.outer.length).toBeGreaterThan(4);
+    for (const [x, y] of area?.outer ?? []) {
+      expect(x).toBeGreaterThanOrEqual(800 - 1e-9);
+      expect(x).toBeLessThanOrEqual(850 + 1e-9);
+      expect(y).toBeGreaterThanOrEqual(400 - 1e-9);
+      expect(y).toBeLessThanOrEqual(450 + 1e-9);
+    }
+    expect(area?.outer).not.toContainEqual([800, 400]);
+  });
+
+  test("the same rectangle when the view is turned", () => {
+    const turned: Camera = { ...camera, rotation: 90 };
+    const area = dragArea(
+      "rectangle",
+      { x: 300, y: 100 },
+      { x: 500, y: 300 },
+      turned,
+      view,
+      10,
+    );
+    const xs = area?.outer.map(([x]) => x) ?? [];
+    const ys = area?.outer.map(([, y]) => y) ?? [];
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(100, 6);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(100, 6);
+  });
+});
+
 describe("brushArea and polygonArea", () => {
   test("a brush stroke covers its path in map pixels", () => {
     const stroke = brushArea(

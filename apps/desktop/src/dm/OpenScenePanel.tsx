@@ -417,6 +417,8 @@ export function OpenScenePanel({
               shape={shape}
               // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
               brushRadius={(brushCells * scene.map.grid.cellSizePx) / 2}
+              // Slightly rounded rectangles, as wide as the soft fog edge (T-170).
+              cornerRadius={scene.map.grid.cellSizePx / 4}
               softEdge={softEdgeWidth(
                 scene.map.grid.cellSizePx,
                 fogLook.softEdges,

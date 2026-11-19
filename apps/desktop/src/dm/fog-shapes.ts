@@ -1,4 +1,9 @@
-import { circleArea, ringArea, strokeArea } from "@dungeon-manager/core";
+import {
+  circleArea,
+  ringArea,
+  roundedRectArea,
+  strokeArea,
+} from "@dungeon-manager/core";
 import {
   screenToMap,
   type Camera,
@@ -23,7 +28,8 @@ const toMap = (camera: Camera, view: Size, point: Point): [number, number] => {
 
 /**
  * The area of a rectangle or circle dragged from `start` to `end` (screen pixels): the rectangle
- * between them, or the circle around `start` through `end`. `null` for a slip.
+ * between them, its corners rounded by `cornerRadius` map pixels (T-170), or the circle around
+ * `start` through `end`. `null` for a slip.
  */
 export function dragArea(
   shape: "rectangle" | "circle",
@@ -31,6 +37,7 @@ export function dragArea(
   end: Point,
   camera: Camera,
   view: Size,
+  cornerRadius = 0,
 ): Polygon | null {
   if (shape === "circle") {
     const radius = Math.hypot(end.x - start.x, end.y - start.y);
@@ -42,6 +49,14 @@ export function dragArea(
     Math.abs(end.y - start.y) < MIN_DRAG_PX
   )
     return null;
+  // The view turns in quarter turns only, so the dragged corners are opposite corners of an
+  // axis-aligned rectangle on the map too.
+  if (cornerRadius > 0)
+    return roundedRectArea(
+      toMap(camera, view, start),
+      toMap(camera, view, end),
+      cornerRadius,
+    );
   // All four corners: with the view rotated, a screen rectangle is still a map rectangle, but
   // its corners swap places.
   const corners = [
