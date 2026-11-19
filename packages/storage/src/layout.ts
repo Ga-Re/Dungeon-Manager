@@ -41,3 +41,7 @@ export const scenesDirectory = (slug: string) =>
   `${campaignDirectory(slug)}/scenes`;
 export const sceneFile = (slug: string, sceneId: string) =>
   `${scenesDirectory(slug)}/${sceneId}.json`;
+export const sessionsDirectory = (slug: string) =>
+  `${campaignDirectory(slug)}/sessions`;
+export const sessionFile = (slug: string, sessionId: string) =>
+  `${sessionsDirectory(slug)}/${sessionId}.json`;

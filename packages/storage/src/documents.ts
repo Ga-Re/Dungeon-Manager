@@ -5,10 +5,13 @@ import {
   migrateDocument,
   sceneDocument,
   sceneSchema,
+  sessionDocument,
+  sessionSchema,
   type Campaign,
   type DocumentType,
   type MigrationErrorReason,
   type Scene,
+  type Session,
 } from "@dungeon-manager/schema";
 import { findConflictCopies, type ConflictCopy } from "./conflicts.js";
 import type { FileSystem, ReadResult } from "./fs.js";
@@ -19,6 +22,8 @@ import {
   isValidSlug,
   sceneFile,
   scenesDirectory,
+  sessionFile,
+  sessionsDirectory,
 } from "./layout.js";
 
 /** Outcome of loading a document; never throws for bad, missing or unreadable files (ARCHITECTURE §6.3). */
@@ -118,19 +123,42 @@ export async function saveScene(
 }
 
 /**
- * Whether a name-based OneDrive match really is a copy: `saveScene` names every file after the
- * scene's id, so a real scene's file contains its own id, while a copy contains the original's.
- * If the content cannot be checked, it counts as a scene – hiding a real scene would be worse.
+ * Whether a name-based OneDrive match really is a copy: documents are saved under their id, so a
+ * real document's file contains its own id, while a copy contains the original's. If the content
+ * cannot be checked, it counts as a document – hiding a real one would be worse.
  */
 async function isConfirmedCopy(
-  fs: FileSystem,
-  slug: string,
   conflict: ConflictCopy,
+  idInFile: (id: string) => Promise<string | null>,
 ): Promise<boolean> {
   const id = conflict.copy.slice(0, -".json".length);
   if (conflict.provider !== "OneDrive" || !isValidFileId(id)) return true;
-  const loaded = await loadScene(fs, slug, id);
-  return loaded.status === "ok" && loaded.value.id !== id;
+  const stored = await idInFile(id);
+  return stored !== null && stored !== id;
+}
+
+/** Document ids (`<id>.json`) in a folder, plus conflict copies found next to them. */
+async function listDocumentIds(
+  fs: FileSystem,
+  directory: string,
+  idInFile: (id: string) => Promise<string | null>,
+): Promise<{ ids: string[]; conflicts: ConflictCopy[] }> {
+  const entries = (await fs.list(directory)) ?? [];
+  const names = entries
+    .filter((entry) => entry.kind === "file")
+    .map((entry) => entry.name);
+  const candidates = findConflictCopies(names);
+  const confirmed = await Promise.all(
+    candidates.map((conflict) => isConfirmedCopy(conflict, idInFile)),
+  );
+  const conflicts = candidates.filter((_, index) => confirmed[index]);
+  const copies = new Set(conflicts.map((conflict) => conflict.copy));
+  const ids = names
+    .filter((name) => name.endsWith(".json") && !copies.has(name))
+    .map((name) => name.slice(0, -".json".length))
+    .filter(isValidFileId)
+    .sort();
+  return { ids, conflicts };
 }
 
 /**
@@ -142,22 +170,60 @@ export async function listScenes(
   slug: string,
 ): Promise<{ sceneIds: string[]; conflicts: ConflictCopy[] }> {
   requireSlug(slug);
-  const entries = (await fs.list(scenesDirectory(slug))) ?? [];
-  const names = entries
-    .filter((entry) => entry.kind === "file")
-    .map((entry) => entry.name);
-  const candidates = findConflictCopies(names);
-  const confirmed = await Promise.all(
-    candidates.map((conflict) => isConfirmedCopy(fs, slug, conflict)),
+  const { ids, conflicts } = await listDocumentIds(
+    fs,
+    scenesDirectory(slug),
+    async (id) => {
+      const loaded = await loadScene(fs, slug, id);
+      return loaded.status === "ok" ? loaded.value.id : null;
+    },
   );
-  const conflicts = candidates.filter((_, index) => confirmed[index]);
-  const copies = new Set(conflicts.map((conflict) => conflict.copy));
-  const sceneIds = names
-    .filter((name) => name.endsWith(".json") && !copies.has(name))
-    .map((name) => name.slice(0, -".json".length))
-    .filter(isValidFileId)
-    .sort();
-  return { sceneIds, conflicts };
+  return { sceneIds: ids, conflicts };
+}
+
+/** Loads `campaigns/<slug>/sessions/<id>.json` (T-160). */
+export function loadSession(
+  fs: FileSystem,
+  slug: string,
+  sessionId: string,
+): Promise<LoadResult<Session>> {
+  if (!isValidSlug(slug) || !isValidFileId(sessionId))
+    return Promise.resolve({ status: "invalid", reason: "path" });
+  return loadDocument(fs, sessionFile(slug, sessionId), sessionDocument);
+}
+
+/** Validates and writes a session file (named after its id) atomically. @throws on invalid input */
+export async function saveSession(
+  fs: FileSystem,
+  slug: string,
+  session: Session,
+): Promise<void> {
+  requireSlug(slug);
+  const valid = sessionSchema.parse(session);
+  if (!isValidFileId(valid.id))
+    throw new Error(`Invalid session id: ${valid.id}`);
+  await fs.makeDirectory(sessionsDirectory(slug));
+  await fs.writeAtomic(sessionFile(slug, valid.id), serialize(valid));
+}
+
+/**
+ * Session ids of a campaign, plus conflict copies found next to them.
+ * @throws on an invalid slug or when the adapter cannot list the folder
+ */
+export async function listSessions(
+  fs: FileSystem,
+  slug: string,
+): Promise<{ sessionIds: string[]; conflicts: ConflictCopy[] }> {
+  requireSlug(slug);
+  const { ids, conflicts } = await listDocumentIds(
+    fs,
+    sessionsDirectory(slug),
+    async (id) => {
+      const loaded = await loadSession(fs, slug, id);
+      return loaded.status === "ok" ? loaded.value.id : null;
+    },
+  );
+  return { sessionIds: ids, conflicts };
 }
 
 /** Slugs of the campaign folders in the library, sorted; folders with other names are skipped. */
