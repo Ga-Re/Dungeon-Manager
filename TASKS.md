@@ -560,12 +560,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-162 Compact interface and interface size setting
 
-- **Status:** done · **Depends on:** T-160b · **Refs:** ADR-0015, ARCHITECTURE §15
+- **Status:** in-progress · **Depends on:** T-160b · **Refs:** ADR-0015, ARCHITECTURE §15
 - DM feedback (2026-11-19): the design is too massive – the title bar and the ribbon are too tall, the type too large. DM decision: compact by default, plus an interface size setting 90 / 100 / 110 / 125 % per device (in the gear popover until T-155 moves it into the settings dialog). The map has its own zoom and is not affected.
 - **Acceptance criteria**
   - [x] Sizes in rem from one base size (`--dm-ui-base-size` 14px × `--dm-ui-scale`); hairlines and radii stay in px; title bar and ribbon visibly lower
-  - [x] Interface size setting applies at once, survives a restart, never scales the map canvas (unit + component tests)
-  - [x] Screenshot golden updated
+  - [x] Interface size setting applies at once, survives a restart, never scales the map canvas (unit, component and E2E tests)
+  - [ ] Screenshot golden updated
 
 ### T-161 Campaign, session and scene notes as Markdown
 

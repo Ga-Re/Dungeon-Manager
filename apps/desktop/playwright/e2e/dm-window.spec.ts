@@ -327,3 +327,36 @@ test("the DM plans a session and adds a scene to it from the browser", async ({
     session.getByRole("treeitem", { name: "Krypta", exact: true }),
   ).toBeVisible();
 });
+
+test("the interface size scales the chrome but never the map area (T-162)", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  const box = async (selector: string) => {
+    const found = await page.locator(selector).boundingBox();
+    if (!found) throw new Error(`${selector} not laid out`);
+    return found;
+  };
+  const titleBefore = (await box(".dm-titlebar")).height;
+
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("radio", { name: "125 %" }).check();
+  await page.keyboard.press("Escape");
+
+  await expect
+    .poll(async () => (await box(".dm-titlebar")).height)
+    .toBeGreaterThan(titleBefore);
+  // The canvas still fills exactly the (now smaller) map area.
+  await expect
+    .poll(async () => {
+      const canvas = await box(".map-view-canvas canvas");
+      const stage = await box(".dm-stage");
+      return (
+        Math.abs(canvas.y - stage.y) + Math.abs(canvas.height - stage.height)
+      );
+    })
+    .toBeLessThanOrEqual(1);
+});

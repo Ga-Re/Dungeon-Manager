@@ -137,7 +137,11 @@ export const HUD = {
   "row-selected": { rgb: [70, 56, 26], alpha: 0.9 },
 } as const;
 
-/** Values shared by both themes: spacing (4/8 px grid), type, radii, layering, map overlays. */
+/**
+ * Values shared by both themes: spacing (a 4/8 grid in quarter rems of the base size), type,
+ * radii, layering, map overlays. `ui-base-size` is the DM window's root size (T-162); other apps
+ * using these tokens keep their own root size.
+ */
 const SHARED: Record<string, string> = {
   // Sizes scale with the DM window's base size (T-162): rem, set from `ui-base-size` × the
   // DM's interface size. Hairlines and radii stay in px.
@@ -153,7 +157,7 @@ const SHARED: Record<string, string> = {
   "font-ui": 'system-ui, -apple-system, "Segoe UI", sans-serif',
   "font-heading": 'system-ui, -apple-system, "Segoe UI", sans-serif',
   "font-mono": "ui-monospace, Menlo, Consolas, monospace",
-  "font-size-xs": "0.75rem",
+  "font-size-xs": "max(10px, 0.75rem)",
   "font-size-sm": "0.875rem",
   "font-size-md": "1rem",
   "font-size-lg": "1.125rem",

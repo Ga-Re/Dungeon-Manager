@@ -229,7 +229,7 @@ label {
   color: var(--dm-text-primary);
   border-radius: var(--dm-radius-md) var(--dm-radius-md) 0 0;
   font-family: var(--dm-font-mono);
-  font-size: var(--dm-font-size-xs);
+  font-size: var(--dm-font-size-sm);
 }
 
 .dm-save-status {
