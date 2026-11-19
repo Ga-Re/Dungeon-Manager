@@ -34,7 +34,7 @@ function marks(of: Scene): Record<string, string> {
   return Object.fromEntries(
     (levels?.children ?? []).map((node: TreeNode) => [
       node.label,
-      render(<>{node.meta}</>).container.textContent ?? "",
+      render(<>{node.meta}</>).container.textContent,
     ]),
   );
 }
