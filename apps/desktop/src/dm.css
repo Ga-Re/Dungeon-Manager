@@ -82,6 +82,7 @@ label {
 .map-view-preview .map-view-preview-cursor {
   fill: none;
   stroke: var(--dm-overlay-reveal-stroke);
+  stroke-dasharray: none;
 }
 
 .map-view-preview-hide .map-view-preview-cursor {

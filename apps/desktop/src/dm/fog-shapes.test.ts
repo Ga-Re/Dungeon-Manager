@@ -71,18 +71,20 @@ describe("rounded rectangles (T-170)", () => {
 
   test("the same rectangle when the view is turned", () => {
     const turned: Camera = { ...camera, rotation: 90 };
+    // 200 wide and 100 tall on screen: turned a quarter, 50 wide and 100 tall on the map.
     const area = dragArea(
       "rectangle",
-      { x: 300, y: 100 },
-      { x: 500, y: 300 },
+      { x: 300, y: 150 },
+      { x: 500, y: 250 },
       turned,
       view,
       10,
     );
     const xs = area?.outer.map(([x]) => x) ?? [];
     const ys = area?.outer.map(([, y]) => y) ?? [];
-    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(100, 6);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(50, 6);
     expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(100, 6);
+    expect(area?.outer.length).toBeGreaterThan(4);
   });
 });
 
