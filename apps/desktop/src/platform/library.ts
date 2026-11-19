@@ -33,6 +33,11 @@ export interface LibraryService {
    * @param filterLabel translated name of the file type filter shown in the dialog
    */
   importMap(filterLabel: string): Promise<AssetRef | null>;
+  /**
+   * An image shown in a note (T-163), by its library-relative path: only real images (PNG,
+   * JPEG, WebP, GIF) up to 20 MB, checked by the backend.
+   */
+  readImage(path: string): Promise<Blob>;
   /** Calls `listener` with library-relative paths changed on disk; resolves to an unsubscribe. */
   onChange(listener: (paths: readonly string[]) => void): Promise<() => void>;
 }

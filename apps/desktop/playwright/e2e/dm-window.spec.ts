@@ -371,8 +371,26 @@ test("the DM opens the campaign note from the browser (T-161b)", async ({
   await page.keyboard.press("Shift+F10");
   await page.getByRole("menuitem", { name: "Notiz öffnen" }).click();
   const details = page.getByRole("region", { name: "Eigenschaften" });
-  await expect(details.getByText("# Fluch der Krypta")).toBeVisible();
+  await expect(
+    details.getByRole("heading", { name: "Fluch der Krypta" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("treeitem", { name: "Kampagnennotiz" }),
   ).toHaveAttribute("aria-selected", "true");
+});
+
+test("a note renders as Markdown with its image, and a wiki link opens the linked note (T-163)", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Kampagnennotiz" }).click();
+  const details = page.getByRole("region", { name: "Eigenschaften" });
+  await expect(
+    details.getByRole("heading", { name: "Fluch der Krypta" }),
+  ).toBeVisible();
+  await expect(details.getByRole("img", { name: "wappen.png" })).toBeVisible();
+  await expect(details.getByText("horror, gruft")).toBeVisible();
+  await details.getByRole("button", { name: "Strahd" }).click();
+  await expect(details.getByRole("heading", { name: "Strahd" })).toBeVisible();
 });

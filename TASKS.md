@@ -558,6 +558,18 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Component + E2E tests, screenshot
 - **Notes:** Missing scenes in a session show as "(fehlt)"; an invalid session file (e.g. a duplicate scene after a hand edit) shows an actionable "kann nicht gelesen werden" entry; new sessions get fresh ids (`createSession` overwrites like `createScene`). Sub-scenes (T-152) hang under their scene, not under the session (DM-approved proposal, 2026-11-19).
 
+### T-163 Notes rendered as Markdown, with images
+
+- **Status:** done · **Depends on:** T-161b · **Refs:** ADR-0006, ADR-0013, ARCHITECTURE §6, §15
+- DM decisions (2026-11-19):
+  - **Library:** `react-markdown` 10.1.0 + `remark-gfm` 4.0.1 (MIT, remark/unified; about 50 kB gzip, ~100 small transitive packages; `remark-frontmatter` turned out unnecessary – the app splits off front matter itself) – Markdown becomes React elements, no `innerHTML`, no raw HTML from notes.
+  - **Images:** local images from the library folder load directly through a new Rust command `library_read_image` for the DM window only (image types, ≤ 20 MB; dmlib stays limited to `library/`); external `https://` images load only after a click on "Bild laden" (CSP `img-src` gains `https:`).
+  - **Obsidian:** `![[bild.png]]` embeds, `[[Notiz]]` links that open the note in the details panel, front matter as a properties table, callouts (`> [!note]`).
+- **Acceptance criteria**
+  - [x] Notes render as Markdown (GFM) with no raw HTML; links never navigate the window
+  - [x] Local images (relative to the note, or `![[name]]` found in the campaign folder) show; external ones only on click; the player window cannot read images (Rust test, capability)
+  - [x] `[[Notiz]]` opens the note; front matter and callouts render; component tests, E2E, screenshot
+
 ### T-162 Compact interface and interface size setting
 
 - **Status:** done · **Depends on:** T-160b · **Refs:** ADR-0015, ARCHITECTURE §15

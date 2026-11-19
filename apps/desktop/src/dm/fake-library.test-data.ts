@@ -20,6 +20,12 @@ export function fakeLibraryService(
       Promise.resolve(null),
     ),
     importMap: vi.fn<LibraryService["importMap"]>(() => Promise.resolve(null)),
+    // Images come from the memory file system as their text, enough for the UI to show them.
+    readImage: vi.fn(async (path: string) => {
+      const file = await fs.read(path);
+      if (file.kind !== "ok") throw new Error(`no image at ${path}`);
+      return new Blob([file.text], { type: "image/png" });
+    }),
     onChange: vi.fn((listener: (paths: readonly string[]) => void) => {
       listeners.add(listener);
       return Promise.resolve(() => listeners.delete(listener));

@@ -46,10 +46,18 @@ import {
   unlinkNote,
   type NoteResult,
 } from "@dungeon-manager/storage";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import {
+  listCampaignFiles,
   readNotesIndex,
   readScenes,
   readSessions,
@@ -63,6 +71,7 @@ import { noteTitle } from "./file-name.js";
 import { describeItem } from "./details.js";
 import { DetailsPanel } from "./DetailsPanel.js";
 import { NewSceneForm } from "./NewSceneForm.js";
+import { NoteView } from "./NoteView.js";
 import { OpenScenePanel } from "./OpenScenePanel.js";
 import { addScene, moveScene, removeScene } from "./session-ops.js";
 import {
@@ -291,11 +300,50 @@ export function CampaignPanel({
         `campaigns/${slug}/${inspectedNote}`.normalize("NFC"),
     () => void readInspectedNote(),
   );
-  const noteBody = (path: string): string => {
-    if (noteText?.path !== path) return t("campaign.noteLoading");
+  // The campaign's files, to find Obsidian targets by name (T-163); read while a note is
+  // shown, again when files are added or removed (scene and session saves do not count).
+  const [campaignFiles, setCampaignFiles] = useState<readonly string[]>([]);
+  const latestFiles = useRef(0);
+  const readFiles = useCallback(async () => {
+    const request = ++latestFiles.current;
+    const files = await listCampaignFiles(service, slug).catch(() => []);
+    if (request === latestFiles.current) setCampaignFiles(files);
+  }, [service, slug]);
+  const showsNote = inspectedNote !== null;
+  useEffect(() => {
+    if (showsNote) void readFiles();
+  }, [showsNote, readFiles]);
+  useLibraryChanges(
+    service,
+    (path) =>
+      showsNote &&
+      path.startsWith(`campaigns/${slug}/`) &&
+      !path.endsWith(".json"),
+    () => void readFiles(),
+  );
+
+  /** A note's details: its rendered text, or why it cannot be shown. */
+  const noteContent = (
+    path: string,
+  ): { body?: string; content?: ReactNode } => {
+    if (noteText?.path !== path) return { body: t("campaign.noteLoading") };
     const result = noteText.result;
-    if (result.status === "ok") return result.text;
-    return t(`campaign.noteStatus.${result.status}`);
+    if (result.status !== "ok")
+      return { body: t(`campaign.noteStatus.${result.status}`) };
+    return {
+      content: (
+        <NoteView
+          text={result.text}
+          notePath={path}
+          slug={slug}
+          service={service}
+          files={campaignFiles}
+          onOpenNote={(target) => {
+            setInspected(noteNodeId({ kind: "campaign" }, target));
+          }}
+        />
+      ),
+    };
   };
 
   const planned = scenesInSessions(sessions);
@@ -835,7 +883,7 @@ export function CampaignPanel({
   /** A note's details carry its text. */
   const withNoteBody = (details: ReturnType<typeof describeItem>) =>
     details && inspectedNote
-      ? { ...details, body: noteBody(inspectedNote) }
+      ? { ...details, ...noteContent(inspectedNote) }
       : details;
 
   const contextDialog = dialog?.origin.from === "context" ? dialog : null;

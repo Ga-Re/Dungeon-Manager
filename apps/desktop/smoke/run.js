@@ -183,6 +183,17 @@ async function main() {
     });
     if (!String(playerAccess).startsWith("refused"))
       throw new Error(`Player window could call library_read: ${playerAccess}`);
+    // Nor may it read note images (T-163).
+    const playerImage = await command("POST", `${sessionPath}/execute/async`, {
+      script: `const done = arguments[arguments.length - 1];
+        window.__TAURI_INTERNALS__.invoke("library_read_image", { path: "library/maps/x.png" })
+          .then(() => done("allowed"), (error) => done("refused: " + String(error)));`,
+      args: [],
+    });
+    if (!String(playerImage).startsWith("refused"))
+      throw new Error(
+        `Player window could call library_read_image: ${playerImage}`,
+      );
 
     await command("POST", `${sessionPath}/window`, { handle: dmHandle });
     const pageText = () =>

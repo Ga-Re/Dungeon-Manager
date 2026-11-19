@@ -140,6 +140,16 @@ export const en: Messages = {
       assets: "No assets yet.",
     },
   },
+  note: {
+    imageTooLarge: "Image too large (20 MB at most): {{name}}",
+    imageNotSupported:
+      "Not a supported image format (PNG, JPG, WebP, GIF): {{name}}",
+    missingLink: "Target not found",
+    imageMissing: "Image not found: {{name}}",
+    externalImage: "External image: {{name}}",
+    loadImage: "Load image",
+    imageLoading: "Loading image …",
+  },
   mapView: {
     label: "Map of the scene “{{name}}”",
     help: "Mouse wheel or + and − zoom, drag or arrow keys pan, R rotates, 0 fits the map.",

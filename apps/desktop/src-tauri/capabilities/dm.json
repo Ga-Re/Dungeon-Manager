@@ -14,6 +14,7 @@
     "allow-library-root",
     "allow-library-choose",
     "allow-library-read",
+    "allow-library-read-image",
     "allow-library-write",
     "allow-library-list",
     "allow-library-make-directory",

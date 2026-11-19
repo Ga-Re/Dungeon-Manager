@@ -141,6 +141,16 @@ export const de = {
       assets: "Noch keine Assets.",
     },
   },
+  note: {
+    imageTooLarge: "Bild zu groß (höchstens 20 MB): {{name}}",
+    imageNotSupported:
+      "Kein unterstütztes Bildformat (PNG, JPG, WebP, GIF): {{name}}",
+    missingLink: "Ziel nicht gefunden",
+    imageMissing: "Bild nicht gefunden: {{name}}",
+    externalImage: "Externes Bild: {{name}}",
+    loadImage: "Bild laden",
+    imageLoading: "Bild wird geladen …",
+  },
   mapView: {
     label: "Karte der Szene „{{name}}“",
     help: "Mausrad oder + und − zoomen, ziehen oder Pfeiltasten verschieben, R dreht, 0 passt die Karte ein.",

@@ -885,7 +885,10 @@ describe("CampaignPanel", () => {
             library.fs.files().get("campaigns/mine/notes/scenes/a.md"),
           ).toBe("# Krypta\n");
         });
-        expect(await details().findByText("# Krypta")).toBeTruthy();
+        // Rendered: the "# Krypta" line is a heading.
+        expect(
+          await details().findByRole("heading", { name: "Krypta" }),
+        ).toBeTruthy();
         expect(
           await screen.findByRole("treeitem", {
             name: "Krypta",
@@ -937,8 +940,9 @@ describe("CampaignPanel", () => {
         expect(
           await screen.findByRole("treeitem", { name: "Session 1 › Strahd" }),
         ).toBeTruthy();
-        // The note is read as it is, front matter included.
-        expect(await details().findByText(/role: villain/)).toBeTruthy();
+        // Front matter shows as properties above the rendered text.
+        expect(await details().findByText("villain")).toBeTruthy();
+        expect(details().getByRole("heading", { name: "Strahd" })).toBeTruthy();
 
         command("Session 1 › Strahd", "Verknüpfung entfernen");
         await waitFor(() => {
