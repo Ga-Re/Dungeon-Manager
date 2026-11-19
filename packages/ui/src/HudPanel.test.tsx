@@ -6,8 +6,7 @@ import { TreeList } from "./TreeList.js";
 
 const LABELS = {
   move: "Browser verschieben",
-  collapse: "Browser einklappen",
-  expand: "Browser ausklappen",
+  fold: "Browser ein- oder ausklappen",
 };
 
 function Harness({
@@ -46,16 +45,19 @@ describe("HudPanel", () => {
   it("folds to its header bar and back", () => {
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "Browser einklappen" }));
+    const fold = screen.getByRole("button", {
+      name: "Browser ein- oder ausklappen",
+    });
+    expect(fold.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(fold);
     expect(screen.getByText("Baum").closest("[hidden]")).not.toBeNull();
     expect(onChange).toHaveBeenLastCalledWith({
       x: 12,
       y: 20,
       collapsed: true,
     });
-    const expand = screen.getByRole("button", { name: "Browser ausklappen" });
-    expect(expand.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(expand);
+    expect(fold.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(fold);
     expect(screen.getByText("Baum").closest("[hidden]")).toBeNull();
   });
 

@@ -1,6 +1,6 @@
 # ADR-0011: UI design system – canvas-first CAD-style layout with a fantasy parchment theme
 
-- **Status:** replaced by ADR-0014 & ADR-0015
+- **Status:** partly replaced by ADR-0014 & ADR-0015
 - **Date:** 2026-11-18
 - **Deciders:** DM (product owner), agent
 

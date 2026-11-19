@@ -179,11 +179,11 @@ export const de = {
     tree: {
       browserTitle: "Browser",
       move: "Browser verschieben (Pfeiltasten)",
-      collapse: "Browser einklappen",
-      expand: "Browser ausklappen",
+      fold: "Browser ein- oder ausklappen",
       switchCampaign: "Kampagne wechseln",
       settings: "Kampagneneinstellungen",
       scenes: "Szenen",
+      noScenes: "Noch keine Szenen",
       maps: "Karten",
       noMaps: "Noch keine Karten",
       players: "Spieler & Charaktere",

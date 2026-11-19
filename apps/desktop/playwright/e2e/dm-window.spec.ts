@@ -188,7 +188,11 @@ test("the browser can be dragged and folded, and stays so after a restart", asyn
   expect(Math.round((moved?.x ?? 0) - start.x)).toBe(200);
   expect(Math.round((moved?.y ?? 0) - start.y)).toBe(100);
 
-  await page.getByRole("button", { name: "Browser einklappen" }).click();
+  const fold = page.getByRole("button", {
+    name: "Browser ein- oder ausklappen",
+  });
+  await fold.click();
+  await expect(fold).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByText("Fluch der Krypta")).toBeHidden();
 
   await page.reload();
@@ -196,11 +200,59 @@ test("the browser can be dragged and folded, and stays so after a restart", asyn
     .getByRole("region", { name: "Browser" })
     .boundingBox();
   expect(Math.round(again?.x ?? 0)).toBe(Math.round(moved?.x ?? 0));
-  await expect(
-    page.getByRole("button", { name: "Browser ausklappen" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Browser ausklappen" }).click();
+  const foldAgain = page.getByRole("button", {
+    name: "Browser ein- oder ausklappen",
+  });
+  await expect(foldAgain).toHaveAttribute("aria-expanded", "false");
+  await foldAgain.click();
   await expect(
     page.getByRole("button", { name: "Fluch der Krypta" }),
   ).toBeVisible();
+});
+
+test("the browser stays inside the map area; a smaller window does not change its remembered place", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(HARNESS);
+  const browser = page.getByRole("region", { name: "Browser" });
+  const grip = page.getByRole("button", { name: /Browser verschieben/ });
+  const gripBox = await grip.boundingBox();
+  if (!gripBox) throw new Error("grip not laid out");
+  // Far past the right and bottom edges of the map area.
+  await page.mouse.move(gripBox.x + 5, gripBox.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(gripBox.x + 3000, gripBox.y + 3000, { steps: 5 });
+  await page.mouse.up();
+  const stage = await page.locator(".dm-stage").boundingBox();
+  const placed = await browser.boundingBox();
+  if (!stage || !placed) throw new Error("not laid out");
+  expect(placed.x + placed.width).toBeLessThanOrEqual(
+    stage.x + stage.width + 1,
+  );
+  expect(placed.y + placed.height).toBeLessThanOrEqual(
+    stage.y + stage.height + 1,
+  );
+  const remembered = await page.evaluate(() =>
+    localStorage.getItem("dm.hud.browser"),
+  );
+
+  await page.setViewportSize({ width: 900, height: 600 });
+  // The panel moves in once the resize has been observed.
+  await expect
+    .poll(async () => {
+      const small = await browser.boundingBox();
+      const smallStage = await page.locator(".dm-stage").boundingBox();
+      if (!small || !smallStage) return Infinity;
+      return small.x + small.width - (smallStage.x + smallStage.width);
+    })
+    .toBeLessThanOrEqual(1);
+  expect(
+    await page.evaluate(() => localStorage.getItem("dm.hud.browser")),
+  ).toBe(remembered);
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect
+    .poll(async () => (await browser.boundingBox())?.x)
+    .toBeCloseTo(placed.x, 0);
 });

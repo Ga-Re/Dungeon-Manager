@@ -1,7 +1,6 @@
 import {
-  useCallback,
-  useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -24,8 +23,8 @@ export interface HudPanelProps {
   labels: {
     /** The drag grip, e.g. "Browser verschieben (Pfeiltasten)". */
     move: string;
-    collapse: string;
-    expand: string;
+    /** The fold button; its state is `aria-expanded`, so the name stays the same. */
+    fold: string;
   };
   placement: HudPlacement;
   onPlacementChange: (placement: HudPlacement) => void;
@@ -39,6 +38,10 @@ export interface HudPanelProps {
 const STEP = 16;
 const BIG_STEP = 64;
 
+function clamp0(x: number, y: number): { x: number; y: number } {
+  return { x: Math.max(0, Math.round(x)), y: Math.max(0, Math.round(y)) };
+}
+
 /** Keeps the panel inside its positioned parent (the map area). */
 function clamp(
   panel: HTMLElement,
@@ -46,8 +49,7 @@ function clamp(
   y: number,
 ): { x: number; y: number } {
   const area = panel.offsetParent;
-  if (!(area instanceof HTMLElement))
-    return { x: Math.max(0, Math.round(x)), y: Math.max(0, Math.round(y)) };
+  if (!(area instanceof HTMLElement)) return clamp0(x, y);
   const maxX = Math.max(0, area.clientWidth - panel.offsetWidth);
   const maxY = Math.max(0, area.clientHeight - panel.offsetHeight);
   return {
@@ -77,43 +79,45 @@ export function HudPanel({
   const drag = useRef<{ dx: number; dy: number } | null>(null);
   // While dragging, the panel follows the pointer without telling the owner on every move.
   const [live, setLive] = useState<{ x: number; y: number } | null>(null);
-  const shown = live ?? placement;
+  // Where the stored placement fits into the map area right now. Display only: a smaller window
+  // (or a wider data panel) moves the panel in, but the remembered placement stays, so it
+  // returns when there is room again.
+  const [fitted, setFitted] = useState<{ x: number; y: number } | null>(null);
+  const shown = live ?? fitted ?? placement;
 
-  const moveTo = useCallback(
-    (x: number, y: number) => {
-      const element = panel.current;
-      const next = element ? clamp(element, x, y) : { x, y };
-      onPlacementChange({ ...placement, ...next });
-    },
-    [onPlacementChange, placement],
-  );
-
-  // A smaller window (or a wider data panel) must not strand the panel outside the map area.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = panel.current;
     const area = element?.offsetParent;
     if (!element || !(area instanceof HTMLElement)) return;
-    const keepInside = () => {
-      const inside = clamp(element, placement.x, placement.y);
-      if (inside.x !== placement.x || inside.y !== placement.y)
-        onPlacementChange({ ...placement, ...inside });
+    const fit = () => {
+      // A hidden or minimised window reports no size: keep the last fit.
+      if (area.clientWidth === 0 || area.clientHeight === 0) return;
+      setFitted(clamp(element, placement.x, placement.y));
     };
-    keepInside();
+    fit();
     if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(keepInside);
+    const observer = new ResizeObserver(fit);
     observer.observe(area);
+    observer.observe(element);
     return () => {
       observer.disconnect();
     };
-  }, [placement, onPlacementChange]);
+  }, [placement.x, placement.y]);
+
+  /** A move by the DM: this is what gets remembered. */
+  const moveTo = (x: number, y: number) => {
+    const element = panel.current;
+    const next = element ? clamp(element, x, y) : clamp0(x, y);
+    onPlacementChange({ ...placement, ...next });
+  };
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = {
-      dx: event.clientX - placement.x,
-      dy: event.clientY - placement.y,
+      dx: event.clientX - shown.x,
+      dy: event.clientY - shown.y,
     };
   };
   const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
@@ -123,6 +127,7 @@ export function HudPanel({
     setLive(clamp(element, event.clientX - start.dx, event.clientY - start.dy));
   };
   const onPointerUp = () => {
+    if (!drag.current) return;
     drag.current = null;
     if (live) moveTo(live.x, live.y);
     setLive(null);
@@ -139,7 +144,7 @@ export function HudPanel({
     const move = moves[event.key];
     if (!move) return;
     event.preventDefault();
-    moveTo(placement.x + move[0], placement.y + move[1]);
+    moveTo(shown.x + move[0], shown.y + move[1]);
   };
 
   return (
@@ -147,7 +152,12 @@ export function HudPanel({
       ref={panel}
       aria-labelledby={headingId}
       className={["dm-hud", className ?? ""].filter(Boolean).join(" ")}
-      style={{ left: shown.x, top: shown.y }}
+      // `--hud-top` limits the height to the room below the panel, so the body scrolls.
+      style={{
+        left: shown.x,
+        top: shown.y,
+        ["--hud-top" as string]: `${String(shown.y)}px`,
+      }}
     >
       <header className="dm-hud-head">
         <button
@@ -159,6 +169,7 @@ export function HudPanel({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          onLostPointerCapture={onPointerUp}
           onKeyDown={onGripKeyDown}
         >
           <svg viewBox="0 0 8 12" aria-hidden="true">
@@ -177,8 +188,8 @@ export function HudPanel({
         <button
           type="button"
           className="dm-hud-fold"
-          aria-label={placement.collapsed ? labels.expand : labels.collapse}
-          title={placement.collapsed ? labels.expand : labels.collapse}
+          aria-label={labels.fold}
+          title={labels.fold}
           aria-expanded={!placement.collapsed}
           aria-controls={bodyId}
           onClick={() => {
