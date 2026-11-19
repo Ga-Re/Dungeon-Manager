@@ -1,15 +1,18 @@
 import {
+  viewerEventSchema,
   viewerSceneSchema,
   type ApproximateHp,
   type Combatant,
   type Token,
   type TokenSize,
   type ViewerCombatant,
+  type ViewerEvent,
   type ViewerScene,
   type ViewerToken,
   type Visibility,
   type VisibilityElementType,
 } from "@dungeon-manager/schema";
+import type { DomainEvent } from "./commands.js";
 import { isInside } from "./fog.js";
 import type { SessionState } from "./state.js";
 
@@ -79,6 +82,92 @@ export function projectForViewer(
     ...projectInitiative(state, viewer, visibleTokenIds),
   };
   return viewerSceneSchema.parse(projected);
+}
+
+/**
+ * The events `viewer` may learn of (ARCHITECTURE §5.1), for the session log shown to players
+ * and any event broadcast. Judged against `stateAfter`, the state after all of `events`: an
+ * event passes only when its subject shows in `projectForViewer(stateAfter, viewer)`, with no
+ * more detail than that projection gives.
+ *
+ * - `token.moved`: when the token is visible and would be visible standing at the move's
+ *   target too (a step through fog stays hidden); without `from`, whose level is not known.
+ * - Fog changes pass; the projected state shows the same fog.
+ * - `initiative.combatantAdded`, `initiative.turnStarted`: when the combatant is listed.
+ * - `hp.changed`: exact or coarse HP, as the listed combatant's HP show.
+ * - `visibility.changed` and `initiative.combatantRemoved` never pass: the first is the DM's
+ *   setup, the second concerns a combatant no longer in the state to judge it by.
+ */
+export function projectEvents(
+  events: readonly DomainEvent[],
+  stateAfter: SessionState,
+  viewer: Viewer,
+): ViewerEvent[] {
+  const view = projectForViewer(stateAfter, viewer);
+  const visibleTokens = new Set(view.tokens.map((token) => token.id));
+  const listed = new Map(
+    view.initiative?.combatants.map((combatant) => [combatant.id, combatant]),
+  );
+  const tokens = new Map(
+    stateAfter.scene.tokens.map((token) => [token.id, token]),
+  );
+  const maxHp = new Map(
+    stateAfter.scene.initiative?.combatants.map((combatant) => [
+      combatant.id,
+      combatant.hp?.max,
+    ]),
+  );
+  const project = (event: DomainEvent): ViewerEvent | null => {
+    const { at } = event;
+    switch (event.type) {
+      case "token.moved": {
+        const token = tokens.get(event.tokenId);
+        if (!token || !visibleTokens.has(token.id)) return null;
+        const there = { ...token, position: event.to, levelId: event.levelId };
+        if (!isTokenVisible(stateAfter, there, viewer)) return null;
+        return {
+          at,
+          type: event.type,
+          tokenId: event.tokenId,
+          to: { col: event.to.col, row: event.to.row },
+          levelId: event.levelId,
+        };
+      }
+      case "fog.revealed":
+      case "fog.hidden":
+        return { at, type: event.type, levelId: event.levelId };
+      case "initiative.combatantAdded":
+        return listed.has(event.combatantId)
+          ? { at, type: event.type, combatantId: event.combatantId }
+          : null;
+      case "initiative.turnStarted":
+        return listed.has(event.combatantId)
+          ? {
+              at,
+              type: event.type,
+              round: event.round,
+              combatantId: event.combatantId,
+            }
+          : null;
+      case "hp.changed": {
+        const shown = listed.get(event.combatantId);
+        const max = maxHp.get(event.combatantId);
+        const base = { at, type: event.type, combatantId: event.combatantId };
+        if (shown?.hp)
+          return { ...base, hp: { current: event.current, temp: event.temp } };
+        if (shown?.hpState && max !== undefined)
+          return { ...base, hpState: approximateHp(event.current, max) };
+        return null;
+      }
+      case "visibility.changed":
+      case "initiative.combatantRemoved":
+        return null;
+    }
+  };
+  return events.flatMap((event) => {
+    const projected = project(event);
+    return projected ? [viewerEventSchema.parse(projected)] : [];
+  });
 }
 
 function copyPolygon(polygon: {

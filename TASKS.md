@@ -145,10 +145,10 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-117 Project domain events for viewers
 
-- **Status:** todo · **Depends on:** T-102b · **Refs:** ARCHITECTURE §5.1
+- **Status:** done · **Depends on:** T-102b · **Refs:** ARCHITECTURE §5.1
 - `DomainEvent`s carry hidden data (exact HP in `hp.changed`, moves of hidden tokens). Add a pure `projectEvents(events, stateAfter, viewer)` in `core` so the session log shown to players and any event broadcast never leak; property tests like the state projection.
 - **Acceptance criteria**
-  - [ ] No event reveals a token, HP number or name that `projectForViewer` hides (property-based tests)
+  - [x] No event reveals a token, HP number or name that `projectForViewer` hides (property-based tests)
 - **Notes:** From the T-102a review; needed before events leave the host (companion, session log on the TV).
 
 ### T-118 Companion-safe map delivery and released levels

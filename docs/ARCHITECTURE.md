@@ -118,7 +118,7 @@ apply(state: SessionState, command: Command, ctx: Ctx): { state: SessionState; e
 - `Ctx` provides injected time and RNG (deterministic tests).
 - **Permissions** are checked in `core` (`canApply(actor, command, state)`): DM, DM remote (web app), player companion (per-player rights).
 - **Undo:** the desktop keeps a command history with inverse snapshots per scene.
-- **Session log** is derived from `DomainEvent`s.
+- **Session log** is derived from `DomainEvent`s. Events that leave the host (the log shown to players, any broadcast) first go through `projectEvents(events, stateAfter, viewer)` in `core` (T-117): an event passes only when its subject shows in `projectForViewer(stateAfter, viewer)` and with no more detail (HP exact or coarse as projected, moves without their origin and only to where the token would be visible); visibility changes and removed combatants never pass. The output is checked against the strict `viewerEventSchema`.
 - **Visibility filtering** (`projectForViewer(state, viewer)`) is a pure function in `core`. The player window and every companion only ever receive the projected state – hidden data never leaves the desktop. It builds its output from an explicit allow-list with strict viewer schemas – never by parsing with the (loose, unknown-field-preserving) file schemas from `packages/schema` or by spreading state objects. Asset references in a projection are capabilities: a companion must never receive a reference that lets it fetch an un-fogged map or a level that has not been revealed (companions get fog-composited images, T-118).
 
 ### 5.2 Key entities (initial)

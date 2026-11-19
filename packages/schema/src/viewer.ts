@@ -93,8 +93,57 @@ export const viewerSceneSchema = z.strictObject({
   initiative: viewerInitiativeSchema.optional(),
 });
 
+const viewerEventBase = { at: z.number() };
+
+/**
+ * A session event as a viewer receives it: the output of `projectEvents` in core. Only events
+ * about what the viewer's projected state shows, with no more detail than it (T-117).
+ */
+export const viewerEventSchema = z.discriminatedUnion("type", [
+  z.strictObject({
+    ...viewerEventBase,
+    type: z.literal("token.moved"),
+    tokenId: idSchema,
+    to: gridCellSchema.strict(),
+    levelId: idSchema,
+  }),
+  z.strictObject({
+    ...viewerEventBase,
+    type: z.literal("fog.revealed"),
+    levelId: idSchema,
+  }),
+  z.strictObject({
+    ...viewerEventBase,
+    type: z.literal("fog.hidden"),
+    levelId: idSchema,
+  }),
+  z.strictObject({
+    ...viewerEventBase,
+    type: z.literal("initiative.combatantAdded"),
+    combatantId: idSchema,
+  }),
+  z.strictObject({
+    ...viewerEventBase,
+    type: z.literal("initiative.turnStarted"),
+    round: z.number().int(),
+    combatantId: idSchema,
+  }),
+  z.strictObject({
+    ...viewerEventBase,
+    type: z.literal("hp.changed"),
+    combatantId: idSchema,
+    /** Exact HP after the change, only when visible to this viewer. */
+    hp: z
+      .strictObject({ current: z.number().int(), temp: z.number().int() })
+      .optional(),
+    /** Coarse HP state after the change, when HP are "approximate" for this viewer. */
+    hpState: approximateHpSchema.optional(),
+  }),
+]);
+
 export type ApproximateHp = z.infer<typeof approximateHpSchema>;
 export type ViewerToken = z.infer<typeof viewerTokenSchema>;
 export type ViewerCombatant = z.infer<typeof viewerCombatantSchema>;
 export type ViewerInitiative = z.infer<typeof viewerInitiativeSchema>;
 export type ViewerScene = z.infer<typeof viewerSceneSchema>;
+export type ViewerEvent = z.infer<typeof viewerEventSchema>;

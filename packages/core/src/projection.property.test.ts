@@ -1,6 +1,8 @@
 // Property-based tests: for random sessions, the projection never leaks hidden tokens, hidden HP
 // numbers or anything under unrevealed fog. Expectations come from an independent model
-// (axis-aligned revealed rectangles per level), not from the projection's own helpers.
+// (axis-aligned revealed rectangles per level), not from the projection's own helpers. For
+// random command sequences on top, the projected events never show more than the projected
+// state (T-117).
 import type {
   Combatant,
   Token,
@@ -11,7 +13,10 @@ import fc from "fast-check";
 import { describe, expect, test } from "vitest";
 import {
   apply,
+  projectEvents,
   projectForViewer,
+  type Command,
+  type DomainEvent,
   type SessionState,
   type Viewer,
 } from "./index.js";
@@ -311,6 +316,217 @@ describe("projectForViewer (property-based)", () => {
         const built = build(spec);
         expect(projectForViewer(built, spec.viewer).fog).toEqual(
           built.scene.fog.levels,
+        );
+      }),
+      runs,
+    );
+  });
+});
+
+const index = fc.integer({ min: 0, max: 3 });
+const level = fc.constantFrom(...LEVELS);
+const area = fc
+  .record({
+    x: fc.integer({ min: 0, max: 8 }),
+    y: fc.integer({ min: 0, max: 8 }),
+    size: fc.integer({ min: 1, max: 4 }),
+  })
+  .map(({ x, y, size }) => square(x * CELL + 30, y * CELL + 30, size * CELL));
+
+/** A new combatant, with or without one of the session's tokens. */
+const added = fc
+  .record({
+    n: fc.integer({ min: 0, max: 99 }),
+    token: fc.option(index, { nil: undefined }),
+    initiative: fc.option(visibility, { nil: undefined }),
+    hp: fc.option(visibility, { nil: undefined }),
+  })
+  .map(({ n, token, initiative, hp }): Command => ({
+    type: "initiative.add",
+    combatant: {
+      id: `added-${String(n)}`,
+      name: `Secret Name added ${String(n)}`,
+      ...(token !== undefined && { tokenId: `secret-token-${String(token)}` }),
+      initiative: n,
+      visibility: {
+        ...(initiative && { initiative }),
+        ...(hp && { hp }),
+      },
+      hp: { current: 10, max: 10, temp: 0 },
+      conditions: [],
+    },
+  }));
+
+const move = fc.record({
+  type: fc.constant("token.move" as const),
+  tokenId: index.map((i) => `secret-token-${String(i)}`),
+  to: fc.record({
+    col: fc.integer({ min: 0, max: 9 }),
+    row: fc.integer({ min: 0, max: 9 }),
+  }),
+  levelId: level,
+});
+
+// Moves weigh most: a leak in them needs a token to pass through fog within one sequence.
+const command: fc.Arbitrary<Command> = fc.oneof(
+  { arbitrary: move, weight: 4 },
+  { arbitrary: added, weight: 2 },
+  fc.record({ type: fc.constant("fog.reveal" as const), levelId: level, area }),
+  fc.record({
+    type: fc.constant("fog.hide" as const),
+    levelId: level,
+    area,
+    remember: fc.boolean(),
+  }),
+  fc.record({
+    type: fc.constant("visibility.set" as const),
+    target: index.map((i) => ({
+      kind: "token" as const,
+      tokenId: `secret-token-${String(i)}`,
+    })),
+    elementType: fc.constantFrom(
+      "token" as const,
+      "name" as const,
+      "hp" as const,
+      "initiative" as const,
+    ),
+    visibility: fc.constantFrom<Visibility | null>(
+      "visible",
+      "hidden",
+      "approximate",
+      null,
+    ),
+  }),
+  fc.record({
+    type: fc.constantFrom("hp.change" as const),
+    combatantId: fc.oneof(
+      index.map((i) => `fighter-${String(i)}`),
+      fc.integer({ min: 0, max: 99 }).map((n) => `added-${String(n)}`),
+    ),
+    amount: fc.integer({ min: -30, max: 30 }),
+  }),
+  fc.record({
+    type: fc.constant("hp.setTemp" as const),
+    combatantId: index.map((i) => `fighter-${String(i)}`),
+    temp: fc.integer({ min: 0, max: 10 }),
+  }),
+  fc.constant<Command>({ type: "initiative.next" }),
+  fc.record({
+    type: fc.constant("initiative.remove" as const),
+    combatantId: index.map((i) => `fighter-${String(i)}`),
+  }),
+);
+
+const scenario = fc.record({
+  spec: session,
+  commands: fc.array(command, { maxLength: 16 }),
+});
+
+/** Applies the commands that are valid, collecting their events; rejected ones are skipped. */
+function play(start: SessionState, commands: readonly Command[]) {
+  const events: DomainEvent[] = [];
+  let current = start;
+  for (const next of commands) {
+    const result = apply(current, next, ctx);
+    if (!result.ok) continue;
+    events.push(...result.events);
+    current = result.state;
+  }
+  return { state: current, events };
+}
+
+/** The state with one token moved to `to` – what a viewer would see of it standing there. */
+function withTokenAt(
+  state: SessionState,
+  tokenId: string,
+  to: { col: number; row: number },
+  levelId: string,
+): SessionState {
+  return {
+    ...state,
+    scene: {
+      ...state.scene,
+      tokens: state.scene.tokens.map((token) =>
+        token.id === tokenId ? { ...token, position: to, levelId } : token,
+      ),
+    },
+  };
+}
+
+describe("projectEvents (property-based)", () => {
+  test("mentions only tokens and combatants the projected state shows", () => {
+    fc.assert(
+      fc.property(scenario, ({ spec, commands }) => {
+        const { state, events } = play(build(spec), commands);
+        const view = projectForViewer(state, spec.viewer);
+        const tokens = new Set(view.tokens.map((token) => token.id));
+        const listed = new Set(
+          view.initiative?.combatants.map((combatant) => combatant.id) ?? [],
+        );
+        for (const event of projectEvents(events, state, spec.viewer)) {
+          if ("tokenId" in event) expect(tokens).toContain(event.tokenId);
+          if ("combatantId" in event)
+            expect(listed).toContain(event.combatantId);
+        }
+      }),
+      runs,
+    );
+  });
+
+  test("shows a move only where the token would be visible", () => {
+    fc.assert(
+      fc.property(scenario, ({ spec, commands }) => {
+        const { state, events } = play(build(spec), commands);
+        for (const event of projectEvents(events, state, spec.viewer)) {
+          if (event.type !== "token.moved") continue;
+          const there = withTokenAt(
+            state,
+            event.tokenId,
+            event.to,
+            event.levelId,
+          );
+          expect(
+            projectForViewer(there, spec.viewer).tokens.map((t) => t.id),
+          ).toContain(event.tokenId);
+        }
+      }),
+      runs,
+    );
+  });
+
+  test("shows HP numbers or states only as the projected state does", () => {
+    fc.assert(
+      fc.property(scenario, ({ spec, commands }) => {
+        const { state, events } = play(build(spec), commands);
+        const combatants = new Map(
+          projectForViewer(state, spec.viewer).initiative?.combatants.map(
+            (combatant) => [combatant.id, combatant],
+          ),
+        );
+        for (const event of projectEvents(events, state, spec.viewer)) {
+          if (event.type !== "hp.changed") continue;
+          const shown = combatants.get(event.combatantId);
+          expect(event.hp !== undefined).toBe(shown?.hp !== undefined);
+          expect(event.hpState !== undefined).toBe(
+            shown?.hpState !== undefined,
+          );
+        }
+      }),
+      runs,
+    );
+  });
+
+  test("never contains names, visibility settings or removed combatants", () => {
+    fc.assert(
+      fc.property(scenario, ({ spec, commands }) => {
+        const { state, events } = play(build(spec), commands);
+        const projected = projectEvents(events, state, spec.viewer);
+        expect(JSON.stringify(projected)).not.toContain("Secret Name");
+        expect(projected.map((event) => event.type)).not.toContain(
+          "visibility.changed",
+        );
+        expect(projected.map((event) => event.type)).not.toContain(
+          "initiative.combatantRemoved",
         );
       }),
       runs,
