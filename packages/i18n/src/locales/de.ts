@@ -207,7 +207,7 @@ export const de = {
     },
     layout: {
       hint: "Browser und Eigenschaften kehren an ihre Standardplätze zurück und werden ausgeklappt.",
-      label: "Werkzeugfenster",
+      label: "Positionen",
       reset: "Positionen zurücksetzen",
     },
     groups: {
@@ -226,7 +226,7 @@ export const de = {
     noScene: "Keine Szene geöffnet. Wähle im Browser eine Szene.",
     settings: "Einstellungen",
     theme: {
-      label: "Darstellung",
+      label: "Farbschema",
       system: "Wie das Betriebssystem",
       light: "Hell (Pergament)",
       dark: "Dunkel (Werkstatt)",

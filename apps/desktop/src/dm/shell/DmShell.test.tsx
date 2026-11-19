@@ -160,6 +160,14 @@ describe("DmShell", () => {
     expect(screen.getByRole("dialog", { name: "Einstellungen" })).toBeTruthy();
   });
 
+  it("does not toggle the data panel behind the open settings", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    const radio = screen.getByRole("radio", { name: "Dunkel (Werkstatt)" });
+    fireEvent.keyDown(radio, { key: "b", ctrlKey: true });
+    expect(panel().hidden).toBe(false);
+  });
+
   it("switches settings categories with the arrow keys", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));

@@ -104,7 +104,7 @@ export function Dialog({
         first.focus();
       }
     };
-    // Capture: the dialog's keys come first, before the window's shortcuts (e.g. undo).
+    // Capture: Escape and Tab are handled before anything inside the dialog sees them.
     window.addEventListener("keydown", onKeyDown, true);
     return () => {
       window.removeEventListener("keydown", onKeyDown, true);
@@ -119,6 +119,11 @@ export function Dialog({
       className="dm-dialog-backdrop"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) close.current();
+      }}
+      // Modal: keys pressed inside never reach the window's shortcuts (undo, Cmd+B, …)
+      // behind it. React's own handlers in the dialog still run.
+      onKeyDown={(event) => {
+        event.stopPropagation();
       }}
     >
       <div

@@ -204,7 +204,7 @@ export const en: Messages = {
     },
     layout: {
       hint: "Browser and properties return to their default places, unfolded.",
-      label: "Tool windows",
+      label: "Positions",
       reset: "Reset positions",
     },
     groups: {
@@ -223,7 +223,7 @@ export const en: Messages = {
     noScene: "No scene is open. Choose a scene in the browser.",
     settings: "Settings",
     theme: {
-      label: "Appearance",
+      label: "Colour scheme",
       system: "Same as the operating system",
       light: "Light (parchment)",
       dark: "Dark (workshop)",

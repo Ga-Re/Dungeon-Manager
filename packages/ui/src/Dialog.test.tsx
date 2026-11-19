@@ -138,6 +138,20 @@ describe("Dialog", () => {
     );
   });
 
+  it("keeps keys pressed inside away from the window's shortcuts", () => {
+    const shortcut = vi.fn();
+    window.addEventListener("keydown", shortcut);
+    try {
+      render(<Harness />);
+      fireEvent.click(opener());
+      const first = screen.getByRole("button", { name: "Erste" });
+      fireEvent.keyDown(first, { key: "z", metaKey: true });
+      expect(shortcut).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener("keydown", shortcut);
+    }
+  });
+
   it("does not close on a press inside the panel", () => {
     render(<Harness />);
     fireEvent.click(opener());
