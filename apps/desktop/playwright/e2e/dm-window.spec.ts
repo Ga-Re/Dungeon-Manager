@@ -389,7 +389,7 @@ test("a note renders as Markdown with its image, and a wiki link opens the linke
   await expect(
     details.getByRole("heading", { name: "Fluch der Krypta" }),
   ).toBeVisible();
-  await expect(details.getByRole("img", { name: "wappen.svg" })).toBeVisible();
+  await expect(details.getByRole("img", { name: "wappen.png" })).toBeVisible();
   await expect(details.getByText("horror, gruft")).toBeVisible();
   await details.getByRole("button", { name: "Strahd" }).click();
   await expect(details.getByRole("heading", { name: "Strahd" })).toBeVisible();

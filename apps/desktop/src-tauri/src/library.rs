@@ -142,14 +142,20 @@ pub fn image_type(header: &[u8]) -> Option<&'static str> {
 
 /// Reads an image for a note (T-163): only real image files up to `MAX_NOTE_IMAGE_BYTES`.
 pub fn read_image(path: &Path) -> Result<Vec<u8>, LibraryError> {
-    let metadata = fs::metadata(path)?;
+    use std::io::Read;
+    let file = fs::File::open(path)?;
+    let metadata = file.metadata()?;
     if !metadata.is_file() {
         return Err(LibraryError::InvalidPath(path.display().to_string()));
     }
-    if metadata.len() > MAX_NOTE_IMAGE_BYTES {
+    // Read at most one byte past the cap, so a file growing meanwhile (a sync client
+    // writing it) is refused instead of read in full.
+    let mut bytes = Vec::new();
+    file.take(MAX_NOTE_IMAGE_BYTES + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_NOTE_IMAGE_BYTES {
         return Err(LibraryError::UnsupportedFile("too large".into()));
     }
-    let bytes = fs::read(path)?;
     if image_type(&bytes[..bytes.len().min(16)]).is_none() {
         return Err(LibraryError::UnsupportedFile("not an image".into()));
     }

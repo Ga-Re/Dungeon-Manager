@@ -3,6 +3,7 @@ import { createI18n } from "@dungeon-manager/ui";
 import { I18nextProvider } from "react-i18next";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 import { fakeLibraryService } from "./fake-library.test-data.js";
+import { LibraryError } from "../platform/library.js";
 import { NoteView } from "./NoteView.js";
 
 beforeAll(() => {
@@ -109,5 +110,57 @@ describe("NoteView (T-163)", () => {
       "Falle",
     );
     expect(callout?.textContent).toContain("Der Boden gibt nach.");
+  });
+
+  test("a malformed escape in a note never crashes the window", () => {
+    renderNote("[x](note-link:%E0) ![y](obsidian-embed:%ZZ) ![z](%E0.png)\n");
+    expect(screen.getByText("x")).toBeTruthy();
+    expect(screen.getByText("Bild nicht gefunden: y")).toBeTruthy();
+    expect(screen.getByText("Bild nicht gefunden: z")).toBeTruthy();
+  });
+
+  test("re-rendering a note does not load its images again", async () => {
+    const files = ["notes/scenes/bilder/karte.png"];
+    const { library, rerender } = renderNote(
+      "![Karte](bilder/karte.png)\n",
+      files,
+    );
+    await screen.findByRole("img", { name: "Karte" });
+    rerender(
+      <I18nextProvider i18n={createI18n("de")}>
+        <NoteView
+          text={"![Karte](bilder/karte.png)\n"}
+          notePath="notes/scenes/a.md"
+          slug="mine"
+          service={library.service}
+          files={files}
+          onOpenNote={() => undefined}
+        />
+      </I18nextProvider>,
+    );
+    expect(screen.getByRole("img", { name: "Karte" })).toBeTruthy();
+    expect(library.service.readImage).toHaveBeenCalledTimes(1);
+  });
+
+  test("says why a local image is refused", async () => {
+    const library = fakeLibraryService("/lib");
+    library.service.readImage.mockRejectedValue(
+      new LibraryError("unsupportedFile", "too large"),
+    );
+    render(
+      <I18nextProvider i18n={createI18n("de")}>
+        <NoteView
+          text={"![Groß](bilder/riesig.png)\n"}
+          notePath="notes/a.md"
+          slug="mine"
+          service={library.service}
+          files={[]}
+          onOpenNote={() => undefined}
+        />
+      </I18nextProvider>,
+    );
+    expect(
+      await screen.findByText("Bild zu groß (höchstens 20 MB): Groß"),
+    ).toBeTruthy();
   });
 });

@@ -23,6 +23,17 @@ describe("front matter (T-163)", () => {
     });
   });
 
+  it("copes with a byte order mark and an empty head", () => {
+    expect(splitFrontMatter("\uFEFF---\nrole: x\n---\nText")).toEqual({
+      properties: [["role", "x"]],
+      body: "Text",
+    });
+    expect(splitFrontMatter("---\n---\nText")).toEqual({
+      properties: [],
+      body: "Text",
+    });
+  });
+
   it("leaves notes without front matter, or with an unclosed head, as they are", () => {
     expect(splitFrontMatter("# Nur Text\n")).toEqual({
       properties: [],
@@ -46,6 +57,10 @@ describe("paths in notes", () => {
     expect(resolveRelative("notes/a.md", "./x%20y.png")).toBe("notes/x y.png");
     expect(resolveRelative("notes/a.md", "../../../etc/passwd")).toBeNull();
     expect(resolveRelative("notes/a.md", "/abs.png")).toBeNull();
+    expect(resolveRelative("notes/a.md", "wald.md#Lichtung")).toBe(
+      "notes/wald.md",
+    );
+    expect(resolveRelative("notes/a.md", "%E0.png")).toBeNull();
   });
 
   it("finds Obsidian targets by name, next to the note first", () => {

@@ -13,6 +13,14 @@ import type { DisplayService } from "../platform/displays.js";
 import type { LibraryService } from "../platform/library.js";
 import type { MapViewService } from "../platform/map-images.js";
 
+/** A 120×60 gold PNG for the harness's note image (made by hand, no third-party content). */
+const WAPPEN_PNG = Uint8Array.from(
+  atob(
+    "iVBORw0KGgoAAAANSUhEUgAAAHgAAAA8CAIAAAAiz+n/AAAAaklEQVR42u3QQQ0AAAgEoKtmV0vZxhbOBxsJyHRxIApEi0a0aNEWRItGtGjRFkSLRrRo0YgWjWjRohEtGtGiRSNaNKJFi0a0aESLFo1o0YgWLRrRohEtWjSiRSNatGhEi0a0aNGIFo3oXxbxfwKg8w52OAAAAABJRU5ErkJggg==",
+  ),
+  (character) => character.charCodeAt(0),
+);
+
 /** Library folder the harness pretends the DM chose. */
 export const E2E_LIBRARY_ROOT = "/Bibliothek (E2E)";
 
@@ -55,15 +63,13 @@ export async function createE2eLibrary(): Promise<LibraryService> {
       "|---|---|",
       "| Krypta | hoch |",
       "",
-      "![[wappen.svg]]",
+      "![[wappen.png]]",
       "",
     ].join("\n"),
   );
   await fs.writeAtomic(`campaigns/${slug}/wiki/Strahd.md`, "# Strahd\n");
-  await fs.writeAtomic(
-    `campaigns/${slug}/bilder/wappen.svg`,
-    '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60"><rect width="120" height="60" fill="#d9a441"/></svg>',
-  );
+  // The memory file system holds text; the image's bytes come from `WAPPEN_PNG` below.
+  await fs.writeAtomic(`campaigns/${slug}/bilder/wappen.png`, "png");
   await createSession(fs, slug, {
     id: "e2e-session",
     name: "Vorbereitung",
@@ -74,10 +80,12 @@ export async function createE2eLibrary(): Promise<LibraryService> {
     currentRoot: () => Promise.resolve(E2E_LIBRARY_ROOT),
     chooseRoot: () => Promise.resolve(E2E_LIBRARY_ROOT),
     importMap: () => Promise.resolve(null),
+    // Like the backend: only PNG here, by name, with real PNG bytes.
     readImage: async (path) => {
       const file = await fs.read(path);
-      if (file.kind !== "ok") throw new Error(`no image at ${path}`);
-      return new Blob([file.text], { type: "image/svg+xml" });
+      if (file.kind !== "ok" || !path.endsWith(".png"))
+        throw new Error(`no image at ${path}`);
+      return new Blob([WAPPEN_PNG], { type: "image/png" });
     },
     onChange: () => Promise.resolve(() => undefined),
   };

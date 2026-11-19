@@ -141,6 +141,9 @@ export const en: Messages = {
     },
   },
   note: {
+    imageTooLarge: "Image too large (20 MB at most): {{name}}",
+    imageNotSupported:
+      "Not a supported image format (PNG, JPG, WebP, GIF): {{name}}",
     missingLink: "Target not found",
     imageMissing: "Image not found: {{name}}",
     externalImage: "External image: {{name}}",

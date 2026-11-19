@@ -142,6 +142,9 @@ export const de = {
     },
   },
   note: {
+    imageTooLarge: "Bild zu groß (höchstens 20 MB): {{name}}",
+    imageNotSupported:
+      "Kein unterstütztes Bildformat (PNG, JPG, WebP, GIF): {{name}}",
     missingLink: "Ziel nicht gefunden",
     imageMissing: "Bild nicht gefunden: {{name}}",
     externalImage: "Externes Bild: {{name}}",

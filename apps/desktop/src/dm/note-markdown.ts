@@ -16,7 +16,11 @@ const unquote = (value: string) =>
  * left in the body, as Obsidian does.
  */
 export function splitFrontMatter(text: string): SplitNote {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+  // A byte order mark (some editors on Windows) must not hide the head.
+  const source = text.startsWith("\uFEFF") ? text.slice(1) : text;
+  const match = /^---\r?\n(?:([\s\S]*?)\r?\n)?---[ \t]*(?:\r?\n|$)/.exec(
+    source,
+  );
   if (!match) return { properties: [], body: text };
   const properties: [string, string][] = [];
   for (const line of (match[1] ?? "").split(/\r?\n/)) {
@@ -30,7 +34,7 @@ export function splitFrontMatter(text: string): SplitNote {
       last[1] = last[1] === "" ? value : `${last[1]}, ${value}`;
     }
   }
-  return { properties, body: text.slice(match[0].length) };
+  return { properties, body: source.slice(match[0].length) };
 }
 
 /**
@@ -43,7 +47,8 @@ export function resolveRelative(
 ): string | null {
   let decoded: string;
   try {
-    decoded = decodeURIComponent(target);
+    // A heading or block anchor (`other.md#Kapitel`) or a query does not change the file.
+    decoded = decodeURIComponent(target.replace(/[#?].*$/, ""));
   } catch {
     return null;
   }

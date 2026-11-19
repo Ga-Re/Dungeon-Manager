@@ -43,7 +43,7 @@ test("a campaign note rendered as Markdown", async ({ page }) => {
   await openHarness(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("treeitem", { name: "Kampagnennotiz" }).click();
-  await expect(page.getByRole("img", { name: "wappen.svg" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "wappen.png" })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 
   await expect(page).toHaveScreenshot("dm-window-note.png");
