@@ -121,6 +121,41 @@ pub fn read(path: &Path) -> Result<ReadResult, LibraryError> {
     }
 }
 
+/// The largest image a note may show (T-163); larger files are refused, not truncated.
+pub const MAX_NOTE_IMAGE_BYTES: u64 = 20 * 1024 * 1024;
+
+/// An image type by its leading bytes, so a renamed file of another type is refused: PNG,
+/// JPEG, WebP and GIF.
+pub fn image_type(header: &[u8]) -> Option<&'static str> {
+    if header.starts_with(b"\x89PNG\r\n\x1a\n") {
+        Some("image/png")
+    } else if header.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("image/jpeg")
+    } else if header.len() >= 12 && &header[..4] == b"RIFF" && &header[8..12] == b"WEBP" {
+        Some("image/webp")
+    } else if header.starts_with(b"GIF87a") || header.starts_with(b"GIF89a") {
+        Some("image/gif")
+    } else {
+        None
+    }
+}
+
+/// Reads an image for a note (T-163): only real image files up to `MAX_NOTE_IMAGE_BYTES`.
+pub fn read_image(path: &Path) -> Result<Vec<u8>, LibraryError> {
+    let metadata = fs::metadata(path)?;
+    if !metadata.is_file() {
+        return Err(LibraryError::InvalidPath(path.display().to_string()));
+    }
+    if metadata.len() > MAX_NOTE_IMAGE_BYTES {
+        return Err(LibraryError::UnsupportedFile("too large".into()));
+    }
+    let bytes = fs::read(path)?;
+    if image_type(&bytes[..bytes.len().min(16)]).is_none() {
+        return Err(LibraryError::UnsupportedFile("not an image".into()));
+    }
+    Ok(bytes)
+}
+
 /// Writes `<name>.tmp` next to the target, flushes it to disk and renames it over the target,
 /// so readers and sync clients never see a half-written file (ARCHITECTURE §6.3).
 pub fn write_atomic(path: &Path, text: &str) -> Result<(), LibraryError> {
@@ -312,6 +347,43 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         root
+    }
+
+    #[test]
+    fn read_image_returns_only_real_images_up_to_the_limit() {
+        let root = temp_root("images");
+        let png = root.join("bild.png");
+        fs::write(&png, b"\x89PNG\r\n\x1a\nrest").unwrap();
+        assert_eq!(read_image(&png).unwrap(), b"\x89PNG\r\n\x1a\nrest");
+
+        let gif = root.join("anim.gif");
+        fs::write(&gif, b"GIF89a....").unwrap();
+        assert!(read_image(&gif).is_ok());
+
+        // A text file with an image name is refused by its content.
+        let fake = root.join("notiz.png");
+        fs::write(&fake, "# Notiz").unwrap();
+        assert!(matches!(
+            read_image(&fake),
+            Err(LibraryError::UnsupportedFile(_))
+        ));
+
+        let large = root.join("gross.png");
+        let file = fs::File::create(&large).unwrap();
+        file.set_len(MAX_NOTE_IMAGE_BYTES + 1).unwrap();
+        assert!(matches!(
+            read_image(&large),
+            Err(LibraryError::UnsupportedFile(_))
+        ));
+
+        assert!(matches!(
+            read_image(&root),
+            Err(LibraryError::InvalidPath(_))
+        ));
+        assert!(matches!(
+            read_image(&root.join("weg.png")),
+            Err(LibraryError::Io(_))
+        ));
     }
 
     #[test]

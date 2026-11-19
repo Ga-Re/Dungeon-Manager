@@ -141,6 +141,13 @@ export const de = {
       assets: "Noch keine Assets.",
     },
   },
+  note: {
+    missingLink: "Ziel nicht gefunden",
+    imageMissing: "Bild nicht gefunden: {{name}}",
+    externalImage: "Externes Bild: {{name}}",
+    loadImage: "Bild laden",
+    imageLoading: "Bild wird geladen …",
+  },
   mapView: {
     label: "Karte der Szene „{{name}}“",
     help: "Mausrad oder + und − zoomen, ziehen oder Pfeiltasten verschieben, R dreht, 0 passt die Karte ein.",

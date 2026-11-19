@@ -36,6 +36,11 @@ describe("createTauriLibraryService", () => {
     await fs.moveToTrash("campaigns/a/scenes/s.json");
     fake.invoke.mockResolvedValueOnce(null);
     await createTauriLibraryService().importMap("Karten");
+    fake.invoke.mockResolvedValueOnce(new ArrayBuffer(3));
+    const image = await createTauriLibraryService().readImage(
+      "campaigns/a/bilder/x.png",
+    );
+    expect(image.size).toBe(3);
     expect(fake.invoke.mock.calls).toEqual([
       ["library_read", { path: "campaigns/a/campaign.json" }],
       ["library_write", { path: "x.json", text: "{}" }],
@@ -43,6 +48,7 @@ describe("createTauriLibraryService", () => {
       ["library_make_directory", { path: "library/maps" }],
       ["library_move_to_trash", { path: "campaigns/a/scenes/s.json" }],
       ["library_import_map", { filterLabel: "Karten" }],
+      ["library_read_image", { path: "campaigns/a/bilder/x.png" }],
     ]);
   });
 

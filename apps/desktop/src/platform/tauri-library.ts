@@ -60,6 +60,11 @@ export function createTauriLibraryService(): LibraryService {
       // Validated at the edge like any file content: only a safe relative path and a hash.
       return assetRefSchema.nullable().parse(result);
     },
+    async readImage(path) {
+      // Raw bytes (not JSON): `library_read_image` answers with an ipc Response.
+      const bytes = await call<ArrayBuffer>("library_read_image", { path });
+      return new Blob([bytes]);
+    },
     async onChange(listener) {
       // One channel per DM window, opened on first use and shared by all listeners. A channel,
       // not a global event: the player window can hear every global event (ARCHITECTURE §8).

@@ -34,6 +34,36 @@ export async function createE2eLibrary(): Promise<LibraryService> {
       { id: "e2e-level", name: "Ebene 1" },
     ),
   });
+  // A campaign note with the Markdown the details panel renders (T-163).
+  await fs.writeAtomic(
+    `campaigns/${slug}/notes/campaign.md`,
+    [
+      "---",
+      "system: D&D 5e",
+      "tags:",
+      "  - horror",
+      "  - gruft",
+      "---",
+      "# Fluch der Krypta",
+      "",
+      "Die Gruppe sucht den **verschwundenen Priester**. Siehe [[Strahd]].",
+      "",
+      "> [!warning] Falle",
+      "> Der Boden der Gruft gibt nach.",
+      "",
+      "| Ort | Gefahr |",
+      "|---|---|",
+      "| Krypta | hoch |",
+      "",
+      "![[wappen.svg]]",
+      "",
+    ].join("\n"),
+  );
+  await fs.writeAtomic(`campaigns/${slug}/wiki/Strahd.md`, "# Strahd\n");
+  await fs.writeAtomic(
+    `campaigns/${slug}/bilder/wappen.svg`,
+    '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60"><rect width="120" height="60" fill="#d9a441"/></svg>',
+  );
   await createSession(fs, slug, {
     id: "e2e-session",
     name: "Vorbereitung",
@@ -44,6 +74,11 @@ export async function createE2eLibrary(): Promise<LibraryService> {
     currentRoot: () => Promise.resolve(E2E_LIBRARY_ROOT),
     chooseRoot: () => Promise.resolve(E2E_LIBRARY_ROOT),
     importMap: () => Promise.resolve(null),
+    readImage: async (path) => {
+      const file = await fs.read(path);
+      if (file.kind !== "ok") throw new Error(`no image at ${path}`);
+      return new Blob([file.text], { type: "image/svg+xml" });
+    },
     onChange: () => Promise.resolve(() => undefined),
   };
 }

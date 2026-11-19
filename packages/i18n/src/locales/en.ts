@@ -140,6 +140,13 @@ export const en: Messages = {
       assets: "No assets yet.",
     },
   },
+  note: {
+    missingLink: "Target not found",
+    imageMissing: "Image not found: {{name}}",
+    externalImage: "External image: {{name}}",
+    loadImage: "Load image",
+    imageLoading: "Loading image …",
+  },
   mapView: {
     label: "Map of the scene “{{name}}”",
     help: "Mouse wheel or + and − zoom, drag or arrow keys pan, R rotates, 0 fits the map.",

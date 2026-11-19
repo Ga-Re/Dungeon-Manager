@@ -1,4 +1,5 @@
 import { HudPanel } from "@dungeon-manager/ui";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useHudPlacement } from "./shell/hud-layout.js";
 
@@ -14,8 +15,10 @@ export interface Details {
   readonly kind: string;
   readonly name: string;
   readonly rows: readonly DetailRow[];
-  /** Longer text below the facts, e.g. a note's Markdown as it is (T-161b). */
+  /** Longer text below the facts, e.g. why a note cannot be shown (T-161b). */
   readonly body?: string;
+  /** Rich content below the facts, e.g. a rendered note (T-163); wins over `body`. */
+  readonly content?: ReactNode;
 }
 
 /**
@@ -67,9 +70,10 @@ export function DetailsPanel({
               </div>
             ))}
           </dl>
-          {details.body !== undefined && (
-            <pre className="dm-details-body">{details.body}</pre>
-          )}
+          {details.content ??
+            (details.body !== undefined && (
+              <pre className="dm-details-body">{details.body}</pre>
+            ))}
         </>
       ) : (
         <p className="dm-details-empty">

@@ -272,6 +272,19 @@ pub fn library_read(
     library::read(&resolve(&state, &path)?)
 }
 
+/// An image for a note (T-163), as raw bytes; DM window only, like every library command.
+/// The player window gets map images through the read-only `dmlib` scheme, which never serves
+/// `campaigns/`.
+#[tauri::command]
+pub fn library_read_image(
+    window: WebviewWindow,
+    state: State<LibraryState>,
+    path: String,
+) -> Result<tauri::ipc::Response, LibraryError> {
+    require_dm(&window)?;
+    library::read_image(&resolve(&state, &path)?).map(tauri::ipc::Response::new)
+}
+
 #[tauri::command]
 pub fn library_write(
     window: WebviewWindow,

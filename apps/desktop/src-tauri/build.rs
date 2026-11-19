@@ -6,6 +6,7 @@ fn main() {
         "library_subscribe",
         "library_choose",
         "library_read",
+        "library_read_image",
         "library_write",
         "library_list",
         "library_make_directory",

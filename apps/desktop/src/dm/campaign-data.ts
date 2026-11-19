@@ -101,3 +101,38 @@ export async function readNotesIndex(
     ...owners,
   };
 }
+
+/** How far `listCampaignFiles` looks, so a huge vault cannot stall the window. */
+const FILE_SEARCH = { depth: 8, entries: 5000 } as const;
+
+/**
+ * Every file in the campaign folder (relative to it), for finding Obsidian targets by name
+ * (T-163). Hidden and tool folders (`.obsidian`, `.trash`, …) are skipped; the search stops at
+ * `FILE_SEARCH` limits.
+ */
+export async function listCampaignFiles(
+  service: LibraryService,
+  slug: string,
+): Promise<string[]> {
+  const root = `campaigns/${slug}`;
+  const files: string[] = [];
+  let queue: { folder: string; depth: number }[] = [{ folder: "", depth: 0 }];
+  let seen = 0;
+  while (queue.length > 0 && seen < FILE_SEARCH.entries) {
+    const next: typeof queue = [];
+    for (const { folder, depth } of queue) {
+      const entries =
+        (await service.fs.list(folder ? `${root}/${folder}` : root)) ?? [];
+      for (const entry of entries) {
+        if (++seen > FILE_SEARCH.entries) break;
+        if (entry.name.startsWith(".")) continue;
+        const path = folder ? `${folder}/${entry.name}` : entry.name;
+        if (entry.kind === "file") files.push(path);
+        else if (depth < FILE_SEARCH.depth)
+          next.push({ folder: path, depth: depth + 1 });
+      }
+    }
+    queue = next;
+  }
+  return files;
+}

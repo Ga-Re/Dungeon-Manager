@@ -31,6 +31,7 @@ pub fn run() {
             commands::library_subscribe,
             commands::library_choose,
             commands::library_read,
+            commands::library_read_image,
             commands::library_write,
             commands::library_list,
             commands::library_make_directory,
