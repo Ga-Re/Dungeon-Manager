@@ -658,11 +658,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-165 Free the fog's GPU geometry on rebuild
 
-- **Status:** todo · **Depends on:** T-136a · **Refs:** ARCHITECTURE §8, §11
+- **Status:** done · **Depends on:** T-136a · **Refs:** ARCHITECTURE §8, §11
 - From the T-136a review: `Graphics.destroy(options)` with an options object does not destroy the owned `GraphicsContext`, so the hard fog's geometry probably stays in PixiJS's context system after each rebuild (pre-existing; fog now rebuilds also on map changes). `context: true` together with `texture: true` would destroy `Texture.WHITE`, so it needs care.
 - **Acceptance criteria**
-  - [ ] Rebuilding the fog many times does not grow GPU/context memory (test against PixiJS's context system or a long-run measurement)
-  - [ ] Shared textures (`Texture.WHITE`) survive
+  - [x] Rebuilding the fog many times does not grow GPU/context memory (test against PixiJS's context system or a long-run measurement) – every discarded fog layer frees its graphics contexts (test with real PixiJS objects)
+  - [x] Shared textures (`Texture.WHITE`) survive
 
 ### T-136b Soft fog fades
 
