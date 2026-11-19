@@ -113,7 +113,9 @@ test("the workspace menu", async ({ page }) => {
     .getByRole("group", { name: "Arbeitsbereich" })
     .getByRole("button")
     .click();
-  await expect(page.getByRole("menuitem", { name: "Map Forge" })).toBeFocused();
+  await expect(
+    page.getByRole("menuitemradio", { name: "Map Forge" }),
+  ).toBeFocused();
   await page.evaluate(() => document.fonts.ready);
 
   await expect(page).toHaveScreenshot("dm-window-workspaces.png");

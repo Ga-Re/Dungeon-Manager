@@ -82,9 +82,16 @@ describe("DmShell", () => {
 
     fireEvent.click(workspaceMenu());
     expect(
-      screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Map Forge", "Asset Studio", "Campaign Atlas", "Game Mode"]);
-    fireEvent.click(screen.getByRole("menuitem", { name: "Map Forge" }));
+      within(screen.getByRole("menu", { name: "Arbeitsbereich" }))
+        .getAllByRole("menuitemradio")
+        .map((item) => [item.textContent, item.getAttribute("aria-checked")]),
+    ).toEqual([
+      ["Map Forge", "false"],
+      ["Asset Studio", "false"],
+      ["Campaign Atlas", "false"],
+      ["Game Mode", "true"],
+    ]);
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Map Forge" }));
 
     expect(workspaceMenu().textContent).toBe("Map Forge");
     expect(
@@ -97,7 +104,7 @@ describe("DmShell", () => {
     expect(storage.getItem("dm.workspace")).toBe("mapForge");
 
     fireEvent.click(workspaceMenu());
-    fireEvent.click(screen.getByRole("menuitem", { name: "Game Mode" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Game Mode" }));
     // The same tool, not a new one: tools keep their state across workspaces.
     expect(screen.getByRole("button", { name: "Aufdecken" })).toBe(tool);
     expect(

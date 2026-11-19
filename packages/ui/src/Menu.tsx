@@ -7,6 +7,11 @@ export type { MenuItem } from "./MenuList.js";
 export interface MenuProps {
   /** Translated text of the menu button; also its accessible name. */
   label: string;
+  /**
+   * Translated name of the open menu, where the button shows the current choice instead (the
+   * workspace selector: "Arbeitsbereich" for a button saying "Game Mode"). `label` otherwise.
+   */
+  menuLabel?: string | undefined;
   items: readonly MenuItem[];
   /** Called with the chosen item's id; the menu has closed and focus is back on its button. */
   onSelect: (id: string) => void;
@@ -30,6 +35,7 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
  */
 export function Menu({
   label,
+  menuLabel,
   items,
   onSelect,
   buttonRef,
@@ -83,7 +89,7 @@ export function Menu({
       {open && (
         <MenuList
           id={`${id}-menu`}
-          label={label}
+          label={menuLabel ?? label}
           items={items}
           initial={open}
           owner={button}

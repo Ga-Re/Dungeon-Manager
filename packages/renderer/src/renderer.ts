@@ -11,6 +11,7 @@ import {
   UniformGroup,
 } from "pixi.js";
 import type { Camera, Size } from "./camera.js";
+import { disposeFog } from "./fog-dispose.js";
 import { easeOut, fadeProgress, mixAlpha } from "./fog-fade.js";
 import { softFogAlpha } from "./soft-mask.js";
 import { createVideoGate, cssTransform, sameAspect } from "./video-layer.js";
@@ -166,7 +167,7 @@ export async function createRenderer(
   const replaceFog = (next: Container | null) => {
     if (fog) {
       world.removeChild(fog);
-      fog.destroy({ children: true, texture: true, textureSource: true });
+      disposeFog(fog);
     }
     fog = next;
     if (fog) world.addChild(fog);
@@ -208,7 +209,7 @@ export async function createRenderer(
 
   /** Stops a running fade; its unused final layer goes. */
   const dropFade = () => {
-    fade?.final.destroy({ children: true, texture: true, textureSource: true });
+    if (fade) disposeFog(fade.final);
     fade = null;
   };
 
@@ -366,6 +367,8 @@ export async function createRenderer(
     destroy() {
       destroyed = true;
       dropFade();
+      // The fog's graphics contexts too, as on every rebuild.
+      replaceFog(null);
       gate.destroyed();
       hideVideo();
       video?.removeEventListener("resize", onVideoResize);

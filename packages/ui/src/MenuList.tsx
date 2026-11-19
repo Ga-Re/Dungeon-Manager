@@ -18,6 +18,12 @@ export interface MenuItem {
   label: string;
   /** Decorative icon in front of the label. */
   icon?: ReactNode;
+  /**
+   * One of a set of choices (T-164): `true` for the current one. Such items are announced as
+   * radio items with their state and show a check mark. Every item of the set passes `true` or
+   * `false`; leaving it out makes a plain command.
+   */
+  checked?: boolean | undefined;
   disabled?: boolean | undefined;
 }
 
@@ -149,7 +155,8 @@ export function MenuList({
             entries.current[index] = element;
           }}
           type="button"
-          role="menuitem"
+          role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+          aria-checked={item.checked}
           tabIndex={-1}
           aria-disabled={item.disabled === true ? true : undefined}
           className="dm-menu-item"
@@ -163,6 +170,15 @@ export function MenuList({
             </span>
           )}
           {item.label}
+          {item.checked !== undefined && (
+            <span className="dm-menu-item-check" aria-hidden="true">
+              {item.checked && (
+                <svg viewBox="0 0 12 12">
+                  <path d="M2.5 6.5l2.5 2.5 4.5-5.5" />
+                </svg>
+              )}
+            </span>
+          )}
         </button>
       ))}
     </div>
