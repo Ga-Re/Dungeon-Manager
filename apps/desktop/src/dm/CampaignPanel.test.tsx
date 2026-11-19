@@ -953,25 +953,94 @@ describe("CampaignPanel", () => {
         );
       });
 
-      test("asks to close an open scene before linking notes to it", async () => {
+      test("offers no linking for the open scene (it saves its whole state)", async () => {
         const library = fakeLibraryService("/lib", {
           "campaigns/mine/scenes/a.json": sceneFile("a", "Krypta"),
-          "campaigns/mine/wiki/x.md": "x",
         });
         renderCampaign(library);
         await openScene("Krypta");
-        command("Krypta", "Notiz verknüpfen …");
+        fireEvent.contextMenu(
+          screen.getAllByText("Krypta", {
+            selector: ".dm-tree-label",
+          })[0] as HTMLElement,
+        );
+        expect(
+          screen
+            .getByRole("menuitem", { name: "Notiz verknüpfen …" })
+            .getAttribute("aria-disabled"),
+        ).toBe("true");
+        expect(
+          screen
+            .getByRole("menuitem", { name: "Notiz öffnen" })
+            .getAttribute("aria-disabled"),
+        ).toBeNull();
+      });
+
+      test("links a note to the campaign, refuses its own note and lists repeated links once", async () => {
+        const library = fakeLibraryService("/lib", {
+          "campaigns/mine/campaign.json": JSON.stringify({
+            schemaVersion: 1,
+            id: "c",
+            name: "Die verlorene Mine",
+            players: [],
+            visibilityDefaults: {},
+          }),
+          "campaigns/mine/wiki/Welt.md": "# Welt\n",
+          "campaigns/mine/scenes/a.json": JSON.stringify({
+            ...JSON.parse(sceneFile("a", "Krypta")),
+            // Hand-edited on another device: the same link twice.
+            notes: ["wiki/Welt.md", "wiki/Welt.md"],
+          }),
+        });
+        renderCampaign(library);
+        expect(
+          await screen.findAllByRole("treeitem", { name: "Krypta › Welt" }),
+        ).toHaveLength(1);
+
+        command("Die verlorene Mine", "Notiz verknüpfen …");
         const form = within(
           screen.getByRole("group", { name: "Notiz verknüpfen …" }),
         );
         fireEvent.change(form.getByLabelText("Pfad der Notiz"), {
-          target: { value: "wiki/x.md" },
+          target: { value: "notes/campaign.md" },
         });
         fireEvent.click(form.getByRole("button", { name: "Verknüpfen" }));
+        expect(await form.findByText(/Das ist die eigene Notiz/)).toBeTruthy();
+        fireEvent.change(form.getByLabelText("Pfad der Notiz"), {
+          target: { value: "wiki/Welt.md" },
+        });
+        fireEvent.click(form.getByRole("button", { name: "Verknüpfen" }));
+        await waitFor(() => {
+          expect(
+            JSON.parse(
+              library.fs.files().get("campaigns/mine/campaign.json") ?? "{}",
+            ),
+          ).toMatchObject({ notes: ["wiki/Welt.md"] });
+        });
         expect(
-          await form.findByText(
-            "Schließe die Szene, um Notizen mit ihr zu verknüpfen.",
-          ),
+          await screen.findByRole("treeitem", { name: "Welt" }),
+        ).toBeTruthy();
+      });
+
+      test("says when a linked note's file is missing", async () => {
+        renderCampaign(
+          fakeLibraryService("/lib", {
+            "campaigns/mine/sessions/s1.json": JSON.stringify({
+              schemaVersion: 1,
+              id: "s1",
+              name: "Session 1",
+              sceneIds: [],
+              notes: ["wiki/Weg.md"],
+            }),
+          }),
+        );
+        fireEvent.click(
+          await screen.findByText("Session 1 › Weg", {
+            selector: ".dm-tree-label",
+          }),
+        );
+        expect(
+          await details().findByText("Diese Notiz gibt es (noch) nicht."),
         ).toBeTruthy();
       });
     });

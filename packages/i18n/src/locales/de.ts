@@ -49,6 +49,8 @@ export const de = {
     },
   },
   campaign: {
+    noteIsOwn: "Das ist die eigene Notiz – öffne sie mit „Notiz öffnen“.",
+    notePathExample: "wiki/NSCs/Strahd.md",
     openNote: "Notiz öffnen",
     linkNote: "Notiz verknüpfen …",
     unlinkNote: "Verknüpfung entfernen",

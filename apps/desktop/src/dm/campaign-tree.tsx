@@ -1,5 +1,6 @@
 import type { Player, Polygon, Scene } from "@dungeon-manager/schema";
 import type { TreeNode } from "@dungeon-manager/ui";
+import { ownNotePath } from "@dungeon-manager/storage";
 import type { TFunction } from "i18next";
 import {
   BookOpen,
@@ -19,7 +20,7 @@ import {
   type SceneEntry,
   type SessionEntry,
 } from "./campaign-data.js";
-import { fileName } from "./file-name.js";
+import { fileName, linkedNotes, noteTitle } from "./file-name.js";
 import { sceneContentNodes } from "./scene-tree.js";
 import {
   CAMPAIGN_NODE,
@@ -53,9 +54,6 @@ export interface CampaignTreeData {
     readonly campaignLinks: readonly string[];
   };
 }
-
-/** The file name of a note without `.md`, for labels. */
-export const noteTitle = (path: string) => fileName(path).replace(/\.md$/, "");
 
 /** A group that is still empty shows why instead of an empty folder. */
 function group(
@@ -235,20 +233,15 @@ function notesGroup(t: TFunction, data: CampaignTreeData): TreeNode {
     name: string,
     links: readonly string[] | undefined,
     hasOwn: boolean,
-  ): TreeNode[] => [
-    ...(hasOwn
-      ? [
-          noteItem(
-            { kind, id },
-            `notes/${kind === "session" ? "sessions" : "scenes"}/${id}.md`,
-            name,
-          ),
-        ]
-      : []),
-    ...(links ?? []).map((path) =>
-      noteItem({ kind, id }, path, `${name} › ${noteTitle(path)}`),
-    ),
-  ];
+  ): TreeNode[] => {
+    const own = ownNotePath({ kind, id });
+    return [
+      ...(hasOwn ? [noteItem({ kind, id }, own, name)] : []),
+      ...linkedNotes(links, own).map((path) =>
+        noteItem({ kind, id }, path, `${name} › ${noteTitle(path)}`),
+      ),
+    ];
+  };
   const sessionNotes = (data.sessions ?? []).flatMap((entry) =>
     entry.session
       ? ownedBy(
@@ -282,8 +275,8 @@ function notesGroup(t: TFunction, data: CampaignTreeData): TreeNode {
         t("shell.tree.campaignNote"),
         index?.campaign ?? true,
       ),
-      ...data.notes.campaignLinks.map((path) =>
-        noteItem({ kind: "campaign" }, path, noteTitle(path)),
+      ...linkedNotes(data.notes.campaignLinks, "notes/campaign.md").map(
+        (path) => noteItem({ kind: "campaign" }, path, noteTitle(path)),
       ),
       group(
         GROUP.sessionNotes,

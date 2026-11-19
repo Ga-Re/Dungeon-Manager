@@ -49,6 +49,8 @@ export const en: Messages = {
     },
   },
   campaign: {
+    noteIsOwn: "That is the own note – open it with “Open note”.",
+    notePathExample: "wiki/NPCs/Strahd.md",
     openNote: "Open note",
     linkNote: "Link note …",
     unlinkNote: "Remove link",

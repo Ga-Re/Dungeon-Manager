@@ -1,5 +1,6 @@
 import type { Session } from "@dungeon-manager/schema";
 import { describe, expect, it } from "vitest";
+import { linkedNotes } from "./file-name.js";
 import { addScene, moveScene, removeScene } from "./session-ops.js";
 import { noteNodeId, parseTreeId, sceneNodeId } from "./tree-ids.js";
 
@@ -83,5 +84,22 @@ describe("note ids (T-161b)", () => {
         path,
       });
     }
+  });
+});
+
+describe("linked notes", () => {
+  it("lists each link once and never the own note", () => {
+    expect(
+      linkedNotes(
+        [
+          "wiki/a.md",
+          "notes/scenes/x.md",
+          "wiki/a.md",
+          "U\u0308ber.md",
+          "Über.md",
+        ],
+        "notes/scenes/x.md",
+      ),
+    ).toEqual(["wiki/a.md", "U\u0308ber.md"]);
   });
 });

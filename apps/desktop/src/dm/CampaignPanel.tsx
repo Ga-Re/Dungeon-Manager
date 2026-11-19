@@ -59,6 +59,7 @@ import {
 } from "./campaign-data.js";
 import { buildCampaignTree, scenesInSessions } from "./campaign-tree.js";
 import { describeLibraryError } from "./describe-error.js";
+import { noteTitle } from "./file-name.js";
 import { describeItem } from "./details.js";
 import { DetailsPanel } from "./DetailsPanel.js";
 import { NewSceneForm } from "./NewSceneForm.js";
@@ -215,7 +216,12 @@ export function CampaignPanel({
   const latestNotes = useRef(0);
   const reloadNotes = useCallback(async () => {
     const request = ++latestNotes.current;
-    const index = await readNotesIndex(service, slug).catch(() => null);
+    const index = await readNotesIndex(service, slug).catch(
+      (error: unknown) => {
+        console.error("The notes folder cannot be listed.", error);
+        return null;
+      },
+    );
     if (request === latestNotes.current) setNotesIndex(index);
   }, [service, slug]);
   useEffect(() => {
@@ -278,8 +284,11 @@ export function CampaignPanel({
   }, [readInspectedNote]);
   useLibraryChanges(
     service,
+    // Sync clients and macOS may report decomposed umlauts; links are stored in NFC.
     (path) =>
-      inspectedNote !== null && path === `campaigns/${slug}/${inspectedNote}`,
+      inspectedNote !== null &&
+      path.normalize("NFC") ===
+        `campaigns/${slug}/${inspectedNote}`.normalize("NFC"),
     () => void readInspectedNote(),
   );
   const noteBody = (path: string): string => {
@@ -461,9 +470,19 @@ export function CampaignPanel({
       icon: <CalendarPlus />,
     };
     const item = parseTreeId(treeId);
+    // The open scene saves its whole state on every change, so its links wait until it is
+    // closed (a link written meanwhile would be lost).
+    const openSceneOwns = (owner: NoteOwnerRef) =>
+      owner.kind === "scene" && openScene?.id === owner.id;
+    const owner = noteOwnerOf(treeId);
     const noteCommands = [
       { id: "openNote", label: t("campaign.openNote"), icon: <NotebookPen /> },
-      { id: "linkNote", label: t("campaign.linkNote"), icon: <Link2 /> },
+      {
+        id: "linkNote",
+        label: t("campaign.linkNote"),
+        icon: <Link2 />,
+        disabled: owner !== null && openSceneOwns(owner),
+      },
     ];
     if (item.kind === "note")
       return ownNotePath(item.owner) === item.path
@@ -473,6 +492,7 @@ export function CampaignPanel({
               id: "unlinkNote",
               label: t("campaign.unlinkNote"),
               icon: <Unlink />,
+              disabled: openSceneOwns(item.owner),
             },
           ];
     if (item.kind === "campaign")
@@ -668,8 +688,10 @@ export function CampaignPanel({
       case "unlinkNote":
         if (item.kind === "note") {
           const path = item.path;
-          report(changeLinks(item.owner, "unlink", path));
-          setInspected(null);
+          void changeLinks(item.owner, "unlink", path).then((problem) => {
+            if (problem) setNotice(problem);
+            else setInspected(null);
+          });
         }
         return;
       case "moveUp":
@@ -760,10 +782,14 @@ export function CampaignPanel({
         return (
           <LinkNoteForm
             onSubmit={async (path) => {
+              if (path.normalize("NFC") === ownNotePath(current.owner))
+                return t("campaign.noteIsOwn");
               const found = await readNote(service.fs, slug, path);
               if (found.status === "invalid")
                 return t("campaign.notePathInvalid");
-              if (found.status !== "ok" && found.status !== "notAvailable")
+              if (found.status === "unreadable")
+                return t("campaign.noteStatus.unreadable");
+              if (found.status === "missing")
                 return t("campaign.noteNotFound", { path });
               const problem = await changeLinks(current.owner, "link", path);
               if (!problem) {
@@ -847,9 +873,13 @@ export function CampaignPanel({
                 : parsed.kind === "scene"
                   ? (readyScenes.find((entry) => entry.id === parsed.sceneId)
                       ?.scene?.name ?? parsed.sceneId)
-                  : treeId === GROUP.sessions
-                    ? t("shell.tree.sessions")
-                    : t("shell.tree.unsorted");
+                  : parsed.kind === "missing"
+                    ? parsed.sceneId
+                    : parsed.kind === "note"
+                      ? noteTitle(parsed.path)
+                      : treeId === GROUP.sessions
+                        ? t("shell.tree.sessions")
+                        : t("shell.tree.unsorted");
           setContext({ at, item, treeId, name: label });
         }}
       />

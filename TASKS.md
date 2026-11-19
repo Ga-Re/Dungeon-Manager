@@ -584,7 +584,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Notes open from the browser/details panel (read view first); edits made elsewhere show up without restart
   - [x] Linking an existing `.md`; unknown front matter survives a round trip (ADR-0006)
   - [x] Component + E2E tests for opening, creating, linking and missing notes
-- **Notes:** Format approved by the DM (2026-11-19). T-150 decides whether Obsidian opens the campaign folder or the library root as its vault; both work with these paths.
+- **Notes:** Format approved by the DM (2026-11-19). T-150 decides whether Obsidian opens the campaign folder or the library root as its vault; both work with these paths. Known gaps (T-161b review): a link written to a closed scene while the DM opens it from the tree in the same instant, or right after closing it while fog saves are still queued, can be overwritten by the scene's next save – a scene-operation guard or flushing on close would close this.
 
 ### T-155 Settings dialog
 

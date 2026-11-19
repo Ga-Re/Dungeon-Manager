@@ -204,7 +204,7 @@ export function LinkNoteForm({
         id={inputId}
         value={path}
         aria-describedby={hintId}
-        placeholder="wiki/NSCs/Strahd.md"
+        placeholder={t("campaign.notePathExample")}
         onChange={(event) => {
           setPath(event.target.value);
         }}
