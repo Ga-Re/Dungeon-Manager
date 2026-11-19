@@ -927,7 +927,7 @@ label {
 /* Welcome dialog (T-153): recent campaigns on the left, actions and the library on the right. */
 .dm-welcome-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 14rem;
+  grid-template-columns: minmax(0, 1fr) 16rem;
   min-height: 22rem;
 }
 
@@ -1124,6 +1124,7 @@ button.dm-welcome-campaign:hover {
 
 .dm-welcome-library button {
   justify-self: start;
+  white-space: nowrap;
 }
 
 .dm-welcome-back {
