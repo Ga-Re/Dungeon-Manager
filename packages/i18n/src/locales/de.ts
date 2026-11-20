@@ -314,12 +314,14 @@ export const de = {
     workspace: {
       label: "Arbeitsbereich",
       mapForge: "Map Forge",
-      assetStudio: "Asset Studio",
+      assetVault: "Asset Vault",
+      creatures: "Tokens & Kreaturen",
       campaignAtlas: "Campaign Atlas",
-      gameMode: "Game Mode",
+      gameOrchestrator: "Game-Orchestrator",
       coming: {
         mapForge: "Hier bearbeitest du bald deine Karten.",
-        assetStudio: "Hier bearbeitest du bald deine Assets.",
+        assetVault: "Hier verwaltest du bald Requisiten, Handouts und Sounds.",
+        creatures: "Hier verwaltest du bald Spielercharaktere und Kreaturen.",
         campaignAtlas: "Hier bearbeitest du bald die aktuelle Kampagne.",
       },
     },

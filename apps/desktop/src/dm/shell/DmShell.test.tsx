@@ -65,9 +65,9 @@ const workspaceMenu = () =>
   );
 
 describe("DmShell", () => {
-  it("starts in Game Mode with its tabs", () => {
+  it("starts in the Game-Orchestrator with its tabs", () => {
     setup();
-    expect(workspaceMenu().textContent).toBe("Game Mode");
+    expect(workspaceMenu().textContent).toBe("Game-Orchestrator");
     expect(
       within(screen.getByRole("tablist", { name: "Werkzeugleisten" }))
         .getAllByRole("tab")
@@ -75,7 +75,7 @@ describe("DmShell", () => {
     ).toEqual(["Szene", "Nebel", "Anzeige"]);
   });
 
-  it("switches the workspace from its menu, keeps Game Mode's tools and remembers it", () => {
+  it("switches the workspace from its menu, keeps the Game-Orchestrator's tools and remembers it", () => {
     const { storage } = setup();
     fireEvent.click(screen.getByRole("tab", { name: "Nebel" }));
     const tool = screen.getByRole("button", { name: "Aufdecken" });
@@ -87,9 +87,10 @@ describe("DmShell", () => {
         .map((item) => [item.textContent, item.getAttribute("aria-checked")]),
     ).toEqual([
       ["Map Forge", "false"],
-      ["Asset Studio", "false"],
+      ["Asset Vault", "false"],
+      ["Tokens & Kreaturen", "false"],
       ["Campaign Atlas", "false"],
-      ["Game Mode", "true"],
+      ["Game-Orchestrator", "true"],
     ]);
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Map Forge" }));
 
@@ -104,7 +105,9 @@ describe("DmShell", () => {
     expect(storage.getItem("dm.workspace")).toBe("mapForge");
 
     fireEvent.click(workspaceMenu());
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Game Mode" }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: "Game-Orchestrator" }),
+    );
     // The same tool, not a new one: tools keep their state across workspaces.
     expect(screen.getByRole("button", { name: "Aufdecken" })).toBe(tool);
     expect(

@@ -859,10 +859,10 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-171 Five workspaces: names and Tokens & Kreaturen
 
-- **Status:** todo · **Depends on:** T-156 · **Refs:** ADR-0017, SPEC §2.5
+- **Status:** done · **Depends on:** T-156 · **Refs:** ADR-0017, SPEC §2.5
 - Rename Asset Studio → Asset Vault and Game Mode → Game-Orchestrator, add Tokens & Kreaturen; order: Map Forge, Asset Vault, Tokens & Kreaturen, Campaign Atlas, Game-Orchestrator.
 - **Acceptance criteria**
-  - [ ] The selector lists the five workspaces with translated names; a remembered workspace of the old ids still opens (component test)
+  - [x] The selector lists the five workspaces with translated names; a remembered workspace of the old ids still opens (component test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
 ### T-172 Dockable panel system with named layouts

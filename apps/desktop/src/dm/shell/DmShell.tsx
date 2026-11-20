@@ -6,6 +6,7 @@ import {
   FolderPlus,
   Map as MapIcon,
   PanelLeft,
+  PawPrint,
   Settings,
   Swords,
 } from "lucide-react";
@@ -58,9 +59,10 @@ const MODE_SLOT: Record<Mode, ShellSlot> = {
 
 const WORKSPACE_ICON: Record<Workspace, ReactNode> = {
   mapForge: <MapIcon />,
-  assetStudio: <Boxes />,
+  assetVault: <Boxes />,
+  creatures: <PawPrint />,
   campaignAtlas: <BookMarked />,
-  gameMode: <Swords />,
+  gameOrchestrator: <Swords />,
 };
 
 /** Cmd+B on macOS, Ctrl+B elsewhere; not in rich-text fields, where it means bold. */
@@ -103,7 +105,7 @@ export function DmShell({
   const [panelOpen, setPanelOpen] = useState(true);
   const [mode, setMode] = useState<Mode>("display");
   const [workspace, setWorkspace] = useState(() => readWorkspace(storage));
-  const inGame = workspace === "gameMode";
+  const inGame = workspace === "gameOrchestrator";
   const chooseWorkspace = (id: string) => {
     if (!isWorkspace(id)) return;
     setWorkspace(id);
@@ -457,7 +459,7 @@ export function DmShell({
           </aside>
           <div className="dm-main">
             <div className="dm-ribbon">
-              {/* Each workspace has its own tabs (T-156); Game Mode has today's tools. */}
+              {/* Each workspace has its own tabs (T-156); the Game-Orchestrator has today's tools. */}
               <div
                 role="group"
                 aria-labelledby={`${idPrefix}-workspace`}

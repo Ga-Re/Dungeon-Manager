@@ -492,7 +492,7 @@ test("the workspace selector switches the ribbon by keyboard and is remembered (
   const workspace = page
     .getByRole("group", { name: "Arbeitsbereich" })
     .getByRole("button");
-  await expect(workspace).toHaveText("Game Mode");
+  await expect(workspace).toHaveText("Game-Orchestrator");
 
   await workspace.focus();
   await page.keyboard.press("Enter");
@@ -502,23 +502,23 @@ test("the workspace selector switches the ribbon by keyboard and is remembered (
   await expect(
     page
       .getByRole("menu", { name: "Arbeitsbereich" })
-      .getByRole("menuitemradio", { name: "Game Mode" }),
+      .getByRole("menuitemradio", { name: "Game-Orchestrator" }),
   ).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
 
-  await expect(workspace).toHaveText("Asset Studio");
+  await expect(workspace).toHaveText("Asset Vault");
   await expect(workspace).toBeFocused();
   await expect(
     page.getByRole("tablist", { name: "Werkzeugleisten" }),
   ).toHaveCount(0);
   await expect(
-    page.getByText("Hier bearbeitest du bald deine Assets."),
+    page.getByText("Hier verwaltest du bald Requisiten, Handouts und Sounds."),
   ).toBeVisible();
 
   await page.reload();
   await closeWelcome(page);
-  await expect(workspace).toHaveText("Asset Studio");
+  await expect(workspace).toHaveText("Asset Vault");
 });
 
 test("the title bar's menu button opens the welcome dialog again and starts a new campaign (T-130d)", async ({
