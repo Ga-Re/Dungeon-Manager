@@ -29,11 +29,17 @@ const MAP_PATH = "library/maps/krypta.png";
 
 /**
  * A library with one campaign, one scene that has a map and one (still empty) session. With
- * `levels`, the scene's map has a second level, a cellar (T-118c).
+ * `levels`, the scene's map has a second level, a cellar (T-118c). `imports` are the files the
+ * file dialog returns, one per call; after them it is cancelled.
  */
 export async function createE2eLibrary({
   levels = false,
-}: { readonly levels?: boolean } = {}): Promise<LibraryService> {
+  imports = [],
+}: {
+  readonly levels?: boolean;
+  readonly imports?: readonly string[];
+} = {}): Promise<LibraryService> {
+  const queued = [...imports];
   const fs = createMemoryFileSystem();
   await ensureLibraryLayout(fs);
   const slug = await createCampaign(fs, {
@@ -90,7 +96,13 @@ export async function createE2eLibrary({
     fs,
     currentRoot: () => Promise.resolve(E2E_LIBRARY_ROOT),
     chooseRoot: () => Promise.resolve(E2E_LIBRARY_ROOT),
-    importMap: () => Promise.resolve(null),
+    importMap: async () => {
+      const path = queued.shift();
+      if (path === undefined) return null;
+      // Like an import: the file is in the library afterwards (its pixels are drawn below).
+      await fs.writeAtomic(path, "png");
+      return { path, hash: `sha256:${"1".repeat(64)}` };
+    },
     // Like the backend: only PNG here, by name, with real PNG bytes.
     readImage: async (path) => {
       const file = await fs.read(path);
@@ -128,11 +140,15 @@ export const e2eDisplays: DisplayService = {
   openPlayerView: () => Promise.resolve(),
 };
 
-/** A self-drawn map (rooms on a 100 px grid), so the harness needs no image file. */
-function drawMap(): HTMLCanvasElement {
+/**
+ * A self-drawn map (rooms on a 100 px grid), so the harness needs no image file. A file named
+ * `klein…` is smaller, as a level image that does not fit the map (T-118d).
+ */
+function drawMap(path: string): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  canvas.width = 1600;
-  canvas.height = 1000;
+  const small = path.split("/").at(-1)?.startsWith("klein") === true;
+  canvas.width = small ? 800 : 1600;
+  canvas.height = small ? 500 : 1000;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("2D canvas not available");
   context.fillStyle = "#2b2622";
@@ -145,7 +161,7 @@ function drawMap(): HTMLCanvasElement {
 }
 
 export const e2eMapView: MapViewService = {
-  loadImage: () => Promise.resolve(drawMap()),
+  loadImage: (path) => Promise.resolve(drawMap(path)),
   loadVideo: () =>
     Promise.reject(new Error("The E2E harness has no video maps.")),
   // The real renderer; its camera is noted on the page so E2E tests can check the view's

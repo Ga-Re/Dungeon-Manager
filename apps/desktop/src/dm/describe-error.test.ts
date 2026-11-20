@@ -1,4 +1,7 @@
-import { MapDataUnavailableError } from "@dungeon-manager/storage";
+import {
+  MapDataChangedError,
+  MapDataUnavailableError,
+} from "@dungeon-manager/storage";
 import { createI18n } from "@dungeon-manager/ui";
 import { describe, expect, test } from "vitest";
 import { describeLibraryError } from "./describe-error.js";
@@ -13,6 +16,12 @@ describe("describeLibraryError", () => {
         new MapDataUnavailableError("library/maps/a.png"),
       ),
     ).toMatch(/noch nicht heruntergeladen.*sobald dein Sync-Dienst/);
+  });
+
+  test("a map changed elsewhere meanwhile says to accept the change first", () => {
+    expect(
+      describeLibraryError(t, new MapDataChangedError("library/maps/a.png")),
+    ).toMatch(/inzwischen woanders geändert.*Übernimm/);
   });
 
   test("anything else says what went wrong", () => {

@@ -175,13 +175,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-118d Add and rename levels
 
-- **Status:** todo · **Depends on:** T-118c, T-134d · **Refs:** SPEC §3.1, ADR-0012
+- **Status:** done · **Depends on:** T-118c, T-134d · **Refs:** SPEC §3.1, ADR-0012
 - DM decision (2026-11-20): the DM adds a level (name, optionally its own image or video of the map's size) and renames levels from the "Ebene" group; deleting waits for the sidecar files (T-134), as fog, tokens and released levels refer to level ids. Moved after T-134 (DM, 2026-11-20): levels are added to the map's sidecar, not to `scene.map`.
 - **Acceptance criteria**
-  - [ ] Add a level with or without its own file; a file of another size is refused with an actionable message (component + E2E test)
-  - [ ] Rename a level; the new name reaches the TV's projection only for released levels
-
-- **Notes:** From T-134b: the open scene's map data is held while it changes on disk; this task's own sidecar writes update the shown data first (`useMapData`), so their watcher echo asks nothing (test).
+  - [x] Add a level with or without its own file; a file of another size is refused with an actionable message (component + E2E test)
+  - [x] Rename a level; the new name reaches the TV's projection only for released levels
+- **Notes:** From T-134b: the open scene's map data is held while it changes on disk; this task's own sidecar writes update the shown data first (`useMapData`), so their watcher echo asks nothing (test). Done: `addLevel`/`renameLevel` in core, `updateMapData` in storage, `editMap` in the session; the "Ebene" group shows for one-level maps too, with add and rename in its menu; the DM works on a new level at once while the TV stays.
 
 ### T-119 Case-insensitive id collisions in file names
 
@@ -733,10 +732,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-169 Flaky focus check in the welcome dialog test
 
-- **Status:** todo · **Depends on:** T-153 · **Refs:** ARCHITECTURE §12
+- **Status:** done · **Depends on:** T-153 · **Refs:** ARCHITECTURE §12
 - `WelcomeDialog.test.tsx` checks the first focus synchronously (`document.activeElement` right after the dialog shows) and failed once in a full `pnpm check` run (T-118a review); wait for the focus as the T-164 fix did elsewhere.
 - **Acceptance criteria**
-  - [ ] The focus assertions wait for the focus; the file passes 20 runs in a row
+  - [x] The focus assertions wait for the focus; the file passes 20 runs in a row
+- **Notes:** It failed main's CI after #81 (run #214, 2026-11-20), so it was pulled forward.
 
 ### T-167 Fog spreads from the revealed edge
 

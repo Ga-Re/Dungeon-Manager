@@ -370,3 +370,42 @@ export async function deleteSession(
     throw new Error(`Invalid session id: ${sessionId}`);
   return fs.moveToTrash(sessionFile(slug, sessionId));
 }
+
+/** The map's data on disk is no longer what the DM sees (changed elsewhere meanwhile). */
+export class MapDataChangedError extends Error {
+  constructor(readonly assetPath: string) {
+    super(`The map data of ${assetPath} changed meanwhile`);
+    this.name = "MapDataChangedError";
+  }
+}
+
+/**
+ * Changes a map's global data in its sidecar (e.g. a new level, T-118d): `change` gets the map's
+ * data – `defaults` while it has none – and returns the new data, or `null` to write nothing.
+ * `expected` is the data the DM sees: if the sidecar holds something else, a change from
+ * elsewhere has not reached them yet (it waits for confirmation, ADR-0012) and nothing is written.
+ * @returns the data written, or `null`. @throws `MapDataUnavailableError` when the sidecar is not
+ *   downloaded yet, unreadable or broken – it is never overwritten; `MapDataChangedError`
+ */
+export async function updateMapData(
+  fs: FileSystem,
+  asset: AssetRef,
+  defaults: MapData,
+  change: (data: MapData) => MapData | null,
+  expected?: MapData,
+): Promise<MapData | null> {
+  const loaded = await loadSidecar(fs, asset.path);
+  if (loaded.status !== "ok" && loaded.status !== "missing")
+    throw new MapDataUnavailableError(asset.path);
+  const sidecar =
+    loaded.status === "ok"
+      ? loaded.value
+      : { schemaVersion: 1 as const, original: { hash: asset.hash } };
+  const current = sidecar.map ?? defaults;
+  if (expected && JSON.stringify(current) !== JSON.stringify(expected))
+    throw new MapDataChangedError(asset.path);
+  const next = change(current);
+  if (!next) return null;
+  await saveSidecar(fs, asset.path, { ...sidecar, map: next });
+  return next;
+}

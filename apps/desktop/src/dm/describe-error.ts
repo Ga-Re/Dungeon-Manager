@@ -1,4 +1,7 @@
-import { MapDataUnavailableError } from "@dungeon-manager/storage";
+import {
+  MapDataChangedError,
+  MapDataUnavailableError,
+} from "@dungeon-manager/storage";
 import type { TFunction } from "i18next";
 import { LibraryError } from "../platform/library.js";
 
@@ -8,6 +11,8 @@ export function describeLibraryError(t: TFunction, error: unknown): string {
     return t(`library.errors.${error.code}`);
   if (error instanceof MapDataUnavailableError)
     return t("campaign.mapData.notReadable");
+  if (error instanceof MapDataChangedError)
+    return t("campaign.mapData.changedMeanwhile");
   return t("dm.error", {
     message: error instanceof Error ? error.message : String(error),
   });

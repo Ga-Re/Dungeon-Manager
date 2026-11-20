@@ -634,3 +634,67 @@ test("the DM works on another level and shows it on the TV when ready (T-118c)",
     "freigegeben",
   );
 });
+
+test("the DM adds a level to a one-level map and renames it (T-118d)", async ({
+  page,
+}) => {
+  await page.goto(HARNESS);
+  await closeWelcome(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Szene" }).click();
+  // One level: nothing to switch yet, but the group's menu adds one.
+  await expect(page.getByRole("button", { name: "Auf TV zeigen" })).toHaveCount(
+    0,
+  );
+
+  await page.getByRole("button", { name: "Ebene", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Ebene hinzufügen …" }).click();
+  await page.getByLabel("Name der Ebene").fill("Glockenturm");
+  await page.getByRole("button", { name: "Ebene anlegen" }).click();
+  // The DM works on the new level; the TV stays on the first one.
+  await expect(
+    page.getByRole("button", { name: "Glockenturm", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Auf dem TV: Ebene 1")).toBeVisible();
+
+  await page.getByRole("button", { name: "Ebene", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Ebene umbenennen …" }).click();
+  await page.getByLabel("Name der Ebene").fill("Turmspitze");
+  await page.getByRole("button", { name: "Umbenennen" }).click();
+  await expect(
+    page.getByRole("button", { name: "Turmspitze", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("treeitem", { name: /Turmspitze/ }),
+  ).toBeVisible();
+});
+
+test("a level's own image must have the map's size (T-118d)", async ({
+  page,
+}) => {
+  await page.goto(`${HARNESS}?levelFiles`);
+  await closeWelcome(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Szene" }).click();
+  await page.getByRole("button", { name: "Ebene", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Ebene hinzufügen …" }).click();
+
+  const choose = page.getByRole("button", {
+    name: "Eigenes Bild oder Video wählen …",
+  });
+  await choose.click();
+  await expect(
+    page.getByText(
+      /klein\.png ist 800 × 500 Pixel groß, die Karte 1600 × 1000/,
+    ),
+  ).toBeVisible();
+  await choose.click();
+  await expect(page.getByText("Eigene Datei: gruft.png")).toBeVisible();
+  await page.getByLabel("Name der Ebene").fill("Gruft");
+  await page.getByRole("button", { name: "Ebene anlegen" }).click();
+  await expect(
+    page.getByRole("button", { name: "Gruft", exact: true }),
+  ).toBeVisible();
+});

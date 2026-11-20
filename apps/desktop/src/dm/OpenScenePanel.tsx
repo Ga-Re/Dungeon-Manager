@@ -1,4 +1,9 @@
-import { tableLevels, type ResolvedMap } from "@dungeon-manager/core";
+import {
+  addLevel,
+  renameLevel,
+  tableLevels,
+  type ResolvedMap,
+} from "@dungeon-manager/core";
 import type { Size } from "@dungeon-manager/renderer";
 import type { AssetRef, Polygon, Scene } from "@dungeon-manager/schema";
 import {
@@ -6,6 +11,7 @@ import {
   ensureMapData,
   loadScene,
   mapDataForChange,
+  mapKind,
   reparentScene,
   saveScene,
   type MapReset,
@@ -20,8 +26,9 @@ import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
 import { MapChangeChoice } from "./MapChangeChoice.js";
 import { levelMedia } from "../level-media.js";
-import { LevelGroup } from "./LevelGroup.js";
-import { MapView, type MapTool } from "./MapView.js";
+import { LevelGroup, type LevelFile } from "./LevelGroup.js";
+import { MapView, MapViewContext, type MapTool } from "./MapView.js";
+import { releaseVideo } from "../platform/map-images.js";
 import type { FogShape } from "./fog-shapes.js";
 import { FogToolbar } from "./FogToolbar.js";
 import { SceneTitle } from "./SceneTitle.js";
@@ -82,6 +89,7 @@ export function OpenScenePanel({
   service,
   slug,
   scene: opened,
+  newId,
   onSceneChange,
   onChanged,
   onDeleted,
@@ -91,6 +99,7 @@ export function OpenScenePanel({
   readonly service: LibraryService;
   readonly slug: string;
   readonly scene: Scene;
+  readonly newId: () => string;
   /**
    * The scene as edited and the revealed fog of the level the DM works on (T-118c), after every
    * change (browser tree).
@@ -108,6 +117,7 @@ export function OpenScenePanel({
 }) {
   const { t } = useTranslation();
   const fogLook = useContext(FogLookContext);
+  const mapImages = useContext(MapViewContext);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   // DM decision (T-152): keeping the sub-scenes is preselected.
@@ -238,6 +248,49 @@ export function OpenScenePanel({
       if (scene.map) setPendingMap(asset);
       else await applyMap(asset, {});
     });
+
+  // A level's own file must have the map's pixel size, so one calibration fits all (ADR-0012).
+  const chooseLevelFile = async (): Promise<LevelFile | null> => {
+    // Without the map's size nothing could be checked: ask before copying a file in.
+    if (!mapSize || !mapImages)
+      return { kind: "refused", message: t("level.sizeUnknown") };
+    try {
+      const asset = await service.importMap(t("campaign.mapFilter"));
+      if (!asset) return null;
+      let size: Size;
+      if (mapKind(asset.path) === "video") {
+        const video = await mapImages.loadVideo(asset.path);
+        size = { width: video.videoWidth, height: video.videoHeight };
+        releaseVideo(video);
+      } else size = await mapImages.loadImage(asset.path);
+      if (size.width === mapSize.width && size.height === mapSize.height)
+        return { kind: "fits", asset };
+      return {
+        kind: "refused",
+        message: t("level.wrongSize", {
+          file: fileName(asset.path),
+          width: size.width,
+          height: size.height,
+          mapWidth: mapSize.width,
+          mapHeight: mapSize.height,
+        }),
+      };
+    } catch (caught) {
+      return { kind: "refused", message: describeLibraryError(t, caught) };
+    }
+  };
+
+  const editLevels = async (change: Parameters<typeof session.editMap>[0]) => {
+    setError("");
+    try {
+      const changed = await session.editMap(change);
+      if (!changed) setError(t("level.notChanged"));
+      return changed;
+    } catch (caught) {
+      setError(describeLibraryError(t, caught));
+      return false;
+    }
+  };
 
   const remove = () =>
     run(async () => {
@@ -408,21 +461,38 @@ export function OpenScenePanel({
             </div>
           </Popover>
         </RibbonGroup>
-        {map &&
-          map.levels.length > 1 &&
-          levelId !== undefined &&
-          onTv !== undefined && (
-            <LevelGroup
-              levels={map.levels}
-              working={levelId}
-              onTv={onTv}
-              disabled={busy || notOnTv}
-              onWork={setPicked}
-              onShow={() => {
-                session.run({ type: "level.show", levelId });
-              }}
-            />
-          )}
+        {map && levelId !== undefined && onTv !== undefined && (
+          <LevelGroup
+            levels={map.levels}
+            working={levelId}
+            onTv={onTv}
+            disabled={busy || notOnTv}
+            // Map data does not depend on the TV, so editing it does not wait for the campaign.
+            canEdit={
+              !busy &&
+              session.mapData.status === "ready" &&
+              !session.mapData.legacy &&
+              !session.mapChanged
+            }
+            onWork={setPicked}
+            onShow={() => {
+              session.run({ type: "level.show", levelId });
+            }}
+            onChooseFile={chooseLevelFile}
+            onAdd={async (name, asset) => {
+              const id = newId();
+              const added = await editLevels((data) =>
+                addLevel(data, { id, name, ...(asset && { asset }) }),
+              );
+              // The DM goes on with the new level; the TV stays where it is (T-118c).
+              if (added) setPicked(id);
+              return added;
+            }}
+            onRename={(name) =>
+              editLevels((data) => renameLevel(data, levelId, name))
+            }
+          />
+        )}
       </ShellPortal>
       <ShellPortal slot="notices">
         {notOnTv && <p role="alert">{t("player.notShown")}</p>}
