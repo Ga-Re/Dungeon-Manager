@@ -53,6 +53,7 @@ function fakeFeed() {
     rotation: 0,
     calibrate: vi.fn(),
     showCheckSquare: vi.fn(),
+    showGrid: vi.fn(),
   };
   return { feed, shown };
 }

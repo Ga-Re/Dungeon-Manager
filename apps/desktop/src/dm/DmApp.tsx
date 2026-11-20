@@ -69,6 +69,11 @@ export function DmApp({
   const [calibrations, setCalibrations] = useState(() =>
     readCalibrations(storage),
   );
+  // Grid lines on the TV: off by default (T-106b, DM decision 2026-11-20).
+  const [tvGrid, setTvGrid] = useState(false);
+  useEffect(() => {
+    playerFeed?.showGrid(tvGrid);
+  }, [playerFeed, tvGrid]);
   // The calibration popover is open: the TV shows the check square to measure (T-106d).
   const [measuring, setMeasuring] = useState(false);
   // How big one cell is on the TV (DM, 2026-11-20): 1 inch by default, or in centimetres.
@@ -234,6 +239,19 @@ export function DmApp({
                   disabled={opening}
                   onClick={() => void openPlayerView()}
                 />
+                {playerFeed && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      checked={tvGrid}
+                      onChange={(event) => {
+                        setTvGrid(event.target.checked);
+                      }}
+                    />
+                    {t("dm.tvGrid")}
+                  </label>
+                )}
                 {calibrated && (
                   <TvCalibration
                     key={calibrationKey(calibrated)}

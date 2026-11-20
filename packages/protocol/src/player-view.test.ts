@@ -50,6 +50,25 @@ describe("parsePlayerViewMessage", () => {
     ).toBeNull();
   });
 
+  test("switches grid lines on, or leaves them off (T-106b)", () => {
+    expect(
+      parsePlayerViewMessage({
+        v: 1,
+        scene: null,
+        rotation: 0,
+        showGrid: true,
+      }),
+    ).toEqual({ v: 1, scene: null, rotation: 0, showGrid: true });
+    expect(
+      parsePlayerViewMessage({
+        v: 1,
+        scene: null,
+        rotation: 0,
+        showGrid: false,
+      }),
+    ).toBeNull();
+  });
+
   test("accepts a projected scene, or none, with a rotation", () => {
     const message = { v: PLAYER_VIEW_VERSION, scene, rotation: 90 };
     expect(parsePlayerViewMessage(message)).toEqual(message);

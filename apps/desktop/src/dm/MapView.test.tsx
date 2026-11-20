@@ -226,6 +226,22 @@ describe("MapView", () => {
     });
   });
 
+  test("draws the map's grid lines, switched in the dock (T-106b)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const grid = { cellSizePx: 100, offsetXPx: 10, offsetYPx: 0 };
+    renderView(fake.service, { grid });
+    await waitFor(() => {
+      expect(fake.view.setGrid).toHaveBeenLastCalledWith(grid);
+    });
+    const button = screen.getByRole("button", { name: "Raster anzeigen" });
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(button);
+    expect(fake.view.setGrid).toHaveBeenLastCalledWith(null);
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(button);
+    expect(fake.view.setGrid).toHaveBeenLastCalledWith(grid);
+  });
+
   test("shows the drawing tool's instructions while it is active (T-131)", () => {
     const fake = fakeMapService(() => Promise.resolve(image));
     renderView(fake.service, { tool: "reveal", shape: "polygon" });

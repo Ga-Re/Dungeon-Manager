@@ -375,11 +375,19 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-106b Grid lines
 
-- **Status:** todo · **Depends on:** T-106a · **Refs:** SPEC 2.2, ADR-0012
+- **Status:** done · **Depends on:** T-106a · **Refs:** SPEC 2.2, ADR-0012
 - Grid lines from the map's sidecar grid: in the DM window on and off per view; on the TV switchable in the display ribbon, off by default (DM decision, 2026-11-20).
 - **Acceptance criteria**
-  - [ ] Grid lines line up with the map's cells in both views and all rotations (renderer screenshot test)
-- **Notes:** From T-134b: the open scene's map data is held while it changes on disk; this task's own sidecar writes update the shown data first (`useMapData`), so their watcher echo asks nothing (test).
+  - [x] Grid lines line up with the map's cells in both views and all rotations (renderer screenshot test)
+- **Notes:** The renderer draws the lines (`setGrid`, one device pixel wide at any zoom) between the map and the fog, so hidden areas stay black, lines included. DM window: the dock's grid button, on by default (per view, not stored). TV: "Raster auf dem TV" in the display ribbon group, off by default; the player-view message carries `showGrid: true`. From T-134b: the open scene's map data is held while it changes on disk; this task's own sidecar writes update the shown data first (`useMapData`), so their watcher echo asks nothing (test).
+
+### T-239 No webview context menu in the app's windows
+
+- **Status:** todo · **Depends on:** – · **Refs:** ARCHITECTURE §15
+- A right click outside the app's own context menus opens the webview's menu ("Reload", in development also "Inspect Element"), also on the TV where the players see it. Suppress it in the DM and player windows; text fields keep their copy/paste menu; own context menus (tree) stay; in development the inspector stays reachable (e.g. with ⌥ held).
+- **Acceptance criteria**
+  - [ ] No webview menu on a right click in the DM window outside text fields and on the TV (component/E2E test)
+- **Notes:** From the DM (2026-11-20): noticed the "reload"/"inspect element" menu; taken into the list only.
 
 ### T-106c Move the TV's view
 

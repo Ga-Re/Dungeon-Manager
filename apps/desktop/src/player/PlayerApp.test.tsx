@@ -164,6 +164,26 @@ describe("PlayerApp", () => {
     expect(square?.hidden).toBe(true);
   });
 
+  test("draws grid lines only when the DM switched them on for the TV (T-106b)", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const scene = sceneWith("library/maps/a.png");
+    feed.send({ v: 1, scene, rotation: 0 });
+    await waitFor(() => {
+      expect(maps.view.setGrid).toHaveBeenLastCalledWith(null);
+    });
+    feed.send({ v: 1, scene, rotation: 0, showGrid: true });
+    await waitFor(() => {
+      expect(maps.view.setGrid).toHaveBeenLastCalledWith(scene.map?.grid);
+    });
+    feed.send({ v: 1, scene: null, rotation: 0, showGrid: true });
+    await waitFor(() => {
+      expect(maps.view.setGrid).toHaveBeenLastCalledWith(null);
+    });
+  });
+
   test("removes the old map at once when the scene changes or closes", async () => {
     const { maps, feed } = renderPlayer();
     await waitFor(() => {

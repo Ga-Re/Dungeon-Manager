@@ -60,3 +60,20 @@ test("sends the TV's calibration, again when the player window reloads, and leav
   expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0 });
   expect("scale" in (sent.at(-1) ?? {})).toBe(false);
 });
+
+test("switches grid lines on the TV, off by default (T-106b)", () => {
+  const sent: PlayerViewMessage[] = [];
+  const feed = createPlayerFeedSender(
+    (message) => sent.push(message),
+    () => undefined,
+  );
+  feed.showGrid(true);
+  expect(sent.at(-1)).toEqual({
+    v: 1,
+    scene: null,
+    rotation: 0,
+    showGrid: true,
+  });
+  feed.showGrid(false);
+  expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0 });
+});

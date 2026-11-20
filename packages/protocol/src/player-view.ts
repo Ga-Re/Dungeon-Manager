@@ -30,6 +30,8 @@ export const playerViewMessageSchema = z.strictObject({
     .optional(),
   /** A check square of this many physical pixels for the DM to measure (T-106d). */
   checkSquarePx: z.number().positive().optional(),
+  /** Grid lines over the map, from the scene map's grid (T-106b); off when absent. */
+  showGrid: z.literal(true).optional(),
 });
 
 /** How the TV is calibrated (T-106a). */
@@ -46,6 +48,7 @@ export interface PlayerViewMessage {
   readonly rotation: 0 | 90 | 180 | 270;
   readonly scale?: PlayerViewScale | undefined;
   readonly checkSquarePx?: number | undefined;
+  readonly showGrid?: true | undefined;
 }
 
 /** Validates a received message; `null` if it is not a valid player-view message. */

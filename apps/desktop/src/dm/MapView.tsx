@@ -19,9 +19,9 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
-import type { Polygon } from "@dungeon-manager/schema";
+import type { Grid as GridCalibration, Polygon } from "@dungeon-manager/schema";
 import { IconButton } from "@dungeon-manager/ui";
-import { RotateCw, Scan, ZoomIn, ZoomOut } from "lucide-react";
+import { Grid3x3, RotateCw, Scan, ZoomIn, ZoomOut } from "lucide-react";
 import { ShellPortal } from "./shell/slots.js";
 import { useTranslation } from "react-i18next";
 import { FogPreview } from "./FogPreview.js";
@@ -75,6 +75,7 @@ export function MapView({
   fade = 0,
   onArea,
   onMapSize,
+  grid = null,
 }: {
   readonly path: string;
   /** Video maps play in a `<video>` under the canvas (ADR-0010). */
@@ -96,8 +97,14 @@ export function MapView({
   /** An area the DM marked with the reveal or hide tool, in map pixels. */
   readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
   readonly onMapSize?: (size: Size) => void;
+  /** The map's grid (sidecar calibration); its lines can be shown in this view (T-106b). */
+  readonly grid?: GridCalibration | null;
 }) {
   const { t } = useTranslation();
+  // Grid lines in the DM's view: on by default, switched in the dock (T-106b).
+  const [showGrid, setShowGrid] = useState(true);
+  const gridNow = useRef<GridCalibration | null>(null);
+  gridNow.current = showGrid ? grid : null;
   const service = useContext(MapViewContext);
   const host = useRef<HTMLDivElement>(null);
   const renderer = useRef<Renderer | null>(null);
@@ -183,6 +190,7 @@ export function MapView({
         renderer.current = view;
         view.resize(current);
         view.setFog(fogNow.current, fogOptionsNow.current);
+        view.setGrid(gridNow.current);
         let imageSize: Size;
         if (loaded instanceof HTMLVideoElement) {
           canvas.before(loaded);
@@ -237,6 +245,13 @@ export function MapView({
   useEffect(() => {
     if (camera) renderer.current?.setCamera(camera);
   }, [camera]);
+
+  const gridCell = grid?.cellSizePx;
+  const gridX = grid?.offsetXPx;
+  const gridY = grid?.offsetYPx;
+  useEffect(() => {
+    renderer.current?.setGrid(gridNow.current);
+  }, [showGrid, gridCell, gridX, gridY]);
 
   // The fade duration applies to the next change; changing it alone redraws nothing.
   const fadeNow = useRef(fade);
@@ -509,6 +524,15 @@ export function MapView({
               change((current, view) =>
                 zoomAt(current, KEY_ZOOM, centre(view), view),
               );
+            }}
+          />
+          <IconButton
+            icon={<Grid3x3 />}
+            label={t("mapView.grid")}
+            pressed={showGrid}
+            disabled={load !== "ready" || !grid}
+            onClick={() => {
+              setShowGrid((current) => !current);
             }}
           />
           <IconButton

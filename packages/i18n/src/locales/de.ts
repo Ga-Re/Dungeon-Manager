@@ -12,6 +12,7 @@ export const de = {
     loadingDisplays: "Displays werden gesucht …",
     openPlayerView: "Spieleransicht öffnen",
     playerViewOpened: "Spieleransicht läuft auf {{name}}.",
+    tvGrid: "Raster auf dem TV",
     cellSize: {
       label: "Feldgröße auf dem TV",
       hint: "So groß ist ein Rasterfeld auf einem kalibrierten TV – passend zu den Minis (meist 1 Zoll = 2,54 cm).",
@@ -262,6 +263,7 @@ export const de = {
     rotate: "Drehen",
     zoomIn: "Vergrößern",
     zoomOut: "Verkleinern",
+    grid: "Raster anzeigen",
   },
   level: {
     group: "Ebene",
