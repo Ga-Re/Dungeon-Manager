@@ -128,7 +128,7 @@ The DM window has five workspaces, each with its own ribbon tabs and documents (
 - Static images: PNG, JPG, WebP
 - Animated maps: MP4, WebM
 - **Universal VTT import** (`.dd2vtt`, `.uvtt`) from Dungeondraft or Dungeon Alchemist, including walls, doors and light sources
-- **Multiple levels:** floors, cellar, roof, switchable per level
+- **Multiple levels:** floors, cellar, roof, switchable per level. The DM adds and renames levels of a map in every scene at once; a level may have its own image or video of the map's size, so one calibration fits all levels (T-118d, ADR-0012)
 
 ### 3.2 Presentation
 

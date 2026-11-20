@@ -11,6 +11,7 @@ import { fakeLibraryService } from "./fake-library.test-data.js";
 import { MapViewContext } from "./MapView.js";
 import { OpenScenePanel } from "./OpenScenePanel.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
+import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
 
 const campaign = JSON.stringify({
   schemaVersion: 2,
@@ -87,6 +88,7 @@ function renderScene(opened: Scene, levels: readonly Level[] = towerLevels) {
             service={library.service}
             slug="mine"
             scene={opened}
+            newId={() => "new-level"}
             onChanged={() => undefined}
             onDeleted={() => undefined}
             onClose={() => undefined}
@@ -99,7 +101,11 @@ function renderScene(opened: Scene, levels: readonly Level[] = towerLevels) {
     JSON.parse(
       library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
     ) as Scene;
-  return { shown, maps, saved };
+  const sidecar = () =>
+    JSON.parse(
+      library.fs.files().get("library/maps/turm.png.dm.json") ?? "{}",
+    ) as { map: { levels: Level[] } };
+  return { shown, maps, saved, library, sidecar };
 }
 
 // The map view only loads with a size; jsdom lays nothing out.
@@ -209,5 +215,117 @@ describe("level switcher", () => {
         ),
       ).toBe(1000);
     });
+  });
+});
+
+describe("adding and renaming levels (T-118d)", () => {
+  const openLevelMenu = async (item: string) => {
+    fireEvent.click(await screen.findByRole("button", { name: "Ebene" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: item }));
+  };
+  const mapLoaded = async () => {
+    const revealAll = await screen.findByRole("button", {
+      name: "Alles aufdecken",
+    });
+    await waitFor(() => {
+      expect(revealAll).toHaveProperty("disabled", false);
+    });
+  };
+
+  test("a map with one level gets a second one; the DM works on it, the TV stays", async () => {
+    const { sidecar, shown, library } = renderScene(
+      tower,
+      towerLevels.slice(0, 1),
+    );
+    await mapLoaded();
+    expect(screen.queryByRole("button", { name: "Auf TV zeigen" })).toBeNull();
+    await openLevelMenu("Ebene hinzufügen …");
+    expect(
+      screen.getByText("Ohne eigene Datei zeigt die Ebene das Bild der Karte."),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Name der Ebene"), {
+      target: { value: " Dachboden " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ebene anlegen" }));
+    await waitFor(() => {
+      expect(sidecar().map.levels).toEqual([
+        { id: "ground", name: "Erdgeschoss" },
+        { id: "new-level", name: "Dachboden" },
+      ]);
+    });
+    expect(
+      await screen.findByRole("button", { name: "Dachboden" }),
+    ).toBeTruthy();
+    expect(shown.at(-1)?.map?.currentLevelId).toBe("ground");
+    expect(JSON.stringify(shown)).not.toContain("Dachboden");
+    // Our own write coming back from the watcher is no change from elsewhere.
+    library.emit(["library/maps/turm.png.dm.json"]);
+    await new Promise((resolve) => setTimeout(resolve, RELOAD_DELAY_MS + 100));
+    expect(screen.queryByText(/wurden geändert/)).toBeNull();
+  });
+
+  test("a level's own file must have the map's size", async () => {
+    const { sidecar, library } = renderScene(tower, towerLevels.slice(0, 1));
+    await mapLoaded();
+    await openLevelMenu("Ebene hinzufügen …");
+    library.service.importMap.mockResolvedValueOnce({
+      path: "library/maps/keller.png",
+      hash,
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Eigenes Bild oder Video wählen …" }),
+    );
+    expect(
+      await screen.findByText(
+        /keller\.png ist 800 × 600 Pixel groß, die Karte 1000 × 500/,
+      ),
+    ).toBeTruthy();
+    library.service.importMap.mockResolvedValueOnce({
+      path: "library/maps/gruft.png",
+      hash,
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Eigenes Bild oder Video wählen …" }),
+    );
+    expect(await screen.findByText("Eigene Datei: gruft.png")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Name der Ebene"), {
+      target: { value: "Gruft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ebene anlegen" }));
+    await waitFor(() => {
+      expect(sidecar().map.levels.at(-1)).toEqual({
+        id: "new-level",
+        name: "Gruft",
+        asset: { path: "library/maps/gruft.png", hash },
+      });
+    });
+  });
+
+  test("a new name reaches the TV only for levels the players have seen", async () => {
+    const { sidecar, shown } = renderScene(tower);
+    await mapLoaded();
+    await openLevelMenu("Ebene umbenennen …");
+    const name = screen.getByLabelText("Name der Ebene");
+    expect(name).toHaveProperty("value", "Erdgeschoss");
+    fireEvent.change(name, { target: { value: "Hof" } });
+    fireEvent.click(screen.getByRole("button", { name: "Umbenennen" }));
+    await waitFor(() => {
+      expect(shown.at(-1)?.map?.levels).toEqual([
+        { id: "ground", name: "Hof" },
+      ]);
+    });
+
+    // The cellar is not shown yet: its new name stays on the DM's side.
+    fireEvent.click(screen.getByRole("button", { name: "Hof" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Keller" }));
+    await openLevelMenu("Ebene umbenennen …");
+    fireEvent.change(screen.getByLabelText("Name der Ebene"), {
+      target: { value: "Geheimgang" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Umbenennen" }));
+    await waitFor(() => {
+      expect(sidecar().map.levels[1]?.name).toBe("Geheimgang");
+    });
+    expect(JSON.stringify(shown)).not.toContain("Geheimgang");
   });
 });

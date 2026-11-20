@@ -370,3 +370,28 @@ export async function deleteSession(
     throw new Error(`Invalid session id: ${sessionId}`);
   return fs.moveToTrash(sessionFile(slug, sessionId));
 }
+
+/**
+ * Changes a map's global data in its sidecar (e.g. a new level, T-118d): `change` gets the map's
+ * data – `defaults` while it has none – and returns the new data, or `null` to write nothing.
+ * @returns the data written, or `null`. @throws `MapDataUnavailableError` when the sidecar is not
+ *   downloaded yet, unreadable or broken – it is never overwritten
+ */
+export async function updateMapData(
+  fs: FileSystem,
+  asset: AssetRef,
+  defaults: MapData,
+  change: (data: MapData) => MapData | null,
+): Promise<MapData | null> {
+  const loaded = await loadSidecar(fs, asset.path);
+  if (loaded.status !== "ok" && loaded.status !== "missing")
+    throw new MapDataUnavailableError(asset.path);
+  const sidecar =
+    loaded.status === "ok"
+      ? loaded.value
+      : { schemaVersion: 1 as const, original: { hash: asset.hash } };
+  const next = change(sidecar.map ?? defaults);
+  if (!next) return null;
+  await saveSidecar(fs, asset.path, { ...sidecar, map: next });
+  return next;
+}

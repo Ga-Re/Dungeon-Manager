@@ -211,6 +211,18 @@ export const de = {
     pick: "Ebene zum Bearbeiten",
     showOnTv: "Auf TV zeigen",
     onTv: "Auf dem TV: {{name}}",
+    add: "Ebene hinzufügen …",
+    rename: "Ebene umbenennen …",
+    name: "Name der Ebene",
+    create: "Ebene anlegen",
+    renameConfirm: "Umbenennen",
+    chooseFile: "Eigenes Bild oder Video wählen …",
+    ownFile: "Eigene Datei: {{file}}",
+    noOwnFile: "Ohne eigene Datei zeigt die Ebene das Bild der Karte.",
+    wrongSize:
+      "{{file}} ist {{width}} × {{height}} Pixel groß, die Karte {{mapWidth}} × {{mapHeight}}. Wähle eine Datei in der Größe der Karte, damit Raster und Nebel auf allen Ebenen passen.",
+    sizeUnknown:
+      "Die Größe der Karte ist noch nicht bekannt. Warte, bis die Karte geladen ist, und wähle die Datei erneut.",
   },
   fog: {
     tool: "Werkzeug",

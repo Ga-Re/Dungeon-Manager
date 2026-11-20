@@ -1096,6 +1096,7 @@ export function CampaignPanel({
           service={service}
           slug={slug}
           scene={openScene}
+          newId={newId}
           subScenes={{
             direct: hierarchy.childrenOf(openScene.id),
             all: hierarchy.descendantsOf(openScene.id),

@@ -1,4 +1,4 @@
-import { sceneSchema, type Scene } from "@dungeon-manager/schema";
+import { sceneSchema, type MapData, type Scene } from "@dungeon-manager/schema";
 import { describe, expect, test } from "vitest";
 import {
   createCampaign,
@@ -13,6 +13,7 @@ import {
   mapDataForChange,
   mapKind,
   saveSidecar,
+  updateMapData,
   withMap,
   isValidSlug,
   loadCampaign,
@@ -469,5 +470,53 @@ describe("sub-scenes (T-152)", () => {
     await expect(reparentScene(fs, "mine", "gone", null)).rejects.toThrow(
       "cannot be read",
     );
+  });
+});
+
+describe("updateMapData (T-118d)", () => {
+  const asset = {
+    path: "library/maps/turm.png",
+    hash: `sha256:${"a".repeat(64)}`,
+  };
+  const defaults: MapData = {
+    grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+    levels: [{ id: DEFAULT_LEVEL_ID, name: "Erdgeschoss" }],
+    rooms: [],
+  };
+  const addCellar = (data: MapData): MapData => ({
+    ...data,
+    levels: [...data.levels, { id: "cellar", name: "Keller" }],
+  });
+
+  test("a map without data starts from the defaults, keeping other sidecar fields", async () => {
+    const fs = createMemoryFileSystem();
+    await saveSidecar(fs, asset.path, {
+      schemaVersion: 1,
+      original: { hash: asset.hash },
+      tags: ["Turm"],
+    });
+    expect(await updateMapData(fs, asset, defaults, addCellar)).toEqual(
+      addCellar(defaults),
+    );
+    expect(await loadSidecar(fs, asset.path)).toMatchObject({
+      value: { tags: ["Turm"], map: addCellar(defaults) },
+    });
+  });
+
+  test("nothing is written when the change is refused or the sidecar cannot be read", async () => {
+    const fs = createMemoryFileSystem({
+      "library/maps/kaputt.png.dm.json": "{",
+    });
+    expect(await updateMapData(fs, asset, defaults, () => null)).toBeNull();
+    expect(fs.files().has("library/maps/turm.png.dm.json")).toBe(false);
+    await expect(
+      updateMapData(
+        fs,
+        { ...asset, path: "library/maps/kaputt.png" },
+        defaults,
+        addCellar,
+      ),
+    ).rejects.toThrow(MapDataUnavailableError);
+    expect(fs.files().get("library/maps/kaputt.png.dm.json")).toBe("{");
   });
 });

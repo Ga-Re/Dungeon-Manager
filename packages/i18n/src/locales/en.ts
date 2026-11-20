@@ -210,6 +210,18 @@ export const en: Messages = {
     pick: "Level to edit",
     showOnTv: "Show on TV",
     onTv: "On the TV: {{name}}",
+    add: "Add level …",
+    rename: "Rename level …",
+    name: "Level name",
+    create: "Add level",
+    renameConfirm: "Rename",
+    chooseFile: "Choose own image or video …",
+    ownFile: "Own file: {{file}}",
+    noOwnFile: "Without its own file, the level shows the map's image.",
+    wrongSize:
+      "{{file}} is {{width}} × {{height}} pixels, the map {{mapWidth}} × {{mapHeight}}. Choose a file of the map's size so grid and fog fit on every level.",
+    sizeUnknown:
+      "The map's size is not known yet. Wait until the map has loaded and choose the file again.",
   },
   fog: {
     tool: "Tool",

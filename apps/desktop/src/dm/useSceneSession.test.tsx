@@ -93,6 +93,7 @@ function renderScene(
             service={library.service}
             slug="mine"
             scene={opened}
+            newId={() => "new-level"}
             onChanged={() => undefined}
             onDeleted={() => undefined}
             onClose={() => undefined}
