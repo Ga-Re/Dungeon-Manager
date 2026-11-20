@@ -145,6 +145,8 @@ export function PlayerApp({
       if (!view) return;
       const map = next.scene?.map ?? null;
       showCheckSquare();
+      // Grid lines only when the DM switched them on for the TV (T-106b); under the fog.
+      view.setGrid(map && next.showGrid === true ? map.grid : null);
       // Fog first: everything not revealed on the shown level stays covered.
       applyFog(view, next, sameScene);
       if (!map || !media) {

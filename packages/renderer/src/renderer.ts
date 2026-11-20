@@ -56,6 +56,41 @@ export interface RendererOptions {
   readonly now?: () => number;
 }
 
+/** A map's grid, in map pixels (the sidecar's calibration), and how its lines look. */
+export interface GridLines {
+  readonly cellSizePx: number;
+  readonly offsetXPx: number;
+  readonly offsetYPx: number;
+  /** `#rrggbb`; white by default. */
+  readonly color?: string;
+  /** 0–1; 0.35 by default, visible on dark and light maps without hiding them. */
+  readonly alpha?: number;
+}
+
+/**
+ * Most grid lines drawn per axis: more would freeze the view (a sidecar with a tiny cell size)
+ * and could not be told apart on screen anyway.
+ */
+export const MAX_GRID_LINES = 2000;
+
+/**
+ * The x (or y) positions of grid lines across `length` map pixels; none when there would be
+ * more than {@link MAX_GRID_LINES}.
+ */
+export function gridLinePositions(
+  length: number,
+  cellSizePx: number,
+  offsetPx: number,
+): number[] {
+  if (!(cellSizePx > 0) || !(length > 0)) return [];
+  if (length / cellSizePx > MAX_GRID_LINES) return [];
+  const positions: number[] = [];
+  // The first line inside the map: the offset moved back by whole cells.
+  const first = offsetPx - Math.floor(offsetPx / cellSizePx) * cellSizePx;
+  for (let at = first; at <= length; at += cellSizePx) positions.push(at);
+  return positions;
+}
+
 /**
  * Draws one view of a scene (ARCHITECTURE §8). For now the map layer only; grid, tokens and
  * fog follow in later tasks. It draws on demand – once per change, in the next animation
@@ -77,6 +112,11 @@ export interface Renderer {
    * view must never draw a map without its fog (ARCHITECTURE §5.1, ADR-0010).
    */
   setFog(revealed: readonly Polygon[] | null, options?: FogOptions): void;
+  /**
+   * Draws grid lines over the map (T-106b), under the fog – hidden areas stay covered, lines
+   * included. `null` removes them.
+   */
+  setGrid(grid: GridLines | null): void;
   setCamera(camera: Camera): void;
   resize(size: Size): void;
   /** Resolves after the next draw has been submitted (for screenshots and tests). */
@@ -112,6 +152,13 @@ export async function createRenderer(
 
   const world = new Container();
   app.stage.addChild(world);
+  // Grid lines (T-106b): above the map (which goes in at index 0), below the fog (added last).
+  const gridLayer = new Graphics();
+  world.addChild(gridLayer);
+  let gridInput: GridLines | null = null;
+  // What the drawn lines were built from: an equal request (the player view gets the whole
+  // state with every message) keeps them instead of rebuilding.
+  let gridBuiltFrom: string | null = null;
   let map: Sprite | null = null;
   let fog: Container | null = null;
   // The last fog asked for: rebuilt when the map changes, as soft edges follow the map's size.
@@ -175,6 +222,26 @@ export async function createRenderer(
   };
   options.canvas.addEventListener("webglcontextlost", onContextLost);
   options.canvas.addEventListener("webglcontextrestored", onContextRestored);
+
+  const drawGrid = () => {
+    const key = JSON.stringify([gridInput, mapSize]);
+    if (key === gridBuiltFrom) return;
+    gridBuiltFrom = key;
+    gridLayer.clear();
+    if (!gridInput || !mapSize) return;
+    const { cellSizePx, offsetXPx, offsetYPx } = gridInput;
+    for (const x of gridLinePositions(mapSize.width, cellSizePx, offsetXPx))
+      gridLayer.moveTo(x, 0).lineTo(x, mapSize.height);
+    for (const y of gridLinePositions(mapSize.height, cellSizePx, offsetYPx))
+      gridLayer.moveTo(0, y).lineTo(mapSize.width, y);
+    // One device pixel wide at any zoom.
+    gridLayer.stroke({
+      width: 1,
+      pixelLine: true,
+      color: gridInput.color ?? "#ffffff",
+      alpha: gridInput.alpha ?? 0.35,
+    });
+  };
 
   const replaceFog = (next: Container | null) => {
     if (fog) {
@@ -323,6 +390,7 @@ export async function createRenderer(
       shownFog = null;
       fogBuiltFrom = null;
       if (fogInput) applyFog();
+      drawGrid();
       requestDraw();
     },
     setVideo(next) {
@@ -352,12 +420,18 @@ export async function createRenderer(
       shownFog = null;
       fogBuiltFrom = null;
       if (fogInput) applyFog();
+      drawGrid();
       requestDraw();
     },
     setFog(revealed, fogOptions) {
       fogInput = revealed ? { revealed, options: fogOptions ?? {} } : null;
       applyFog();
       gate.fogSet();
+      requestDraw();
+    },
+    setGrid(next) {
+      gridInput = next;
+      drawGrid();
       requestDraw();
     },
     setCamera(next) {
@@ -382,8 +456,11 @@ export async function createRenderer(
     destroy() {
       destroyed = true;
       dropFade();
-      // The fog's graphics contexts too, as on every rebuild.
+      // The fog's graphics contexts too, as on every rebuild; and the grid's (Pixi keeps a
+      // Graphics' own context when destroyed with options).
       replaceFog(null);
+      world.removeChild(gridLayer);
+      gridLayer.destroy({ context: true });
       gate.destroyed();
       hideVideo();
       video?.removeEventListener("resize", onVideoResize);

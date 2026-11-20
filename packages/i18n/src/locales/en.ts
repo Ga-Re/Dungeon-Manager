@@ -13,6 +13,7 @@ export const en: Messages = {
     loadingDisplays: "Looking for displays …",
     openPlayerView: "Open player view",
     playerViewOpened: "Player view is running on {{name}}.",
+    tvGrid: "Grid on the TV",
     cellSize: {
       label: "Cell size on the TV",
       hint: "How big one grid cell is on a calibrated TV – to fit the minis (usually 1 inch = 2.54 cm).",
@@ -261,6 +262,7 @@ export const en: Messages = {
     rotate: "Rotate",
     zoomIn: "Zoom in",
     zoomOut: "Zoom out",
+    grid: "Show grid",
   },
   level: {
     group: "Level",

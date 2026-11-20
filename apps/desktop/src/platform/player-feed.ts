@@ -20,6 +20,8 @@ export interface PlayerFeedSender {
   calibrate(scale: PlayerViewScale | null): void;
   /** Shows a check square of `sidePx` physical pixels on the TV to measure, or hides it (T-106d). */
   showCheckSquare(sidePx: number | null): void;
+  /** Grid lines on the TV, off by default (T-106b). */
+  showGrid(show: boolean): void;
 }
 
 /** Player side: calls `listener` with every valid message; invalid ones are dropped. */
@@ -43,6 +45,7 @@ export function createPlayerFeedSender(
   let rotation: TvRotation = 0;
   let scale: PlayerViewScale | null = null;
   let checkSquarePx: number | null = null;
+  let grid = false;
   const publish = () => {
     send({
       v: PLAYER_VIEW_VERSION,
@@ -50,6 +53,7 @@ export function createPlayerFeedSender(
       rotation,
       ...(scale && { scale }),
       ...(checkSquarePx !== null && { checkSquarePx }),
+      ...(grid && { showGrid: true as const }),
     });
   };
   onPlayerReady(publish);
@@ -71,6 +75,10 @@ export function createPlayerFeedSender(
     },
     showCheckSquare(next) {
       checkSquarePx = next;
+      publish();
+    },
+    showGrid(next) {
+      grid = next;
       publish();
     },
   };

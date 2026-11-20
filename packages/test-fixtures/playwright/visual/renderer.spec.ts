@@ -49,6 +49,16 @@ for (const scenario of ["spread-adjacent", "spread-isolated", "spread-hide"]) {
   });
 }
 
+// Grid lines (T-106b): over the map in the DM view, also zoomed and rotated; under the fog in
+// the player view, so hidden areas stay black, lines included.
+for (const scenario of ["grid", "grid-zoomed", "grid-rotated", "player-grid"]) {
+  test(`grid lines: ${scenario}`, async ({ page }) => {
+    await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
+    await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
+    await expect(page).toHaveScreenshot(`${scenario}.png`);
+  });
+}
+
 // Video maps (T-105c, ADR-0010): the video under opaque fog, also rotated; without any fog the
 // video must stay hidden (black screen).
 for (const scenario of [
@@ -65,7 +75,9 @@ for (const scenario of [
 
 // Soft edges never show what the hard fog covers (T-136a, fail-closed): the same nested fog,
 // drawn hard and then soft, compared pixel by pixel – zoomed in, so edges span many pixels.
-test("soft fog edges never reveal more than hard ones", async ({ page }) => {
+test("soft fog edges and grid lines never reveal more than hard fog", async ({
+  page,
+}) => {
   await page.goto(`${fixturePage("renderer.html")}#fail-closed`);
   const body = page.locator("body");
   await expect(body).toHaveAttribute("data-ready", "true");

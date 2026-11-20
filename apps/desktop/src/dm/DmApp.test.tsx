@@ -187,6 +187,36 @@ describe("DmApp", () => {
     expect(screen.getByRole("heading", { name: "Game master" })).toBeDefined();
   });
 
+  test("switches grid lines on the TV, off by default (T-106b)", async () => {
+    const showGrid = vi.fn();
+    render(
+      <I18nextProvider i18n={createI18n("de")}>
+        <PlayerFeedContext
+          value={{
+            show: vi.fn(),
+            rotate: vi.fn(),
+            rotation: 0,
+            calibrate: vi.fn(),
+            showCheckSquare: vi.fn(),
+            showGrid,
+          }}
+        >
+          <DmApp
+            displayService={fakeService()}
+            libraryService={fakeLibraryService(null).service}
+            newId={() => "id-1"}
+          />
+        </PlayerFeedContext>
+      </I18nextProvider>,
+    );
+    const toggle = await screen.findByRole("switch", {
+      name: "Raster auf dem TV",
+    });
+    expect(showGrid).toHaveBeenLastCalledWith(false);
+    fireEvent.click(toggle);
+    expect(showGrid).toHaveBeenLastCalledWith(true);
+  });
+
   test("rotates the TV view in quarter turns", () => {
     const rotate = vi.fn();
     render(
@@ -198,6 +228,7 @@ describe("DmApp", () => {
             rotation: 270,
             calibrate: vi.fn(),
             showCheckSquare: vi.fn(),
+            showGrid: vi.fn(),
           }}
         >
           <DmApp
@@ -230,6 +261,7 @@ describe("DmApp", () => {
             rotation: 0,
             calibrate,
             showCheckSquare,
+            showGrid: vi.fn(),
           }}
         >
           <DmApp

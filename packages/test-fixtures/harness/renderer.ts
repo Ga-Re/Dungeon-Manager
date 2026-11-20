@@ -95,6 +95,8 @@ async function failClosedScenario(canvas: HTMLCanvasElement) {
   renderer.setCamera(cameraFor("zoomed"));
   await renderer.drawn();
   const hard = capture(canvas);
+  // With grid lines too (T-106b): they lie under the fog, so none may show where it covers.
+  renderer.setGrid({ cellSizePx: 100, offsetXPx: 50, offsetYPx: 0 });
   renderer.setFog(REVEALED_NESTED, { opacity: 1, softEdge: SOFT_EDGE });
   await renderer.drawn();
   const soft = capture(canvas);
@@ -301,19 +303,23 @@ async function main() {
     return;
   }
   const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
+  // "-grid" (T-106b): the fixture map's grid lines, 100 px cells shifted by half a cell to the
+  // right, so the test shows that offsets are followed.
+  const withGrid = scenario.includes("grid");
+  const base = scenario.replace(/^grid-?|-grid/, "");
   // The player view always gets its fog with (never after) the map.
-  const fog = fogFor(scenario);
+  const fog = fogFor(base);
   if (fog)
     renderer.setFog(fog.revealed, {
       opacity: fog.opacity,
       softEdge: fog.softEdge,
     });
   renderer.setMap(drawFixtureMap());
+  if (withGrid)
+    renderer.setGrid({ cellSizePx: 100, offsetXPx: 50, offsetYPx: 0 });
   renderer.setCamera(
     cameraFor(
-      scenario
-        .replace(/^(player-nested|player|dm-fog)-?/, "")
-        .replace("soft", ""),
+      base.replace(/^(player-nested|player|dm-fog)-?/, "").replace("soft", ""),
     ),
   );
   await renderer.drawn();
