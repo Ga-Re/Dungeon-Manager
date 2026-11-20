@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172, T-174, T-223, T-114, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223, T-114, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -378,7 +378,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-107 Tokens: create, place, move
 
-- **Status:** todo · **Depends on:** T-102b, T-106, T-172, T-174, T-180a · **Refs:** SPEC 5
+- **Status:** todo · **Depends on:** T-102b, T-106, T-172a, T-174, T-180a · **Refs:** SPEC 5
 - Tokens with D&D size categories; tap-token-tap-cell, drag, keyboard shortcuts, group move; snapping.
 - **Acceptance criteria**
   - [ ] All move modes covered by component/E2E tests
@@ -443,7 +443,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-111 Initiative tracker
 
-- **Status:** todo · **Depends on:** T-102b, T-172 · **Refs:** SPEC 11
+- **Status:** todo · **Depends on:** T-102b, T-172a · **Refs:** SPEC 11
 - Order, rounds, active turn (highlight on TV), delay/ready, quick entry.
 - **Acceptance criteria**
   - [ ] Reducer tests for all initiative commands
@@ -460,7 +460,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-113 Blackout button and DM preview of the player view
 
-- **Status:** todo · **Depends on:** T-105b, T-172
+- **Status:** todo · **Depends on:** T-105b, T-172a
 - Instant black/pause image in the player window; small live preview of the player view in the DM window as a floating HUD panel (ARCHITECTURE §15).
 - **Acceptance criteria**
   - [ ] Blackout reachable by button and keyboard shortcut; E2E test
@@ -865,19 +865,41 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] The selector lists the five workspaces with translated names; a remembered workspace of the old ids still opens (component test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
-### T-172 Dockable panel system with named layouts
+### T-172a Panel frame: dockable panels in the DM window
 
-- **Status:** todo · **Depends on:** T-171 · **Refs:** ADR-0017, ADR-0014, ARCHITECTURE §15
-- Every workspace is made of panels – the map too – that can be moved, resized, docked to the window's edges or to each other, folded, and shown or hidden from the View menu (macOS menu bar; "Menü" button elsewhere). Each workspace has a default layout (e.g. the Atlas's five zones, the Orchestrator's map with side bars) and the DM's own named layouts ("Kampf", "Erkundung"), stored per device; "Layout zurücksetzen" restores the default. Panels keep their state while hidden, and the Game-Orchestrator's panels stay mounted while another workspace shows.
+- **Status:** done · **Depends on:** T-171 · **Refs:** ADR-0017, ADR-0014, ARCHITECTURE §15
+- The fixed zones below the ribbon become dockview panels: Daten (data panel), Karte (the map), Browser and Eigenschaften. They can be resized, moved and docked to the edges or each other with the mouse, and shown or hidden from the View menu (macOS menu bar; "Menü" button elsewhere; Cmd/Ctrl+B for Daten). Default layout (DM decision, 2026-11-20): Daten left, the map in the middle, Browser over Eigenschaften in a column on the right. The layout is stored per device and restored on start; "Layout zurücksetzen" restores the default. Panel contents keep their state while hidden or moved (the slots are stable elements the panels adopt).
 - **Acceptance criteria**
-  - [ ] Move, resize, dock, fold and hide panels with mouse and keyboard; layouts survive a restart (component + E2E tests)
-  - [ ] Named layouts per workspace and device; reset to the default
+  - [x] Resize, move, dock and hide panels with the mouse and from the View menu; the layout survives a restart; a broken stored layout falls back to the default (component + E2E tests)
+  - [x] "Layout zurücksetzen" restores the default
+  - [x] Hiding and showing a panel keeps its content's state (e.g. the map stays loaded)
+  - [x] DM-window screenshots of the default layout
+- **Notes:** Split of T-172 (DM, 2026-11-20). Dependency `dockview` (MIT, free edition) approved by the DM (2026-11-20). Keyboard docking and auto-hide are dockview-enterprise modules; the DM chose own commands instead (T-172b). React bindings come from `dockview-react` (same project, MIT, depends only on `dockview`). The floating tool windows (`HudPanel`, T-158/T-159) are gone: Browser and Eigenschaften are panels.
+
+### T-172b Panels by keyboard and folding
+
+- **Status:** todo · **Depends on:** T-172a · **Refs:** ADR-0017
+- Every panel has a menu and keyboard commands: dock left/right/bottom, float, fold to its title, hide (DM decision, 2026-11-20: own commands on the free dockview API, no enterprise modules).
+- **Acceptance criteria**
+  - [ ] Move, dock, fold and hide panels with the keyboard only (E2E test); the commands are announced to screen readers
+
+### T-172c Named layouts
+
+- **Status:** todo · **Depends on:** T-172a · **Refs:** ADR-0017
+- The DM saves the current layout under a name ("Kampf", "Erkundung"), per workspace and device, and switches between them from the View menu.
+- **Acceptance criteria**
+  - [ ] Save, switch, rename and delete named layouts per workspace; they survive a restart (component + E2E tests)
+
+### T-172d Default layouts of the other workspaces
+
+- **Status:** todo · **Depends on:** T-172a, T-176 · **Refs:** ADR-0017, SPEC §2.5
+- Each workspace gets its own default layout and stored layout once it has its own panels (e.g. the Atlas's five zones with T-181, Map Forge with T-176).
+- **Acceptance criteria**
   - [ ] A DM-window screenshot per workspace's default layout
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). Whether to use a docking library or build it is a dependency decision for the DM (structured proposal with the task); panels are placed with the `ui-design` skill and ADR-0015's look.
 
 ### T-173 Browser as the open document's object tree; campaign explorer in the Atlas
 
-- **Status:** todo · **Depends on:** T-172 · **Refs:** ADR-0017, T-158
+- **Status:** todo · **Depends on:** T-172a · **Refs:** ADR-0017, T-158
 - The browser lists the objects of the open document (map, levels, fog; later masks, rooms, props, tokens), like layers. Today's campaign tree (sessions, scenes, notes, sub-scenes, context menus) moves into the Campaign Atlas data panel as the campaign explorer.
 - **Acceptance criteria**
   - [ ] Browser shows the open scene's objects and only where a document is open
@@ -886,7 +908,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-174 Undo per document; tools reset when leaving the Orchestrator
 
-- **Status:** todo · **Depends on:** T-172 · **Refs:** ADR-0017, ARCHITECTURE §5.1
+- **Status:** todo · **Depends on:** T-172a · **Refs:** ADR-0017, ARCHITECTURE §5.1
 - Each open document (map, asset, creature, scene) has its own undo history; Cmd/Ctrl+Z acts on the active workspace's document. Leaving the Orchestrator drops the fog tool back to panning (from the T-156 review).
 - **Acceptance criteria**
   - [ ] Undo in one workspace never changes another workspace's document (component test)
@@ -895,7 +917,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-175 Pause and title screen for the TV, with a setting
 
-- **Status:** todo · **Depends on:** T-105b, T-155, T-172 · **Refs:** SPEC §2.2, §2.5, ADR-0017
+- **Status:** todo · **Depends on:** T-105b, T-155, T-172a · **Refs:** SPEC §2.2, §2.5, ADR-0017
 - A pause/title image (self-made default) on the TV from a button in the Orchestrator. Setting "TV outside the Orchestrator": pause only on the button, always pause, or pause only in the editing workspaces (Map Forge, Asset Vault, Tokens & Kreaturen).
 - **Acceptance criteria**
   - [ ] The pause screen hides the scene completely and fail-closed (screenshot + E2E test)
@@ -904,7 +926,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-182 Game-Orchestrator: scene bar and group overview
 
-- **Status:** todo · **Depends on:** T-172, T-174, T-175, T-111, T-112 · **Refs:** SPEC §2.5, §13.2
+- **Status:** todo · **Depends on:** T-172a, T-174, T-175, T-111, T-112 · **Refs:** SPEC §2.5, §13.2
 - A scene bar with the session's scenes; the next scene can be prepared quickly (fog) without touching the TV and then switched live. A group overview shows all player characters with HP, conditions and concentration. Default layout: the map large, initiative, group, dice and the inspector as small panels the DM shows or hides from the View menu and docks where they like (T-172); the dock holds zoom, TV preview, pause and blackout.
 - **Acceptance criteria**
   - [ ] Preparing the next scene never changes the TV (E2E test)
@@ -913,7 +935,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-223 Document tabs
 
-- **Status:** todo · **Depends on:** T-172 · **Refs:** ADR-0017, ADR-0011
+- **Status:** todo · **Depends on:** T-172a · **Refs:** ADR-0017, ADR-0011
 - Several documents open at once – the campaign's Atlas, scenes, maps, assets, creatures – as tabs in the title bar with an unsaved-changes dot; each tab keeps its own undo history (T-174).
 - **Acceptance criteria**
   - [ ] Open, switch and close document tabs by mouse and keyboard (component + E2E test)
@@ -922,7 +944,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-176 Map Forge: open and edit library maps
 
-- **Status:** todo · **Depends on:** T-124, T-134b, T-172 · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
+- **Status:** todo · **Depends on:** T-124, T-134b, T-172a · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
 - The Map Forge opens a map from the library (data panel) as its document, without a scene. Ribbon tabs for the map's data; the browser lists levels, rooms, masks and props. First content: map metadata (name, cell size, ambient sound, transition, fog effect) in the sidecar.
 - **Acceptance criteria**
   - [ ] The map library is organised in folders (an imported pack keeps its structure) and tags, with search
@@ -951,7 +973,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-178 Asset Vault: library, metadata and search
 
-- **Status:** todo · **Depends on:** T-124, T-125, T-126, T-172 · **Refs:** SPEC §2.5, §8.2, ADR-0017
+- **Status:** todo · **Depends on:** T-124, T-125, T-126, T-172a · **Refs:** SPEC §2.5, §8.2, ADR-0017
 - The Asset Vault opens assets from the library: props, map pieces (tiles, terrain textures), handout images and sounds. Metadata combines fixed fields (type, environment/theme, origin/licence), free tags and fields the DM defines (T-232); search, collections, favourites and recently used. Each asset's size is set in grid cells (e.g. 2×1); a preview on a 5-ft grid shows it.
 - **Acceptance criteria**
   - [ ] Find assets by theme, type and tags; collections and favourites persist (component + E2E test)
@@ -987,7 +1009,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-180 Creature library: player characters and creatures
 
-- **Status:** todo · **Depends on:** T-107, T-172, T-180a · **Refs:** SPEC §2.5, §5, §11
+- **Status:** todo · **Depends on:** T-107, T-172a, T-180a · **Refs:** SPEC §2.5, §5, §11
 - Global creatures (DM decision: player characters too, campaigns refer to them). Values follow a D&D 5e core that the DM can extend with own fields: HP with dice formula, AC, initiative modifier, speeds, size with grid footprint and pivot, senses (sight, darkvision) for vision; actions, spells and tactics go into a Markdown note. The DM maintains the player characters' values (players keep paper sheets). Look per creature: a round token with ring or a cut-out top-down figure; token picture and portrait. Per-session state (HP, conditions) stays in the scene/session state.
 - **Acceptance criteria**
   - [ ] Create and edit a creature; a token placed from it carries its values (component + E2E test)

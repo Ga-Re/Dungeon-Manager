@@ -2,7 +2,17 @@
 // a menu button in the DM window's title bar (DM decision, 2026-11-19).
 
 /** Commands the app menu offers; the DM window decides what they do. */
-export const APP_COMMANDS = ["newCampaign", "welcome", "settings"] as const;
+export const APP_COMMANDS = [
+  "newCampaign",
+  "welcome",
+  "settings",
+  // View menu (T-172a): panels on and off, back to the default layout.
+  "toggleData",
+  "toggleMap",
+  "toggleBrowser",
+  "toggleDetails",
+  "resetLayout",
+] as const;
 export type AppCommand = (typeof APP_COMMANDS)[number];
 
 /** Whether `value` is one of the app's commands (e.g. a menu item's id). */
@@ -35,6 +45,14 @@ export interface AppMenuLabels {
   readonly minimize: string;
   readonly zoom: string;
   readonly fullscreen: string;
+  readonly view: string;
+  /** The View menu's panel entries: their command, name and whether the panel shows. */
+  readonly panels: readonly {
+    readonly command: AppCommand;
+    readonly text: string;
+    readonly checked: boolean;
+  }[];
+  readonly resetLayout: string;
 }
 
 /** The platform's app menu. */

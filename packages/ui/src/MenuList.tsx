@@ -24,6 +24,11 @@ export interface MenuItem {
    * `false`; leaving it out makes a plain command.
    */
   checked?: boolean | undefined;
+  /**
+   * An on/off setting rather than one of a set (T-172a, e.g. a panel shown or hidden): announced
+   * as a checkbox item with `checked` as its state.
+   */
+  toggle?: boolean | undefined;
   disabled?: boolean | undefined;
 }
 
@@ -155,7 +160,13 @@ export function MenuList({
             entries.current[index] = element;
           }}
           type="button"
-          role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+          role={
+            item.checked === undefined
+              ? "menuitem"
+              : item.toggle === true
+                ? "menuitemcheckbox"
+                : "menuitemradio"
+          }
           aria-checked={item.checked}
           tabIndex={-1}
           aria-disabled={item.disabled === true ? true : undefined}

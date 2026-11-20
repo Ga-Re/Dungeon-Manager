@@ -24,6 +24,13 @@ const sceneFile = (id: string, name: string) =>
     initiative: null,
   });
 
+/** The details panel's content (in the window, the Eigenschaften panel names it). */
+function detailsPanel(): HTMLElement {
+  const element = document.querySelector<HTMLElement>(".dm-details-body-wrap");
+  if (!element) throw new Error("details panel missing");
+  return element;
+}
+
 function renderCampaign(library: ReturnType<typeof fakeLibraryService>) {
   let next = 0;
   return render(
@@ -510,8 +517,7 @@ describe("CampaignPanel", () => {
       }),
     });
     renderCampaign(library);
-    const details = () =>
-      within(screen.getByRole("region", { name: "Eigenschaften" }));
+    const details = () => within(detailsPanel());
     expect(details().getByText("Wähle im Browser einen Eintrag.")).toBeTruthy();
 
     await openScene("Höhle");
@@ -559,9 +565,7 @@ describe("CampaignPanel", () => {
     fireEvent.click(popover.getByRole("button", { name: "Szene anlegen" }));
     const scene = await screen.findByRole("treeitem", { name: "Gruft" });
     expect(scene.getAttribute("aria-selected")).toBe("true");
-    const details = within(
-      screen.getByRole("region", { name: "Eigenschaften" }),
-    );
+    const details = within(detailsPanel());
     expect(await details.findByText("Geöffnet")).toBeTruthy();
   });
 
@@ -878,8 +882,7 @@ describe("CampaignPanel", () => {
     });
 
     describe("notes (T-161b)", () => {
-      const details = () =>
-        within(screen.getByRole("region", { name: "Eigenschaften" }));
+      const details = () => within(detailsPanel());
 
       test("opens a scene's note, starting it, and shows changes made elsewhere", async () => {
         const library = fakeLibraryService("/lib", {

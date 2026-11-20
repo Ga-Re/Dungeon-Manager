@@ -12,10 +12,11 @@ You are responsible for enforcing and evolving the visual design and spatial erg
 Dungeon Manager combines two distinct paradigms:
 
 1. **Spatial Architecture (Autodesk Fusion 360 Paradigm):**
-   - **Map-First Viewport (ADR-0014):** The `MapView` (PixiJS + `<video>` layer) fills all of the area left free by the docked title bar, data panel and ribbon, with zero wasted margins; nothing permanent covers it.
-   - **Collapsible Data Panel (Left Column, `#1`):** A full-height docked column below the title bar (the map shrinks next to it); holds the map and asset catalogue. Folds away with Cmd/Ctrl+B so the DM can maximize map space during play.
+   - **Dockable panels (ADR-0017, T-172a):** below the fixed title bar and ribbon, the window is made of dockview panels the DM resizes, moves, docks and hides (View menu). New tool areas become panels (`PANELS` in `panel-layout.tsx`), not fixed zones or floating overlays.
+   - **Map-First Viewport (ADR-0014):** The `MapView` (PixiJS + `<video>` layer) fills its map panel exactly, with zero wasted margins; nothing permanent covers it.
+   - **Data Panel (`#1`, left in the default layout):** the source the DM drags from (catalogue). Cmd/Ctrl+B shows or hides it so the DM can maximize map space during play.
    - **Contextual Ribbon Toolbar (Top Bar right of the data panel, docked, `#2` & `#4`):** Grouped by workflow mode (e.g., _Scene_, _Fog of War_, _Tokens_, _Display/Projection_) with clear primary icon buttons and dropdown sub-menus.
-   - **Floating Scene Browser (top left of the map area, `#3`):** A compact, semi-transparent or framed tree view showing the active scene hierarchy (Map Layer, Video Layer, Fog Shapes, Tokens, Notes) with quick visibility (`eye`) toggles.
+   - **Browser panel (`#3`, right column in the default layout):** a compact tree view of the open document (Map Layer, Video Layer, Fog Shapes, Tokens, Notes) with quick visibility (`eye`) toggles; Eigenschaften (inspector) below it.
    - **Floating Navigation & Display Dock (Bottom Center, `#8`):** Houses zoom, pan, fit-to-screen, rotation controls (`90°`), and live `PlayerFeed` projection status.
    - **Radial / Marking Context Menu (Right-Click, `#6`):** Fast, cursor-centered access to frequent actions (Undo/Redo, Reveal/Hide Fog, Rotate, Reset View).
 
@@ -48,6 +49,6 @@ Dungeon Manager combines two distinct paradigms:
 Whenever you are asked a design question or tasked with building/modifying UI:
 
 1. **Check Current State:** Inspect `packages/ui/src/`, `apps/desktop/src/styles.css`, and the relevant component in `apps/desktop/src/dm/` or `apps/desktop/src/player/`.
-2. **Map to Fusion 360 Zones:** Decide which spatial zone the feature belongs to (Data Panel, Top Ribbon, Floating Scene Browser, Bottom Dock, or Radial Menu). Do not invent ad-hoc inline forms that push the canvas around.
+2. **Map to Fusion 360 Zones:** Decide which spatial zone the feature belongs to (a panel, the Top Ribbon, the map panel's Bottom Dock, or the Radial Menu). Do not invent ad-hoc inline forms that push the canvas around.
 3. **Apply Styling via Tokens:** Use the theme tokens (both themes) and the shared primitives. If a token does not exist yet because the design is still evolving, propose and add the CSS custom property to the root token sheet first.
 4. **Verify Accessibility & Tests:** Ensure semantic HTML (`role`, `aria-label` via `t(...)`), keyboard navigation, and update Vitest / Playwright visual tests if layout or golden screenshots (`pnpm test:visual`) are affected.

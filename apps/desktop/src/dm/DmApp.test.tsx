@@ -155,10 +155,11 @@ describe("DmApp", () => {
     service.listDisplays.mockRejectedValueOnce(new Error("no monitor API"));
     renderDm(service);
 
-    expect(await screen.findByRole("alert")).toHaveProperty(
-      "textContent",
+    // The panel library has a live region of its own, so look for the text.
+    const message = await screen.findByText(
       "Das hat nicht geklappt: no monitor API",
     );
+    expect(message.closest('[role="alert"]')).not.toBeNull();
   });
 
   test("says so when no display is found", async () => {

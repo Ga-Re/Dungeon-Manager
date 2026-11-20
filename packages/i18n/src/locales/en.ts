@@ -255,7 +255,7 @@ export const en: Messages = {
       fog: "Fog & animation",
       appearance: "Appearance",
       library: "Library",
-      layout: "Tool windows",
+      layout: "Panels",
     },
     uiScale: {
       label: "Interface size",
@@ -272,9 +272,9 @@ export const en: Messages = {
       seconds: "{{seconds, number(minimumFractionDigits: 2)}} s",
     },
     layout: {
-      hint: "Browser and properties return to their default places, unfolded.",
-      label: "Positions",
-      reset: "Reset positions",
+      hint: "Data, map, browser and properties return to their default places: data on the left, the map in the middle, browser and properties on the right.",
+      label: "Panels",
+      reset: "Reset layout",
     },
     groups: {
       create: "New",
@@ -284,6 +284,8 @@ export const en: Messages = {
     dataPanel: "Data panel",
     toggleDataPanel: "Show or hide the data panel (⌘/Ctrl+B)",
     appMenu: {
+      view: "View",
+      resetLayout: "Reset layout",
       button: "Menu",
       about: "About Dungeon Manager",
       settings: "Settings …",
@@ -309,6 +311,12 @@ export const en: Messages = {
       fullscreen: "Enter Full Screen",
     },
     dock: "View and TV",
+    panels: {
+      data: "Data",
+      map: "Map",
+      browser: "Browser",
+      details: "Properties",
+    },
     workspace: {
       label: "Workspace",
       mapForge: "Map Forge",
@@ -350,8 +358,6 @@ export const en: Messages = {
       missing: "Missing scenes",
       sessions: "Sessions",
       title: "Properties",
-      move: "Move properties (arrow keys)",
-      fold: "Fold or unfold properties",
       empty: "Select an item in the browser.",
       nothing: "This item has no properties.",
       campaign: "Campaign",
@@ -393,8 +399,6 @@ export const en: Messages = {
         invalid: "{{id}} (cannot be read)",
       },
       browserTitle: "Browser",
-      move: "Move browser (arrow keys)",
-      fold: "Fold or unfold the browser",
       switchCampaign: "Switch campaign",
       settings: "Campaign settings",
       noScenes: "No scenes yet",

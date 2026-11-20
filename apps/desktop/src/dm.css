@@ -129,25 +129,80 @@ label {
   position: fixed;
   inset: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
 }
 
-.dm-titlebar {
-  grid-column: 1 / -1;
-}
-
 .dm-main {
-  grid-row: 2;
-  grid-column: 2;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
 }
 
+/* The panels below the ribbon (T-172a): dockview, themed from the design tokens. */
+.dm-panels {
+  min-width: 0;
+  min-height: 0;
+  --dv-background-color: var(--dm-surface-chrome);
+  --dv-group-view-background-color: var(--dm-surface-panel);
+  --dv-tabs-and-actions-container-background-color: var(--dm-surface-chrome);
+  --dv-tabs-and-actions-container-height: 1.75rem;
+  --dv-tabs-and-actions-container-font-size: var(--dm-font-size-xs);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--dm-surface-panel);
+  --dv-activegroup-visiblepanel-tab-color: var(--dm-text-primary);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--dm-surface-chrome);
+  --dv-activegroup-hiddenpanel-tab-color: var(--dm-text-secondary);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--dm-surface-panel);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--dm-text-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--dm-surface-chrome);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--dm-text-secondary);
+  --dv-separator-border: var(--dm-border-strong);
+  --dv-paneview-header-border-color: var(--dm-border-subtle);
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--dm-accent);
+  --dv-drag-over-background-color: color-mix(
+    in srgb,
+    var(--dm-accent) 25%,
+    transparent
+  );
+  --dv-drag-over-border-color: var(--dm-accent);
+  --dv-icon-hover-background-color: var(--dm-surface-raised);
+  --dv-tab-divider-color: var(--dm-border-subtle);
+  --dv-border-radius: var(--dm-radius-sm);
+  --dv-floating-box-shadow: var(--dm-shadow-panel);
+}
+
+/* Tab titles as small uppercase captions, like the ribbon's (ADR-0015). */
+.dm-panels .dv-tab {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dm-panel-body {
+  height: 100%;
+  overflow: auto;
+  padding: var(--dm-space-3);
+  background: var(--dm-surface-panel);
+  color: var(--dm-text-primary);
+}
+
+/* A panel's own controls (e.g. the browser's campaign switch) above its content. */
+.dm-panel-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--dm-space-2);
+  font-size: var(--dm-font-size-sm);
+}
+
+.dm-panel-toolbar:empty {
+  display: none;
+}
+
 .dm-stage {
   position: relative;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -172,9 +227,7 @@ label {
   display: none;
 }
 
-/* The HUD floats over the map; the map keeps pointer input everywhere else. */
-.dm-browser,
-.dm-details,
+/* The notices float over the map; the map keeps pointer input everywhere else. */
 .dm-notices {
   z-index: var(--dm-z-hud);
   pointer-events: none;
@@ -445,37 +498,10 @@ label {
   border-radius: var(--dm-radius-md);
 }
 
-.dm-datapanel {
-  grid-row: 2;
-  grid-column: 1;
-  width: 22rem;
-  overflow: auto;
-  padding: var(--dm-space-3);
-  background: var(--dm-surface-panel);
-  color: var(--dm-text-primary);
-  border-right: 1px solid var(--dm-border-strong);
-}
-
-.dm-datapanel[hidden] {
-  display: none;
-}
-
 .dm-datapanel h2,
 .dm-datapanel h3 {
   margin: 0 0 var(--dm-space-2);
   font-family: var(--dm-font-heading);
-}
-
-/* The browser and details slots cover the map area; their tool windows position themselves
-   inside (T-158, T-159). */
-.dm-browser,
-.dm-details {
-  position: absolute;
-  inset: 0;
-}
-
-.dm-browser:empty {
-  display: none;
 }
 
 /* Bottom centre of the map (T-131): notices over the navigation and display dock. */
@@ -551,10 +577,6 @@ label {
 }
 
 /* Scene browser (T-130c): campaign switch in the header, campaign list or tree in the body. */
-.dm-hud-head {
-  position: relative;
-}
-
 .dm-panel-head-menu {
   display: inline-flex;
   margin-left: auto;
@@ -562,30 +584,20 @@ label {
   color: var(--dm-text-primary);
 }
 
-/* Text and lists in the transparent browser body sit on the same chips as tree rows. */
-.dm-campaign-browser .dm-hud-body > p,
 .dm-campaign-list button {
-  width: fit-content;
-  margin: var(--dm-space-1) 0;
+  margin: 0;
   padding: var(--dm-space-1) var(--dm-space-2);
   font-size: var(--dm-font-size-sm);
-  color: var(--dm-hud-text);
-  background: var(--dm-hud-row);
   border-color: transparent;
   border-radius: var(--dm-radius-sm);
 }
 
 .dm-campaign-list button:hover {
-  background: var(--dm-hud-row-hover);
-}
-
-/* Buttons in the browser body (e.g. "Bibliotheksordner wählen") keep the panel look. */
-.dm-campaign-browser .dm-hud-body > button {
-  margin: var(--dm-space-1) 0;
+  background: var(--dm-surface-raised);
 }
 
 .dm-browser-hint {
-  color: var(--dm-hud-text-muted);
+  color: var(--dm-text-secondary);
 }
 
 .dm-campaign-list {
@@ -607,7 +619,7 @@ label {
 .dm-campaign-list svg {
   width: 1rem;
   height: 1rem;
-  color: var(--dm-hud-text-muted);
+  color: var(--dm-text-secondary);
 }
 
 .dm-new-scene {
@@ -694,15 +706,6 @@ label {
 }
 
 /* Details panel (T-159): a solid body under the HUD header, as facts need a calm background. */
-.dm-details-panel .dm-hud-body {
-  margin-top: var(--dm-space-1);
-  padding: var(--dm-space-2) var(--dm-space-3) var(--dm-space-3);
-  background: var(--dm-surface-panel);
-  color: var(--dm-text-primary);
-  border: 1px solid var(--dm-border-subtle);
-  border-radius: var(--dm-radius-sm);
-  box-shadow: var(--dm-shadow-panel);
-}
 
 .dm-details-heading {
   display: grid;
