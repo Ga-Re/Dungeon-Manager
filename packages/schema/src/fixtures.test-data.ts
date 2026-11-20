@@ -23,7 +23,7 @@ export const visibilityRules: VisibilityRules = {
 };
 
 export const campaign: Campaign = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "campaign-1",
   name: "Die verlorene Mine",
   players: [player],
@@ -106,7 +106,7 @@ export const initiative: InitiativeState = {
 };
 
 export const scene: Scene = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "scene-1",
   name: "Mineneingang",
   map,

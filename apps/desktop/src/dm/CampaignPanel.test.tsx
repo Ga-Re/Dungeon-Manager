@@ -15,7 +15,7 @@ import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
 
 const sceneFile = (id: string, name: string) =>
   JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id,
     name,
     map: null,
@@ -401,7 +401,7 @@ describe("CampaignPanel", () => {
   test("shows the campaign's groups: settings, scenes, maps, players, handouts, notes", async () => {
     const library = fakeLibraryService("/lib", {
       "campaigns/mine/campaign.json": JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         id: "c",
         name: "Die verlorene Mine",
         players: [{ id: "p1", name: "Anna", characterName: "Mira" }],
@@ -479,7 +479,7 @@ describe("CampaignPanel", () => {
   test("shows the selected item's facts in the details panel", async () => {
     const library = fakeLibraryService("/lib", {
       "campaigns/mine/campaign.json": JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         id: "c",
         name: "Die verlorene Mine",
         players: [{ id: "p1", name: "Anna", characterName: "Mira" }],
@@ -571,7 +571,7 @@ describe("CampaignPanel", () => {
       date?: string,
     ) =>
       JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         id,
         name,
         ...(date ? { date } : {}),
@@ -759,7 +759,7 @@ describe("CampaignPanel", () => {
             library.fs.files().get("campaigns/mine/sessions/s1.json") ?? "{}",
           ),
         ).toEqual({
-          schemaVersion: 1,
+          schemaVersion: 2,
           id: "s1",
           name: "Der Anfang",
           sceneIds: [],
@@ -983,7 +983,7 @@ describe("CampaignPanel", () => {
       test("links a note to the campaign, refuses its own note and lists repeated links once", async () => {
         const library = fakeLibraryService("/lib", {
           "campaigns/mine/campaign.json": JSON.stringify({
-            schemaVersion: 1,
+            schemaVersion: 2,
             id: "c",
             name: "Die verlorene Mine",
             players: [],
@@ -1030,7 +1030,7 @@ describe("CampaignPanel", () => {
         renderCampaign(
           fakeLibraryService("/lib", {
             "campaigns/mine/sessions/s1.json": JSON.stringify({
-              schemaVersion: 1,
+              schemaVersion: 2,
               id: "s1",
               name: "Session 1",
               sceneIds: [],

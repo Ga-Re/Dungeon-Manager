@@ -13,7 +13,7 @@ import { OpenScenePanel } from "./OpenScenePanel.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 
 const campaign = JSON.stringify({
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "c",
   name: "Mine",
   players: [],
@@ -24,7 +24,7 @@ const hash = `sha256:${"a".repeat(64)}`;
 
 /** A tower: the ground floor shows the map's image, the cellar its own. */
 const tower: Scene = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "s",
   name: "Turm",
   map: {

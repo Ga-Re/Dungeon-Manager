@@ -16,7 +16,7 @@ import { readRecent, type RecentCampaign } from "./recent-campaigns.js";
 
 const campaignFile = (id: string, name: string) =>
   JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id,
     name,
     players: [],
@@ -25,7 +25,7 @@ const campaignFile = (id: string, name: string) =>
 
 const sceneFile = (id: string, name: string) =>
   JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id,
     name,
     map: null,

@@ -145,7 +145,7 @@ describe("validation", () => {
     [
       "a scene with another schema version",
       sceneSchema,
-      { ...samples.scene, schemaVersion: 2 },
+      { ...samples.scene, schemaVersion: 1 },
     ],
     ["an empty id", playerSchema, { ...samples.player, id: "" }],
     [
@@ -154,6 +154,11 @@ describe("validation", () => {
       { ...samples.player, id: "../x" },
     ],
     ["an id with a dot", playerSchema, { ...samples.player, id: "a.b" }],
+    [
+      "an id with a capital letter",
+      playerSchema,
+      { ...samples.player, id: "Anna" },
+    ],
     [
       "an order missing a combatant",
       initiativeStateSchema,

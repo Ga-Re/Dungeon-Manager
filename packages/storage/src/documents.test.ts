@@ -8,12 +8,13 @@ import {
   listScenes,
   loadCampaign,
   loadScene,
+  loadSession,
   saveCampaign,
   saveScene,
 } from "./index.js";
 
 const campaign: Campaign = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "campaign-1",
   name: "Die verlorene Mine",
   players: [],
@@ -21,7 +22,7 @@ const campaign: Campaign = {
 };
 
 const scene: Scene = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "scene-1",
   name: "Eingang",
   map: null,
@@ -170,14 +171,18 @@ describe("scene files", () => {
     const file = (id: string) => JSON.stringify({ ...scene, id });
     const fs = createMemoryFileSystem({
       "campaigns/mine/scenes/keller.json": file("keller"),
-      // A real scene whose name merely looks like a OneDrive copy of "keller".
-      "campaigns/mine/scenes/keller-Ost.json": file("keller-Ost"),
+      // A real scene from version 1 whose name merely looks like a OneDrive copy of "keller".
+      "campaigns/mine/scenes/keller-Ost.json": JSON.stringify({
+        ...scene,
+        schemaVersion: 1,
+        id: "keller-Ost",
+      }),
       "campaigns/mine/scenes/keller-DESKTOP-4F2KQ1.json": file("keller"),
       // Content unknown: listed as a scene, so nothing is hidden.
       "campaigns/mine/scenes/keller-MacBook-Air.json": { placeholder: true },
     });
     expect(await listScenes(fs, "mine")).toEqual({
-      sceneIds: ["keller", "keller-MacBook-Air", "keller-Ost"],
+      sceneIds: ["keller", "keller-macbook-air", "keller-ost"],
       conflicts: [
         {
           copy: "keller-DESKTOP-4F2KQ1.json",
@@ -208,6 +213,115 @@ describe("scene files", () => {
     expect(await listScenes(createMemoryFileSystem(), "mine")).toEqual({
       sceneIds: [],
       conflicts: [],
+    });
+  });
+});
+
+describe("version 1 file names with capitals (T-119)", () => {
+  const legacy = (id: string) =>
+    JSON.stringify({ ...scene, schemaVersion: 1, id });
+
+  test("are listed under their lowercase id, once", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/scenes/Turm.json": legacy("Turm"),
+      "campaigns/mine/scenes/keller.json": JSON.stringify(scene),
+      // On a case-sensitive file system both names can exist; the lowercase one is current.
+      "campaigns/mine/scenes/Keller.json": legacy("Keller"),
+    });
+    expect((await listScenes(fs, "mine")).sceneIds).toEqual(["keller", "turm"]);
+  });
+
+  test("load on a case-sensitive file system and move to the lowercase name", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/scenes/Turm.json": legacy("Turm"),
+    });
+    const loaded = await loadScene(fs, "mine", "turm");
+    expect(loaded).toEqual({
+      status: "ok",
+      value: { ...scene, id: "turm" },
+    });
+    const files = [...fs.files().keys()];
+    expect(files).toContain("campaigns/mine/scenes/turm.json");
+    expect(files).not.toContain("campaigns/mine/scenes/Turm.json");
+    // The old file is kept in the trash, never deleted.
+    expect(
+      files.some((path) => path.endsWith(".trash/1/scenes/Turm.json")),
+    ).toBe(true);
+  });
+
+  test("listing never renames, and a OneDrive copy stays a copy", async () => {
+    const files = {
+      "campaigns/mine/scenes/keller.json": JSON.stringify({
+        ...scene,
+        id: "keller",
+      }),
+      "campaigns/mine/scenes/keller-DESKTOP-4F2KQ1.json": JSON.stringify({
+        ...scene,
+        id: "keller",
+        name: "Kopie",
+      }),
+      "campaigns/mine/scenes/Turm.json": legacy("Turm"),
+    };
+    const fs = createMemoryFileSystem(files);
+    const conflict = {
+      copy: "keller-DESKTOP-4F2KQ1.json",
+      original: "keller.json",
+      provider: "OneDrive",
+    };
+    for (let round = 0; round < 2; round++)
+      expect(await listScenes(fs, "mine")).toEqual({
+        sceneIds: ["keller", "turm"],
+        conflicts: [conflict],
+      });
+    expect([...fs.files().keys()].sort()).toEqual(Object.keys(files).sort());
+    // Opened under its lowercase name, the copy is not moved: its content names "keller".
+    await loadScene(fs, "mine", "keller-desktop-4f2kq1");
+    expect([...fs.files().keys()].sort()).toEqual(Object.keys(files).sort());
+  });
+
+  test("a version 1 session is moved to its lowercase name too", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/sessions/Abend.json": JSON.stringify({
+        schemaVersion: 1,
+        id: "Abend",
+        name: "Abend",
+        sceneIds: ["Turm"],
+      }),
+    });
+    const loaded = await loadSession(fs, "mine", "abend");
+    expect(loaded.status === "ok" && loaded.value.sceneIds).toEqual(["turm"]);
+    expect(fs.files().has("campaigns/mine/sessions/abend.json")).toBe(true);
+    expect(fs.files().has("campaigns/mine/sessions/Abend.json")).toBe(false);
+  });
+
+  test("the lowercase file wins when both exist", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/scenes/Turm.json": legacy("Turm"),
+      "campaigns/mine/scenes/turm.json": JSON.stringify({
+        ...scene,
+        id: "turm",
+        name: "Neu",
+      }),
+    });
+    const loaded = await loadScene(fs, "mine", "turm");
+    expect(loaded.status === "ok" && loaded.value.name).toBe("Neu");
+    expect(fs.files().has("campaigns/mine/scenes/Turm.json")).toBe(true);
+  });
+
+  test("a scene that cannot be moved still loads", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/scenes/Turm.json": legacy("Turm"),
+    });
+    fs.writeAtomic = () => Promise.reject(new Error("read-only"));
+    const loaded = await loadScene(fs, "mine", "turm");
+    expect(loaded.status).toBe("ok");
+    expect(fs.files().has("campaigns/mine/scenes/Turm.json")).toBe(true);
+  });
+
+  test("an id with capitals is never looked up", async () => {
+    expect(await loadScene(createMemoryFileSystem(), "mine", "Turm")).toEqual({
+      status: "invalid",
+      reason: "path",
     });
   });
 });

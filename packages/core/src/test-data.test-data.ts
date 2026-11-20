@@ -12,7 +12,7 @@ export const ctx: Ctx = { now: () => 1_000, random: () => 0.5 };
 const hash = `sha256:${"b".repeat(64)}`;
 
 export const campaign: Campaign = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "campaign-1",
   name: "Testkampagne",
   players: [{ id: "player-1", name: "Spieler 1" }],
@@ -29,7 +29,7 @@ export const goblin: Combatant = {
 };
 
 export const scene: Scene = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "scene-1",
   name: "Höhle",
   map: {

@@ -39,14 +39,71 @@ export type LoadResult<T> =
       readonly reason: "path" | "json" | "schema" | MigrationErrorReason;
     };
 
-async function loadDocument<T>(
+/**
+ * Version 1 allowed capitals in ids and so in file names (T-119). A case-insensitive file system
+ * (macOS, Windows) finds `Turm.json` under `turm.json` anyway; a case-sensitive one (Linux) does
+ * not, so a missing file is looked up again among the names in its folder, ignoring case.
+ * @returns the file and, if found under another name, that name's path
+ */
+async function readIgnoringCase(
+  fs: FileSystem,
+  path: string,
+): Promise<{ file: ReadResult; legacyPath: string | null }> {
+  const file = await fs.read(path);
+  if (file.kind !== "missing") return { file, legacyPath: null };
+  const slash = path.lastIndexOf("/");
+  const name = path.slice(slash + 1);
+  const entries = (await fs.list(path.slice(0, slash))) ?? [];
+  const legacy = entries.find(
+    (entry) =>
+      entry.kind === "file" &&
+      entry.name !== name &&
+      entry.name.toLowerCase() === name,
+  );
+  if (!legacy) return { file, legacyPath: null };
+  const legacyPath = `${path.slice(0, slash)}/${legacy.name}`;
+  return { file: await fs.read(legacyPath), legacyPath };
+}
+
+/**
+ * Moves a document found under a version 1 name to its lowercase name: written there first (only
+ * if that name is still free), the old file then goes to the trash. If writing fails, the
+ * document keeps loading from the old name. If only the trash step fails, both files stay and the
+ * lowercase one is loaded from then on – the old one is a stale duplicate, never lost data.
+ * Neither failure stops the DM from working, so neither is reported.
+ */
+async function moveToLowercaseName(
+  fs: FileSystem,
+  path: string,
+  legacyPath: string,
+  value: unknown,
+): Promise<void> {
+  try {
+    // A save or a sync between reading the old file and now may have created the new one.
+    if ((await fs.read(path)).kind !== "missing") return;
+    await fs.writeAtomic(path, serialize(value));
+    await fs.moveToTrash(legacyPath);
+  } catch {
+    // See above.
+  }
+}
+
+/**
+ * Loads and migrates a document. `ownId` is the id its file is named after: a document found
+ * under a version 1 name is moved to the lowercase name only if its content carries that id, so a
+ * conflict copy (which holds the original's id) is never renamed. Without `ownId` loading never
+ * writes – used when listing checks what a file contains.
+ */
+async function loadDocument<T extends { readonly id?: string }>(
   fs: FileSystem,
   path: string,
   type: DocumentType<T>,
+  ownId?: string,
 ): Promise<LoadResult<T>> {
   let file: ReadResult;
+  let legacyPath: string | null;
   try {
-    file = await fs.read(path);
+    ({ file, legacyPath } = await readIgnoringCase(fs, path));
   } catch {
     return { status: "unreadable" };
   }
@@ -58,14 +115,18 @@ async function loadDocument<T>(
   } catch {
     return { status: "invalid", reason: "json" };
   }
+  let value: T;
   try {
-    return { status: "ok", value: migrateDocument(json, type) };
+    value = migrateDocument(json, type);
   } catch (error) {
     return {
       status: "invalid",
       reason: error instanceof MigrationError ? error.reason : "schema",
     };
   }
+  if (legacyPath !== null && ownId !== undefined && value.id === ownId)
+    await moveToLowercaseName(fs, path, legacyPath, value);
+  return { status: "ok", value };
 }
 
 /** JSON as stored in the library: readable diffs for sync clients, trailing newline. */
@@ -105,7 +166,7 @@ export function loadScene(
 ): Promise<LoadResult<Scene>> {
   if (!isValidSlug(slug) || !isValidFileId(sceneId))
     return Promise.resolve({ status: "invalid", reason: "path" });
-  return loadDocument(fs, sceneFile(slug, sceneId), sceneDocument);
+  return loadDocument(fs, sceneFile(slug, sceneId), sceneDocument, sceneId);
 }
 
 /** Validates and writes a scene file (named after its id) atomically. @throws on invalid input */
@@ -131,13 +192,17 @@ async function isConfirmedCopy(
   conflict: ConflictCopy,
   idInFile: (id: string) => Promise<string | null>,
 ): Promise<boolean> {
-  const id = conflict.copy.slice(0, -".json".length);
+  // Ids are lowercase since T-119; a version 1 name is found under its lowercase id.
+  const id = conflict.copy.slice(0, -".json".length).toLowerCase();
   if (conflict.provider !== "OneDrive" || !isValidFileId(id)) return true;
   const stored = await idInFile(id);
   return stored !== null && stored !== id;
 }
 
-/** Document ids (`<id>.json`) in a folder, plus conflict copies found next to them. */
+/**
+ * Document ids (`<id>.json`) in a folder, plus conflict copies found next to them. Version 1 names
+ * with capitals are listed under their lowercase id, once (T-119).
+ */
 async function listDocumentIds(
   fs: FileSystem,
   directory: string,
@@ -155,10 +220,9 @@ async function listDocumentIds(
   const copies = new Set(conflicts.map((conflict) => conflict.copy));
   const ids = names
     .filter((name) => name.endsWith(".json") && !copies.has(name))
-    .map((name) => name.slice(0, -".json".length))
-    .filter(isValidFileId)
-    .sort();
-  return { ids, conflicts };
+    .map((name) => name.slice(0, -".json".length).toLowerCase())
+    .filter(isValidFileId);
+  return { ids: [...new Set(ids)].sort(), conflicts };
 }
 
 /**
@@ -173,8 +237,9 @@ export async function listScenes(
   const { ids, conflicts } = await listDocumentIds(
     fs,
     scenesDirectory(slug),
+    // Read only: checking a possible conflict copy must never rename it.
     async (id) => {
-      const loaded = await loadScene(fs, slug, id);
+      const loaded = await loadDocument(fs, sceneFile(slug, id), sceneDocument);
       return loaded.status === "ok" ? loaded.value.id : null;
     },
   );
@@ -189,7 +254,12 @@ export function loadSession(
 ): Promise<LoadResult<Session>> {
   if (!isValidSlug(slug) || !isValidFileId(sessionId))
     return Promise.resolve({ status: "invalid", reason: "path" });
-  return loadDocument(fs, sessionFile(slug, sessionId), sessionDocument);
+  return loadDocument(
+    fs,
+    sessionFile(slug, sessionId),
+    sessionDocument,
+    sessionId,
+  );
 }
 
 /** Validates and writes a session file (named after its id) atomically. @throws on invalid input */
@@ -218,8 +288,13 @@ export async function listSessions(
   const { ids, conflicts } = await listDocumentIds(
     fs,
     sessionsDirectory(slug),
+    // Read only: checking a possible conflict copy must never rename it.
     async (id) => {
-      const loaded = await loadSession(fs, slug, id);
+      const loaded = await loadDocument(
+        fs,
+        sessionFile(slug, id),
+        sessionDocument,
+      );
       return loaded.status === "ok" ? loaded.value.id : null;
     },
   );

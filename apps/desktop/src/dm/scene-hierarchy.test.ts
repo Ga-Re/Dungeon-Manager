@@ -6,7 +6,7 @@ const scene = (id: string, parentSceneId?: string): SceneEntry => ({
   id,
   problem: null,
   scene: {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id,
     name: id,
     map: null,
@@ -20,7 +20,7 @@ const scene = (id: string, parentSceneId?: string): SceneEntry => ({
 const session = (id: string, sceneIds: string[]): SessionEntry => ({
   id,
   problem: null,
-  session: { schemaVersion: 1, id, name: id, sceneIds },
+  session: { schemaVersion: 2, id, name: id, sceneIds },
 });
 
 describe("scene hierarchy (T-152)", () => {

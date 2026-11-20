@@ -14,7 +14,7 @@ import { PlayerFeedContext } from "./player-feed-context.js";
 import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
 
 const campaign = JSON.stringify({
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "c",
   name: "Mine",
   players: [],
@@ -23,7 +23,7 @@ const campaign = JSON.stringify({
 
 // A hidden token: the TV must get the scene without it.
 const scene: Scene = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "s",
   name: "Höhle",
   map: null,

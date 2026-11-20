@@ -46,7 +46,7 @@ describe("createCampaign", () => {
     expect(await loadCampaign(fs, slug)).toEqual({
       status: "ok",
       value: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         id: "c-1",
         name: "Die verlorene Mine",
         players: [],
@@ -92,7 +92,7 @@ describe("createScene", () => {
       name: " Eingang ",
     });
     expect(scene).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: "s-1",
       name: "Eingang",
       map: null,
@@ -150,7 +150,7 @@ describe("withMap", () => {
     expect(
       withMap(
         {
-          schemaVersion: 1,
+          schemaVersion: 2,
           id: "s",
           name: "S",
           map: null,
@@ -184,7 +184,7 @@ describe("withMap", () => {
       ],
     };
     const scene = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
       id: "s",
       name: "S",
       map,
@@ -216,7 +216,7 @@ describe("withMap with resets", () => {
     holes: [],
   };
   const scene: Scene = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: "s",
     name: "S",
     map: {
@@ -354,7 +354,7 @@ describe("mapKind", () => {
 
   test("a scene changed to a video map gets kind video", () => {
     const scene = {
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
       id: "s",
       name: "S",
       map: null,
