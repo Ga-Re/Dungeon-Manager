@@ -30,6 +30,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
+import { SceneRescueContext } from "./rescue-copies.js";
 import { useMapData, type MapDataState } from "./useMapData.js";
 
 /** Time and randomness for core commands (ARCHITECTURE §4: injected, never read inside core). */
@@ -192,6 +193,7 @@ export function useSceneSession(
     [feed],
   );
 
+  const rescue = useContext(SceneRescueContext);
   const save = useCallback(
     (next: Scene) => {
       // Chained, so writes land in the order the DM made the changes.
@@ -202,11 +204,14 @@ export function useSceneSession(
             () => {
               failed.current = false;
               setSaveFailed(false);
+              rescue?.drop(slug, next.id);
             },
             (error: unknown) => {
               console.error("Saving the scene failed.", error);
               failed.current = true;
               setSaveFailed(true);
+              // Kept on this device until it is saved (T-114b): a crash now loses nothing.
+              rescue?.keep(slug, next);
             },
           )
           .finally(() => {
@@ -214,7 +219,7 @@ export function useSceneSession(
           }),
       );
     },
-    [service, slug],
+    [service, slug, rescue],
   );
 
   const commit = (state: SessionState, nextHistory: History) => {

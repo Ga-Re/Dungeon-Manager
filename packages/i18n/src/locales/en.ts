@@ -154,6 +154,17 @@ export const en: Messages = {
     sceneOnTv: "(on the TV)",
     tabSaving: "(saving)",
     tabNotSaved: "(not saved)",
+    rescue: {
+      label: "Unsaved changes",
+      found:
+        "Changes to {{name}} from {{time}} could not be saved; they are kept on this device.",
+      restore: "Restore",
+      discard: "Discard",
+      restoreNamed: "Restore the changes to {{name}}",
+      discardNamed: "Discard the changes to {{name}}",
+      restored: "Changes to {{name}} restored",
+      discarded: "Changes to {{name}} discarded",
+    },
     closeUnsaved: {
       title: "Close the scene?",
       text: "The latest changes to {{name}} could not be saved. Closing loses them.",

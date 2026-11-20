@@ -155,6 +155,17 @@ export const de = {
     sceneOnTv: "(auf dem TV)",
     tabSaving: "(speichert)",
     tabNotSaved: "(nicht gespeichert)",
+    rescue: {
+      label: "Nicht gespeicherte Änderungen",
+      found:
+        "Änderungen an {{name}} vom {{time}} konnten nicht gespeichert werden; sie liegen auf diesem Gerät.",
+      restore: "Wiederherstellen",
+      discard: "Verwerfen",
+      restoreNamed: "Änderungen an {{name}} wiederherstellen",
+      discardNamed: "Änderungen an {{name}} verwerfen",
+      restored: "Änderungen an {{name}} wiederhergestellt",
+      discarded: "Änderungen an {{name}} verworfen",
+    },
     closeUnsaved: {
       title: "Szene schließen?",
       text: "Die letzten Änderungen an {{name}} konnten nicht gespeichert werden. Beim Schließen gehen sie verloren.",

@@ -4,12 +4,19 @@ import {
   listCampaigns,
   loadCampaign,
 } from "@dungeon-manager/storage";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { Menu, Popover } from "@dungeon-manager/ui";
 import { BookOpen, FolderPlus } from "lucide-react";
 import { CampaignPanel } from "./CampaignPanel.js";
+import {
+  SceneRescueContext,
+  dropRescue,
+  keepRescue,
+  readRescues,
+  type SceneRescue,
+} from "./rescue-copies.js";
 import type { RememberedSceneTabs } from "./scene-tabs.js";
 import { CatalogPanel } from "./CatalogPanel.js";
 import { describeLibraryError } from "./describe-error.js";
@@ -203,6 +210,31 @@ export function LibraryPanel({
   const campaigns = state.status === "open" ? state.campaigns : [];
   const root = state.status === "open" ? state.root : null;
 
+  // Scenes whose save failed, kept on this device (T-114b): offered when their campaign opens.
+  const [rescues, setRescues] = useState(() => readRescues(storage));
+  const sceneRescue = useMemo<SceneRescue | null>(
+    () =>
+      root === null
+        ? null
+        : {
+            keep(slug, scene) {
+              keepRescue(storage, {
+                root,
+                slug,
+                scene,
+                savedAt: clock.current().toISOString(),
+              });
+              setRescues(readRescues(storage));
+            },
+            drop(slug, sceneId) {
+              dropRescue(storage, { root, slug, sceneId });
+              // A later save succeeded: the offer goes, so it never restores an older state.
+              setRescues(readRescues(storage));
+            },
+          },
+    [root, storage],
+  );
+
   // Every campaign that opens becomes the most recent one on this device.
   const openSlug = selectedCampaign?.slug;
   const openName = selectedCampaign?.name;
@@ -307,7 +339,7 @@ export function LibraryPanel({
   );
 
   return (
-    <>
+    <SceneRescueContext value={sceneRescue}>
       <ShellPortal slot="settings">
         <fieldset className="dm-settings-group">
           <legend>{t("library.folderSetting")}</legend>
@@ -435,6 +467,19 @@ export function LibraryPanel({
                   ? pendingScene.tabs
                   : null
               }
+              rescues={rescues.filter(
+                (copy) =>
+                  copy.root === root && copy.slug === selectedCampaign.slug,
+              )}
+              onRescueHandled={(sceneId) => {
+                if (root === null) return;
+                dropRescue(storage, {
+                  root,
+                  slug: selectedCampaign.slug,
+                  sceneId,
+                });
+                setRescues(readRescues(storage));
+              }}
               onTabsChange={(tabs) => {
                 if (root === null) return;
                 const campaign = { root, slug: selectedCampaign.slug };
@@ -481,6 +526,6 @@ export function LibraryPanel({
       <ShellPortal slot="notices">
         <p role="status">{notice}</p>
       </ShellPortal>
-    </>
+    </SceneRescueContext>
   );
 }
