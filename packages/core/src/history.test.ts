@@ -102,4 +102,24 @@ describe("history of the TV's level", () => {
     if (!shown.ok) throw new Error(shown.reason);
     expect(undo(shown.state, shown.history)?.state.scene.table).toBeUndefined();
   });
+
+  test("showing the level already on the TV adds no undo step", () => {
+    const shown = execute(
+      state,
+      createHistory(),
+      { type: "level.show", levelId: "cellar" },
+      ctx,
+    );
+    if (!shown.ok) throw new Error(shown.reason);
+    const again = execute(
+      shown.state,
+      shown.history,
+      { type: "level.show", levelId: "cellar" },
+      ctx,
+    );
+    if (!again.ok) throw new Error(again.reason);
+    expect(again.state).toBe(shown.state);
+    expect(again.history).toBe(shown.history);
+    expect(again.events).toEqual([]);
+  });
 });

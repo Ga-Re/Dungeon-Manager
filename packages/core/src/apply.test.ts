@@ -718,9 +718,10 @@ describe("level.show", () => {
     const result = ok(
       apply(state, { type: "level.show", levelId: "cellar" }, ctx),
     );
+    // The ground floor was on the TV before (the first level, without `table`): released too.
     expect(result.state.scene.table).toEqual({
       levelId: "cellar",
-      shownLevelIds: ["cellar"],
+      shownLevelIds: ["ground", "cellar"],
     });
     expect(result.events).toEqual([
       { at: 1_000, type: "level.shown", levelId: "cellar" },
@@ -732,8 +733,14 @@ describe("level.show", () => {
     );
     expect(back.scene.table).toEqual({
       levelId: "cellar",
-      shownLevelIds: ["cellar", "ground"],
+      shownLevelIds: ["ground", "cellar"],
     });
+  });
+
+  test("showing the level already on the TV changes nothing, also without `table`", () => {
+    const first = apply(state, { type: "level.show", levelId: "ground" }, ctx);
+    expect(first).toEqual({ ok: true, state, events: [] });
+    expect(ok(first).state).toBe(state);
   });
 
   test("rejects unknown levels and scenes without a map", () => {

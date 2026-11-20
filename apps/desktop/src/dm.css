@@ -1255,3 +1255,15 @@ button.dm-welcome-campaign:hover {
   font-size: var(--dm-font-size-sm);
   color: var(--dm-text-on-chrome);
 }
+
+/* The level on the TV in the scene browser (T-118c). */
+.dm-level-on-tv {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dm-space-1);
+}
+
+.dm-level-on-tv svg {
+  width: 1em;
+  height: 1em;
+}

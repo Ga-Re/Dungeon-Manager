@@ -17,6 +17,8 @@ import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
 import { MapChangeChoice } from "./MapChangeChoice.js";
+import { levelMedia } from "../level-media.js";
+import { LevelGroup } from "./LevelGroup.js";
 import { MapView, type MapTool } from "./MapView.js";
 import type { FogShape } from "./fog-shapes.js";
 import { FogToolbar } from "./FogToolbar.js";
@@ -89,7 +91,10 @@ export function OpenScenePanel({
   readonly slug: string;
   readonly scene: Scene;
   readonly newId: () => string;
-  /** The scene as edited and the shown level's revealed fog, after every change (browser tree). */
+  /**
+   * The scene as edited and the revealed fog of the level the DM works on (T-118c), after every
+   * change (browser tree).
+   */
   readonly onSceneChange?: (scene: Scene, revealed: readonly Polygon[]) => void;
   readonly onChanged: (scene: Scene) => void;
   readonly onDeleted: (scene: Scene) => void;
@@ -111,8 +116,14 @@ export function OpenScenePanel({
   const [shape, setShape] = useState<FogShape>("rectangle");
   const [brushCells, setBrushCells] = useState(1);
   const [mapSize, setMapSize] = useState<Size | null>(null);
-  // The DM works on the level the TV shows (a switcher follows in T-118c).
-  const levelId = tableLevels(scene).current ?? undefined;
+  // The DM works on a level of their choice, the TV's until they pick another (T-118c).
+  const onTv = tableLevels(scene).current ?? undefined;
+  const [picked, setPicked] = useState<string | null>(null);
+  const levelId =
+    picked !== null && scene.map?.levels.some(({ id }) => id === picked)
+      ? picked
+      : onTv;
+  const media = scene.map ? levelMedia(scene.map, levelId) : null;
   const revealed =
     (levelId === undefined ? undefined : scene.fog.levels[levelId]?.revealed) ??
     NOTHING_REVEALED;
@@ -124,10 +135,15 @@ export function OpenScenePanel({
   useEffect(() => {
     reportScene.current?.(scene, revealed);
   }, [scene, revealed]);
-  // A new map is measured again; until then "reveal all" has no size to use.
+  // A new map (or a level with its own file) is measured again; until then "reveal all" has
+  // no size to use.
   useEffect(() => {
     setMapSize(null);
-  }, [mapPath]);
+  }, [mapPath, media?.path]);
+  // Another scene or map starts on the TV's level again.
+  useEffect(() => {
+    setPicked(null);
+  }, [scene.id, mapPath]);
 
   const fogCommand = (type: "fog.reveal" | "fog.hide", area: Polygon) => {
     if (levelId === undefined) return;
@@ -382,12 +398,27 @@ export function OpenScenePanel({
             </div>
           </Popover>
         </RibbonGroup>
+        {scene.map &&
+          scene.map.levels.length > 1 &&
+          levelId !== undefined &&
+          onTv !== undefined && (
+            <LevelGroup
+              levels={scene.map.levels}
+              working={levelId}
+              onTv={onTv}
+              disabled={busy || notOnTv}
+              onWork={setPicked}
+              onShow={() => {
+                session.run({ type: "level.show", levelId });
+              }}
+            />
+          )}
       </ShellPortal>
       <ShellPortal slot="notices">
         {notOnTv && <p role="alert">{t("player.notShown")}</p>}
         {error && <p role="alert">{error}</p>}
       </ShellPortal>
-      {scene.map && (
+      {scene.map && media && (
         <>
           <ShellPortal slot="ribbonFog">
             <FogToolbar
@@ -408,9 +439,9 @@ export function OpenScenePanel({
           </ShellPortal>
           <ShellPortal slot="canvas">
             <MapView
-              key={`${scene.map.kind}:${scene.map.asset.path}`}
-              path={scene.map.asset.path}
-              kind={scene.map.kind}
+              key={`${media.kind}:${media.path}`}
+              path={media.path}
+              kind={media.kind}
               label={scene.name}
               fog={revealed}
               tool={busy ? "pan" : tool}

@@ -26,21 +26,32 @@ export const E2E_LIBRARY_ROOT = "/Bibliothek (E2E)";
 
 const MAP_PATH = "library/maps/krypta.png";
 
-/** A library with one campaign, one scene that has a map and one (still empty) session. */
-export async function createE2eLibrary(): Promise<LibraryService> {
+/**
+ * A library with one campaign, one scene that has a map and one (still empty) session. With
+ * `levels`, the scene's map has a second level, a cellar (T-118c).
+ */
+export async function createE2eLibrary({
+  levels = false,
+}: { readonly levels?: boolean } = {}): Promise<LibraryService> {
   const fs = createMemoryFileSystem();
   await ensureLibraryLayout(fs);
   const slug = await createCampaign(fs, {
     id: "e2e-campaign",
     name: "Fluch der Krypta",
   });
+  const map = newMap(
+    { path: MAP_PATH, hash: `sha256:${"0".repeat(64)}` },
+    { id: "e2e-level", name: "Ebene 1" },
+  );
   await createScene(fs, slug, {
     id: "e2e-scene",
     name: "Krypta",
-    map: newMap(
-      { path: MAP_PATH, hash: `sha256:${"0".repeat(64)}` },
-      { id: "e2e-level", name: "Ebene 1" },
-    ),
+    map: levels
+      ? {
+          ...map,
+          levels: [...map.levels, { id: "e2e-cellar", name: "Gruftkeller" }],
+        }
+      : map,
   });
   // A campaign note with the Markdown the details panel renders (T-163).
   await fs.writeAtomic(

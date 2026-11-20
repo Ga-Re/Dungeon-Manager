@@ -1,7 +1,8 @@
+import { tableLevels } from "@dungeon-manager/core";
 import type { Polygon, Scene } from "@dungeon-manager/schema";
 import type { TreeNode } from "@dungeon-manager/ui";
 import type { TFunction } from "i18next";
-import { Cloud, Layers, Map as MapIcon } from "lucide-react";
+import { Cloud, Layers, Map as MapIcon, Tv } from "lucide-react";
 import { fileName } from "./file-name.js";
 
 /** Tree ids of the open scene's content, kept apart from scene ids (`scene:<id>`). */
@@ -16,6 +17,18 @@ export function sceneContentNodes(
   scene: Scene,
   revealed: readonly Polygon[],
 ): TreeNode[] {
+  const { current, released } = tableLevels(scene);
+  // Which levels the TV shows and the players have seen (T-118c); with one level there is
+  // nothing to tell apart, as with the level switcher.
+  const levelMeta = (id: string) =>
+    (scene.map?.levels.length ?? 0) < 2 ? undefined : id === current ? (
+      <span className="dm-level-on-tv">
+        <Tv aria-hidden="true" />
+        {t("shell.browser.levelOnTv")}
+      </span>
+    ) : released.has(id) ? (
+      t("shell.browser.levelReleased")
+    ) : undefined;
   const map: TreeNode = scene.map
     ? {
         id: `${CONTENT}map`,
@@ -34,6 +47,7 @@ export function sceneContentNodes(
             children: scene.map.levels.map((level) => ({
               id: `${CONTENT}level-${level.id}`,
               label: level.name,
+              meta: levelMeta(level.id),
             })),
           },
         ],

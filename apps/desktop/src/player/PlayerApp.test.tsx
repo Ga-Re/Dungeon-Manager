@@ -289,6 +289,46 @@ describe("PlayerApp", () => {
     });
   });
 
+  test("loads a level's own image as an image, also on a video map", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const scene = sceneWith("library/maps/burg.webm");
+    const map = scene.map;
+    if (!map) throw new Error("the sample scene has a map");
+    feed.send({
+      v: 1,
+      scene: {
+        ...scene,
+        map: {
+          ...map,
+          kind: "video",
+          currentLevelId: "cellar",
+          levels: [
+            ...map.levels,
+            {
+              id: "cellar",
+              name: "Keller",
+              asset: {
+                path: "library/maps/keller.png",
+                hash: `sha256:${"b".repeat(64)}`,
+              },
+            },
+          ],
+        },
+        fog: { ...scene.fog, cellar: { revealed: [], remembered: [] } },
+      },
+      rotation: 0,
+    });
+    await waitFor(() => {
+      expect(maps.service.loadImage).toHaveBeenCalledWith(
+        "library/maps/keller.png",
+      );
+    });
+    expect(maps.service.loadVideo).not.toHaveBeenCalled();
+  });
+
   test("switches to a level sharing the map's image without a fade or a reload", async () => {
     const { maps, feed } = renderPlayer();
     await waitFor(() => {

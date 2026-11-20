@@ -662,3 +662,34 @@ test("the DM creates a sub-scene from a scene's context menu; it shows nested un
   const level = Number(await krypta.getAttribute("aria-level"));
   await expect(chamber).toHaveAttribute("aria-level", String(level + 1));
 });
+
+test("the DM works on another level and shows it on the TV when ready (T-118c)", async ({
+  page,
+}) => {
+  await page.goto(`${HARNESS}?levels`);
+  await closeWelcome(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+
+  await page.getByRole("tab", { name: "Szene" }).click();
+  const show = page.getByRole("button", { name: "Auf TV zeigen" });
+  await expect(page.getByText("Auf dem TV: Ebene 1")).toBeVisible();
+  await expect(show).toBeDisabled();
+  await page.getByRole("button", { name: "Ebene 1", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "Gruftkeller" }).click();
+  await expect(
+    page.getByRole("button", { name: "Gruftkeller", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Auf dem TV: Ebene 1")).toBeVisible();
+
+  await show.click();
+  await expect(page.getByText("Auf dem TV: Gruftkeller")).toBeVisible();
+  await expect(show).toBeDisabled();
+  // The browser marks the TV's level and the one shown before it.
+  await expect(
+    page.getByRole("treeitem", { name: /Gruftkeller/ }),
+  ).toContainText("auf dem TV");
+  await expect(page.getByRole("treeitem", { name: /Ebene 1/ })).toContainText(
+    "freigegeben",
+  );
+});
