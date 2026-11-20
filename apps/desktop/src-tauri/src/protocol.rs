@@ -240,6 +240,8 @@ mod tests {
         assert_eq!(content_type("library/maps/a.MP4"), Some("video/mp4"));
         assert_eq!(content_type("library/maps/a.webm"), Some("video/webm"));
         assert_eq!(content_type("library/maps/notes.json"), None);
+        // Sidecars hold map data such as secret rooms: never served to a window (ADR-0012).
+        assert_eq!(content_type("library/maps/castle.webp.dm.json"), None);
         assert_eq!(content_type("library/maps/noextension"), None);
     }
 }

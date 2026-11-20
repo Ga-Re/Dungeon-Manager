@@ -794,22 +794,26 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] `SessionState` carries the resolved map, `projectForViewer` takes it as input, and the existing projection property tests still pass
 - **Notes:** From the DM planning interview (2026-11-18). ADR-0012 accepted by the DM (2026-11-18), incl. "global edits reach the live scene only after confirmation". Format agreed with the DM (2026-11-20). Split 2026-11-20 into T-134 (core), T-134c (storage and migration), T-134d (DM window) and T-134b (live-scene confirmation and catalog). Tasks that depend on "T-134" need all four parts.
 
-### T-134c Sidecar storage and scene schema v3
+### T-134c Sidecar storage
 
-- **Status:** todo · **Depends on:** T-134 · **Refs:** ADR-0012, ARCHITECTURE §6
-- Storage reads, watches and writes sidecars atomically, incl. conflict copies and placeholders. Scene schema v3: the scene's map becomes `{ kind, asset, overrides }`; grid and levels move to the map's sidecar.
+- **Status:** done · **Depends on:** T-134 · **Refs:** ADR-0012, ARCHITECTURE §6
+- Storage reads and writes sidecars atomically, incl. placeholders and conflict copies; the watcher reports sidecars apart from the files they describe; the rule for moving a version 2 scene's grid and levels into its map's sidecar (`adoptLegacyMap`).
 - **Acceptance criteria**
-  - [ ] A missing sidecar yields defaults; the first edit creates it
-  - [ ] Scene schema v3: migration `map → { kind, asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures)
-- **Notes:** Split from T-134 (2026-11-20).
+  - [x] A missing sidecar is reported as missing (the caller uses defaults); a placeholder or broken one is reported, never thrown; an invalid one is never written (storage tests)
+  - [x] Conflict copies of sidecars are found next to them; the watcher classifies sidecars (`sidecarFile`)
+  - [x] The first scene of a map seeds its sidecar; later scenes fit or differ (unit tests)
+  - [x] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (Rust regression test)
+- **Notes:** Split from T-134 (2026-11-20). The scene format change moved to T-134d, so it lands together with the DM window that reads it.
 
-### T-134d DM window plays the resolved map
+### T-134d Scene schema v3; the DM window plays the resolved map
 
-- **Status:** todo · **Depends on:** T-134c · **Refs:** ADR-0012, ARCHITECTURE §8
-- The DM window loads the map's sidecar with the scene and works on `resolveMap`'s result (levels, grid, rendering, TV); `embeddedMap` goes away; orphaned overrides and `legacyMap` show a hint to the DM.
+- **Status:** todo · **Depends on:** T-134c · **Refs:** ADR-0012, ARCHITECTURE §6, §8
+- Scene schema v3: the scene's map becomes `{ kind, asset, overrides }`; grid and levels move to the map's sidecar. The DM window loads the sidecar with the scene and works on `resolveMap`'s result (levels, grid, rendering, TV); `embeddedMap` goes away; new maps and map changes write the sidecar; orphaned overrides and `legacyMap` show a hint to the DM.
 - **Acceptance criteria**
+  - [ ] Scene schema v3: migration `map → { kind, asset, overrides, legacyMap }`; opening a scene seeds a missing sidecar from `legacyMap` (`adoptLegacyMap`); differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures)
+  - [ ] A map without sidecar shows with defaults; the first edit creates the sidecar
+  - [ ] Only a missing sidecar is seeded; a placeholder or broken one is never overwritten (test)
   - [ ] Opening, playing and the TV use the resolved map (component + E2E tests)
-  - [ ] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (regression test)
 - **Notes:** Split from T-134 (2026-11-20). From the T-134 review: undo/redo snapshots hold whole `SessionState`s; undo must restore the scene only and re-attach the current resolved map, so a global edit is never undone by a scene undo (T-134b too).
 
 ### T-134b Sidecars: live-scene confirmation and catalog

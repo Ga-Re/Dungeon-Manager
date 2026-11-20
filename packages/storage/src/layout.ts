@@ -1,4 +1,4 @@
-import { idSchema } from "@dungeon-manager/schema";
+import { assetRefSchema, idSchema } from "@dungeon-manager/schema";
 import type { FileSystem } from "./fs.js";
 
 /** Directories of a library (ARCHITECTURE §6.2). Device settings never live here. */
@@ -45,3 +45,25 @@ export const sessionsDirectory = (slug: string) =>
   `${campaignDirectory(slug)}/sessions`;
 export const sessionFile = (slug: string, sessionId: string) =>
   `${sessionsDirectory(slug)}/${sessionId}.json`;
+
+/** Sidecars are named after the file they describe (ADR-0012). */
+export const SIDECAR_SUFFIX = ".dm.json";
+
+/**
+ * The sidecar `<file>.dm.json` of a library file (ADR-0012). Only files in `library/` have one,
+ * like the watcher's assets (`classifyLibraryPath`); hidden folders such as `.previews` hold
+ * generated files and have none.
+ * @throws on a path outside the library, an unsafe or hidden path, or a sidecar itself
+ */
+export function sidecarFile(assetPath: string): string {
+  const parts = assetPath.split("/");
+  if (
+    parts[0] !== "library" ||
+    parts.length < 2 ||
+    parts.some((part) => part.startsWith(".")) ||
+    !assetRefSchema.shape.path.safeParse(assetPath).success ||
+    assetPath.endsWith(SIDECAR_SUFFIX)
+  )
+    throw new Error(`Not a library file: ${assetPath}`);
+  return `${assetPath}${SIDECAR_SUFFIX}`;
+}
