@@ -157,8 +157,11 @@ export const de = {
     tabNotSaved: "(nicht gespeichert)",
     rescue: {
       label: "Nicht gespeicherte Änderungen",
-      found:
-        "Änderungen an {{name}} vom {{time}} konnten nicht gespeichert werden; sie liegen auf diesem Gerät.",
+      summary_one:
+        "Änderungen an einer Szene konnten nicht gespeichert werden; sie liegen auf diesem Gerät.",
+      summary_other:
+        "Änderungen an {{count}} Szenen konnten nicht gespeichert werden; sie liegen auf diesem Gerät.",
+      found: "{{name}}, Stand {{time}}",
       restore: "Wiederherstellen",
       discard: "Verwerfen",
       restoreNamed: "Änderungen an {{name}} wiederherstellen",
@@ -168,7 +171,7 @@ export const de = {
     },
     closeUnsaved: {
       title: "Szene schließen?",
-      text: "Die letzten Änderungen an {{name}} konnten nicht gespeichert werden. Beim Schließen gehen sie verloren.",
+      text: "Die letzten Änderungen an {{name}} konnten nicht gespeichert werden. Eine Kopie bleibt auf diesem Gerät; beim nächsten Öffnen der Kampagne kannst du sie wiederherstellen.",
       cancel: "Offen lassen",
       dismiss: "Abbrechen",
       close: "Trotzdem schließen",

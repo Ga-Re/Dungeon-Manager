@@ -108,6 +108,9 @@ export function useSceneSession(
   useEffect(() => {
     setScene(opened);
     setHistory(createHistory());
+    // Replaced from outside (e.g. a restored rescue copy, written already): saved as it is.
+    failed.current = false;
+    setSaveFailed(false);
   }, [opened]);
 
   useEffect(() => {
@@ -194,6 +197,9 @@ export function useSceneSession(
   );
 
   const rescue = useContext(SceneRescueContext);
+  // Whether this session kept a rescue copy (T-114b): only then does a later successful save
+  // drop it. A copy from an earlier session is newer than the scene opened from disk.
+  const keptRescue = useRef(false);
   const save = useCallback(
     (next: Scene) => {
       // Chained, so writes land in the order the DM made the changes.
@@ -204,7 +210,10 @@ export function useSceneSession(
             () => {
               failed.current = false;
               setSaveFailed(false);
-              rescue?.drop(slug, next.id);
+              if (keptRescue.current) {
+                keptRescue.current = false;
+                rescue?.drop(slug, next.id);
+              }
             },
             (error: unknown) => {
               console.error("Saving the scene failed.", error);
@@ -212,6 +221,7 @@ export function useSceneSession(
               setSaveFailed(true);
               // Kept on this device until it is saved (T-114b): a crash now loses nothing.
               rescue?.keep(slug, next);
+              keptRescue.current = rescue !== null;
             },
           )
           .finally(() => {

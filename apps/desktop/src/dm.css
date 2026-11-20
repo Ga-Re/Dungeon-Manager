@@ -272,6 +272,37 @@ label {
   pointer-events: auto;
 }
 
+/* Rescue copies (T-114b): a framed note over the map, one row per scene. */
+.dm-rescue-offer {
+  display: grid;
+  gap: var(--dm-space-2);
+  padding: var(--dm-space-2) var(--dm-space-3);
+  background: var(--dm-surface-raised);
+  color: var(--dm-text-primary);
+  border: 1px solid var(--dm-border-strong);
+  border-radius: var(--dm-radius-md);
+  box-shadow: var(--dm-shadow-panel);
+}
+
+.dm-rescue-offer p {
+  margin: 0;
+}
+
+.dm-rescue-offer ul {
+  display: grid;
+  gap: var(--dm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dm-rescue-offer li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dm-space-2);
+}
+
 .dm-titlebar {
   display: flex;
   align-items: center;

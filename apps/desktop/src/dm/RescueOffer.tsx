@@ -17,42 +17,50 @@ export function RescueOffer({
   const { t, i18n } = useTranslation();
   if (copies.length === 0) return null;
   return (
+    // A region with one status sentence; the controls are not inside a live region.
     <section
       className="dm-rescue-offer"
       aria-label={t("campaign.rescue.label")}
     >
-      {copies.map((copy) => {
-        const name = copy.scene.name;
-        return (
-          <p key={copy.scene.id} role="alert">
-            {t("campaign.rescue.found", {
-              name,
-              time: new Date(copy.savedAt).toLocaleString(i18n.language, {
-                dateStyle: "short",
-                timeStyle: "short",
-              }),
-            })}{" "}
-            <button
-              type="button"
-              aria-label={t("campaign.rescue.restoreNamed", { name })}
-              onClick={() => {
-                onRestore(copy);
-              }}
-            >
-              {t("campaign.rescue.restore")}
-            </button>{" "}
-            <button
-              type="button"
-              aria-label={t("campaign.rescue.discardNamed", { name })}
-              onClick={() => {
-                onDiscard(copy);
-              }}
-            >
-              {t("campaign.rescue.discard")}
-            </button>
-          </p>
-        );
-      })}
+      <p role="status">
+        {t("campaign.rescue.summary", { count: copies.length })}
+      </p>
+      <ul>
+        {copies.map((copy) => {
+          const name = copy.scene.name;
+          return (
+            <li key={copy.scene.id}>
+              <span>
+                {t("campaign.rescue.found", {
+                  name,
+                  time: new Date(copy.savedAt).toLocaleString(i18n.language, {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  }),
+                })}
+              </span>
+              <button
+                type="button"
+                aria-label={t("campaign.rescue.restoreNamed", { name })}
+                onClick={() => {
+                  onRestore(copy);
+                }}
+              >
+                {t("campaign.rescue.restore")}
+              </button>
+              <button
+                type="button"
+                aria-label={t("campaign.rescue.discardNamed", { name })}
+                onClick={() => {
+                  onDiscard(copy);
+                }}
+              >
+                {t("campaign.rescue.discard")}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }

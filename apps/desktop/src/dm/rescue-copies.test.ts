@@ -86,4 +86,26 @@ describe("rescue copies", () => {
       keepRescue(storage, copy("a"));
     }).not.toThrow();
   });
+
+  it("migrate a copy kept before an update, and keep entries they cannot read", () => {
+    const old = { ...copy("a"), scene: { ...scene("a"), schemaVersion: 2 } };
+    const unreadable = { ...copy("z"), scene: { id: "z", schemaVersion: 99 } };
+    const storage = memoryStorage({
+      "dm.rescueCopies": JSON.stringify({
+        version: 1,
+        copies: [old, unreadable],
+      }),
+    });
+    expect(
+      readRescues(storage).map((each) => each.scene.schemaVersion),
+    ).toEqual([3]);
+    keepRescue(storage, copy("b"));
+    expect(
+      dropRescue(storage, { root: "/lib", slug: "mine", sceneId: "a" }),
+    ).toBe(true);
+    expect(storage.getItem("dm.rescueCopies")).toContain('"schemaVersion":99');
+    expect(
+      dropRescue(storage, { root: "/lib", slug: "mine", sceneId: "a" }),
+    ).toBe(false);
+  });
 });

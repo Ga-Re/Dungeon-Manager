@@ -227,9 +227,9 @@ export function LibraryPanel({
               setRescues(readRescues(storage));
             },
             drop(slug, sceneId) {
-              dropRescue(storage, { root, slug, sceneId });
-              // A later save succeeded: the offer goes, so it never restores an older state.
-              setRescues(readRescues(storage));
+              // Only when there was a copy: saves are frequent, re-renders are not needed.
+              if (dropRescue(storage, { root, slug, sceneId }))
+                setRescues(readRescues(storage));
             },
           },
     [root, storage],
@@ -472,13 +472,7 @@ export function LibraryPanel({
                   copy.root === root && copy.slug === selectedCampaign.slug,
               )}
               onRescueHandled={(sceneId) => {
-                if (root === null) return;
-                dropRescue(storage, {
-                  root,
-                  slug: selectedCampaign.slug,
-                  sceneId,
-                });
-                setRescues(readRescues(storage));
+                sceneRescue?.drop(selectedCampaign.slug, sceneId);
               }}
               onTabsChange={(tabs) => {
                 if (root === null) return;

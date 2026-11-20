@@ -315,6 +315,22 @@ describe("editing the fog", () => {
     expect(screen.queryByText("Speichert …")).toBeNull();
   });
 
+  test("a successful save leaves a rescue copy from an earlier session to the DM (T-114b)", async () => {
+    const rescue = { keep: vi.fn(), drop: vi.fn() };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      mapped,
+      rescue,
+    );
+    fireEvent.click(await enabled("Alles aufdecken"));
+    await waitFor(() => {
+      expect(library.fs.files().has("campaigns/mine/scenes/s.json")).toBe(true);
+    });
+    // The scene opened from disk is older than a copy kept before a crash: never dropped here.
+    expect(rescue.drop).not.toHaveBeenCalled();
+    expect(rescue.keep).not.toHaveBeenCalled();
+  });
+
   test("a failed save is reported, blocks a map change and is cleared by the next save", async () => {
     const rescue = { keep: vi.fn(), drop: vi.fn() };
     const { library } = renderScene(
