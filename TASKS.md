@@ -865,9 +865,11 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Status:** todo · **Depends on:** T-124, T-134, T-172 · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
 - The Map Forge opens a map from the library (data panel) as its document, without a scene. Ribbon tabs for the map's data; the browser lists levels, rooms, masks and props. First content: map metadata (name, cell size, ambient sound, transition, fog effect) in the sidecar.
 - **Acceptance criteria**
+  - [ ] The map library is organised in folders (an imported pack keeps its structure) and tags, with search
   - [ ] Open a library map and edit its metadata; saved in its sidecar (component + E2E test)
   - [ ] An edit reaches a scene live on the TV only after the DM confirms (ADR-0012)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+- Deepening (DM interview, 2026-11-20): the first stage of the Map Forge is import and management (folders + tags), metadata, the 3×3 calibration (T-177), adding levels (T-118d), crop and image adjustment (T-192) and rooms for the fog (T-108c); walls and vision follow in stage 5.
 
 ### T-177 Two-click grid calibration with a 3×3 box
 
@@ -878,10 +880,19 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Without a printed grid, an overlay grid can be laid over the map
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
+### T-192 Crop, rotation and image adjustment of maps
+
+- **Status:** todo · **Depends on:** T-176 · **Refs:** SPEC §2.5
+- Non-destructive crop, rotation and brightness/contrast/hue per map, so dark or glaring maps read well on the TV.
+- **Acceptance criteria**
+  - [ ] The original file stays untouched; settings live in the sidecar
+  - [ ] Same look on the TV and in the DM window (screenshot test)
+- **Notes:** Moved to stage 1 by the DM (2026-11-20, first stage of the Map Forge). From the workspace interview with the DM (2026-11-20, ADR-0017).
+
 ### T-178 Asset Vault: library, metadata and search
 
 - **Status:** todo · **Depends on:** T-124, T-125, T-126, T-172 · **Refs:** SPEC §2.5, §8.2, ADR-0017
-- The Asset Vault opens assets from the library: props, map pieces, handouts, items and sounds. Metadata (theme, type, tags), search, collections, favourites and recently used; a preview on a 5-ft grid shows the asset's scale.
+- The Asset Vault opens assets from the library: props, map pieces (tiles, terrain textures), handout images and sounds. Metadata combines fixed fields (type, environment/theme, origin/licence), free tags and fields the DM defines (T-232); search, collections, favourites and recently used. Each asset's size is set in grid cells (e.g. 2×1); a preview on a 5-ft grid shows it.
 - **Acceptance criteria**
   - [ ] Find assets by theme, type and tags; collections and favourites persist (component + E2E test)
   - [ ] The grid preview shows an asset at its calibrated size
@@ -895,10 +906,19 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] A second import of the same file adds no copy (storage test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
+### T-231 Asset pack import with folder choice
+
+- **Status:** todo · **Depends on:** T-124, T-178 · **Refs:** SPEC §2.5, §8.2
+- Import a large pack (e.g. thousands of files): choose its subfolders; only those are copied into the library, keeping their folder structure as categories. Licensed packs stay in the DM's library, never in the repository.
+- **Acceptance criteria**
+  - [ ] Only the chosen subfolders are copied; the structure becomes folders/categories (storage test)
+  - [ ] A large import shows progress and can be cancelled without leaving half-copied files
+- **Notes:** From the workspace deepening with the DM (2026-11-20).
+
 ### T-180 Creature library: player characters and creatures
 
 - **Status:** todo · **Depends on:** T-107, T-172 · **Refs:** SPEC §2.5, §5, §11
-- Global creatures (DM decision: player characters too, campaigns refer to them): token picture and portrait, HP with dice formula, AC, initiative modifier, speeds, size with grid footprint and pivot, senses (sight, darkvision) for vision. Per-session state (HP, conditions) stays in the scene/session state.
+- Global creatures (DM decision: player characters too, campaigns refer to them). Values follow a D&D 5e core that the DM can extend with own fields: HP with dice formula, AC, initiative modifier, speeds, size with grid footprint and pivot, senses (sight, darkvision) for vision; actions, spells and tactics go into a Markdown note. The DM maintains the player characters' values (players keep paper sheets). Look per creature: a round token with ring or a cut-out top-down figure; token picture and portrait. Per-session state (HP, conditions) stays in the scene/session state.
 - **Acceptance criteria**
   - [ ] Create and edit a creature; a token placed from it carries its values (component + E2E test)
   - [ ] A campaign refers to its player characters without copying them
@@ -1031,6 +1051,14 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Pins and routes are saved with the campaign; a pin opens its scene (component test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
+### T-232 Custom metadata fields for assets
+
+- **Status:** todo · **Depends on:** T-178 · **Refs:** SPEC §2.5
+- The DM defines own metadata fields (e.g. "Epoche", "Fraktion") with a type (text, choice, number) and filters by them.
+- **Acceptance criteria**
+  - [ ] Custom fields are saved with the library, validated with zod and usable as filters (storage + component tests)
+- **Notes:** From the workspace deepening with the DM (2026-11-20). A new file format in the library: schema reviewed with the DM.
+
 ## Stage 3 – Networked at the table
 
 ### T-118b Fog-composited maps for companions
@@ -1062,6 +1090,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Wall/door editor with undo; VTT import fixture (self-made) round-trips walls, doors and lights
   - [ ] An undiscovered secret door is projected as a plain wall or not at all; walls and doors reach the player view only as far as needed for drawing (vision runs on the host) – projection test
+- Deepening (DM interview, 2026-11-20): masks are vector lines on the grid (walls, cliffs), cover as circles or polygons – not painted raster masks.
 
 ### T-141 Automatic walls and room suggestions
 
@@ -1071,6 +1100,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Two adjacent rooms produce an opening on the shared edge (unit tests in `core`)
   - [ ] Image-analysis suggestions are shown as a preview and applied only after confirmation
 - **Notes:** From the DM planning interview (2026-11-18). An image-analysis library (e.g. OpenCV in Rust, already planned for the camera) is a dependency decision; a local AI model was deferred ("later").
+- Deepening (DM interview, 2026-11-20): automatic masks are suggestions from local image analysis that the DM confirms or corrects; nothing unreviewed reaches the TV.
 
 ### T-142 Dynamic vision with raycasting
 
@@ -1089,6 +1119,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Screenshot tests for each brightness level, dim vs bright, darkvision and a coloured light
   - [ ] Flicker is seeded (deterministic in tests) and stays within the photosensitivity limits (SPEC 10.3, ARCHITECTURE §9), which this task also applies to on-screen light
 - Workspace interview (2026-11-20): ambient light presets per map (day 100 %, dusk, full-moon night, dark dungeon 0 %) set in the Map Forge.
+- Deepening (DM interview, 2026-11-20): light sources (radius, colour, flicker) belong to the map globally; whether they burn and the ambient light are set per scene and in the Orchestrator.
 
 ### T-144 Asset placement and asset blockers
 
@@ -1135,18 +1166,9 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-191 Map variants
 
 - **Status:** todo · **Depends on:** T-176, T-134 · **Refs:** SPEC §2.5, §8.1
-- Variants of a map (day/night, destroyed, flooded) share masks, rooms and grid; a scene picks one.
+- Variants per level (day/night, destroyed, flooded): masks and rooms belong to the level and apply to all its variants; a scene picks a variant per level (DM decision, 2026-11-20).
 - **Acceptance criteria**
   - [ ] Switching variants keeps fog, masks and rooms (component test)
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
-
-### T-192 Crop, rotation and image adjustment of maps
-
-- **Status:** todo · **Depends on:** T-176 · **Refs:** SPEC §2.5
-- Non-destructive crop, rotation and brightness/contrast/hue per map, so dark or glaring maps read well on the TV.
-- **Acceptance criteria**
-  - [ ] The original file stays untouched; settings live in the sidecar
-  - [ ] Same look on the TV and in the DM window (screenshot test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
 ### T-193 Cliff and cover masks
@@ -1228,6 +1250,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Placing a prefab brings its mask/light into the scene (component test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+- Deepening (DM interview, 2026-11-20): prefabs are made in an asset editor in the Vault – open the asset and draw its mask, light and anchor on its picture; they apply wherever it is placed.
 
 ### T-203 Token from portrait
 
@@ -1244,6 +1267,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Clones get distinct names and rolled HP (unit tests with injected RNG)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+- Deepening (DM interview, 2026-11-20): placed creatures and clones are instances in the scene that refer to the library creature, with their own name, HP and conditions; the library stays clean.
 
 ### T-205 Encounter pods
 
@@ -1276,6 +1300,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Colour is never the only signal (ADR-0011); screenshot tests
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+- Deepening (DM interview, 2026-11-20): rings are optional per creature (round tokens); cut-out figures show faction and conditions as subtle markers.
 
 ### T-209 Scene editor: tokens, props and start states
 
@@ -1320,7 +1345,7 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-226 Animated creature tokens
 
 - **Status:** todo · **Depends on:** T-180, T-107, T-128 · **Refs:** SPEC §2.5, §5
-- Creatures can use animated sprites or video files, so tokens move on the TV instead of standing still; in sync between DM window and TV.
+- Creatures can be animated, so tokens move on the TV: sprite sheets and animated WebP everywhere, videos with transparency where the platform plays them (WebKit on macOS is limited), else a still picture as fallback (DM decision, 2026-11-20); in sync between DM window and TV.
 - **Acceptance criteria**
   - [ ] Animated tokens stay within the benchmark budget (ARCHITECTURE §11)
   - [ ] Hidden animated tokens never reach the TV (projection test)
@@ -1360,6 +1385,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Item cards reach the TV only when shown (projection test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+- Postponed by the DM (DM interview, 2026-11-20): whether items are global or per campaign is decided later.
 
 ### T-215 Sounds bound to traps and spells
 
