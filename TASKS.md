@@ -805,14 +805,15 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] The selector lists the five workspaces with translated names; a remembered workspace of the old ids still opens (component test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
-### T-172 Workspace layouts
+### T-172 Dockable panel system with named layouts
 
 - **Status:** todo · **Depends on:** T-171 · **Refs:** ADR-0017, ADR-0014, ARCHITECTURE §15
-- A small layout layer: each workspace declares its zones (docked column, ribbon tabs, canvas, floating browser, dock, properties panel) and what fills them; the shell's slots become per workspace. The Game-Orchestrator keeps today's layout and stays mounted while another workspace shows.
+- Every workspace is made of panels – the map too – that can be moved, resized, docked to the window's edges or to each other, folded, and shown or hidden from the View menu (macOS menu bar; "Menü" button elsewhere). Each workspace has a default layout (e.g. the Atlas's five zones, the Orchestrator's map with side bars) and the DM's own named layouts ("Kampf", "Erkundung"), stored per device; "Layout zurücksetzen" restores the default. Panels keep their state while hidden, and the Game-Orchestrator's panels stay mounted while another workspace shows.
 - **Acceptance criteria**
-  - [ ] Switching workspaces swaps the layout without losing the Orchestrator's state (component + E2E test)
-  - [ ] A DM-window screenshot per workspace layout (placeholders where content follows)
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+  - [ ] Move, resize, dock, fold and hide panels with mouse and keyboard; layouts survive a restart (component + E2E tests)
+  - [ ] Named layouts per workspace and device; reset to the default
+  - [ ] A DM-window screenshot per workspace's default layout
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). Whether to use a docking library or build it is a dependency decision for the DM (structured proposal with the task); panels are placed with the `ui-design` skill and ADR-0015's look.
 
 ### T-173 Browser as the open document's object tree; campaign explorer in the Atlas
 
@@ -840,6 +841,24 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] The pause screen hides the scene completely and fail-closed (screenshot + E2E test)
   - [ ] The setting changes what a workspace switch does to the TV (E2E test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). The DM left the default open; the agent assumes "only on the button" until the DM decides. Belongs together with the blackout of T-113.
+
+### T-182 Game-Orchestrator: scene bar and group overview
+
+- **Status:** todo · **Depends on:** T-172, T-174, T-175, T-111, T-112 · **Refs:** SPEC §2.5, §13.2
+- A scene bar with the session's scenes; the next scene can be prepared quickly (fog) without touching the TV and then switched live. A group overview shows all player characters with HP, conditions and concentration. Default layout: the map large, initiative, group, dice and the inspector as small panels the DM shows or hides from the View menu and docks where they like (T-172); the dock holds zoom, TV preview, pause and blackout.
+- **Acceptance criteria**
+  - [ ] Preparing the next scene never changes the TV (E2E test)
+  - [ ] The group overview follows HP and condition changes (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). DM decision: the first workspace to fill after the shared frame (T-171–T-175).
+
+### T-223 Document tabs
+
+- **Status:** todo · **Depends on:** T-172 · **Refs:** ADR-0017, ADR-0011
+- Several documents open at once – the campaign's Atlas, scenes, maps, assets, creatures – as tabs in the title bar with an unsaved-changes dot; each tab keeps its own undo history (T-174).
+- **Acceptance criteria**
+  - [ ] Open, switch and close document tabs by mouse and keyboard (component + E2E test)
+  - [ ] Closing a tab with unsaved changes asks first
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
 ### T-176 Map Forge: open and edit library maps
 
@@ -891,17 +910,8 @@ New tasks discovered during work are appended to the right stage with status `to
 - The Atlas shows the campaign explorer (sessions as folders of scenes, notes) in its data panel and opens a selected scene in its scene editor, with its own ribbon.
 - **Acceptance criteria**
   - [ ] Open, create, move and delete scenes from the explorer (E2E test)
-  - [ ] The rule for editing the scene that is live on the TV is decided with the DM and tested
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). Open question for the DM: what happens when the Atlas edits the scene that is live in the Orchestrator.
-
-### T-182 Game-Orchestrator: scene bar and group overview
-
-- **Status:** todo · **Depends on:** T-172, T-111, T-112 · **Refs:** SPEC §2.5, §13.2
-- A scene bar with the session's scenes; the next scene can be prepared quickly (fog) without touching the TV and then switched live. A group overview shows all player characters with HP, conditions and concentration.
-- **Acceptance criteria**
-  - [ ] Preparing the next scene never changes the TV (E2E test)
-  - [ ] The group overview follows HP and condition changes (component test)
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+  - [ ] Editing the scene that is live in the Orchestrator changes its start state only; the live game state takes it on "reset scene" or after the DM confirms (core + component tests)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). DM decisions: an opened scene is a document tab in the Atlas with its own ribbon tabs (Tokens & Encounter, Trigger & Fallen, Notizen), not a sixth workspace; the Atlas edits a scene's start state, the Orchestrator its game state. Layout as in the DM's Atlas specification (explorer left, document centre with an optional split drawer for the flow, inspector right, session timeline at the bottom); look per ADR-0015.
 
 ### T-115 MVP end-to-end flow
 
@@ -1003,6 +1013,22 @@ New tasks discovered during work are appended to the right stage with status `to
 - NPC (name, quirk, motivation), tavern rumours, random encounters and loot tables in one click; tables editable by the DM.
 - **Acceptance criteria**
   - [ ] Generated results use the DM's tables; bundled tables are self-made or CC0 (SOURCES noted)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-224 Campaign search
+
+- **Status:** todo · **Depends on:** T-181 · **Refs:** SPEC §2.5
+- One search over the campaign – scenes, notes, wiki, pins, creatures – from Cmd/Ctrl+K.
+- **Acceptance criteria**
+  - [ ] Results open the found item in its workspace (E2E test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-225 World map with scene pins and travel routes
+
+- **Status:** todo · **Depends on:** T-181, T-176 · **Refs:** SPEC §2.5
+- A campaign world map (from the library) with scene pins and routes with travel times; double-clicking a pin opens the scene. The Atlas can show it above the flow graph (split drawer).
+- **Acceptance criteria**
+  - [ ] Pins and routes are saved with the campaign; a pin opens its scene (component test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
 ## Stage 3 – Networked at the table
@@ -1291,6 +1317,23 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Rolls use the creatures' modifiers (unit tests with injected RNG)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
+### T-226 Animated creature tokens
+
+- **Status:** todo · **Depends on:** T-180, T-107, T-128 · **Refs:** SPEC §2.5, §5
+- Creatures can use animated sprites or video files, so tokens move on the TV instead of standing still; in sync between DM window and TV.
+- **Acceptance criteria**
+  - [ ] Animated tokens stay within the benchmark budget (ARCHITECTURE §11)
+  - [ ] Hidden animated tokens never reach the TV (projection test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-227 Scene phases
+
+- **Status:** todo · **Depends on:** T-209 · **Refs:** SPEC §2.5
+- Dramatic phases inside a scene (start setup → ambush → reinforcements), each with its own state of tokens, doors and light; the Atlas shows them as the scene's timeline and the Orchestrator switches phase by button.
+- **Acceptance criteria**
+  - [ ] Switching a phase applies its state as one undoable step (core tests)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
 ## Stage 6 – Campaign & comfort
 
 ### T-147 Themed scene transitions
@@ -1380,4 +1423,28 @@ New tasks discovered during work are appended to the right stage with status `to
 - DM dice with formulas (2d6+3), hidden or shown on the TV, recorded in the session log.
 - **Acceptance criteria**
   - [ ] Formula parser and rolls tested with injected RNG
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-228 Scene dependencies
+
+- **Status:** todo · **Depends on:** T-216 · **Refs:** SPEC §2.5, §12
+- Requirements and unlocks between scenes in the flow graph (scene 03A only after quest X); the inspector lists "requires" and "unlocks".
+- **Acceptance criteria**
+  - [ ] The flow shows locked and unlocked scenes from the campaign's state (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-229 Scene and session templates
+
+- **Status:** todo · **Depends on:** T-181 · **Refs:** SPEC §2.5
+- Templates ("Taverne", "Dungeon-Etage", "Standard-Session") to create scenes and sessions quickly.
+- **Acceptance criteria**
+  - [ ] A new scene from a template copies its setup, not its fog or game state
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-230 Relationship network
+
+- **Status:** todo · **Depends on:** T-185 · **Refs:** SPEC §2.5, §12
+- A graph of relationships between NPCs and factions (allied, hostile, owes money), linked to the wiki.
+- **Acceptance criteria**
+  - [ ] Relationships are saved with the wiki entries and shown as a graph (component test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
