@@ -93,11 +93,6 @@ export function DmApp({
         : { inchPx: tvInchPx, cellInches: cellInches(cellSize) },
     );
   }, [playerFeed, tvInchPx, cellSize]);
-  const checkSquarePx =
-    measuring && tvDisplay ? checkSquareSide(tvDisplay) : null;
-  useEffect(() => {
-    playerFeed?.showCheckSquare(checkSquarePx);
-  }, [playerFeed, checkSquarePx]);
 
   // Players sit around the table; the TV view turns in quarter steps (SPEC 2.2).
   const rotateTv = () => {
@@ -142,6 +137,15 @@ export function DmApp({
     (state.status === "ready" &&
       state.displays.find((display) => display.id === tvDisplay?.id)) ||
     selectedDisplay;
+  // The square the TV shows while the DM measures: from the same display entry the popover
+  // computes with, and only on the display the player view runs on.
+  const checkSquarePx =
+    measuring && calibrated && tvDisplay?.id === calibrated.id
+      ? checkSquareSide(calibrated)
+      : null;
+  useEffect(() => {
+    playerFeed?.showCheckSquare(checkSquarePx);
+  }, [playerFeed, checkSquarePx]);
   const displayName = (display: Display, index: number) =>
     display.name ?? t("dm.unnamedDisplay", { number: index + 1 });
 

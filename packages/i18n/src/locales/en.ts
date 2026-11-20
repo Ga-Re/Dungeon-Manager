@@ -30,6 +30,7 @@ export const en: Messages = {
       openFirst:
         "Open the player view on this display first – the check square then shows there.",
       measured: "Measured side",
+      unit: "Unit of the measurement",
       measuredInvalid:
         "This length cannot be right. Measure one side of the square, e.g. 23.5 cm.",
       apply: "Apply",

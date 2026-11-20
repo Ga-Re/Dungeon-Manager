@@ -298,6 +298,21 @@ describe("DmApp", () => {
     expect(stored.version).toBe(2);
     expect(stored.displays["|3840x2160"]?.inchPx).toBeCloseTo(80);
 
+    // The popover goes away without being closed (a display re-search): the square goes too.
+    fireEvent.click(screen.getByRole("button", { name: "Spieleransicht" }));
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Displays neu suchen" }),
+    );
+    await waitFor(() => {
+      expect(showCheckSquare).toHaveBeenLastCalledWith(null);
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "TV kalibrieren …" }),
+    );
+    await waitFor(() => {
+      expect(showCheckSquare).toHaveBeenLastCalledWith(720);
+    });
+
     // Closing the popover takes the square away; removing the calibration fits the map again.
     fireEvent.click(screen.getByRole("button", { name: "TV kalibrieren …" }));
     await waitFor(() => {

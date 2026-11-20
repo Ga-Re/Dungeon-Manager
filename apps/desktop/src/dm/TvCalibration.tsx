@@ -1,13 +1,13 @@
 import { IconButton, Popover } from "@dungeon-manager/ui";
 import { Ruler } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   checkSquareSide,
   measuredInchPx,
   type Calibration,
+  type CellSize,
   type DisplaySize,
-  type Length,
 } from "../display-calibration.js";
 
 /**
@@ -32,7 +32,7 @@ export function TvCalibration({
   readonly running: boolean;
   readonly calibration: Calibration | null;
   /** The unit offered first (the one of the cell size setting). */
-  readonly unit: Length["unit"];
+  readonly unit: CellSize["unit"];
   /** The popover opened or closed: the TV shows the check square while it is open. */
   readonly onOpenChange: (open: boolean) => void;
   /** A valid calibration, or `null` to remove it. */
@@ -45,6 +45,17 @@ export function TvCalibration({
   const [measured, setMeasured] = useState("");
   const [measuredUnit, setMeasuredUnit] = useState(unit);
   const [invalid, setInvalid] = useState(false);
+  // Gone while open (e.g. another display, a re-search): the TV must not keep the square.
+  const openChanged = useRef(onOpenChange);
+  useEffect(() => {
+    openChanged.current = onOpenChange;
+  });
+  useEffect(
+    () => () => {
+      openChanged.current(false);
+    },
+    [],
+  );
   const toggle = (next: boolean) => {
     // Each time anew: the unit of the cell size setting, which may have changed meanwhile.
     if (next) setMeasuredUnit(unit);
@@ -97,7 +108,7 @@ export function TvCalibration({
             <legend>
               {t("dm.calibration.display", { name: displayLabel })}
             </legend>
-            <p className="dm-settings-hint">
+            <p id={`${id}-hint`} className="dm-settings-hint">
               {running
                 ? t("dm.calibration.measure")
                 : t("dm.calibration.openFirst")}
@@ -111,13 +122,15 @@ export function TvCalibration({
               value={measured}
               disabled={!running}
               aria-invalid={invalid || undefined}
-              aria-describedby={invalid ? `${id}-error` : undefined}
+              aria-describedby={
+                invalid ? `${id}-hint ${id}-error` : `${id}-hint`
+              }
               onChange={(event) => {
                 setMeasured(event.target.value);
                 setInvalid(false);
               }}
             />
-            <label htmlFor={`${id}-unit`}>{t("dm.cellSize.unit")}</label>
+            <label htmlFor={`${id}-unit`}>{t("dm.calibration.unit")}</label>
             <select
               id={`${id}-unit`}
               value={measuredUnit}

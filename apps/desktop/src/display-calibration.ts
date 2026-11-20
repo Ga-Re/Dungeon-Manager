@@ -35,16 +35,6 @@ export function checkSquareSide(display: DisplaySize): number {
   return Math.round(Math.min(display.width, display.height) / 3);
 }
 
-/** A length the DM measured, in centimetres or inches. */
-export interface Length {
-  readonly value: number;
-  readonly unit: "in" | "cm";
-}
-
-/** `length` in inches. */
-export const inches = (length: Length) =>
-  length.unit === "cm" ? length.value / 2.54 : length.value;
-
 /**
  * The display's pixels per inch from the check square (`sidePx` physical pixels) and the side
  * the DM measured on the TV; `null` if that cannot be right (never sent to the TV, which would
@@ -52,9 +42,9 @@ export const inches = (length: Length) =>
  */
 export function measuredInchPx(
   sidePx: number,
-  measured: Length,
+  measured: CellSize,
 ): number | null {
-  const measuredInches = inches(measured);
+  const measuredInches = cellInches(measured);
   if (!Number.isFinite(measuredInches) || measuredInches <= 0) return null;
   const inchPx = sidePx / measuredInches;
   return isUsableInchPx(inchPx) ? inchPx : null;
@@ -79,6 +69,7 @@ function fromVersion1(key: string, value: unknown): Calibration | null {
   const correction = value["correctionPercent"];
   if (typeof diagonal !== "number" || typeof correction !== "number")
     return null;
+  // Version 1 allowed corrections within ±50 % only.
   if (!(diagonal > 0) || !(Math.abs(correction) <= 50)) return null;
   const inchPx =
     (Math.hypot(Number(size[1]), Number(size[2])) / diagonal) *
@@ -140,7 +131,10 @@ export function saveCalibration(
   }
 }
 
-/** The size of one grid cell on the TV (DM, 2026-11-20): 1 inch by default, or in centimetres. */
+/**
+ * A length in inches or centimetres: the size of one grid cell on the TV (DM, 2026-11-20; 1 inch
+ * by default), or the side of the check square the DM measured.
+ */
 export interface CellSize {
   readonly value: number;
   readonly unit: "in" | "cm";

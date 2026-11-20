@@ -29,6 +29,7 @@ export const de = {
       openFirst:
         "Öffne zuerst die Spieleransicht auf diesem Display – dann erscheint dort das Prüfquadrat.",
       measured: "Gemessene Seitenlänge",
+      unit: "Einheit der Messung",
       measuredInvalid:
         "Diese Länge kann nicht stimmen. Miss eine Seite des Quadrats, z. B. 23,5 cm.",
       apply: "Übernehmen",
