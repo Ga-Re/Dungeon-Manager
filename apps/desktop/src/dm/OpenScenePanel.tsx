@@ -36,6 +36,7 @@ import { ShellPortal } from "./shell/slots.js";
 import { useSceneSession } from "./useSceneSession.js";
 import { softEdgeWidth } from "../fog-settings.js";
 import { FogLookContext } from "./shell/fog-look.js";
+import { useActiveWorkspace } from "./shell/workspace.js";
 
 /** A rectangle polygon in map pixels. */
 const rectangle = (size: Size): Polygon => ({
@@ -127,6 +128,12 @@ export function OpenScenePanel({
   const session = useSceneSession(service, slug, opened);
   const { scene, map, notOnTv } = session;
   const [tool, setTool] = useState<MapTool>("pan");
+  // The scene is the Game-Orchestrator's document (T-174): undo and redo act on it only while
+  // that workspace shows, and leaving it drops a fog tool back to panning.
+  const inGame = useActiveWorkspace() === "gameOrchestrator";
+  useEffect(() => {
+    if (!inGame) setTool("pan");
+  }, [inGame]);
   const [shape, setShape] = useState<FogShape>("rectangle");
   const [brushCells, setBrushCells] = useState(1);
   const [mapSize, setMapSize] = useState<Size | null>(null);
@@ -171,7 +178,7 @@ export function OpenScenePanel({
     const onKey = (event: KeyboardEvent) => {
       const action = historyKey(event);
       // While the map changes or the scene is deleted, edits could land after the file moved.
-      if (!action || busy) return;
+      if (!action || busy || !inGame) return;
       event.preventDefault();
       if (action === "undo") session.undo();
       else session.redo();
@@ -324,8 +331,8 @@ export function OpenScenePanel({
           name={scene.name}
           busy={busy}
           onClose={onClose}
-          canUndo={session.canUndo && !busy}
-          canRedo={session.canRedo && !busy}
+          canUndo={session.canUndo && !busy && inGame}
+          canRedo={session.canRedo && !busy && inGame}
           onUndo={() => {
             session.undo();
           }}

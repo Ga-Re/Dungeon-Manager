@@ -12,6 +12,7 @@ import { OpenScenePanel } from "./OpenScenePanel.js";
 import { MapViewContext } from "./MapView.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
+import { ActiveWorkspaceContext, type Workspace } from "./shell/workspace.js";
 
 const campaign = JSON.stringify({
   schemaVersion: 2,
@@ -85,24 +86,32 @@ function renderScene(
   const maps = fakeMapService(() =>
     Promise.resolve({ width: 1000, height: 500 } as unknown as MapImage),
   );
-  const result = render(
-    <I18nextProvider i18n={createI18n("de")}>
-      <PlayerFeedContext value={tv.feed}>
-        <MapViewContext value={maps.service}>
-          <OpenScenePanel
-            service={library.service}
-            slug="mine"
-            scene={opened}
-            newId={() => "new-level"}
-            onChanged={() => undefined}
-            onDeleted={() => undefined}
-            onClose={() => undefined}
-          />
-        </MapViewContext>
-      </PlayerFeedContext>
-    </I18nextProvider>,
+  const i18n = createI18n("de");
+  const tree = (workspace: Workspace) => (
+    <I18nextProvider i18n={i18n}>
+      <ActiveWorkspaceContext value={workspace}>
+        <PlayerFeedContext value={tv.feed}>
+          <MapViewContext value={maps.service}>
+            <OpenScenePanel
+              service={library.service}
+              slug="mine"
+              scene={opened}
+              newId={() => "new-level"}
+              onChanged={() => undefined}
+              onDeleted={() => undefined}
+              onClose={() => undefined}
+            />
+          </MapViewContext>
+        </PlayerFeedContext>
+      </ActiveWorkspaceContext>
+    </I18nextProvider>
   );
-  return { tv, library, maps, ...result };
+  const result = render(tree("gameOrchestrator"));
+  /** The DM switches the window to another workspace (T-174); the scene stays mounted. */
+  const showWorkspace = (workspace: Workspace) => {
+    result.rerender(tree(workspace));
+  };
+  return { tv, library, maps, showWorkspace, ...result };
 }
 
 describe("the open scene on the TV", () => {
@@ -198,6 +207,40 @@ describe("editing the fog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Wiederherstellen" }));
     expect(tv.shown.at(-1)?.fog["ground"]?.revealed).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Alles verdecken" }));
+    expect(tv.shown.at(-1)?.fog["ground"]?.revealed ?? []).toHaveLength(0);
+  });
+
+  test("undo acts on the scene only while the Game-Orchestrator shows; leaving it ends the fog tool (T-174)", async () => {
+    const { tv, showWorkspace } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      mapped,
+    );
+    fireEvent.click(await enabled("Alles aufdecken"));
+    const tool = screen.getByRole("button", { name: "Aufdecken" });
+    fireEvent.click(tool);
+    expect(tool.getAttribute("aria-pressed")).toBe("true");
+
+    showWorkspace("mapForge");
+    // Another workspace's undo never reaches the scene: keys and title bar buttons.
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    expect(tv.shown.at(-1)?.fog["ground"]?.revealed).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Rückgängig" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+
+    showWorkspace("gameOrchestrator");
+    expect(
+      screen
+        .getByRole("button", { name: "Aufdecken" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+    expect(
+      screen
+        .getByRole("button", { name: "Verschieben" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     expect(tv.shown.at(-1)?.fog["ground"]?.revealed ?? []).toHaveLength(0);
   });
 
