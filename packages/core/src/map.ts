@@ -99,21 +99,24 @@ export type LevelRemoval =
       readonly data: MapData;
       readonly usedBy: readonly string[];
     }
+  /** The map's only level that is not archived: new scenes need one to start on. */
   | { readonly kind: "lastLevel" }
   | { readonly kind: "unknownLevel" };
 
 /**
  * Removes a level from a map's global data, or archives it while any of `scenes` (every scene
- * using this map) still refers to it. A map keeps at least one level.
+ * using this map) still refers to it. A map keeps at least one level that is not archived.
  */
 export function removeLevel(
   data: MapData,
   levelId: string,
   scenes: readonly Scene[],
 ): LevelRemoval {
-  if (!data.levels.some((level) => level.id === levelId))
-    return { kind: "unknownLevel" };
-  if (data.levels.length === 1) return { kind: "lastLevel" };
+  const target = data.levels.find((level) => level.id === levelId);
+  if (!target) return { kind: "unknownLevel" };
+  const active = data.levels.filter((level) => level.archived !== true);
+  if (target.archived !== true && active.length === 1)
+    return { kind: "lastLevel" };
   const usedBy = scenes
     .filter((scene) => levelsInUse(scene).has(levelId))
     .map((scene) => scene.id);

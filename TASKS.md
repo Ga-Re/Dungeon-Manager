@@ -282,7 +282,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-125 Asset metadata: scale, name, origin
 
-- **Status:** todo · **Depends on:** T-124, T-106, T-134 · **Refs:** SPEC 8.2, 3.1, ADR-0012
+- **Status:** todo · **Depends on:** T-124, T-106, T-134b · **Refs:** SPEC 8.2, 3.1, ADR-0012
 - Metadata per catalog item so it always fits the map scale: for maps the grid calibration (pixels per cell, offset; filled from T-106 and reused by every scene with that map), for assets and tokens their footprint in grid cells. Plus display name and origin/license (SPEC 8.2).
 - **Acceptance criteria**
   - [ ] A map's calibration is stored once and pre-fills the grid of every new scene using it
@@ -355,7 +355,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-106 Grid overlay and 1-inch calibration
 
-- **Status:** todo · **Depends on:** T-105b, T-134 · **Refs:** SPEC 2.2, ADR-0012
+- **Status:** todo · **Depends on:** T-105b, T-134b · **Refs:** SPEC 2.2, ADR-0012
 - Grid overlay (calibration stored in the map's sidecar, T-134); align grid to the map; display calibration (screen diagonal / resolution → pixels per inch) per display in device settings.
 - **Acceptance criteria**
   - [ ] On a calibrated display one cell measures 1 inch (manual check documented; unit tests for the math)
@@ -412,14 +412,14 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-108c Fog: predefined rooms
 
-- **Status:** todo · **Depends on:** T-108b, T-134 · **Refs:** SPEC 4, ADR-0012
+- **Status:** todo · **Depends on:** T-108b, T-134b · **Refs:** SPEC 4, ADR-0012
 - Rooms and areas drawn once per map level (polygons, may overlap) in the map's sidecar, so every scene using the map has them; revealed with one click on the room or from the room list in the scene browser. Rooms can be marked secret.
 - **Acceptance criteria**
   - [ ] DM defines rooms on a map; a second scene with the same map shows the same rooms
   - [ ] Hovering a room in fog mode highlights it; a click reveals/hides it as one undo step
   - [ ] Room list with per-room reveal toggle
   - [ ] Room reveals and "reveal all" subtract hidden secret rooms: afterwards `revealed ∩ hiddenSecretRoom = ∅` and no token centred in it is projected (property test, incl. overlapping rooms)
-- **Notes:** Format per ADR-0012 (accepted by the DM, 2026-11-18). Suggesting rooms from walls comes with T-141; reveal by trigger with the trigger zones (stage 5).
+- **Notes:** Format per ADR-0012 (accepted by the DM, 2026-11-18). Open for the DM (from the T-134 review): the agreed room format `{ id, name, area }` has no level, but rooms are drawn per level – an optional `levelId` is additive (no version bump); ask before implementing. Suggesting rooms from walls comes with T-141; reveal by trigger with the trigger zones (stage 5).
 
 ### T-109 Memory fog
 
@@ -800,7 +800,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - Storage reads, watches and writes sidecars atomically, incl. conflict copies and placeholders. Scene schema v3: the scene's map becomes `{ kind, asset, overrides }`; grid and levels move to the map's sidecar.
 - **Acceptance criteria**
   - [ ] A missing sidecar yields defaults; the first edit creates it
-  - [ ] Scene schema v3: migration `map → { asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures)
+  - [ ] Scene schema v3: migration `map → { kind, asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures)
 - **Notes:** Split from T-134 (2026-11-20).
 
 ### T-134d DM window plays the resolved map
@@ -810,7 +810,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Opening, playing and the TV use the resolved map (component + E2E tests)
   - [ ] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (regression test)
-- **Notes:** Split from T-134 (2026-11-20).
+- **Notes:** Split from T-134 (2026-11-20). From the T-134 review: undo/redo snapshots hold whole `SessionState`s; undo must restore the scene only and re-attach the current resolved map, so a global edit is never undone by a scene undo (T-134b too).
 
 ### T-134b Sidecars: live-scene confirmation and catalog
 
@@ -823,7 +823,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-168 Animated fog effects per map
 
-- **Status:** todo · **Depends on:** T-134, T-136a, T-160a, T-105d, T-127 · **Refs:** SPEC §4, ARCHITECTURE §8, §11
+- **Status:** todo · **Depends on:** T-134b, T-136a, T-160a, T-105d, T-127 · **Refs:** SPEC §4, ARCHITECTURE §8, §11
 - The fog of a map can carry an animated effect: drifting mist, snow flurry, smoke and ash, darkness (first set – DM decision, 2026-11-19). Set on the map (sidecar, T-134) and adjustable during a session (session override); shown on the TV, previewed in the DM window. GPU shaders, no per-frame CPU work.
 - **Acceptance criteria**
   - [ ] Effect and strength stored in the map sidecar and overridable per session (schema + storage tests)
@@ -906,7 +906,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-176 Map Forge: open and edit library maps
 
-- **Status:** todo · **Depends on:** T-124, T-134, T-172 · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
+- **Status:** todo · **Depends on:** T-124, T-134b, T-172 · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
 - The Map Forge opens a map from the library (data panel) as its document, without a scene. Ribbon tabs for the map's data; the browser lists levels, rooms, masks and props. First content: map metadata (name, cell size, ambient sound, transition, fog effect) in the sidecar.
 - **Acceptance criteria**
   - [ ] The map library is organised in folders (an imported pack keeps its structure) and tags, with search
@@ -989,7 +989,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-115 MVP end-to-end flow
 
-- **Status:** todo · **Depends on:** T-107 … T-114, T-134 … T-136
+- **Status:** todo · **Depends on:** T-107 … T-114, T-134b, T-135, T-136a, T-136b
 - E2E: choose library → import map → create scene → place tokens → reveal fog → run two initiative rounds → blackout → restart → state restored.
 - **Acceptance criteria**
   - [ ] Flow passes in CI; benchmark run on reference notebook documented in `docs/benchmarks/`
@@ -1000,7 +1000,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-150 Obsidian vault and scene drafts from notes
 
-- **Status:** todo · **Depends on:** T-103b, T-134 · **Refs:** ADR-0013, ADR-0006, ARCHITECTURE §6.7, SPEC 2.3
+- **Status:** todo · **Depends on:** T-103b, T-134b · **Refs:** ADR-0013, ADR-0006, ARCHITECTURE §6.7, SPEC 2.3
 - Decide and document where the vault lives (campaign folder or library root); storage ignores `.obsidian/` and similar tool folders and picks up note changes made elsewhere; a documented front-matter format for scene drafts (`type: scene`, map, sound, light, tokens) is validated with zod and offered as scene drafts in the DM window.
 - **Acceptance criteria**
   - [ ] A note edited outside the app shows up in Dungeon Manager without restart
@@ -1139,7 +1139,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-140 Walls, doors and secret doors
 
-- **Status:** todo · **Depends on:** T-134 · **Refs:** SPEC 8.1, 3.1, ADR-0012
+- **Status:** todo · **Depends on:** T-134b · **Refs:** SPEC 8.1, 3.1, ADR-0012
 - Draw walls, windows and doors (open/closed/locked/secret) in the map's sidecar; import them from `.uvtt`/`.dd2vtt`; the DM opens/closes a door with one click; secret doors look like walls to players and become normal doors once discovered (per scene).
 - **Acceptance criteria**
   - [ ] Wall/door editor with undo; VTT import fixture (self-made) round-trips walls, doors and lights
@@ -1177,7 +1177,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-144 Asset placement and asset blockers
 
-- **Status:** todo · **Depends on:** T-134, T-125, T-142 · **Refs:** SPEC 8.1, 8.2, ADR-0012
+- **Status:** todo · **Depends on:** T-134b, T-125, T-142 · **Refs:** SPEC 8.1, 8.2, ADR-0012
 - Place assets from the catalog on a scene (scale from metadata, rotate, mirror, z-order); per asset a blocker generated from its alpha channel (simplified polygon), editable, with type: blocks sight and light / one-way / partial (dimmed).
 - **Acceptance criteria**
   - [ ] Generated blocker follows the opaque outline within a set tolerance (unit test on a self-made fixture)
@@ -1185,7 +1185,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-145 Scene overrides of global map data
 
-- **Status:** todo · **Depends on:** T-134, T-140 · **Refs:** ADR-0012
+- **Status:** todo · **Depends on:** T-134b, T-140 · **Refs:** ADR-0012
 - In a scene, hide/show single walls and doors, adjust rooms and switch map lights without changing the global map; orphaned overrides show a hint with a clean-up action.
 - **Acceptance criteria**
   - [ ] Override UI per element with "reset to global"
@@ -1219,7 +1219,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-191 Map variants
 
-- **Status:** todo · **Depends on:** T-176, T-134 · **Refs:** SPEC §2.5, §8.1
+- **Status:** todo · **Depends on:** T-176, T-134b · **Refs:** SPEC §2.5, §8.1
 - Variants per level (day/night, destroyed, flooded): masks and rooms belong to the level and apply to all its variants; a scene picks a variant per level (DM decision, 2026-11-20).
 - **Acceptance criteria**
   - [ ] Switching variants keeps fog, masks and rooms (component test)
@@ -1424,7 +1424,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-148 Share maps and assets as `.dmmap`
 
-- **Status:** todo · **Depends on:** T-134 · **Refs:** ADR-0012, ARCHITECTURE §6.6
+- **Status:** todo · **Depends on:** T-134b · **Refs:** ADR-0012, ARCHITECTURE §6.6
 - Export a map or asset with its sidecar and variant files as one `.dmmap` bundle; import it into another library (hash check, no overwrite).
 - **Acceptance criteria**
   - [ ] Export → import round-trip keeps metadata, walls, rooms and variants

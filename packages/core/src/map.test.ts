@@ -13,6 +13,7 @@ const tower: MapData = deepFreeze({
   levels: [
     { id: "ground", name: "Erdgeschoss" },
     { id: "cellar", name: "Keller", archived: true },
+    { id: "attic", name: "Dachboden" },
   ],
   rooms: [
     { id: "hall", name: "Halle", area: square(0, 0, 100) },
@@ -113,7 +114,7 @@ describe("levels in use", () => {
     const result = removeLevel(tower, "ground", [using]);
     expect(result).toEqual({
       kind: "removed",
-      data: { ...tower, levels: [tower.levels[1]] },
+      data: { ...tower, levels: tower.levels.slice(1) },
     });
   });
 
@@ -133,18 +134,40 @@ describe("levels in use", () => {
         ...tower,
         levels: [
           { id: "ground", name: "Erdgeschoss", archived: true },
-          tower.levels[1],
+          ...tower.levels.slice(1),
         ],
       },
     });
   });
 
-  test("the last level and unknown levels stay", () => {
+  test("the only level that is not archived stays, also when scenes use it", () => {
     const single: MapData = {
       ...tower,
       levels: [{ id: "ground", name: "EG" }],
     };
     expect(removeLevel(single, "ground", [])).toEqual({ kind: "lastLevel" });
-    expect(removeLevel(tower, "attic", [])).toEqual({ kind: "unknownLevel" });
+    const nextToArchived: MapData = {
+      ...tower,
+      levels: [
+        { id: "ground", name: "EG" },
+        { id: "cellar", name: "Keller", archived: true },
+      ],
+    };
+    expect(removeLevel(nextToArchived, "ground", [])).toEqual({
+      kind: "lastLevel",
+    });
+    expect(removeLevel(nextToArchived, "ground", [scene])).toEqual({
+      kind: "lastLevel",
+    });
+    // An archived level no scene uses any more can go.
+    expect(removeLevel(nextToArchived, "cellar", [])).toMatchObject({
+      kind: "removed",
+    });
+  });
+
+  test("unknown levels are reported", () => {
+    expect(removeLevel(tower, "basement", [])).toEqual({
+      kind: "unknownLevel",
+    });
   });
 });
