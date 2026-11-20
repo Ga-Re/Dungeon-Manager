@@ -24,17 +24,36 @@ export type MapDataState =
   /** The sidecar is not downloaded yet or broken: nothing is shown, nothing written. */
   | { readonly status: "unavailable" };
 
+/** The open scene's map data, and a newer version that waits for the DM. */
+export interface MapDataSession {
+  /** What the scene plays (and the TV shows). */
+  readonly data: MapDataState;
+  /**
+   * The map's data changed on disk (another device, another workspace) while the scene is on
+   * the TV: it is applied only when the DM accepts it (ADR-0012).
+   */
+  readonly changed: boolean;
+  readonly acceptChange: () => void;
+}
+
 /**
- * Loads the open scene's map data from the map's sidecar and reloads it when the sidecar changes
- * on disk. A scene still carrying its version 2 copy (`legacyMap`) moves it into the sidecar
+ * Loads the open scene's map data from the map's sidecar. A later change of the sidecar on disk
+ * waits for the DM (`changed`), because the open scene is live on the TV and a global edit must
+ * not change the table view by surprise (ADR-0012); a change to what is shown already is taken
+ * silently. A scene still carrying its version 2 copy (`legacyMap`) moves it into the sidecar
  * first (`settleLegacyMap`); the scene without the copy is handed to `onSettled` to be saved.
  */
 export function useMapData(
   service: LibraryService,
   scene: Scene,
   onSettled: (scene: Scene) => void,
-): MapDataState {
+): MapDataSession {
   const [state, setState] = useState<MapDataState>({ status: "loading" });
+  const [pending, setPending] = useState<MapDataState | null>(null);
+  // The map (and copy) the shown data belongs to: a reload of the same map waits for the DM.
+  const loadedFor = useRef<string | null>(null);
+  const shown = useRef(state);
+  shown.current = state;
   const [version, setVersion] = useState(0);
   const settled = useRef(onSettled);
   useEffect(() => {
@@ -56,11 +75,18 @@ export function useMapData(
 
   useEffect(() => {
     if (path === undefined) {
+      loadedFor.current = null;
       setState({ status: "noMap" });
+      setPending(null);
       return;
     }
     let active = true;
-    setState({ status: "loading" });
+    const key = `${path}\n${legacy ? "legacy" : ""}`;
+    const reload = loadedFor.current === key;
+    if (!reload) {
+      setState({ status: "loading" });
+      setPending(null);
+    }
     const load = async (): Promise<MapDataState> => {
       if (legacy) {
         const after = await settleLegacyMap(service.fs, latest.current).catch(
@@ -92,7 +118,16 @@ export function useMapData(
     };
     load().then(
       (next) => {
-        if (active) setState(next);
+        if (!active) return;
+        loadedFor.current = key;
+        const current = shown.current;
+        if (!reload || current.status !== "ready") {
+          setState(next);
+          setPending(null);
+        } else if (JSON.stringify(next) === JSON.stringify(current)) {
+          // E.g. our own write coming back from the watcher: nothing changes on the TV.
+          setPending(null);
+        } else setPending(next);
       },
       (error: unknown) => {
         console.error("The map data cannot be read.", error);
@@ -104,5 +139,13 @@ export function useMapData(
     };
   }, [service, path, legacy, version]);
 
-  return state;
+  return {
+    data: state,
+    changed: pending !== null,
+    acceptChange: () => {
+      if (!pending) return;
+      setState(pending);
+      setPending(null);
+    },
+  };
 }

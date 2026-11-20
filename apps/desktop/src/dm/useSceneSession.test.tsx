@@ -384,6 +384,37 @@ describe("the map's data (ADR-0012, T-134d)", () => {
     });
   });
 
+  test("a change of the map's data on disk reaches the TV only once the DM accepts it", async () => {
+    const { library, tv } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      mappedScene,
+    );
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.map?.grid.cellSizePx).toBe(100);
+    });
+    // Our own unchanged file coming back from the watcher asks nothing.
+    library.emit([`${HOEHLE}.dm.json`]);
+    await new Promise((resolve) => setTimeout(resolve, RELOAD_DELAY_MS + 100));
+    expect(screen.queryByText(/wurden geändert/)).toBeNull();
+
+    // Another device recalibrates the map.
+    await library.fs.writeAtomic(
+      `${HOEHLE}.dm.json`,
+      hoehleSidecar.replace('"cellSizePx":100', '"cellSizePx":50'),
+    );
+    library.emit([`${HOEHLE}.dm.json`]);
+    expect(await screen.findByText(/wurden geändert/)).toBeTruthy();
+    expect(tv.shown.at(-1)?.map?.grid.cellSizePx).toBe(100);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Änderung übernehmen" }),
+    );
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.map?.grid.cellSizePx).toBe(50);
+    });
+    expect(screen.queryByText(/wurden geändert/)).toBeNull();
+  });
+
   test("a map whose data is not downloaded yet shows nothing and says so", async () => {
     const { tv } = renderScene(
       {
