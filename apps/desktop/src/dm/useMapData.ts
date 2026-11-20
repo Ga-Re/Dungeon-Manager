@@ -137,14 +137,22 @@ export function useMapData(
         if (!reload || current.status !== "ready") {
           setState(next);
           setPending(null);
-        } else if (JSON.stringify(next) === JSON.stringify(current)) {
-          // E.g. our own write coming back from the watcher: nothing changes on the TV.
+        } else if (
+          next.status !== "ready" ||
+          JSON.stringify(next) === JSON.stringify(current)
+        ) {
+          // Our own write coming back from the watcher changes nothing; a sidecar that cannot
+          // be read for a moment (evicted, mid-sync) keeps what the TV shows.
           setPending(null);
         } else setPending(next);
       },
       (error: unknown) => {
         console.error("The map data cannot be read.", error);
-        if (active) setState({ status: "unavailable" });
+        if (!active) return;
+        setPending(null);
+        // As above: what is shown stays when only a reload fails.
+        if (!reload || shown.current.status !== "ready")
+          setState({ status: "unavailable" });
       },
     );
     return () => {

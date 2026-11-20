@@ -391,10 +391,28 @@ describe("the map's data (ADR-0012, T-134d)", () => {
     await waitFor(() => {
       expect(tv.shown.at(-1)?.map?.grid.cellSizePx).toBe(100);
     });
-    // Our own unchanged file coming back from the watcher asks nothing.
+    // Our own unchanged file coming back from the watcher is read again but asks nothing.
+    const read = vi.spyOn(library.fs, "read");
+    const sidecarReads = () =>
+      read.mock.calls.filter(([path]) => path === `${HOEHLE}.dm.json`).length;
     library.emit([`${HOEHLE}.dm.json`]);
-    await new Promise((resolve) => setTimeout(resolve, RELOAD_DELAY_MS + 100));
+    await waitFor(() => {
+      expect(sidecarReads()).toBe(1);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByText(/wurden geändert/)).toBeNull();
+
+    // A sidecar that cannot be read for a moment keeps what the TV shows, without asking.
+    const content = library.fs.files().get(`${HOEHLE}.dm.json`) ?? "";
+    await library.fs.writeAtomic(`${HOEHLE}.dm.json`, "{");
+    library.emit([`${HOEHLE}.dm.json`]);
+    await waitFor(() => {
+      expect(sidecarReads()).toBe(2);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText(/wurden geändert/)).toBeNull();
+    expect(tv.shown.at(-1)?.map?.grid.cellSizePx).toBe(100);
+    await library.fs.writeAtomic(`${HOEHLE}.dm.json`, content);
 
     // Another device recalibrates the map.
     await library.fs.writeAtomic(
@@ -410,6 +428,25 @@ describe("the map's data (ADR-0012, T-134d)", () => {
     );
     await waitFor(() => {
       expect(tv.shown.at(-1)?.map?.grid.cellSizePx).toBe(50);
+    });
+    expect(screen.queryByText(/wurden geändert/)).toBeNull();
+  });
+
+  test("map data arriving after it was not available is shown without asking", async () => {
+    const { library, tv } = renderScene(
+      {
+        "campaigns/mine/campaign.json": campaign,
+        [`${HOEHLE}.dm.json`]: { placeholder: true },
+      },
+      mappedScene,
+    );
+    expect(
+      await screen.findByText(/noch nicht heruntergeladen oder beschädigt/),
+    ).toBeTruthy();
+    await library.fs.writeAtomic(`${HOEHLE}.dm.json`, hoehleSidecar);
+    library.emit([`${HOEHLE}.dm.json`]);
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.map?.grid.cellSizePx).toBe(100);
     });
     expect(screen.queryByText(/wurden geändert/)).toBeNull();
   });

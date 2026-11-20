@@ -181,6 +181,8 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Add a level with or without its own file; a file of another size is refused with an actionable message (component + E2E test)
   - [ ] Rename a level; the new name reaches the TV's projection only for released levels
 
+- **Notes:** From T-134b: the open scene's map data is held while it changes on disk; this task's own sidecar writes update the shown data first (`useMapData`), so their watcher echo asks nothing (test).
+
 ### T-119 Case-insensitive id collisions in file names
 
 - **Status:** done · **Depends on:** T-103a · **Refs:** ARCHITECTURE §6, ADR-0005
@@ -362,6 +364,8 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] On a calibrated display one cell measures 1 inch (manual check documented; unit tests for the math)
   - [ ] Rotation 0/90/180/270 in the player window
 - Workspace interview (2026-11-20): calibration lives in the Map Forge (T-176, two-click 3×3 box T-177); the display calibration stays in the device settings.
+
+- **Notes:** From T-134b: the open scene's map data is held while it changes on disk; this task's own sidecar writes update the shown data first (`useMapData`), so their watcher echo asks nothing (test).
 
 ### T-116 Player view render resolution setting
 
@@ -831,7 +835,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - A global edit (e.g. a recalibration on another device) reaches the scene live on the TV only after the DM confirms.
 - **Acceptance criteria**
   - [x] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open (component test)
-- **Notes:** Split from T-134 (2026-11-20). The open scene is the one on the TV, so a change of its map's sidecar on disk waits for "Änderung übernehmen"; unchanged reloads (our own writes coming back from the watcher) ask nothing. The DM's own map edits in the open scene (T-118d, T-106) apply directly. The catalog part moved to T-124, which builds the catalog.
+- **Notes:** Split from T-134 (2026-11-20). The open scene is the one on the TV, so a change of its map's sidecar on disk waits for "Änderung übernehmen"; unchanged reloads (our own writes coming back from the watcher) ask nothing. The DM's own map edits in the open scene (T-118d, T-106) must update the shown data before writing the sidecar (e.g. an `applyOwnEdit` on `useMapData`), or their watcher echo would be held – noted there. A sidecar that cannot be read for a moment keeps what is shown. The catalog part moved to T-124, which builds the catalog.
 
 ### T-168 Animated fog effects per map
 
