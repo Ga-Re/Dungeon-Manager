@@ -78,6 +78,11 @@ export interface SubScenes {
   readonly all: readonly string[];
   /** The open scene's own parent, or `null` at the top. */
   readonly parentSceneId: string | null;
+  /**
+   * Names of sub-scenes open in other tabs (T-223a): the scene is not deleted while they are,
+   * as their saves would bring deleted files back or undo the move to a new parent.
+   */
+  readonly open?: readonly string[];
 }
 
 const NO_SUB_SCENES: SubScenes = { direct: [], all: [], parentSceneId: null };
@@ -115,7 +120,8 @@ export function OpenScenePanel({
     revealed: readonly Polygon[],
   ) => void;
   readonly onChanged: (scene: Scene) => void;
-  readonly onDeleted: (scene: Scene) => void;
+  /** The scene went to the trash; `deleted`: the sub-scenes that went with it. */
+  readonly onDeleted: (scene: Scene, deleted: readonly string[]) => void;
   readonly onClose: () => void;
   /** The scene's sub-scenes (T-152): asked about when it is deleted. */
   readonly subScenes?: SubScenes;
@@ -315,8 +321,17 @@ export function OpenScenePanel({
     }
   };
 
-  const remove = () =>
-    run(async () => {
+  const remove = () => {
+    const openSubScenes = subScenes.open ?? [];
+    if (openSubScenes.length > 0) {
+      setError(
+        t("campaign.closeSubScenesFirst", {
+          names: openSubScenes.join(", "),
+        }),
+      );
+      return Promise.resolve();
+    }
+    return run(async () => {
       // A save still in flight would otherwise bring the file back after it went to the trash.
       await session.flush();
       // Sub-scenes first, so a failure leaves the scene itself in place.
@@ -331,8 +346,9 @@ export function OpenScenePanel({
           await deleteScene(service.fs, slug, each);
         }
       await deleteScene(service.fs, slug, scene.id);
-      onDeleted(scene);
+      onDeleted(scene, keepSubScenes ? [] : subScenes.all);
     });
+  };
 
   // Another tab shows: this scene keeps its session (and feeds the TV if it is on it).
   if (!active) return null;

@@ -15,11 +15,12 @@ import { CampaignPanel } from "./CampaignPanel.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 
-const sceneFile = (id: string, name: string) =>
+const sceneFile = (id: string, name: string, parentSceneId?: string) =>
   JSON.stringify({
     schemaVersion: 3,
     id,
     name,
+    ...(parentSceneId ? { parentSceneId } : {}),
     map: null,
     tokens: [],
     fog: { levels: {} },
@@ -37,6 +38,8 @@ function renderCampaign() {
     }),
     "campaigns/mine/scenes/a.json": sceneFile("a", "Eingang"),
     "campaigns/mine/scenes/b.json": sceneFile("b", "Gruft"),
+    // A sub-scene of the Gruft (T-152).
+    "campaigns/mine/scenes/c.json": sceneFile("c", "Sarg", "b"),
   });
   const shown: (ViewerScene | null)[] = [];
   const feed: PlayerFeedSender = {
@@ -60,7 +63,7 @@ function renderCampaign() {
   );
   /** The scene the TV shows now (`null`: dark). */
   const onTv = () => shown.at(-1)?.name ?? null;
-  return { onTv };
+  return { onTv, library };
 }
 
 async function openScene(name: string) {
@@ -134,5 +137,46 @@ describe("scene tabs (T-223a)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Eingang schließen" }));
     expect(screen.queryByRole("group", { name: "Offene Szenen" })).toBeNull();
+  });
+
+  test("showing an open scene from the tree leaves a dark TV dark", async () => {
+    const { onTv } = renderCampaign();
+    await openScene("Eingang");
+    await openScene("Gruft");
+    fireEvent.click(screen.getByRole("button", { name: "Eingang schließen" }));
+    expect(onTv()).toBeNull();
+    // Gruft is open already: clicking it in the tree switches to it, it does not open it.
+    await openScene("Gruft");
+    expect(onTv()).toBeNull();
+  });
+
+  test("keyboard focus stays in the tab bar when switching and closing", async () => {
+    renderCampaign();
+    await openScene("Eingang");
+    await openScene("Gruft");
+    fireEvent.click(tab("Eingang"));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(tab("Eingang"));
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Eingang schließen" }));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(tab("Gruft"));
+    });
+  });
+
+  test("a scene is not deleted while one of its sub-scenes is open in another tab", async () => {
+    const { library } = renderCampaign();
+    await openScene("Sarg");
+    await openScene("Gruft");
+    fireEvent.click(screen.getByRole("button", { name: "Szene" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Szene löschen …" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ja, löschen" }));
+    expect(
+      await screen.findByText(
+        "Schließe zuerst die offenen Unterszenen (Sarg), dann lässt sich die Szene löschen.",
+      ),
+    ).toBeTruthy();
+    expect(library.fs.files().has("campaigns/mine/scenes/b.json")).toBe(true);
+    expect(tab("Sarg")).toBeTruthy();
   });
 });

@@ -8,7 +8,7 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 /** One open scene's tab (T-223a). */
@@ -28,17 +28,34 @@ export function SceneTabs({
   tabs,
   activeId,
   busy,
+  focus = null,
+  onFocused,
   onSelect,
   onClose,
 }: {
   readonly tabs: readonly SceneTabEntry[];
   readonly activeId: string | null;
-  /** The shown scene must not close now (its map changes or it is being deleted). */
+  /**
+   * The shown scene is busy (its map changes or it is being deleted): it must not close, and
+   * the DM stays on it until it is done.
+   */
   readonly busy: boolean;
+  /**
+   * The tab to put keyboard focus on (after switching or closing: the tab bar moves with the
+   * shown scene, so the button that had focus is gone). `onFocused` clears the request.
+   */
+  readonly focus?: string | null;
+  readonly onFocused?: () => void;
   readonly onSelect: (id: string) => void;
   readonly onClose: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const buttons = useRef(new Map<string, HTMLButtonElement>());
+  useEffect(() => {
+    if (focus === null) return;
+    buttons.current.get(focus)?.focus();
+    onFocused?.();
+  }, [focus, onFocused]);
   return (
     <span
       role="group"
@@ -54,9 +71,14 @@ export function SceneTabs({
             data-current={current ? "true" : undefined}
           >
             <button
+              ref={(element) => {
+                if (element) buttons.current.set(tab.id, element);
+                else buttons.current.delete(tab.id);
+              }}
               type="button"
               className="dm-scene-tab-name"
               aria-current={current ? "true" : undefined}
+              disabled={busy && !current}
               onClick={() => {
                 onSelect(tab.id);
               }}

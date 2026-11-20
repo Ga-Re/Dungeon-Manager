@@ -45,9 +45,10 @@ export interface MapDataSession {
 
 /**
  * Loads the open scene's map data from the map's sidecar. A later change of the sidecar on disk
- * waits for the DM (`changed`), because the open scene is live on the TV and a global edit must
- * not change the table view by surprise (ADR-0012); a change to what is shown already is taken
- * silently. A scene still carrying its version 2 copy (`legacyMap`) moves it into the sidecar
+ * waits for the DM (`changed`), because an open scene may be live on the TV and a global edit
+ * must not change the table view by surprise (ADR-0012); a change to what is shown already is
+ * taken silently. Every open scene tab holds such changes (T-223a), the one on the TV and the
+ * ones prepared beside it; a tab shows the question when it is the shown one. A scene still carrying its version 2 copy (`legacyMap`) moves it into the sidecar
  * first (`settleLegacyMap`); `onSettled` then drops the copy from the scene and saves it.
  *
  * A missing sidecar means defaults – unless the scene refers to other levels than the default

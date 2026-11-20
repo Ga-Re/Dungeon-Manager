@@ -75,6 +75,15 @@ import { NewSceneForm } from "./NewSceneForm.js";
 import { NoteView } from "./NoteView.js";
 import { OpenScenePanel } from "./OpenScenePanel.js";
 import { SceneTabs } from "./SceneTitle.js";
+import {
+  NO_SCENE_TABS,
+  closeSceneTabs,
+  openSceneTab,
+  replaceSceneTab,
+  selectSceneTab,
+  sendSceneTabToTv,
+  type SceneTabsState,
+} from "./scene-tabs.js";
 import { addScene, moveScene, removeScene } from "./session-ops.js";
 import {
   AddToSessionForm,
@@ -193,7 +202,7 @@ export function CampaignPanel({
   readonly newId: () => string;
   /** A scene to open once the campaign's lists are read (the last one, T-153). */
   readonly initialSceneId?: string | null;
-  /** Told about each scene that opens, e.g. to remember it as the last one. */
+  /** Told about each scene that goes on the TV, e.g. to reopen it on the next start. */
   readonly onSceneOpen?: (scene: { id: string; name: string }) => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -222,34 +231,35 @@ export function CampaignPanel({
   // The open scenes, as tabs in the title bar (T-223a), the shown one and the one on the TV.
   // Switching tabs never changes the TV (DM decision, 2026-11-20): only "Szene auf den TV" does,
   // or opening a scene while none is on it.
-  const [openScenes, setOpenScenes] = useState<readonly Scene[]>([]);
-  const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
-  const [tvSceneId, setTvSceneId] = useState<string | null>(null);
+  const [tabs, setTabs] = useState<SceneTabsState>(NO_SCENE_TABS);
+  const { open: openScenes, active: activeSceneId, tv: tvSceneId } = tabs;
+  // Where keyboard focus goes once the tab bar shows again (it moves with the shown scene).
+  const [tabFocus, setTabFocus] = useState<string | null>(null);
   const openScene =
     openScenes.find((each) => each.id === activeSceneId) ?? null;
   const isOpen = (sceneId: string) =>
     openScenes.some((each) => each.id === sceneId);
   /** Opens `scene` as a tab, or shows its tab if it is open (keeping its edits and history). */
   const showScene = (scene: Scene) => {
-    setOpenScenes((current) =>
-      current.some((each) => each.id === scene.id)
-        ? current
-        : [...current, scene],
+    setTabs((current) => openSceneTab(current, scene));
+  };
+  // Closing the tab that had focus: the keyboard goes on to the tab shown next.
+  const focusShownTab = useRef(false);
+  /** Takes tabs away; a neighbour shows, and the TV goes dark if its scene went. */
+  const closeScenes = (sceneIds: readonly string[]) => {
+    focusShownTab.current = true;
+    setTabs((current) => closeSceneTabs(current, sceneIds));
+  };
+  useEffect(() => {
+    // The tree shows the shown scene's live state; another one's is stale.
+    setLive((current) =>
+      current && current.scene.id !== activeSceneId ? null : current,
     );
-    setActiveSceneId(scene.id);
-    setTvSceneId((current) => current ?? scene.id);
-  };
-  /** Takes `sceneId`'s tab away; its neighbour shows, and the TV goes dark if it was on it. */
-  const closeScene = (sceneId: string) => {
-    const index = openScenes.findIndex((each) => each.id === sceneId);
-    const rest = openScenes.filter((each) => each.id !== sceneId);
-    setOpenScenes(rest);
-    if (activeSceneId === sceneId) {
-      setActiveSceneId(rest[Math.min(index, rest.length - 1)]?.id ?? null);
-      setLive(null);
+    if (focusShownTab.current) {
+      focusShownTab.current = false;
+      setTabFocus(activeSceneId);
     }
-    if (tvSceneId === sceneId) setTvSceneId(null);
-  };
+  }, [activeSceneId]);
   // Where the open scene was opened in the tree (it may appear in several places).
   const [openAt, setOpenAt] = useState<string | null>(null);
   // The open scene as edited (fog, map), for its part of the tree.
@@ -571,8 +581,10 @@ export function CampaignPanel({
   useEffect(() => {
     sceneOpened.current = onSceneOpen;
   });
-  const openSceneId = openScene?.id;
-  const openSceneName = openScene?.name;
+  // The scene to reopen on the next start is the TV's (it goes on the dark TV again).
+  const tvScene = openScenes.find((each) => each.id === tvSceneId);
+  const openSceneId = tvScene?.id;
+  const openSceneName = tvScene?.name;
   useEffect(() => {
     if (openSceneId !== undefined && openSceneName !== undefined)
       sceneOpened.current?.({ id: openSceneId, name: openSceneName });
@@ -1130,7 +1142,7 @@ export function CampaignPanel({
           active={each.id === activeSceneId}
           onTv={each.id === tvSceneId}
           onShowOnTv={() => {
-            setTvSceneId(each.id);
+            setTabs((current) => sendSceneTabToTv(current, each.id));
             setNotice(t("campaign.sceneShownOnTv", { name: each.name }));
           }}
           tabs={(busy) => (
@@ -1142,26 +1154,38 @@ export function CampaignPanel({
               }))}
               activeId={activeSceneId}
               busy={busy}
-              onSelect={setActiveSceneId}
-              onClose={closeScene}
+              focus={tabFocus}
+              onFocused={() => {
+                setTabFocus(null);
+              }}
+              onSelect={(id) => {
+                setTabs((current) => selectSceneTab(current, id));
+                setTabFocus(id);
+              }}
+              onClose={(id) => {
+                closeScenes([id]);
+              }}
             />
           )}
           subScenes={{
             direct: hierarchy.childrenOf(each.id),
             all: hierarchy.descendantsOf(each.id),
             parentSceneId: hierarchy.parentOf(each.id),
+            open: openScenes
+              .filter((tab) =>
+                hierarchy.descendantsOf(each.id).includes(tab.id),
+              )
+              .map((tab) => tab.name),
           }}
           onSceneChange={(scene, map, revealed) => {
             setLive({ scene, map, revealed });
           }}
           onChanged={(scene) => {
-            setOpenScenes((current) =>
-              current.map((tab) => (tab.id === scene.id ? scene : tab)),
-            );
+            setTabs((current) => replaceSceneTab(current, scene));
             void reloadScenes();
           }}
-          onDeleted={(scene) => {
-            closeScene(scene.id);
+          onDeleted={(scene, deleted) => {
+            closeScenes([scene.id, ...deleted]);
             setInspected((current) => {
               const item = current ? parseTreeId(current) : null;
               return item?.kind === "scene" && item.sceneId === scene.id
@@ -1174,7 +1198,7 @@ export function CampaignPanel({
             void reloadSessions();
           }}
           onClose={() => {
-            closeScene(each.id);
+            closeScenes([each.id]);
           }}
         />
       ))}

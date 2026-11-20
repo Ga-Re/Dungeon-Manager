@@ -924,15 +924,19 @@ test("scenes open as tabs, switched and closed by keyboard; the TV stays until t
   // The new scene has nothing to undo; Krypta keeps its history.
   await expect(undo).toBeDisabled();
 
-  // Keyboard only: to Krypta's tab and back to Turm.
+  // Keyboard only: to Krypta's tab and back to Turm; focus stays in the tab bar.
   await tab("Krypta").focus();
   await page.keyboard.press("Enter");
   await expect(tab("Krypta")).toHaveAttribute("aria-current", "true");
+  await expect(tab("Krypta")).toBeFocused();
   await expect(page.getByText("Geöffnete Szene: Krypta")).toBeAttached();
   await expect(undo).toBeEnabled();
-  await tab("Turm").focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(tab("Turm")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(tab("Turm")).toHaveAttribute("aria-current", "true");
+  await expect(tab("Turm")).toBeFocused();
 
   // Turm to the TV, then closed with its ✕ from the keyboard: the TV goes dark.
   await page.getByRole("button", { name: "Szene auf den TV" }).click();
@@ -946,5 +950,6 @@ test("scenes open as tabs, switched and closed by keyboard; the TV stays until t
   await page.keyboard.press("Enter");
   await expect(tab("Turm")).toHaveCount(0);
   await expect(tab("Krypta")).toHaveAttribute("aria-current", "true");
+  await expect(tab("Krypta")).toBeFocused();
   await expect(tab("Krypta")).not.toContainText("auf dem TV");
 });

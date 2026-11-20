@@ -159,8 +159,22 @@ export function useSceneSession(
   // the DM); nothing while the campaign is unknown or the map loads, nothing after closing it.
   const shownOnTv = useRef(onTv);
   shownOnTv.current = onTv;
+  // Whether this scene has shown on the TV since it was sent there: until then, a scene that
+  // is not ready (campaign unread, map loading) darkens the TV instead of leaving the previous
+  // scene frozen on it (fail closed). A later map change keeps the TV as it is, as before.
+  const shownSinceSent = useRef(false);
   useEffect(() => {
-    if (!onTv || !feed || !campaign || mapLoading) return;
+    if (!onTv) {
+      shownSinceSent.current = false;
+      setNotOnTv(false);
+      return;
+    }
+    if (!feed) return;
+    if (!campaign || mapLoading) {
+      if (!shownSinceSent.current) feed.show(null);
+      return;
+    }
+    shownSinceSent.current = true;
     try {
       feed.show(projectForViewer({ campaign, scene, map }, { kind: "table" }));
       setNotOnTv(false);

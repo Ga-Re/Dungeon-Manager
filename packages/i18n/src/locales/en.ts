@@ -148,6 +148,8 @@ export const en: Messages = {
       apply: "Use this map",
     },
     closeSceneNamed: "Close {{name}}",
+    closeSubScenesFirst:
+      "Close the open sub-scenes first ({{names}}); then the scene can be deleted.",
     openScenes: "Open scenes",
     sceneOnTv: "(on the TV)",
     showSceneOnTv: "Scene to the TV",

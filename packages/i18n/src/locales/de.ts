@@ -149,6 +149,8 @@ export const de = {
       apply: "Karte übernehmen",
     },
     closeSceneNamed: "{{name}} schließen",
+    closeSubScenesFirst:
+      "Schließe zuerst die offenen Unterszenen ({{names}}), dann lässt sich die Szene löschen.",
     openScenes: "Offene Szenen",
     sceneOnTv: "(auf dem TV)",
     showSceneOnTv: "Szene auf den TV",
