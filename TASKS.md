@@ -919,12 +919,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-174 Undo per document; tools reset when leaving the Orchestrator
 
-- **Status:** todo · **Depends on:** T-172a · **Refs:** ADR-0017, ARCHITECTURE §5.1
+- **Status:** done · **Depends on:** T-172a · **Refs:** ADR-0017, ARCHITECTURE §5.1
 - Each open document (map, asset, creature, scene) has its own undo history; Cmd/Ctrl+Z acts on the active workspace's document. Leaving the Orchestrator drops the fog tool back to panning (from the T-156 review).
 - **Acceptance criteria**
-  - [ ] Undo in one workspace never changes another workspace's document (component test)
-  - [ ] Leaving the Orchestrator with an active fog tool leaves panning active
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+  - [x] Undo in one workspace never changes another workspace's document (component test)
+  - [x] Leaving the Orchestrator with an active fog tool leaves panning active
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). DM decision (2026-11-20): snapshots per document (today's scene history, made generic as `History<T>` with `record`), kept until the document closes or the app quits, never stored. The shell provides the active workspace (`useActiveWorkspace`); the scene – the only document so far – answers undo keys and title bar buttons only in the Game-Orchestrator. Maps, assets and creatures use the same history when they become documents (T-176, T-180).
 
 ### T-175 Pause and title screen for the TV, with a setting
 

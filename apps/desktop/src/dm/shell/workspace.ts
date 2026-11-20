@@ -1,3 +1,5 @@
+import { createContext, useContext } from "react";
+
 // Workspaces of the DM window (T-156, ADR-0017): each has its own ribbon tabs. Remembered per
 // device in the webview's storage, like the theme.
 
@@ -51,4 +53,16 @@ export function saveWorkspace(
   } catch {
     // Not persisted; the workspace still applies until the window closes.
   }
+}
+
+/**
+ * The workspace the DM window shows (T-174): documents and tools of the other workspaces stay
+ * mounted but must not react to undo, redo or tool shortcuts.
+ */
+export const ActiveWorkspaceContext =
+  createContext<Workspace>("gameOrchestrator");
+
+/** The workspace the DM window shows; outside the shell, the Game-Orchestrator. */
+export function useActiveWorkspace(): Workspace {
+  return useContext(ActiveWorkspaceContext);
 }

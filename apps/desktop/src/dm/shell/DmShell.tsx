@@ -90,6 +90,7 @@ import {
   readWorkspace,
   saveWorkspace,
   type Workspace,
+  ActiveWorkspaceContext,
 } from "./workspace.js";
 
 /** The panels' look comes from the design tokens; the colour scheme follows the app's theme. */
@@ -1095,7 +1096,11 @@ export function DmShell({
             <div className="dm-shell-content">
               {/* Context passes through portals: what the children render gets it too. */}
               <AppCommandsContext value={commands}>
-                <FogLookContext value={fogLook}>{children}</FogLookContext>
+                <FogLookContext value={fogLook}>
+                  <ActiveWorkspaceContext value={workspace}>
+                    {children}
+                  </ActiveWorkspaceContext>
+                </FogLookContext>
               </AppCommandsContext>
             </div>
           </div>

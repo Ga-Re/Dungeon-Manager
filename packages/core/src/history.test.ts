@@ -3,6 +3,7 @@ import {
   createHistory,
   execute,
   HISTORY_LIMIT,
+  record,
   redo,
   undo,
   type Command,
@@ -121,5 +122,55 @@ describe("history of the TV's level", () => {
     expect(again.state).toBe(shown.state);
     expect(again.history).toBe(shown.history);
     expect(again.events).toEqual([]);
+  });
+});
+
+describe("history of any document (T-174)", () => {
+  // A document other than a scene, e.g. an asset's name: snapshots of its own state.
+  interface Asset {
+    readonly name: string;
+  }
+
+  test("records snapshots of a document and steps back and forth through them", () => {
+    let history = createHistory<Asset>();
+    let asset: Asset = { name: "Fass" };
+    history = record(history, asset);
+    asset = { name: "Fass, leer" };
+    const back = undo(asset, history);
+    expect(back?.state).toEqual({ name: "Fass" });
+    if (!back) throw new Error("nothing to undo");
+    expect(redo(back.state, back.history)?.state).toEqual({
+      name: "Fass, leer",
+    });
+  });
+
+  test("a new change clears redo, and only the newest steps are kept", () => {
+    let history = createHistory<number>();
+    for (let step = 0; step < HISTORY_LIMIT + 5; step++)
+      history = record(history, step);
+    expect(history.past).toHaveLength(HISTORY_LIMIT);
+    expect(history.past[0]).toBe(5);
+    const back = undo(HISTORY_LIMIT + 5, history);
+    if (!back) throw new Error("nothing to undo");
+    expect(record(back.history, 0).future).toEqual([]);
+  });
+
+  test("a falsy snapshot (0, an empty name) is undone to and redone from like any other", () => {
+    const back = undo(1, record(createHistory<number>(), 0));
+    expect(back?.state).toBe(0);
+    if (!back) throw new Error("nothing to undo");
+    expect(redo(back.state, back.history)?.state).toBe(1);
+    const empty = undo("Fass", record(createHistory<string>(), ""));
+    expect(empty?.state).toBe("");
+    if (!empty) throw new Error("nothing to undo");
+    expect(undo("x", { past: [], future: [""] })).toBeNull();
+    expect(redo("x", { past: [], future: [""] })?.state).toBe("");
+  });
+
+  test("histories of two documents are independent", () => {
+    const scene = record(createHistory<string>(), "Szene vorher");
+    const map = createHistory<string>();
+    expect(undo("Szene", scene)?.state).toBe("Szene vorher");
+    expect(undo("Karte", map)).toBeNull();
   });
 });
