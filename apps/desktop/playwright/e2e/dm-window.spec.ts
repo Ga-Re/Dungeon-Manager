@@ -732,3 +732,56 @@ test("a level's own image must have the map's size (T-118d)", async ({
     page.getByRole("button", { name: "Gruft", exact: true }),
   ).toBeVisible();
 });
+
+test("panels are folded, docked and hidden with the keyboard only (T-172b)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  const menu = page.getByRole("button", { name: "Panel Browser" });
+  const choose = async (item: string) => {
+    await menu.focus();
+    await page.keyboard.press("Enter");
+    const entry = page.getByRole("menuitem", { name: item });
+    // Down from the first entry until the wanted one has the focus.
+    for (let step = 0; step < 6; step++) {
+      if (await entry.evaluate((element) => element === document.activeElement))
+        break;
+      await page.keyboard.press("ArrowDown");
+    }
+    await page.keyboard.press("Enter");
+  };
+  const browserPanel = page.getByRole("tabpanel", { name: "Browser" });
+  const before = await browserPanel.boundingBox();
+  if (!before) throw new Error("browser not laid out");
+
+  // Fold to its title: Eigenschaften below takes the room; unfold again.
+  await choose("Einklappen");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Browser eingeklappt" }),
+  ).toHaveCount(1);
+  await expect
+    .poll(async () => (await browserPanel.boundingBox())?.height ?? 0)
+    .toBeLessThan(10);
+  await choose("Ausklappen");
+  await expect
+    .poll(async () => (await browserPanel.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(before.height - 2);
+
+  // Dock it left of everything; the keyboard stays on its menu.
+  await choose("Links andocken");
+  await expect(menu).toBeFocused();
+  const map = await page.locator(".dm-stage").boundingBox();
+  const docked = await browserPanel.boundingBox();
+  expect((docked?.x ?? 0) + (docked?.width ?? 0)).toBeLessThanOrEqual(
+    (map?.x ?? 0) + 1,
+  );
+
+  // Hide it; the keyboard moves to the title bar.
+  await choose("Ausblenden");
+  await expect(page.getByRole("button", { name: "Panel Browser" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("button", { name: /Daten ein- oder ausblenden/ }),
+  ).toBeFocused();
+});

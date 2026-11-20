@@ -1,4 +1,11 @@
-import { useId, useRef, useState, type KeyboardEvent, type Ref } from "react";
+import {
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { MenuList, type MenuItem } from "./MenuList.js";
 
 export type { MenuItem } from "./MenuList.js";
@@ -20,6 +27,11 @@ export interface MenuProps {
   /** The menu is opening, e.g. to close a popover of the same group first. */
   onOpen?: (() => void) | undefined;
   className?: string | undefined;
+  /**
+   * An icon instead of the text on the button (e.g. a panel's menu, T-172b); `label` stays its
+   * accessible name and tooltip.
+   */
+  icon?: ReactNode;
 }
 
 /** Sets a ref of either kind (callback or object). */
@@ -40,6 +52,7 @@ export function Menu({
   onSelect,
   buttonRef,
   onOpen,
+  icon,
   className,
 }: MenuProps) {
   const id = useId();
@@ -80,11 +93,14 @@ export function Menu({
           else openAt("first");
         }}
         onKeyDown={onButtonKeyDown}
+        {...(icon !== undefined && { "aria-label": label, title: label })}
       >
-        {label}
-        <svg className="dm-menu-chevron" viewBox="0 0 8 8" aria-hidden="true">
-          <path d="M1.5 3l2.5 2.5 2.5-2.5" />
-        </svg>
+        {icon ?? label}
+        {icon === undefined && (
+          <svg className="dm-menu-chevron" viewBox="0 0 8 8" aria-hidden="true">
+            <path d="M1.5 3l2.5 2.5 2.5-2.5" />
+          </svg>
+        )}
       </button>
       {open && (
         <MenuList

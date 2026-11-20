@@ -29,6 +29,21 @@ describe("Menu", () => {
     expect(document.activeElement).toBe(menuButton());
   });
 
+  it("can show an icon instead of its label, keeping the label as its name (T-172b)", () => {
+    render(
+      <Menu
+        label="Panel Karte"
+        icon={<svg data-testid="dots" />}
+        items={ITEMS}
+        onSelect={vi.fn()}
+      />,
+    );
+    const button = screen.getByRole("button", { name: "Panel Karte" });
+    expect(button.textContent).toBe("");
+    expect(button.getAttribute("title")).toBe("Panel Karte");
+    expect(screen.getByTestId("dots")).toBeTruthy();
+  });
+
   it("announces on/off settings as checkbox items (T-172a)", () => {
     render(
       <Menu

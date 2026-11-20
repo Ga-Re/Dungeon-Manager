@@ -878,10 +878,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-172b Panels by keyboard and folding
 
-- **Status:** todo · **Depends on:** T-172a · **Refs:** ADR-0017
+- **Status:** done · **Depends on:** T-172a · **Refs:** ADR-0017
 - Every panel has a menu and keyboard commands: dock left/right/bottom, float, fold to its title, hide (DM decision, 2026-11-20: own commands on the free dockview API, no enterprise modules).
 - **Acceptance criteria**
-  - [ ] Move, dock, fold and hide panels with the keyboard only (E2E test); the commands are announced to screen readers
+  - [x] Move, dock, fold and hide panels with the keyboard only (E2E test); the commands are announced to screen readers
+- **Notes:** The menu sits in each group's header ("Panel Karte"); docking goes to the window's edge, folding only where a neighbour above or below takes the room. The tab's ✕ hides like the View menu (the map gets the room); own tab markup, as dockview's React tab names its ✕ in English. Announcements go through one German status line; dockview's open/close messages are held back while a command rebuilds a panel.
 
 ### T-172c Named layouts
 

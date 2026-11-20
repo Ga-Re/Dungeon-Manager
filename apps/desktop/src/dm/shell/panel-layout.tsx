@@ -233,3 +233,85 @@ export function SlotHost({
   }, [element]);
   return <div ref={container} className={className} />;
 }
+
+/** The window edges a panel can be docked to by command (T-172b). */
+export type PanelEdge = "left" | "right" | "bottom";
+
+/** Height of a panel docked at the bottom, in rem. */
+const BOTTOM_HEIGHT_REM = 14;
+
+/**
+ * Docks `id` to an edge of the window (T-172b): the keyboard's way to do what dragging its tab
+ * does. Its content stays alive (the slot host only moves).
+ */
+export function dockPanel(
+  api: DockviewApi,
+  id: PanelId,
+  title: string,
+  edge: PanelEdge,
+): void {
+  api.getPanel(id)?.api.close();
+  const panel = api.addPanel({
+    id,
+    component: id,
+    title,
+    position: { direction: edge === "bottom" ? "below" : edge },
+  });
+  if (edge === "bottom")
+    panel.group.api.setSize({ height: remToPixels(BOTTOM_HEIGHT_REM) });
+  else panel.group.api.setSize({ width: remToPixels(WIDTH_REM[id] ?? 20) });
+}
+
+/** Lets `id` float over the others, e.g. the browser over the map (T-172b). */
+export function floatPanel(api: DockviewApi, id: PanelId): void {
+  const panel = api.getPanel(id);
+  if (panel && panel.api.location.type !== "floating")
+    api.addFloatingGroup(panel);
+}
+
+/** Heights of folded groups before they were folded, to unfold them again. */
+const unfolded = new WeakMap<object, number>();
+
+/** Height of a group folded to its tab row, in rem (the tab row's height). */
+const FOLDED_REM = 1.75;
+
+/** dockview's own minimum height of a group, restored when it unfolds. */
+const UNFOLDED_MINIMUM_HEIGHT = 100;
+
+/**
+ * Whether `id` can fold to its title: only a panel that shares its column with another one
+ * (e.g. the browser over Eigenschaften) – the other one takes the room it frees.
+ */
+export function canFold(api: DockviewApi, id: PanelId): boolean {
+  const panel = api.getPanel(id);
+  return (
+    panel !== undefined &&
+    panel.api.location.type === "grid" &&
+    panel.group.api.height < api.height - 1
+  );
+}
+
+/** Whether `id` is folded to its title. */
+export function isFolded(api: DockviewApi, id: PanelId): boolean {
+  const group = api.getPanel(id)?.group;
+  return group !== undefined && unfolded.has(group);
+}
+
+/** Folds `id` to its title, or unfolds it to the height it had (T-172b). */
+export function toggleFold(api: DockviewApi, id: PanelId): void {
+  const group = api.getPanel(id)?.group;
+  if (!group) return;
+  const before = unfolded.get(group);
+  if (before !== undefined) {
+    unfolded.delete(group);
+    group.api.setConstraints({ minimumHeight: UNFOLDED_MINIMUM_HEIGHT });
+    group.api.setSize({ height: before });
+    return;
+  }
+  if (!canFold(api, id)) return;
+  unfolded.set(group, group.api.height);
+  // Groups keep a minimum height; a folded one may shrink to its tab row.
+  const folded = remToPixels(FOLDED_REM);
+  group.api.setConstraints({ minimumHeight: folded });
+  group.api.setSize({ height: folded });
+}
