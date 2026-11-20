@@ -7,7 +7,9 @@ import {
   deleteScene,
   reparentScene,
   listScenes,
+  DEFAULT_LEVEL_ID,
   loadSidecar,
+  MapDataUnavailableError,
   mapDataForChange,
   mapKind,
   saveSidecar,
@@ -115,11 +117,10 @@ describe("createScene", () => {
       path: "library/maps/cave.webp",
       hash: `sha256:${"a".repeat(64)}`,
     };
-    const level = { id: "level-1", name: "Erdgeschoss" };
     const scene = await createScene(fs, "mine", {
       id: "s-2",
       name: "Höhle",
-      map: { asset, level },
+      map: { asset, levelName: "Erdgeschoss" },
     });
     expect(scene.map).toEqual({ kind: "image", asset, overrides: {} });
     expect(await loadSidecar(fs, asset.path)).toEqual({
@@ -129,7 +130,8 @@ describe("createScene", () => {
         original: { hash: asset.hash },
         map: {
           grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-          levels: [level],
+          // The id the DM window plays a map without data with, so its fog still fits.
+          levels: [{ id: DEFAULT_LEVEL_ID, name: "Erdgeschoss" }],
           rooms: [],
         },
       },
@@ -138,7 +140,10 @@ describe("createScene", () => {
       createScene(fs, "mine", {
         id: "s-3",
         name: "Kaputt",
-        map: { asset: { path: "../x.webp", hash: "nope" }, level },
+        map: {
+          asset: { path: "../x.webp", hash: "nope" },
+          levelName: "Erdgeschoss",
+        },
       }),
     ).rejects.toThrow();
     expect(fs.files().has("campaigns/mine/scenes/s-3.json")).toBe(false);
@@ -163,7 +168,7 @@ describe("createScene", () => {
     await createScene(fs, "mine", {
       id: "s-2",
       name: "Höhle 2",
-      map: { asset, level: { id: "new", name: "Neu" } },
+      map: { asset, levelName: "Neu" },
     });
     expect(await loadSidecar(fs, asset.path)).toMatchObject({
       value: { map: calibrated },
@@ -183,10 +188,10 @@ describe("createScene", () => {
             path: "library/maps/cave.webp",
             hash: `sha256:${"a".repeat(64)}`,
           },
-          level: { id: "l", name: "L" },
+          levelName: "L",
         },
       }),
-    ).rejects.toThrow("not available");
+    ).rejects.toThrow(MapDataUnavailableError);
     expect(fs.files().has("campaigns/mine/scenes/s-2.json")).toBe(false);
   });
 
@@ -226,7 +231,7 @@ describe("withMap", () => {
 });
 
 describe("mapDataForChange", () => {
-  const level = { id: "new", name: "Neu" };
+  const level = "Neu";
   const current = {
     grid: { cellSizePx: 72, offsetXPx: 3, offsetYPx: 4 },
     levels: [
@@ -250,7 +255,7 @@ describe("mapDataForChange", () => {
   test("without an old map the new one gets a single level", () => {
     expect(mapDataForChange(null, level)).toEqual({
       grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-      levels: [level],
+      levels: [{ id: DEFAULT_LEVEL_ID, name: "Neu" }],
       rooms: [],
     });
   });

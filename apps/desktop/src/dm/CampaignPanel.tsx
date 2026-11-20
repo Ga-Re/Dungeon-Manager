@@ -454,10 +454,7 @@ export function CampaignPanel({
         name: sceneName,
         parentSceneId: parent?.sceneId,
         // A map without data of its own starts with this level (ADR-0012).
-        map: map && {
-          asset: map,
-          level: { id: newId(), name: t("campaign.defaultLevel") },
-        },
+        map: map && { asset: map, levelName: t("campaign.defaultLevel") },
       });
       const problem = target
         ? await changeSession(target, (session) => addScene(session, scene.id))
@@ -1099,7 +1096,6 @@ export function CampaignPanel({
           service={service}
           slug={slug}
           scene={openScene}
-          newId={newId}
           subScenes={{
             direct: hierarchy.childrenOf(openScene.id),
             all: hierarchy.descendantsOf(openScene.id),

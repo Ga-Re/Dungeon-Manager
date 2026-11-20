@@ -152,6 +152,8 @@ export const en: Messages = {
       changed:
         "This map's data was changed, e.g. on another device. The TV shows it only once you accept it.",
       acceptChange: "Accept change",
+      notReadable:
+        "This map's data is not downloaded yet or damaged. Try again once your sync service has loaded the file.",
       unavailable:
         "This map's data (grid, levels) is not downloaded yet or damaged. The map appears as soon as it can be read.",
       legacy:

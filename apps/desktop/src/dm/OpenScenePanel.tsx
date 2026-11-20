@@ -82,7 +82,6 @@ export function OpenScenePanel({
   service,
   slug,
   scene: opened,
-  newId,
   onSceneChange,
   onChanged,
   onDeleted,
@@ -92,7 +91,6 @@ export function OpenScenePanel({
   readonly service: LibraryService;
   readonly slug: string;
   readonly scene: Scene;
-  readonly newId: () => string;
   /**
    * The scene as edited and the revealed fog of the level the DM works on (T-118c), after every
    * change (browser tree).
@@ -219,11 +217,8 @@ export function OpenScenePanel({
       await ensureMapData(
         service.fs,
         asset,
-        mapDataForChange(
-          session.mapData.status === "ready" ? session.mapData.data : null,
-          { id: newId(), name: t("campaign.defaultLevel") },
-          reset,
-        ),
+        // The old map as played, defaults included, so its fog and tokens keep their levels.
+        mapDataForChange(session.map, t("campaign.defaultLevel"), reset),
       );
       const changed = withMap(
         current.status === "ok" ? current.value : scene,

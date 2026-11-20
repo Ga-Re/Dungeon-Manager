@@ -186,7 +186,7 @@ describe("CampaignPanel", () => {
     ).toMatchObject({
       map: {
         grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-        levels: [{ id: "new-2", name: "Erdgeschoss" }],
+        levels: [{ id: "level-1", name: "Erdgeschoss" }],
       },
     });
   });

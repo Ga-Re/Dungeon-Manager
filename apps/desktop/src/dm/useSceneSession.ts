@@ -11,7 +11,12 @@ import {
   type SessionState,
 } from "@dungeon-manager/core";
 import type { Campaign, Scene } from "@dungeon-manager/schema";
-import { loadCampaign, saveScene } from "@dungeon-manager/storage";
+import {
+  DEFAULT_LEVEL_ID,
+  loadCampaign,
+  saveScene,
+  withoutLegacyMap,
+} from "@dungeon-manager/storage";
 import {
   useCallback,
   useContext,
@@ -24,12 +29,6 @@ import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 import { useMapData, type MapDataState } from "./useMapData.js";
-
-/**
- * The level of a map without data yet. A fixed id, so fog revealed on it still fits once the
- * first edit writes the map's sidecar.
- */
-export const DEFAULT_LEVEL_ID = "level-1";
 
 /** Time and randomness for core commands (ARCHITECTURE §4: injected, never read inside core). */
 const ctx = { now: () => Date.now(), random: () => Math.random() };
@@ -85,6 +84,8 @@ export function useSceneSession(
   const feed = useContext(PlayerFeedContext);
   const { t } = useTranslation();
   const [scene, setScene] = useState(opened);
+  const latestScene = useRef(scene);
+  latestScene.current = scene;
   const [history, setHistory] = useState<History>(createHistory);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [notOnTv, setNotOnTv] = useState(false);
@@ -124,7 +125,9 @@ export function useSceneSession(
     data: mapData,
     changed: mapChanged,
     acceptChange,
-  } = useMapData(service, scene, (settled) => {
+  } = useMapData(service, scene, () => {
+    // The scene as it is now: only the copy goes, nothing else from when the settling began.
+    const settled = withoutLegacyMap(latestScene.current);
     setScene(settled);
     save(settled);
   });

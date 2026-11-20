@@ -41,17 +41,17 @@ export async function createE2eLibrary({
     name: "Fluch der Krypta",
   });
   const asset = { path: MAP_PATH, hash: `sha256:${"0".repeat(64)}` };
-  const level = { id: "e2e-level", name: "Ebene 1" };
   // The map's grid and levels live in its sidecar (ADR-0012).
+  const data = newMapData("Ebene 1");
   if (levels)
     await ensureMapData(fs, asset, {
-      ...newMapData(level),
-      levels: [level, { id: "e2e-cellar", name: "Gruftkeller" }],
+      ...data,
+      levels: [...data.levels, { id: "e2e-cellar", name: "Gruftkeller" }],
     });
   await createScene(fs, slug, {
     id: "e2e-scene",
     name: "Krypta",
-    map: { asset, level },
+    map: { asset, levelName: "Ebene 1" },
   });
   // A campaign note with the Markdown the details panel renders (T-163).
   await fs.writeAtomic(

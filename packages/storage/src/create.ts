@@ -3,11 +3,12 @@ import {
   SCENE_VERSION,
   SESSION_VERSION,
   type AssetRef,
-  type Level,
+  type Grid,
   type MapData,
   type MapKind,
   type Scene,
   type SceneMap,
+  type SidecarLevel,
   type Session,
 } from "@dungeon-manager/schema";
 import {
@@ -87,7 +88,7 @@ export async function createCampaign(
 
 /**
  * Creates and saves a scene, empty or with a map; no tokens, fog or initiative yet. A map
- * without map data in its sidecar gets a placeholder grid and `map.level` (`ensureMapData`).
+ * without map data in its sidecar gets a placeholder grid and one level (`ensureMapData`).
  * @returns the saved scene. @throws on an empty name, an invalid map or a map whose sidecar is
  *   not available
  */
@@ -97,14 +98,18 @@ export async function createScene(
   scene: {
     readonly id: string;
     readonly name: string;
-    readonly map?: { readonly asset: AssetRef; readonly level: Level } | null;
+    /** `levelName`: the translated name of the first level of a map without data. */
+    readonly map?: {
+      readonly asset: AssetRef;
+      readonly levelName: string;
+    } | null;
     /** Makes it a sub-scene of this scene (T-152). */
     readonly parentSceneId?: string | undefined;
   },
 ): Promise<Scene> {
   if (scene.name.trim() === "") throw new Error("A scene needs a name");
   if (scene.map)
-    await ensureMapData(fs, scene.map.asset, newMapData(scene.map.level));
+    await ensureMapData(fs, scene.map.asset, newMapData(scene.map.levelName));
   const created: Scene = {
     schemaVersion: SCENE_VERSION,
     id: scene.id,
@@ -157,17 +162,21 @@ export function withMap(
 /**
  * The map data a new map starts with when a scene changes to it: the old map's levels and, unless
  * `reset.grid`, its grid – so fog and tokens fit a corrected version of the same map – or a
- * single new level without an old map. Used only if the new map has no data yet.
+ * single new level without an old map. `current` is the old map as the scene played it, defaults
+ * included. Used only if the new map has no data yet.
  */
 export function mapDataForChange(
-  current: MapData | null,
-  level: Level,
+  current: {
+    readonly grid: Grid;
+    readonly levels: readonly SidecarLevel[];
+  } | null,
+  levelName: string,
   reset: MapReset = {},
 ): MapData {
-  if (!current) return newMapData(level);
+  if (!current) return newMapData(levelName);
   return {
     grid: reset.grid === true ? placeholderGrid() : current.grid,
-    levels: current.levels,
+    levels: [...current.levels],
     rooms: [],
   };
 }
@@ -218,13 +227,30 @@ export function sceneMapOf(asset: AssetRef): SceneMap {
   };
 }
 
-/** A map's data before it is calibrated (T-106): 100 px per cell and a single level. */
-export function newMapData(level: Level): MapData {
+/**
+ * The id of the single level of a map without data. Fixed, so fog and tokens on a map played with
+ * defaults still fit once its sidecar is written.
+ */
+export const DEFAULT_LEVEL_ID = "level-1";
+
+/**
+ * A map's data before it is calibrated (T-106): 100 px per cell and a single level, the same the
+ * DM window plays for a map without data (`DEFAULT_LEVEL_ID`).
+ */
+export function newMapData(levelName: string): MapData {
   return {
     grid: placeholderGrid(),
-    levels: [{ id: level.id, name: level.name }],
+    levels: [{ id: DEFAULT_LEVEL_ID, name: levelName }],
     rooms: [],
   };
+}
+
+/** A map's sidecar is not downloaded yet, unreadable or broken, so its data cannot be used. */
+export class MapDataUnavailableError extends Error {
+  constructor(readonly assetPath: string) {
+    super(`The map data of ${assetPath} is not available`);
+    this.name = "MapDataUnavailableError";
+  }
 }
 
 /**
@@ -241,7 +267,7 @@ export async function ensureMapData(
   const loaded = await loadSidecar(fs, asset.path);
   if (loaded.status === "ok" && loaded.value.map) return loaded.value.map;
   if (loaded.status !== "ok" && loaded.status !== "missing")
-    throw new Error(`The map data of ${asset.path} is not available`);
+    throw new MapDataUnavailableError(asset.path);
   await saveSidecar(fs, asset.path, {
     ...(loaded.status === "ok"
       ? loaded.value

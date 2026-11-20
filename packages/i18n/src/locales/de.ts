@@ -153,6 +153,8 @@ export const de = {
       changed:
         "Die Daten dieser Karte wurden geändert, z. B. auf einem anderen Gerät. Der TV zeigt sie erst, wenn du sie übernimmst.",
       acceptChange: "Änderung übernehmen",
+      notReadable:
+        "Die Daten dieser Karte sind noch nicht heruntergeladen oder beschädigt. Versuche es erneut, sobald dein Sync-Dienst die Datei geladen hat.",
       unavailable:
         "Die Daten dieser Karte (Raster, Ebenen) sind noch nicht heruntergeladen oder beschädigt. Die Karte erscheint, sobald sie gelesen werden können.",
       legacy:
