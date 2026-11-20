@@ -1,30 +1,41 @@
-// Workspaces of the DM window (T-156): each has its own ribbon tabs. Remembered per device in
-// the webview's storage, like the theme.
+// Workspaces of the DM window (T-156, ADR-0017): each has its own ribbon tabs. Remembered per
+// device in the webview's storage, like the theme.
 
-/** The four workspaces (DM decision, 2026-11-19), in the selector's order. */
+/** The five workspaces (ADR-0017, DM decision 2026-11-20), in the selector's order. */
 export const WORKSPACES = [
   "mapForge",
-  "assetStudio",
+  "assetVault",
+  "creatures",
   "campaignAtlas",
-  "gameMode",
+  "gameOrchestrator",
 ] as const;
 export type Workspace = (typeof WORKSPACES)[number];
 
 const STORAGE_KEY = "dm.workspace";
 
+/** Ids remembered before T-171 renamed the workspaces. */
+const RENAMED: ReadonlyMap<string, Workspace> = new Map([
+  ["assetStudio", "assetVault"],
+  ["gameMode", "gameOrchestrator"],
+]);
+
 /** Where the first start opens: running a session needs today's tools. */
-const DEFAULT_WORKSPACE: Workspace = "gameMode";
+const DEFAULT_WORKSPACE: Workspace = "gameOrchestrator";
 
 /** Whether `value` names one of the workspaces (e.g. a menu item's id). */
 export function isWorkspace(value: unknown): value is Workspace {
   return WORKSPACES.includes(value as Workspace);
 }
 
-/** The workspace last used on this device; anything unreadable or unknown is Game Mode. */
+/**
+ * The workspace last used on this device, also under its name before T-171; anything unreadable
+ * or unknown is the Game-Orchestrator.
+ */
 export function readWorkspace(storage: Storage | undefined): Workspace {
   try {
     const value = storage?.getItem(STORAGE_KEY);
-    return isWorkspace(value) ? value : DEFAULT_WORKSPACE;
+    if (isWorkspace(value)) return value;
+    return RENAMED.get(value ?? "") ?? DEFAULT_WORKSPACE;
   } catch {
     return DEFAULT_WORKSPACE;
   }

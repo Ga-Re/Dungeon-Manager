@@ -312,12 +312,14 @@ export const en: Messages = {
     workspace: {
       label: "Workspace",
       mapForge: "Map Forge",
-      assetStudio: "Asset Studio",
+      assetVault: "Asset Vault",
+      creatures: "Tokens & Creatures",
       campaignAtlas: "Campaign Atlas",
-      gameMode: "Game Mode",
+      gameOrchestrator: "Game-Orchestrator",
       coming: {
         mapForge: "Editing your maps comes here soon.",
-        assetStudio: "Editing your assets comes here soon.",
+        assetVault: "Managing props, handouts and sounds comes here soon.",
+        creatures: "Managing player characters and creatures comes here soon.",
         campaignAtlas: "Editing the current campaign comes here soon.",
       },
     },

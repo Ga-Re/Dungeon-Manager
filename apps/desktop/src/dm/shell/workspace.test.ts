@@ -3,27 +3,40 @@ import { memoryStorage } from "../memory-storage.test-data.js";
 import { WORKSPACES, readWorkspace, saveWorkspace } from "./workspace.js";
 
 describe("workspace", () => {
-  it("has the four workspaces of the DM's decision, Game Mode last", () => {
+  it("has the five workspaces of ADR-0017, the Game-Orchestrator last", () => {
     expect(WORKSPACES).toEqual([
       "mapForge",
-      "assetStudio",
+      "assetVault",
+      "creatures",
       "campaignAtlas",
-      "gameMode",
+      "gameOrchestrator",
     ]);
   });
 
-  it("starts in Game Mode and then in the last one used on this device", () => {
+  it("starts in the Game-Orchestrator and then in the last one used on this device", () => {
     const storage = memoryStorage();
-    expect(readWorkspace(storage)).toBe("gameMode");
-    saveWorkspace(storage, "mapForge");
-    expect(readWorkspace(storage)).toBe("mapForge");
+    expect(readWorkspace(storage)).toBe("gameOrchestrator");
+    saveWorkspace(storage, "creatures");
+    expect(readWorkspace(storage)).toBe("creatures");
   });
 
-  it("falls back to Game Mode for unknown values or unavailable storage", () => {
-    expect(readWorkspace(memoryStorage({ "dm.workspace": "kitchen" }))).toBe(
-      "gameMode",
+  it("opens a workspace remembered under its name before T-171", () => {
+    expect(
+      readWorkspace(memoryStorage({ "dm.workspace": "assetStudio" })),
+    ).toBe("assetVault");
+    expect(readWorkspace(memoryStorage({ "dm.workspace": "gameMode" }))).toBe(
+      "gameOrchestrator",
     );
-    expect(readWorkspace(undefined)).toBe("gameMode");
+  });
+
+  it("falls back to the Game-Orchestrator for unknown values or unavailable storage", () => {
+    expect(readWorkspace(memoryStorage({ "dm.workspace": "kitchen" }))).toBe(
+      "gameOrchestrator",
+    );
+    expect(readWorkspace(memoryStorage({ "dm.workspace": "toString" }))).toBe(
+      "gameOrchestrator",
+    );
+    expect(readWorkspace(undefined)).toBe("gameOrchestrator");
     const failing = memoryStorage();
     failing.getItem = () => {
       throw new Error("denied");
@@ -31,9 +44,9 @@ describe("workspace", () => {
     failing.setItem = () => {
       throw new Error("denied");
     };
-    expect(readWorkspace(failing)).toBe("gameMode");
+    expect(readWorkspace(failing)).toBe("gameOrchestrator");
     expect(() => {
-      saveWorkspace(failing, "assetStudio");
+      saveWorkspace(failing, "assetVault");
     }).not.toThrow();
   });
 });
