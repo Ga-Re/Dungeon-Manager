@@ -172,21 +172,28 @@ export function readLayout(storage: Storage | undefined): unknown {
     if (!raw) return null;
     const stored: unknown = JSON.parse(raw);
     if (!isRecord(stored) || stored["version"] !== LAYOUT_VERSION) return null;
-    const layout = stored["layout"];
-    if (!isRecord(layout) || !isRecord(layout["panels"])) return null;
-    const known = Object.entries(layout["panels"]).every(
-      ([id, panel]) =>
-        (PANELS as readonly string[]).includes(id) &&
-        isRecord(panel) &&
-        panel["contentComponent"] === id,
-    );
-    if (!known) return null;
-    const rest = { ...layout };
-    delete rest["popoutGroups"];
-    return rest;
+    return usableLayout(stored["layout"]);
   } catch {
     return null;
   }
+}
+
+/**
+ * `layout` (dockview's `toJSON`, read from device storage) if this app can use it, else `null`:
+ * only our four panels, each showing its own component, and without popout windows.
+ */
+export function usableLayout(layout: unknown): Record<string, unknown> | null {
+  if (!isRecord(layout) || !isRecord(layout["panels"])) return null;
+  const known = Object.entries(layout["panels"]).every(
+    ([id, panel]) =>
+      (PANELS as readonly string[]).includes(id) &&
+      isRecord(panel) &&
+      panel["contentComponent"] === id,
+  );
+  if (!known) return null;
+  const rest = { ...layout };
+  delete rest["popoutGroups"];
+  return rest;
 }
 
 /** Remembers the layout on this device; a storage that refuses it is ignored. */
@@ -207,13 +214,13 @@ export function saveLayout(
 /**
  * Restores the stored layout, or builds the default when there is none or it cannot be read
  * (anything dockview refuses counts as none). Panels the stored layout does not name were
- * hidden on purpose and stay hidden.
+ * hidden on purpose and stay hidden. Returns whether the stored layout was used.
  */
 export function restoreLayout(
   api: DockviewApi,
   stored: unknown,
   titles: Readonly<Record<PanelId, string>>,
-): void {
+): boolean {
   if (stored !== null) {
     try {
       api.fromJSON(stored as Parameters<DockviewApi["fromJSON"]>[0]);
@@ -225,12 +232,13 @@ export function restoreLayout(
         const group = api.getGroup(id);
         if (group) fold(group, remToPixels(UNFOLD_HEIGHT_REM));
       }
-      if (api.panels.length > 0) return;
+      if (api.panels.length > 0) return true;
     } catch (error) {
       console.error("The stored panel layout cannot be used.", error);
     }
   }
   buildDefaultLayout(api, titles);
+  return false;
 }
 
 /**

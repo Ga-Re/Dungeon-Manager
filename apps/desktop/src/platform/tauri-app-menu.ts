@@ -12,7 +12,7 @@ export function createTauriAppMenu(platform: PlatformFamily): AppMenuService {
   let current: Menu | null = null;
   let installs = 0;
   return {
-    async install(labels, onCommand) {
+    async install(labels, onCommand, onLayout) {
       if (platform !== "macos") return false;
       const install = ++installs;
       const menu = await Menu.new({
@@ -85,6 +85,20 @@ export function createTauriAppMenu(platform: PlatformFamily): AppMenuService {
                 },
               })),
               { item: "Separator" as const },
+              ...labels.layouts.map((layout) => ({
+                id: `layout:${layout.id}`,
+                text: layout.text,
+                action: () => {
+                  onLayout(layout.id);
+                },
+              })),
+              {
+                id: "saveLayout",
+                text: labels.saveLayout,
+                action: () => {
+                  onCommand("saveLayout");
+                },
+              },
               {
                 id: "resetLayout",
                 text: labels.resetLayout,

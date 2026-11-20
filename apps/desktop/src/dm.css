@@ -809,6 +809,30 @@ label {
   gap: var(--dm-space-1) var(--dm-space-3);
 }
 
+/* Named layouts (T-172c): one row per layout, its name and its commands. */
+.dm-named-layouts {
+  display: grid;
+  gap: var(--dm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dm-named-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dm-space-1) var(--dm-space-2);
+}
+
+.dm-named-layout-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* A note's text in the details panel (T-161b): as written, wrapped, scrolling if long. */
 .dm-details-body {
   max-height: 24rem;

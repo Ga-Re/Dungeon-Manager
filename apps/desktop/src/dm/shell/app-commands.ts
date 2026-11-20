@@ -16,6 +16,8 @@ export interface AppCommands {
    * every command first closes them (it then opens its own). Returns a function to remove it.
    */
   registerModal(close: () => void): () => void;
+  /** Closes the open dialogs (e.g. before a menu choice that is no command: a named layout). */
+  closeModals(): void;
   /** Closes the open dialogs, then runs the handler of `command` (if any). */
   run(command: AppCommand): void;
 }
@@ -37,10 +39,13 @@ export function createAppCommands(): AppCommands {
         modals.delete(close);
       };
     },
-    run(command) {
+    closeModals() {
       modals.forEach((close) => {
         close();
       });
+    },
+    run(command) {
+      this.closeModals();
       handlers.get(command)?.();
     },
   };
