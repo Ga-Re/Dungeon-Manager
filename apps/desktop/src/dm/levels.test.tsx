@@ -87,7 +87,6 @@ function renderScene(opened: Scene, levels: readonly Level[] = towerLevels) {
             service={library.service}
             slug="mine"
             scene={opened}
-            newId={() => "id"}
             onChanged={() => undefined}
             onDeleted={() => undefined}
             onClose={() => undefined}

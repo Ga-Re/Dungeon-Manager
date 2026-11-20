@@ -150,6 +150,8 @@ export const de = {
     },
     closeScene: "Szene schließen",
     mapData: {
+      notReadable:
+        "Die Daten dieser Karte sind noch nicht heruntergeladen oder beschädigt. Versuche es erneut, sobald dein Sync-Dienst die Datei geladen hat.",
       unavailable:
         "Die Daten dieser Karte (Raster, Ebenen) sind noch nicht heruntergeladen oder beschädigt. Die Karte erscheint, sobald sie gelesen werden können.",
       legacy:

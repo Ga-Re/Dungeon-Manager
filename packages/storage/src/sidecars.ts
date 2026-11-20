@@ -88,30 +88,38 @@ export function adoptLegacyMap(
     : { kind: "differs" };
 }
 
+/** The scene without its version 2 copy of grid and levels, once the sidecar holds them. */
+export function withoutLegacyMap(scene: Scene): Scene {
+  if (!scene.map?.legacyMap) return scene;
+  const reference = { ...scene.map };
+  delete reference.legacyMap;
+  return { ...scene, map: reference };
+}
+
 /**
  * Moves a scene's `legacyMap` (its version 2 copy of grid and levels) into its map's sidecar
- * where `adoptLegacyMap` allows it (ADR-0012). A sidecar that is not downloaded yet or broken
- * is left alone and the scene keeps its copy, to try again later.
- * @returns the scene without `legacyMap` once the sidecar holds its data, else the scene as it
- *   was; the caller saves it. @throws when writing the sidecar fails
+ * where `adoptLegacyMap` allows it (ADR-0012).
+ * @returns `settled` when the sidecar holds the data now (the caller drops the copy with
+ *   `withoutLegacyMap` and saves the scene), `differs` when the DM has to decide, `unavailable`
+ *   when the sidecar is not downloaded yet or broken (left alone, to try again later); `none`
+ *   without a copy. @throws when writing the sidecar fails
  */
 export async function settleLegacyMap(
   fs: FileSystem,
   scene: Scene,
-): Promise<Scene> {
+): Promise<"settled" | "differs" | "unavailable" | "none"> {
   const map = scene.map;
-  if (!map?.legacyMap) return scene;
+  if (!map?.legacyMap) return "none";
   const loaded = await loadSidecar(fs, map.asset.path);
-  if (loaded.status !== "ok" && loaded.status !== "missing") return scene;
+  if (loaded.status !== "ok" && loaded.status !== "missing")
+    return "unavailable";
   const adoption = adoptLegacyMap(
     loaded.status === "ok" ? loaded.value : null,
     map.legacyMap,
     map.asset.hash,
   );
-  if (adoption.kind === "differs") return scene;
+  if (adoption.kind === "differs") return "differs";
   if (adoption.kind === "seed")
     await saveSidecar(fs, map.asset.path, adoption.sidecar);
-  const reference = { ...map };
-  delete reference.legacyMap;
-  return { ...scene, map: reference };
+  return "settled";
 }

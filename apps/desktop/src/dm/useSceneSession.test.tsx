@@ -93,7 +93,6 @@ function renderScene(
             service={library.service}
             slug="mine"
             scene={opened}
-            newId={() => "id"}
             onChanged={() => undefined}
             onDeleted={() => undefined}
             onClose={() => undefined}
@@ -401,5 +400,94 @@ describe("the map's data (ADR-0012, T-134d)", () => {
     expect(
       screen.queryByRole("button", { name: "Alles aufdecken" }),
     ).toBeNull();
+  });
+});
+
+describe("hints about the map's data (T-134d)", () => {
+  const files = { "campaigns/mine/campaign.json": campaign };
+
+  test("a scene whose own copy differs from the map's data plays its copy and says so", async () => {
+    const differing: Scene = {
+      ...mappedScene,
+      map: {
+        kind: "image",
+        asset: { path: HOEHLE, hash },
+        overrides: {},
+        legacyMap: {
+          grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+          levels: [{ id: "ground", name: "Taverne" }],
+        },
+      },
+    };
+    const { tv } = renderScene(files, differing);
+    expect(
+      await screen.findByText(/eigenes Raster oder eigene Ebenen/),
+    ).toBeTruthy();
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.map?.levels).toEqual([
+        { id: "ground", name: "Taverne" },
+      ]);
+    });
+  });
+
+  test("a map without data plays one default level, which a map change keeps", async () => {
+    const plain: Scene = {
+      ...mappedScene,
+      map: {
+        kind: "image",
+        asset: { path: "library/maps/leer.png", hash },
+        overrides: {},
+      },
+    };
+    const { tv, library } = renderScene(files, plain);
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.map?.currentLevelId).toBe("level-1");
+    });
+    library.service.importMap.mockResolvedValue({
+      path: "library/maps/neu.png",
+      hash,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Karte übernehmen" }),
+    );
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          library.fs.files().get("library/maps/neu.png.dm.json") ?? "{}",
+        ),
+      ).toMatchObject({ map: { levels: [{ id: "level-1" }] } });
+    });
+  });
+
+  test("a missing sidecar of a map whose scene uses other levels counts as not synced yet", async () => {
+    const used: Scene = {
+      ...mappedScene,
+      map: {
+        kind: "image",
+        asset: { path: "library/maps/leer.png", hash },
+        overrides: {},
+      },
+      fog: { levels: { cellar: { revealed: [], remembered: [] } } },
+    };
+    renderScene(files, used);
+    expect(
+      await screen.findByText(/noch nicht heruntergeladen oder beschädigt/),
+    ).toBeTruthy();
+  });
+
+  test("overrides of elements the map no longer has are pointed out", async () => {
+    const orphaned: Scene = {
+      ...mappedScene,
+      map: {
+        kind: "image",
+        asset: { path: HOEHLE, hash },
+        overrides: { "gone-room": { hidden: true } },
+      },
+    };
+    renderScene(files, orphaned);
+    expect(
+      await screen.findByText(/einem Element, das die Karte nicht mehr hat/),
+    ).toBeTruthy();
   });
 });

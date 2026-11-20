@@ -9,6 +9,7 @@ import {
   saveSidecar,
   settleLegacyMap,
   sidecarFile,
+  withoutLegacyMap,
 } from "./index.js";
 
 // Sidecar files next to library files (ADR-0012, T-134c).
@@ -248,31 +249,35 @@ describe("settling a scene's legacy map when it opens (T-134d)", () => {
     fog: { levels: {} },
     initiative: null,
   };
-  const reference = { kind: "image", asset, overrides: {} };
 
-  test("the first scene of a map seeds its sidecar and drops its copy", async () => {
+  test("the first scene of a map seeds its sidecar", async () => {
     const fs = createMemoryFileSystem();
-    const settled = await settleLegacyMap(fs, legacyScene);
-    expect(settled.map).toEqual(reference);
+    expect(await settleLegacyMap(fs, legacyScene)).toBe("settled");
     expect(await loadSidecar(fs, asset.path)).toEqual({
       status: "ok",
       value: sidecar,
     });
+    expect(withoutLegacyMap(legacyScene).map).toEqual({
+      kind: "image",
+      asset,
+      overrides: {},
+    });
   });
 
-  test("a scene that fits the sidecar drops its copy; one that differs keeps it", async () => {
+  test("a scene that fits the sidecar is settled; one that differs is the DM's to decide", async () => {
     const fs = createMemoryFileSystem();
     await saveSidecar(fs, asset.path, sidecar);
-    expect((await settleLegacyMap(fs, legacyScene)).map).toEqual(reference);
+    expect(await settleLegacyMap(fs, legacyScene)).toBe("settled");
     const renamed: Scene = {
       ...legacyScene,
       map: {
-        ...reference,
         kind: "image",
+        asset,
+        overrides: {},
         legacyMap: { grid, levels: [{ id: "ground", name: "Taverne" }] },
       },
     };
-    expect(await settleLegacyMap(fs, renamed)).toBe(renamed);
+    expect(await settleLegacyMap(fs, renamed)).toBe("differs");
     expect(await loadSidecar(fs, asset.path)).toMatchObject({
       value: sidecar,
     });
@@ -282,12 +287,13 @@ describe("settling a scene's legacy map when it opens (T-134d)", () => {
     const fs = createMemoryFileSystem({
       "library/maps/turm.png.dm.json": { placeholder: true },
     });
-    expect(await settleLegacyMap(fs, legacyScene)).toBe(legacyScene);
+    expect(await settleLegacyMap(fs, legacyScene)).toBe("unavailable");
     expect(fs.files().has("library/maps/turm.png.dm.json")).toBe(false);
   });
 
   test("scenes without a legacy map are left as they are", async () => {
     const plain: Scene = { ...legacyScene, map: null };
-    expect(await settleLegacyMap(createMemoryFileSystem(), plain)).toBe(plain);
+    expect(await settleLegacyMap(createMemoryFileSystem(), plain)).toBe("none");
+    expect(withoutLegacyMap(plain)).toBe(plain);
   });
 });

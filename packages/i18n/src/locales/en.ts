@@ -149,6 +149,8 @@ export const en: Messages = {
     },
     closeScene: "Close scene",
     mapData: {
+      notReadable:
+        "This map's data is not downloaded yet or damaged. Try again once your sync service has loaded the file.",
       unavailable:
         "This map's data (grid, levels) is not downloaded yet or damaged. The map appears as soon as it can be read.",
       legacy:
