@@ -104,6 +104,7 @@ export function OpenScenePanel({
   active = true,
   onTv: sceneOnTv = true,
   onShowOnTv,
+  onSaveState,
   tabs,
 }: {
   readonly service: LibraryService;
@@ -134,6 +135,13 @@ export function OpenScenePanel({
   readonly onTv?: boolean;
   /** "Szene auf den TV": the DM puts this scene on the TV. */
   readonly onShowOnTv?: (() => void) | undefined;
+  /** Whether a save is pending or failed, after each change of either (T-223b: its tab's dot). */
+  readonly onSaveState?:
+    | ((state: {
+        readonly saving: boolean;
+        readonly saveFailed: boolean;
+      }) => void)
+    | undefined;
   /** The open scenes' tabs for the title bar; `busy`: this scene must not close now. */
   readonly tabs?: ((busy: boolean) => ReactNode) | undefined;
 }) {
@@ -147,6 +155,14 @@ export function OpenScenePanel({
   const [error, setError] = useState("");
   const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
   const session = useSceneSession(service, slug, opened, sceneOnTv);
+  const reportSaveState = useRef(onSaveState);
+  useEffect(() => {
+    reportSaveState.current = onSaveState;
+  });
+  const { saving, saveFailed } = session;
+  useEffect(() => {
+    reportSaveState.current?.({ saving, saveFailed });
+  }, [saving, saveFailed]);
   const { scene, map, notOnTv } = session;
   const [tool, setTool] = useState<MapTool>("pan");
   // The scene is the Game-Orchestrator's document (T-174): undo and redo act on it only while

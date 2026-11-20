@@ -1,4 +1,4 @@
-import { IconButton } from "@dungeon-manager/ui";
+import { Dialog, IconButton } from "@dungeon-manager/ui";
 import {
   CircleAlert,
   CircleCheck,
@@ -8,7 +8,7 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 /** One open scene's tab (T-223a). */
@@ -17,12 +17,18 @@ export interface SceneTabEntry {
   readonly name: string;
   /** It is the scene on the TV. */
   readonly onTv: boolean;
+  /** A write of its changes is still pending (T-223b). */
+  readonly saving?: boolean;
+  /** Its last write failed: its latest changes are only in memory (T-223b). */
+  readonly saveFailed?: boolean;
 }
 
 /**
  * The open scenes as tabs in the title bar (T-223a, ADR-0017): the shown one is marked current,
  * the one on the TV carries a TV mark. Switching tabs never changes the TV (DM decision,
- * 2026-11-20). Buttons, so the keyboard reaches each tab and its ✕ with Tab.
+ * 2026-11-20). Buttons, so the keyboard reaches each tab and its ✕ with Tab. A dot marks a tab
+ * whose save is pending or failed (T-223b); closing one whose save failed asks first – nothing
+ * else asks, as scenes save every change.
  */
 export function SceneTabs({
   tabs,
@@ -51,60 +57,113 @@ export function SceneTabs({
 }) {
   const { t } = useTranslation();
   const buttons = useRef(new Map<string, HTMLButtonElement>());
+  const [confirming, setConfirming] = useState<SceneTabEntry | null>(null);
+  const closeButton = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (focus === null) return;
     buttons.current.get(focus)?.focus();
     onFocused?.();
   }, [focus, onFocused]);
   return (
-    <span
-      role="group"
-      aria-label={t("campaign.openScenes")}
-      className="dm-scene-tabs"
-    >
-      {tabs.map((tab) => {
-        const current = tab.id === activeId;
-        return (
-          <span
-            key={tab.id}
-            className="dm-scene-tab"
-            data-current={current ? "true" : undefined}
-          >
-            <button
-              ref={(element) => {
-                if (element) buttons.current.set(tab.id, element);
-                else buttons.current.delete(tab.id);
-              }}
-              type="button"
-              className="dm-scene-tab-name"
-              aria-current={current ? "true" : undefined}
-              disabled={busy && !current}
-              onClick={() => {
-                onSelect(tab.id);
-              }}
+    <>
+      <span
+        role="group"
+        aria-label={t("campaign.openScenes")}
+        className="dm-scene-tabs"
+      >
+        {tabs.map((tab) => {
+          const current = tab.id === activeId;
+          return (
+            <span
+              key={tab.id}
+              className="dm-scene-tab"
+              data-current={current ? "true" : undefined}
             >
-              {tab.name}
-              {tab.onTv && (
-                <>
-                  <Tv aria-hidden="true" className="dm-scene-tab-tv" />
-                  <span className="visually-hidden">
-                    {t("campaign.sceneOnTv")}
-                  </span>
-                </>
-              )}
-            </button>
-            <IconButton
-              icon={<X />}
-              label={t("campaign.closeSceneNamed", { name: tab.name })}
-              disabled={current && busy}
-              onClick={() => {
-                onClose(tab.id);
-              }}
-            />
-          </span>
-        );
-      })}
-    </span>
+              <button
+                ref={(element) => {
+                  if (element) buttons.current.set(tab.id, element);
+                  else buttons.current.delete(tab.id);
+                }}
+                type="button"
+                className="dm-scene-tab-name"
+                aria-current={current ? "true" : undefined}
+                disabled={busy && !current}
+                onClick={() => {
+                  onSelect(tab.id);
+                }}
+              >
+                {tab.name}
+                {(tab.saveFailed === true || tab.saving === true) && (
+                  <>
+                    <span className="dm-scene-tab-dot" aria-hidden="true" />
+                    <span className="visually-hidden">
+                      {tab.saveFailed === true
+                        ? t("campaign.tabNotSaved")
+                        : t("campaign.tabSaving")}
+                    </span>
+                  </>
+                )}
+                {tab.onTv && (
+                  <>
+                    <Tv aria-hidden="true" className="dm-scene-tab-tv" />
+                    <span className="visually-hidden">
+                      {t("campaign.sceneOnTv")}
+                    </span>
+                  </>
+                )}
+              </button>
+              <IconButton
+                icon={<X />}
+                label={t("campaign.closeSceneNamed", { name: tab.name })}
+                disabled={current && busy}
+                onClick={(event) => {
+                  if (tab.saveFailed === true) {
+                    closeButton.current = event.currentTarget;
+                    setConfirming(tab);
+                  } else onClose(tab.id);
+                }}
+              />
+            </span>
+          );
+        })}
+      </span>
+      <Dialog
+        open={confirming !== null}
+        onClose={() => {
+          setConfirming(null);
+        }}
+        title={t("campaign.closeUnsaved.title")}
+        closeLabel={t("campaign.closeUnsaved.dismiss")}
+        returnFocus={closeButton}
+      >
+        {confirming && (
+          <>
+            <p>{t("campaign.closeUnsaved.text", { name: confirming.name })}</p>
+            <div className="dm-popover-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirming(null);
+                }}
+              >
+                {t("campaign.closeUnsaved.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirming(null);
+                  // As the ✕: the shown scene does not close while it is busy.
+                  if (!(busy && confirming.id === activeId))
+                    onClose(confirming.id);
+                }}
+              >
+                {t("campaign.closeUnsaved.close")}
+              </button>
+            </div>
+          </>
+        )}
+      </Dialog>
+    </>
   );
 }
 

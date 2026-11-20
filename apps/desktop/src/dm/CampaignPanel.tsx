@@ -233,6 +233,10 @@ export function CampaignPanel({
   // or opening a scene while none is on it.
   const [tabs, setTabs] = useState<SceneTabsState>(NO_SCENE_TABS);
   const { open: openScenes, active: activeSceneId, tv: tvSceneId } = tabs;
+  // Each open scene's save state, for its tab's dot (T-223b).
+  const [saveStates, setSaveStates] = useState<
+    Readonly<Record<string, { saving: boolean; saveFailed: boolean }>>
+  >({});
   // Where keyboard focus goes once the tab bar shows again (it moves with the shown scene).
   const [tabFocus, setTabFocus] = useState<string | null>(null);
   const openScene =
@@ -247,8 +251,16 @@ export function CampaignPanel({
   const focusShownTab = useRef(false);
   /** Takes tabs away; a neighbour shows, and the TV goes dark if its scene went. */
   const closeScenes = (sceneIds: readonly string[]) => {
-    focusShownTab.current = true;
+    if (activeSceneId !== null && !sceneIds.includes(activeSceneId))
+      // The shown tab stays: the keyboard goes to it (the closed tab's ✕ is gone).
+      setTabFocus(activeSceneId);
+    else focusShownTab.current = true;
     setTabs((current) => closeSceneTabs(current, sceneIds));
+    setSaveStates((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([id]) => !sceneIds.includes(id)),
+      ),
+    );
   };
   useEffect(() => {
     // The tree shows the shown scene's live state; another one's is stale.
@@ -1141,6 +1153,9 @@ export function CampaignPanel({
           newId={newId}
           active={each.id === activeSceneId}
           onTv={each.id === tvSceneId}
+          onSaveState={(state) => {
+            setSaveStates((current) => ({ ...current, [each.id]: state }));
+          }}
           onShowOnTv={() => {
             setTabs((current) => sendSceneTabToTv(current, each.id));
             setNotice(t("campaign.sceneShownOnTv", { name: each.name }));
@@ -1151,6 +1166,7 @@ export function CampaignPanel({
                 id: tab.id,
                 name: tab.name,
                 onTv: tab.id === tvSceneId,
+                ...saveStates[tab.id],
               }))}
               activeId={activeSceneId}
               busy={busy}

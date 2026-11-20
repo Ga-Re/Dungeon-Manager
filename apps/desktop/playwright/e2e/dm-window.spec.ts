@@ -953,3 +953,39 @@ test("scenes open as tabs, switched and closed by keyboard; the TV stays until t
   await expect(tab("Krypta")).toBeFocused();
   await expect(tab("Krypta")).not.toContainText("auf dem TV");
 });
+
+test("a tab whose save failed shows a dot and asks before closing (T-223b)", async ({
+  page,
+}) => {
+  await page.goto(`${HARNESS}?failSaves`);
+  await closeWelcome(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  const tab = page
+    .getByRole("group", { name: "Offene Szenen" })
+    .locator(".dm-scene-tab-name", { hasText: "Krypta" });
+  await expect(tab.locator(".dm-scene-tab-dot")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Nebel" }).click();
+  const revealAll = page.getByRole("button", { name: "Alles aufdecken" });
+  await expect(revealAll).toBeEnabled();
+  await revealAll.click();
+  await expect(tab).toContainText("nicht gespeichert");
+  await expect(tab.locator(".dm-scene-tab-dot")).toHaveCount(1);
+
+  const close = page.getByRole("button", { name: "Krypta schließen" });
+  await close.click();
+  const dialog = page.getByRole("dialog", { name: "Szene schließen?" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Offen lassen" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(tab).toHaveCount(1);
+  await expect(close).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await page
+    .getByRole("dialog", { name: "Szene schließen?" })
+    .getByRole("button", { name: "Trotzdem schließen" })
+    .click();
+  await expect(tab).toHaveCount(0);
+});

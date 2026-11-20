@@ -16,6 +16,7 @@ renderDmWindow({
   // `?firstStart`: as on a new computer, before any library folder was chosen (T-153).
   // `?levels`: the scene's map has two levels (T-118c).
   // `?levelFiles`: the file dialog returns a map of another size, then one that fits (T-118d).
+  // `?failSaves`: saving a scene fails, as on a full disk (T-223b).
   libraryService: options.has("firstStart")
     ? createFirstStartLibrary()
     : await createE2eLibrary({
@@ -23,6 +24,7 @@ renderDmWindow({
         imports: options.has("levelFiles")
           ? ["library/maps/klein.png", "library/maps/gruft.png"]
           : [],
+        failSceneSaves: options.has("failSaves"),
       }),
   mapViewService: e2eMapView,
   playerFeed: null,

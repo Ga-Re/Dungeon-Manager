@@ -955,12 +955,20 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-223b Unsaved-changes dot and closing a tab
 
-- **Status:** todo · **Depends on:** T-223a · **Refs:** ADR-0017
+- **Status:** done · **Depends on:** T-223a · **Refs:** ADR-0017
 - Each tab shows a dot while its document has a save pending or failed (DM decision, 2026-11-20: documents keep saving every change).
 - **Acceptance criteria**
-  - [ ] The dot shows while a save is pending or failed, on every tab (component test)
-  - [ ] Closing a tab whose last save failed asks first; nothing else asks (component + E2E test)
-- **Notes:** Split from T-223 (2026-11-20).
+  - [x] The dot shows while a save is pending or failed, on every tab (component test)
+  - [x] Closing a tab whose last save failed asks first; nothing else asks (component + E2E test)
+- **Notes:** Split from T-223 (2026-11-20). Each open scene reports its save state to the tab bar; the dot is spoken as "(speichert)" or "(nicht gespeichert)". The question ("Offen lassen" / "Trotzdem schließen") belongs to the tab bar; focus returns to the ✕. The E2E harness fails scene saves with `?failSaves`.
+
+### T-237 Closing a tab while its save is still running
+
+- **Status:** todo · **Depends on:** T-223b · **Refs:** ADR-0017
+- A tab closed while its save is pending closes at once (DM decision for T-223b: only a failed save asks). If that write fails after the tab closed, the changes are lost with only a log entry.
+- **Acceptance criteria**
+  - [ ] Closing waits for a pending save and asks only if it fails; nothing is lost silently (component + E2E test)
+- **Notes:** From the T-223b review (2026-11-20). Proposal for the DM before building: wait for the write (usually milliseconds) instead of closing at once – this keeps "asks only after a failed save".
 
 ### T-176 Map Forge: open and edit library maps
 

@@ -30,14 +30,17 @@ const MAP_PATH = "library/maps/krypta.png";
 /**
  * A library with one campaign, one scene that has a map and one (still empty) session. With
  * `levels`, the scene's map has a second level, a cellar (T-118c). `imports` are the files the
- * file dialog returns, one per call; after them it is cancelled.
+ * file dialog returns, one per call; after them it is cancelled. With `failSceneSaves`, writing
+ * a scene file fails once the library is set up, as on a full disk (T-223b).
  */
 export async function createE2eLibrary({
   levels = false,
   imports = [],
+  failSceneSaves = false,
 }: {
   readonly levels?: boolean;
   readonly imports?: readonly string[];
+  readonly failSceneSaves?: boolean;
 } = {}): Promise<LibraryService> {
   const queued = [...imports];
   const fs = createMemoryFileSystem();
@@ -92,6 +95,13 @@ export async function createE2eLibrary({
     name: "Vorbereitung",
     date: "2026-11-28",
   });
+  if (failSceneSaves) {
+    const write = fs.writeAtomic.bind(fs);
+    fs.writeAtomic = (path, ...rest) =>
+      /\/scenes\//.test(path)
+        ? Promise.reject(new Error("Datenträger voll"))
+        : write(path, ...rest);
+  }
   return {
     fs,
     currentRoot: () => Promise.resolve(E2E_LIBRARY_ROOT),
