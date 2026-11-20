@@ -147,7 +147,13 @@ export const en: Messages = {
       tokens: "Remove tokens (and their initiative entries)",
       apply: "Use this map",
     },
-    closeScene: "Close scene",
+    closeSceneNamed: "Close {{name}}",
+    closeSubScenesFirst:
+      "Close the open sub-scenes first ({{names}}); then the scene can be deleted.",
+    openScenes: "Open scenes",
+    sceneOnTv: "(on the TV)",
+    showSceneOnTv: "Scene to the TV",
+    sceneShownOnTv: "{{name}} is on the TV now",
     mapData: {
       changed:
         "This map's data was changed, e.g. on another device. The TV shows it only once you accept it.",

@@ -82,12 +82,13 @@ export interface SceneSession {
  * undo history, every change is saved to the scene file in order, and the table TV gets the
  * projection of each state – synchronously, so edits never blank it. The campaign (visibility
  * defaults) is read once per open scene; until then, and if it cannot be read, the TV shows
- * nothing (fail closed).
+ * nothing (fail closed). Only the scene `onTv` feeds the TV (T-223a): several may be open.
  */
 export function useSceneSession(
   service: LibraryService,
   slug: string,
   opened: Scene,
+  onTv = true,
 ): SceneSession {
   const feed = useContext(PlayerFeedContext);
   const { t } = useTranslation();
@@ -154,10 +155,26 @@ export function useSceneSession(
   const map = resolved?.map ?? null;
   const mapLoading = mapData.status === "loading";
 
-  // The TV follows every state; nothing while the campaign is unknown or the map loads, nothing
-  // after closing.
+  // The TV follows every state of the scene on it (T-223a: one of the open scenes, chosen by
+  // the DM); nothing while the campaign is unknown or the map loads, nothing after closing it.
+  const shownOnTv = useRef(onTv);
+  shownOnTv.current = onTv;
+  // Whether this scene has shown on the TV since it was sent there: until then, a scene that
+  // is not ready (campaign unread, map loading) darkens the TV instead of leaving the previous
+  // scene frozen on it (fail closed). A later map change keeps the TV as it is, as before.
+  const shownSinceSent = useRef(false);
   useEffect(() => {
-    if (!feed || !campaign || mapLoading) return;
+    if (!onTv) {
+      shownSinceSent.current = false;
+      setNotOnTv(false);
+      return;
+    }
+    if (!feed) return;
+    if (!campaign || mapLoading) {
+      if (!shownSinceSent.current) feed.show(null);
+      return;
+    }
+    shownSinceSent.current = true;
     try {
       feed.show(projectForViewer({ campaign, scene, map }, { kind: "table" }));
       setNotOnTv(false);
@@ -166,10 +183,11 @@ export function useSceneSession(
       feed.show(null);
       setNotOnTv(true);
     }
-  }, [feed, campaign, scene, map, mapLoading]);
+  }, [onTv, feed, campaign, scene, map, mapLoading]);
   useEffect(
     () => () => {
-      feed?.show(null);
+      // Another open scene leaves the TV alone (the one on it may already be showing).
+      if (shownOnTv.current) feed?.show(null);
     },
     [feed],
   );

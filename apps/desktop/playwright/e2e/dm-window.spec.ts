@@ -895,3 +895,61 @@ test("the DM saves, switches, renames and deletes named layouts; they survive a 
     saved.getByText("Noch keine Layouts gespeichert."),
   ).toBeVisible();
 });
+
+test("scenes open as tabs, switched and closed by keyboard; the TV stays until the DM sends another (T-223a)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  // An edit in Krypta: its own undo history.
+  await page.getByRole("tab", { name: "Nebel" }).click();
+  const revealAll = page.getByRole("button", { name: "Alles aufdecken" });
+  await expect(revealAll).toBeEnabled();
+  await revealAll.click();
+  const undo = page.getByRole("button", { name: "Rückgängig" });
+  await expect(undo).toBeEnabled();
+  await page.getByRole("tab", { name: "Szene" }).click();
+  await page.getByRole("button", { name: "Neue Szene …" }).click();
+  await page.getByLabel("Name der neuen Szene").fill("Turm");
+  await page.getByRole("button", { name: "Szene anlegen" }).click();
+
+  const tabs = page.getByRole("group", { name: "Offene Szenen" });
+  const tab = (name: string) =>
+    tabs.locator(".dm-scene-tab-name", { hasText: name });
+  await expect(tab("Turm")).toHaveAttribute("aria-current", "true");
+  // Krypta was on the TV and stays there.
+  await expect(tab("Krypta")).toContainText("auf dem TV");
+  await expect(tab("Turm")).not.toContainText("auf dem TV");
+  // The new scene has nothing to undo; Krypta keeps its history.
+  await expect(undo).toBeDisabled();
+
+  // Keyboard only: to Krypta's tab and back to Turm; focus stays in the tab bar.
+  await tab("Krypta").focus();
+  await page.keyboard.press("Enter");
+  await expect(tab("Krypta")).toHaveAttribute("aria-current", "true");
+  await expect(tab("Krypta")).toBeFocused();
+  await expect(page.getByText("Geöffnete Szene: Krypta")).toBeAttached();
+  await expect(undo).toBeEnabled();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(tab("Turm")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(tab("Turm")).toHaveAttribute("aria-current", "true");
+  await expect(tab("Turm")).toBeFocused();
+
+  // Turm to the TV, then closed with its ✕ from the keyboard: the TV goes dark.
+  await page.getByRole("button", { name: "Szene auf den TV" }).click();
+  await expect(tab("Turm")).toContainText("auf dem TV");
+  await expect(tab("Krypta")).not.toContainText("auf dem TV");
+  await tab("Turm").focus();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Turm schließen" }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(tab("Turm")).toHaveCount(0);
+  await expect(tab("Krypta")).toHaveAttribute("aria-current", "true");
+  await expect(tab("Krypta")).toBeFocused();
+  await expect(tab("Krypta")).not.toContainText("auf dem TV");
+});
