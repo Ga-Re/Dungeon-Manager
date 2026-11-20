@@ -9,6 +9,15 @@ export type LibraryPathKind =
    */
   | { readonly kind: "sceneFile"; readonly slug: string; readonly name: string }
   | { readonly kind: "asset"; readonly path: string }
+  /**
+   * A JSON file in the library: a sidecar (ADR-0012) or a conflict copy of one, told apart by
+   * re-listing the folder (`listSidecarConflicts`).
+   */
+  | {
+      readonly kind: "sidecarFile";
+      readonly directory: string;
+      readonly name: string;
+    }
   | { readonly kind: "other" };
 
 /**
@@ -22,9 +31,14 @@ export function classifyLibraryPath(path: string): LibraryPathKind {
   if (parts.some(unsafe) || path.endsWith(".tmp")) return { kind: "other" };
   const [root, second = "", third, fourth, ...rest] = parts;
   if (root === "library") {
-    return parts.length > 1 && second !== ".previews"
-      ? { kind: "asset", path }
-      : { kind: "other" };
+    if (parts.length < 2 || second === ".previews") return { kind: "other" };
+    if (path.endsWith(".json"))
+      return {
+        kind: "sidecarFile",
+        directory: parts.slice(0, -1).join("/"),
+        name: parts.at(-1) ?? "",
+      };
+    return { kind: "asset", path };
   }
   if (root !== "campaigns" || !isValidSlug(second)) return { kind: "other" };
   if (third === "campaign.json" && fourth === undefined)

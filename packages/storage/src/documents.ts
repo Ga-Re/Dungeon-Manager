@@ -1,6 +1,9 @@
 import {
   campaignDocument,
   campaignSchema,
+  sidecarDocument,
+  sidecarSchema,
+  type Sidecar,
   MigrationError,
   migrateDocument,
   sceneDocument,
@@ -24,6 +27,7 @@ import {
   scenesDirectory,
   sessionFile,
   sessionsDirectory,
+  sidecarFile,
 } from "./layout.js";
 
 /** Outcome of loading a document; never throws for bad, missing or unreadable files (ARCHITECTURE §6.3). */
@@ -88,22 +92,34 @@ async function moveToLowercaseName(
   }
 }
 
-/**
- * Loads and migrates a document. `ownId` is the id its file is named after: a document found
- * under a version 1 name is moved to the lowercase name only if its content carries that id, so a
- * conflict copy (which holds the original's id) is never renamed. Without `ownId` loading never
- * writes – used when listing checks what a file contains.
- */
-async function loadDocument<T extends { readonly id?: string }>(
+interface LoadOptions {
+  /**
+   * The id the file is named after: a document found under a version 1 name is moved to the
+   * lowercase name only if its content carries that id, so a conflict copy (which holds the
+   * original's id) is never renamed. Without it loading never writes – used when listing checks
+   * what a file contains.
+   */
+  readonly ownId?: string;
+  /**
+   * Files whose names never held ids (sidecars) are not looked up ignoring case: a missing one
+   * is common and must not list its folder each time.
+   */
+  readonly exactName?: boolean;
+}
+
+/** Loads and migrates a document. */
+async function loadDocument<T extends object>(
   fs: FileSystem,
   path: string,
   type: DocumentType<T>,
-  ownId?: string,
+  { ownId, exactName = false }: LoadOptions = {},
 ): Promise<LoadResult<T>> {
   let file: ReadResult;
   let legacyPath: string | null;
   try {
-    ({ file, legacyPath } = await readIgnoringCase(fs, path));
+    ({ file, legacyPath } = exactName
+      ? { file: await fs.read(path), legacyPath: null }
+      : await readIgnoringCase(fs, path));
   } catch {
     return { status: "unreadable" };
   }
@@ -124,7 +140,12 @@ async function loadDocument<T extends { readonly id?: string }>(
       reason: error instanceof MigrationError ? error.reason : "schema",
     };
   }
-  if (legacyPath !== null && ownId !== undefined && value.id === ownId)
+  if (
+    legacyPath !== null &&
+    ownId !== undefined &&
+    "id" in value &&
+    value.id === ownId
+  )
     await moveToLowercaseName(fs, path, legacyPath, value);
   return { status: "ok", value };
 }
@@ -166,7 +187,9 @@ export function loadScene(
 ): Promise<LoadResult<Scene>> {
   if (!isValidSlug(slug) || !isValidFileId(sceneId))
     return Promise.resolve({ status: "invalid", reason: "path" });
-  return loadDocument(fs, sceneFile(slug, sceneId), sceneDocument, sceneId);
+  return loadDocument(fs, sceneFile(slug, sceneId), sceneDocument, {
+    ownId: sceneId,
+  });
 }
 
 /** Validates and writes a scene file (named after its id) atomically. @throws on invalid input */
@@ -254,12 +277,9 @@ export function loadSession(
 ): Promise<LoadResult<Session>> {
   if (!isValidSlug(slug) || !isValidFileId(sessionId))
     return Promise.resolve({ status: "invalid", reason: "path" });
-  return loadDocument(
-    fs,
-    sessionFile(slug, sessionId),
-    sessionDocument,
-    sessionId,
-  );
+  return loadDocument(fs, sessionFile(slug, sessionId), sessionDocument, {
+    ownId: sessionId,
+  });
 }
 
 /** Validates and writes a session file (named after its id) atomically. @throws on invalid input */
@@ -308,4 +328,31 @@ export async function listCampaigns(fs: FileSystem): Promise<string[]> {
     .filter((entry) => entry.kind === "directory" && isValidSlug(entry.name))
     .map((entry) => entry.name)
     .sort();
+}
+
+/**
+ * Loads the sidecar of a library file (ADR-0012). `missing` means the file has none yet: the
+ * caller uses defaults, and the first edit creates it.
+ */
+export function loadSidecar(
+  fs: FileSystem,
+  assetPath: string,
+): Promise<LoadResult<Sidecar>> {
+  let path: string;
+  try {
+    path = sidecarFile(assetPath);
+  } catch {
+    return Promise.resolve({ status: "invalid", reason: "path" });
+  }
+  return loadDocument(fs, path, sidecarDocument, { exactName: true });
+}
+
+/** Validates and writes the sidecar of a library file atomically. @throws on invalid input */
+export async function saveSidecar(
+  fs: FileSystem,
+  assetPath: string,
+  sidecar: Sidecar,
+): Promise<void> {
+  const path = sidecarFile(assetPath);
+  await fs.writeAtomic(path, serialize(sidecarSchema.parse(sidecar)));
 }
