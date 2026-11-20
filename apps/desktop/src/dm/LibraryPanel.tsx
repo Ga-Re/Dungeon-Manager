@@ -10,6 +10,7 @@ import type { LibraryService } from "../platform/library.js";
 import { Menu, Popover } from "@dungeon-manager/ui";
 import { BookOpen, FolderPlus } from "lucide-react";
 import { CampaignPanel } from "./CampaignPanel.js";
+import type { RememberedSceneTabs } from "./scene-tabs.js";
 import { CatalogPanel } from "./CatalogPanel.js";
 import { describeLibraryError } from "./describe-error.js";
 import { NameForm } from "./NameForm.js";
@@ -21,6 +22,7 @@ import {
   recordScene,
   saveRecent,
   type RecentCampaign,
+  recordTabs,
 } from "./recent-campaigns.js";
 import { WelcomeDialog, type WelcomeLibrary } from "./WelcomeDialog.js";
 import { useAppCommand, useAppModal } from "./shell/app-commands.js";
@@ -80,6 +82,7 @@ export function LibraryPanel({
   welcome = false,
   storage,
   now = () => new Date(),
+  afterCrash = false,
 }: {
   readonly service: LibraryService;
   /** Fresh opaque ids for new campaigns and scenes. */
@@ -89,6 +92,11 @@ export function LibraryPanel({
   /** Device-local storage for the recently edited campaigns. */
   readonly storage?: Storage | undefined;
   readonly now?: () => Date;
+  /**
+   * The last session did not end cleanly (T-114a): the campaign's tabs come back, but the TV
+   * stays dark until the DM sends a scene (DM decision, 2026-11-20).
+   */
+  readonly afterCrash?: boolean;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<LibraryState>({ status: "loading" });
@@ -101,10 +109,10 @@ export function LibraryPanel({
   const [recent, setRecent] = useState<readonly RecentCampaign[]>(() =>
     readRecent(storage),
   );
-  // The scene to open with a campaign chosen in the welcome dialog.
+  // The scene tabs to open with a campaign chosen in the welcome dialog (T-114a).
   const [pendingScene, setPendingScene] = useState<{
     readonly slug: string;
-    readonly sceneId: string;
+    readonly tabs: RememberedSceneTabs;
   } | null>(null);
   const active = useRef(true);
   // Only the most recent load may update the state: a slow earlier one (e.g. the initial load
@@ -258,11 +266,26 @@ export function LibraryPanel({
   });
 
   const openFromWelcome = (slug: string) => {
-    const sceneId =
+    const entry =
       root === null
-        ? null
-        : recentIn(recent, root).find((entry) => entry.slug === slug)?.sceneId;
-    setPendingScene(sceneId ? { slug, sceneId } : null);
+        ? undefined
+        : recentIn(recent, root).find((each) => each.slug === slug);
+    const sceneId = entry?.sceneId ?? null;
+    const open = entry?.openSceneIds ?? (sceneId ? [sceneId] : []);
+    setPendingScene(
+      open.length > 0
+        ? {
+            slug,
+            tabs: {
+              open,
+              active: entry?.activeSceneId ?? sceneId,
+              // A TV dark at the end stays dark; entries from before only know `sceneId`.
+              tv: entry?.tvSceneId !== undefined ? entry.tvSceneId : sceneId,
+              afterCrash,
+            },
+          }
+        : null,
+    );
     setSelected(slug);
     setWelcomeOpen(false);
   };
@@ -407,11 +430,18 @@ export function LibraryPanel({
               slug={selectedCampaign.slug}
               name={selectedCampaign.name}
               newId={newId}
-              initialSceneId={
+              initialTabs={
                 pendingScene?.slug === selectedCampaign.slug
-                  ? pendingScene.sceneId
+                  ? pendingScene.tabs
                   : null
               }
+              onTabsChange={(tabs) => {
+                if (root === null) return;
+                const campaign = { root, slug: selectedCampaign.slug };
+                setRecent((list) =>
+                  recordTabs(list, campaign, tabs, clock.current()),
+                );
+              }}
               onSceneOpen={(scene) => {
                 // Used once: a later remount of this campaign must not jump back to it.
                 setPendingScene(null);

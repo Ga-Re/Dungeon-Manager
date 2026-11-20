@@ -82,6 +82,8 @@ import {
   replaceSceneTab,
   selectSceneTab,
   sendSceneTabToTv,
+  restoreSceneTabs,
+  type RememberedSceneTabs,
   type SceneTabsState,
 } from "./scene-tabs.js";
 import { addScene, moveScene, removeScene } from "./session-ops.js";
@@ -193,15 +195,23 @@ export function CampaignPanel({
   slug,
   name,
   newId,
-  initialSceneId = null,
+  initialTabs = null,
+  onTabsChange,
   onSceneOpen,
 }: {
   readonly service: LibraryService;
   readonly slug: string;
   readonly name: string;
   readonly newId: () => string;
-  /** A scene to open once the campaign's lists are read (the last one, T-153). */
-  readonly initialSceneId?: string | null;
+  /** Scene tabs to open once the campaign's lists are read (the last ones, T-153, T-114a). */
+  readonly initialTabs?: RememberedSceneTabs | null;
+  /** Told about the open tabs after each change, to open them again on the next start. */
+  readonly onTabsChange?: (tabs: {
+    readonly open: readonly string[];
+    readonly active: string | null;
+    /** On the TV; `null` while it is dark, so a dark TV is not lit by the next start. */
+    readonly tv: string | null;
+  }) => void;
   /** Told about each scene that goes on the TV, e.g. to reopen it on the next start. */
   readonly onSceneOpen?: (scene: { id: string; name: string }) => void;
 }) {
@@ -570,24 +580,45 @@ export function CampaignPanel({
     showScene(openScenes.find((each) => each.id === entry.id) ?? entry.scene);
   };
 
-  // The last scene opens once, when the scenes are read and the sessions are read or failed (it
-  // then goes under "Ohne Session"); a scene that is gone is skipped.
-  const pendingScene = useRef(initialSceneId);
+  // The last tabs open once, when the scenes are read and the sessions are read or failed (a
+  // scene then goes under "Ohne Session"); a scene that is gone is skipped (T-114a).
+  const pendingTabs = useRef(initialTabs);
   const sessionsSettled = sessionsState.status !== "loading";
   useEffect(() => {
-    const sceneId = pendingScene.current;
-    if (!sceneId || !scenes || !sessionsSettled) return;
-    pendingScene.current = null;
-    const scene = scenes.find((each) => each.id === sceneId)?.scene;
-    if (!scene) return;
+    const remembered = pendingTabs.current;
+    if (!remembered || !scenes || !sessionsSettled) return;
+    pendingTabs.current = null;
+    const readable = scenes.flatMap((each) => (each.scene ? [each.scene] : []));
+    // Merged into what is open already (the DM may have opened a scene meanwhile).
+    setTabs((current) => restoreSceneTabs(current, readable, remembered));
+    const sceneId = remembered.active ?? remembered.open.at(-1) ?? null;
+    if (sceneId === null || !readable.some((each) => each.id === sceneId))
+      return;
     const slot =
       scenePlaces(sceneHierarchy(scenes), scenes, sessions ?? [], sceneId)[0] ??
       "unsorted";
     const place = sceneNodeId(slot, sceneId);
-    showScene(scene);
     setOpenAt(place);
     setInspected(place);
   }, [scenes, sessions, sessionsSettled]);
+
+  const tabsChanged = useRef(onTabsChange);
+  useEffect(() => {
+    tabsChanged.current = onTabsChange;
+  });
+  const openIds = openScenes.map((each) => each.id).join("\n");
+  // Whether a tab was open here yet: an empty start (remembered tabs not back yet, or a campaign
+  // opened without them) must not forget the remembered ones; closing every tab does.
+  const hadTabs = useRef(false);
+  useEffect(() => {
+    if (openIds !== "") hadTabs.current = true;
+    if (pendingTabs.current || !hadTabs.current) return;
+    tabsChanged.current?.({
+      open: openIds === "" ? [] : openIds.split("\n"),
+      active: activeSceneId,
+      tv: tvSceneId,
+    });
+  }, [openIds, activeSceneId, tvSceneId]);
 
   const sceneOpened = useRef(onSceneOpen);
   useEffect(() => {

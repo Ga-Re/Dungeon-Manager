@@ -5,6 +5,7 @@ import {
   closeSceneTabs,
   openSceneTab,
   replaceSceneTab,
+  restoreSceneTabs,
   selectSceneTab,
   sendSceneTabToTv,
 } from "./scene-tabs.js";
@@ -74,5 +75,56 @@ describe("scene tabs (T-223a)", () => {
   it("replace an open scene by its newer state", () => {
     const renamed = replaceSceneTab(three, { ...scene("b"), name: "Gruft" });
     expect(renamed.open[1]?.name).toBe("Gruft");
+  });
+
+  it("restore the remembered tabs that still exist (T-114a)", () => {
+    const scenes = [scene("a"), scene("b"), scene("c")];
+    const restored = restoreSceneTabs(NO_SCENE_TABS, scenes, {
+      open: ["c", "gone", "a"],
+      active: "a",
+      tv: "c",
+    });
+    expect(ids(restored)).toEqual(["c", "a"]);
+    expect(restored.active).toBe("a");
+    expect(restored.tv).toBe("c");
+    // A gone shown tab falls back to the last one; a gone TV scene leaves the TV dark.
+    const fallback = restoreSceneTabs(NO_SCENE_TABS, scenes, {
+      open: ["a", "b"],
+      active: "gone",
+      tv: "gone",
+    });
+    expect(fallback.active).toBe("b");
+    expect(fallback.tv).toBeNull();
+  });
+
+  it("after a crash keep the TV dark, also for a scene opened later, until one is sent", () => {
+    const scenes = [scene("a"), scene("b"), scene("c")];
+    const restored = restoreSceneTabs(NO_SCENE_TABS, scenes, {
+      open: ["a"],
+      active: "a",
+      tv: "a",
+      afterCrash: true,
+    });
+    expect(restored.tv).toBeNull();
+    const opened = openSceneTab(restored, scene("b"));
+    expect(opened.tv).toBeNull();
+    const sent = sendSceneTabToTv(opened, "b");
+    expect(sent.tv).toBe("b");
+    // Once the DM sent a scene, the old rule applies again after closing it.
+    const closed = closeSceneTabs(sent, ["b"]);
+    expect(openSceneTab(closed, scene("c")).tv).toBe("c");
+  });
+
+  it("merge into tabs the DM opened before the remembered ones came back", () => {
+    const scenes = [scene("a"), scene("b"), scene("c")];
+    const current = openSceneTab(NO_SCENE_TABS, scene("c"));
+    const restored = restoreSceneTabs(current, scenes, {
+      open: ["a", "c"],
+      active: "a",
+      tv: "a",
+    });
+    expect(ids(restored)).toEqual(["c", "a"]);
+    expect(restored.active).toBe("c");
+    expect(restored.tv).toBe("c");
   });
 });

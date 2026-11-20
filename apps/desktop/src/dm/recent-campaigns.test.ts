@@ -6,6 +6,7 @@ import {
   recentIn,
   recordCampaign,
   recordScene,
+  recordTabs,
   saveRecent,
   type RecentCampaign,
 } from "./recent-campaigns.js";
@@ -124,5 +125,43 @@ describe("recent campaigns", () => {
     expect(() => {
       saveRecent(failing, [krypta]);
     }).not.toThrow();
+  });
+
+  it("remembers the open scene tabs and keeps them when the campaign opens again (T-114a)", () => {
+    let list = recordTabs(
+      [krypta],
+      { root: "/lib", slug: "krypta" },
+      { open: ["a", "b"], active: "b", tv: null },
+      at(1),
+    );
+    expect(list[0]).toMatchObject({
+      openSceneIds: ["a", "b"],
+      activeSceneId: "b",
+    });
+    list = recordCampaign(
+      list,
+      { root: "/lib", slug: "krypta", name: "Krypta" },
+      at(2),
+    );
+    expect(list[0]).toMatchObject({
+      openSceneIds: ["a", "b"],
+      activeSceneId: "b",
+    });
+    // Stored and read back; an entry from before (no tabs) still reads.
+    const storage = memoryStorage();
+    saveRecent(storage, [...list, { ...krypta, slug: "alt" }]);
+    expect(readRecent(storage)).toHaveLength(2);
+    expect(readRecent(storage)[0]?.openSceneIds).toEqual(["a", "b"]);
+  });
+
+  it("skips entries whose tabs are not a list of ids", () => {
+    const storage = memoryStorage({
+      "dm.recentCampaigns": JSON.stringify([
+        { ...krypta, openSceneIds: "a" },
+        { ...krypta, slug: "b", openSceneIds: [1] },
+        { ...krypta, slug: "c", activeSceneId: 3 },
+      ]),
+    });
+    expect(readRecent(storage)).toEqual([]);
   });
 });

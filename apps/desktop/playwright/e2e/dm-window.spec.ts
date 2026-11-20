@@ -989,3 +989,48 @@ test("a tab whose save failed shows a dot and asks before closing (T-223b)", asy
     .click();
   await expect(tab).toHaveCount(0);
 });
+
+test("after a crash the scene tabs come back and the TV stays dark until the DM sends a scene (T-114a)", async ({
+  page,
+  context,
+  browser,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  const tabIn = (each: typeof page) =>
+    each
+      .getByRole("group", { name: "Offene Szenen" })
+      .locator(".dm-scene-tab-name", { hasText: "Krypta" });
+  await expect(tabIn(page)).toContainText("auf dem TV");
+
+  // A forced kill: the device storage as it is mid-session, with nothing run on the way out,
+  // is what the next start finds – a new window on exactly that storage.
+  const killed = await context.storageState();
+  const next = await (
+    await browser.newContext({ storageState: killed })
+  ).newPage();
+  await next.goto(HARNESS);
+  await next
+    .getByRole("dialog", { name: "Willkommen" })
+    .getByRole("button", { name: /Fluch der Krypta/ })
+    .click();
+  await expect(tabIn(next)).toHaveAttribute("aria-current", "true");
+  await expect(tabIn(next)).not.toContainText("auf dem TV");
+  await next.getByRole("tab", { name: "Szene" }).click();
+  await next.getByRole("button", { name: "Szene auf den TV" }).click();
+  await expect(tabIn(next)).toContainText("auf dem TV");
+
+  // A clean restart puts the TV's scene back on the TV.
+  // Remembered (an effect after the render) before the window closes.
+  await expect
+    .poll(() => next.evaluate(() => localStorage.getItem("dm.recentCampaigns")))
+    .toContain('"tvSceneId":"e2e-scene"');
+  await next.reload();
+  await next
+    .getByRole("dialog", { name: "Willkommen" })
+    .getByRole("button", { name: /Fluch der Krypta/ })
+    .click();
+  await expect(tabIn(next)).toContainText("auf dem TV");
+  await next.context().close();
+});

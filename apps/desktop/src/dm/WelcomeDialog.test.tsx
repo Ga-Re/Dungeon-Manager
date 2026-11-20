@@ -1,4 +1,5 @@
 import {
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -6,13 +7,16 @@ import {
   within,
 } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { createI18n } from "@dungeon-manager/ui";
 import type { MemoryFileContent } from "@dungeon-manager/storage";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { LibraryPanel } from "./LibraryPanel.js";
 import { memoryStorage } from "./memory-storage.test-data.js";
 import { readRecent, type RecentCampaign } from "./recent-campaigns.js";
+import type { ViewerScene } from "@dungeon-manager/schema";
+import type { PlayerFeedSender } from "../platform/player-feed.js";
+import { PlayerFeedContext } from "./player-feed-context.js";
 
 const campaignFile = (id: string, name: string) =>
   JSON.stringify({
@@ -59,19 +63,33 @@ const recentEntry = (
 function renderWelcome(
   library: ReturnType<typeof fakeLibraryService>,
   storage: Storage,
+  afterCrash = false,
 ) {
   let next = 0;
-  return render(
+  const shown: (ViewerScene | null)[] = [];
+  const feed: PlayerFeedSender = {
+    show: vi.fn((scene: ViewerScene | null) => {
+      shown.push(scene);
+    }),
+    rotate: vi.fn(),
+    rotation: 0,
+  };
+  render(
     <I18nextProvider i18n={createI18n("de")}>
-      <LibraryPanel
-        service={library.service}
-        newId={() => `id-${String(++next)}`}
-        welcome
-        storage={storage}
-        now={() => NOW}
-      />
+      <PlayerFeedContext value={feed}>
+        <LibraryPanel
+          service={library.service}
+          newId={() => `id-${String(++next)}`}
+          welcome
+          storage={storage}
+          now={() => NOW}
+          afterCrash={afterCrash}
+        />
+      </PlayerFeedContext>
     </I18nextProvider>,
   );
+  /** The scene the TV shows (`null`: dark). */
+  return { onTv: () => shown.at(-1)?.name ?? null };
 }
 
 const dialog = () => screen.getByRole("dialog", { name: "Willkommen" });
@@ -248,5 +266,91 @@ describe("WelcomeDialog", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText("Wähle eine Kampagne:")).toBeTruthy();
     expect(screen.queryByText(/Geöffnete Szene/)).toBeNull();
+  });
+
+  describe("the campaign's scene tabs come back (T-114a)", () => {
+    const remembered = (): Storage =>
+      memoryStorage({
+        "dm.recentCampaigns": JSON.stringify([
+          {
+            ...recentEntry("mine", "Die verlorene Mine", ["a", "Eingang"]),
+            openSceneIds: ["a", "b"],
+            activeSceneId: "b",
+          },
+        ]),
+      });
+    const tabNames = () =>
+      within(screen.getByRole("group", { name: "Offene Szenen" }))
+        .getAllByRole("button")
+        .filter((each) => each.classList.contains("dm-scene-tab-name"))
+        .map((each) => each.textContent);
+
+    test("with the TV's scene back on the TV after a clean end", async () => {
+      const storage = remembered();
+      const { onTv } = renderWelcome(
+        fakeLibraryService("/lib", LIBRARY),
+        storage,
+      );
+      fireEvent.click(
+        await within(dialog()).findByRole("button", {
+          name: /Die verlorene Mine/,
+        }),
+      );
+      expect(
+        await screen.findByText("Geöffnete Szene: Zwergenhalle"),
+      ).toBeTruthy();
+      expect(tabNames()).toEqual(["Eingang(auf dem TV)", "Zwergenhalle"]);
+      await waitFor(() => {
+        expect(onTv()).toBe("Eingang");
+      });
+      // Another scene sent to the TV is what the next start puts there.
+      fireEvent.click(screen.getByRole("button", { name: "Szene auf den TV" }));
+      await waitFor(() => {
+        expect(readRecent(storage)[0]).toMatchObject({ tvSceneId: "b" });
+      });
+    });
+
+    test("with the TV dark after a crash, until the DM sends a scene", async () => {
+      const storage = remembered();
+      const { onTv } = renderWelcome(
+        fakeLibraryService("/lib", LIBRARY),
+        storage,
+        true,
+      );
+      fireEvent.click(
+        await within(dialog()).findByRole("button", {
+          name: /Die verlorene Mine/,
+        }),
+      );
+      expect(
+        await screen.findByText("Geöffnete Szene: Zwergenhalle"),
+      ).toBeTruthy();
+      expect(tabNames()).toEqual(["Eingang", "Zwergenhalle"]);
+      expect(onTv()).toBeNull();
+      // Closing a tab is remembered for the next start.
+      fireEvent.click(
+        screen.getByRole("button", { name: "Eingang schließen" }),
+      );
+      await waitFor(() => {
+        expect(readRecent(storage)[0]).toMatchObject({
+          openSceneIds: ["b"],
+          activeSceneId: "b",
+          tvSceneId: null,
+        });
+      });
+
+      // A clean end with the TV still dark: the next start keeps it dark.
+      cleanup();
+      const next = renderWelcome(fakeLibraryService("/lib", LIBRARY), storage);
+      fireEvent.click(
+        await within(dialog()).findByRole("button", {
+          name: /Die verlorene Mine/,
+        }),
+      );
+      expect(
+        await screen.findByText("Geöffnete Szene: Zwergenhalle"),
+      ).toBeTruthy();
+      expect(next.onTv()).toBeNull();
+    });
   });
 });
