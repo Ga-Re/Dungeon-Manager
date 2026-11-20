@@ -35,7 +35,10 @@ test("the DM opens a campaign and a scene and sees its map", async ({
 
   // "Einpassen" is enabled only once the renderer has drawn the map; a load error shows an alert.
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  // No load error; the panel library's own live regions stay empty.
+  await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(
+    0,
+  );
   const box = await page.locator(".map-view-canvas canvas").boundingBox();
   expect(box?.width).toBeGreaterThan(0);
   expect(box?.height).toBeGreaterThan(0);
@@ -58,7 +61,7 @@ test("the DM window lists the displays for the player view", async ({
   ).toBeVisible();
 });
 
-test("the map fills the area right of the data panel and below the ribbon (ADR-0014)", async ({
+test("the map fills its panel, and grows when the data panel is hidden (ADR-0014, T-172a)", async ({
   page,
 }) => {
   await openDmWindow(page);
@@ -66,54 +69,48 @@ test("the map fills the area right of the data panel and below the ribbon (ADR-0
   await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
 
-  const viewport = page.viewportSize();
-  if (!viewport) throw new Error("no viewport");
   const box = async (selector: string) => {
     const found = await page.locator(selector).boundingBox();
     if (!found) throw new Error(`${selector} not laid out`);
     return found;
   };
-  /** Within a pixel: the canvas size is whole pixels, chrome heights can be fractional. */
+  /** Within a pixel: the canvas size is whole pixels, panel sizes can be fractional. */
   const near = (actual: number, expected: number) => {
     expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
   };
-  /** The canvas starts where panel and ribbon end and reaches the window's right and bottom. */
-  const mapFillsFreeArea = async (panelOpen: boolean) => {
+  /** The canvas covers exactly the map panel's content: fit and zoom need no insets. */
+  const mapFillsItsPanel = async () => {
     const canvas = await box(".map-view-canvas canvas");
-    const ribbon = await box(".dm-ribbon");
-    const left = panelOpen ? (await box(".dm-datapanel")).width : 0;
-    near(canvas.x, left);
-    near(canvas.y, ribbon.y + ribbon.height);
-    near(canvas.x + canvas.width, viewport.width);
-    near(canvas.y + canvas.height, viewport.height);
-    near(ribbon.x, left);
+    const stage = await box(".dm-stage");
+    near(canvas.x, stage.x);
+    near(canvas.y, stage.y);
+    near(canvas.width, stage.width);
+    near(canvas.height, stage.height);
     return canvas.width;
   };
-  const panel = page.getByRole("complementary", { name: "Datenpanel" });
-
-  await expect(panel).toBeVisible();
-  // The panel spans everything below the title bar.
-  const panelBox = await box(".dm-datapanel");
-  const titlebar = await box(".dm-titlebar");
-  near(panelBox.y, titlebar.height);
-  near(panelBox.y + panelBox.height, viewport.height);
-  const narrow = await mapFillsFreeArea(true);
+  // Default layout (DM decision): Daten left of the map, the map below the ribbon.
+  const ribbon = await box(".dm-ribbon");
+  const data = await box(".dm-datapanel");
+  const stage = await box(".dm-stage");
+  expect(data.x + data.width).toBeLessThanOrEqual(stage.x + 1);
+  expect(stage.y).toBeGreaterThanOrEqual(ribbon.y + ribbon.height - 1);
+  const narrow = await mapFillsItsPanel();
 
   await page
-    .getByRole("button", { name: /Datenpanel ein- oder ausblenden/ })
+    .getByRole("button", { name: /Daten ein- oder ausblenden/ })
     .click();
-  await expect(panel).toBeHidden();
+  await expect(page.locator(".dm-datapanel")).toHaveCount(0);
   // The renderer follows the canvas size on the next frame.
   await expect
     .poll(async () => (await box(".map-view-canvas canvas")).width)
     .toBeGreaterThan(narrow);
-  await mapFillsFreeArea(false);
+  await mapFillsItsPanel();
   await page.keyboard.press("ControlOrMeta+KeyB");
-  await expect(panel).toBeVisible();
+  await expect(page.locator(".dm-datapanel")).toHaveCount(1);
   await expect
     .poll(async () => (await box(".map-view-canvas canvas")).width)
-    .toBeCloseTo(narrow, 0);
-  await mapFillsFreeArea(true);
+    .toBeLessThan(narrow + 2);
+  await mapFillsItsPanel();
 });
 
 test("the theme chosen in the settings survives a restart", async ({
@@ -185,93 +182,95 @@ test("the DM creates a scene from the browser's context menu, by keyboard", asyn
   await expect(page.getByText("Szene „Grabkammer“ angelegt.")).toBeVisible();
 });
 
-test("the browser can be dragged and folded, and stays so after a restart", async ({
+test("panels are hidden and shown from the View menu; the layout survives a restart (T-172a)", async ({
   page,
 }) => {
   await openDmWindow(page);
-  const browser = page.getByRole("region", { name: "Browser" });
-  const start = await browser.boundingBox();
-  if (!start) throw new Error("browser not laid out");
+  const campaign = page.getByRole("button", { name: "Fluch der Krypta" });
+  await expect(campaign).toBeVisible();
 
-  const grip = page.getByRole("button", { name: /Browser verschieben/ });
-  const gripBox = await grip.boundingBox();
-  if (!gripBox) throw new Error("grip not laid out");
-  await page.mouse.move(gripBox.x + 5, gripBox.y + 5);
-  await page.mouse.down();
-  await page.mouse.move(gripBox.x + 205, gripBox.y + 105, { steps: 5 });
-  await page.mouse.up();
-  const moved = await browser.boundingBox();
-  expect(Math.round((moved?.x ?? 0) - start.x)).toBe(200);
-  expect(Math.round((moved?.y ?? 0) - start.y)).toBe(100);
-
-  const fold = page.getByRole("button", {
-    name: "Browser ein- oder ausklappen",
-  });
-  await fold.click();
-  await expect(fold).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByText("Fluch der Krypta")).toBeHidden();
+  await page.getByRole("button", { name: "Menü" }).click();
+  const browserItem = page.getByRole("menuitemcheckbox", { name: "Browser" });
+  await expect(browserItem).toHaveAttribute("aria-checked", "true");
+  await browserItem.click();
+  await expect(campaign).toBeHidden();
 
   await page.reload();
   await closeWelcome(page);
-  const again = await page
-    .getByRole("region", { name: "Browser" })
-    .boundingBox();
-  expect(Math.round(again?.x ?? 0)).toBe(Math.round(moved?.x ?? 0));
-  const foldAgain = page.getByRole("button", {
-    name: "Browser ein- oder ausklappen",
-  });
-  await expect(foldAgain).toHaveAttribute("aria-expanded", "false");
-  await foldAgain.click();
+  await expect(
+    page.getByRole("button", { name: "Fluch der Krypta" }),
+  ).toBeHidden();
+  await page.getByRole("button", { name: "Menü" }).click();
+  await expect(
+    page.getByRole("menuitemcheckbox", { name: "Browser" }),
+  ).toHaveAttribute("aria-checked", "false");
+  await page.getByRole("menuitem", { name: "Layout zurücksetzen" }).click();
   await expect(
     page.getByRole("button", { name: "Fluch der Krypta" }),
   ).toBeVisible();
 });
 
-test("the browser stays inside the map area; a smaller window does not change its remembered place", async ({
+test("hiding and showing the map keeps its renderer and its zoom (T-172a)", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
   await openDmWindow(page);
-  const browser = page.getByRole("region", { name: "Browser" });
-  const grip = page.getByRole("button", { name: /Browser verschieben/ });
-  const gripBox = await grip.boundingBox();
-  if (!gripBox) throw new Error("grip not laid out");
-  // Far past the right and bottom edges of the map area.
-  await page.mouse.move(gripBox.x + 5, gripBox.y + 5);
-  await page.mouse.down();
-  await page.mouse.move(gripBox.x + 3000, gripBox.y + 3000, { steps: 5 });
-  await page.mouse.up();
-  const stage = await page.locator(".dm-stage").boundingBox();
-  const placed = await browser.boundingBox();
-  if (!stage || !placed) throw new Error("not laid out");
-  expect(placed.x + placed.width).toBeLessThanOrEqual(
-    stage.x + stage.width + 1,
-  );
-  expect(placed.y + placed.height).toBeLessThanOrEqual(
-    stage.y + stage.height + 1,
-  );
-  const remembered = await page.evaluate(() =>
-    localStorage.getItem("dm.hud.browser"),
-  );
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  await page.getByRole("button", { name: "Vergrößern" }).click();
+  const camera = () =>
+    page.evaluate(() => document.body.dataset["e2eCamera"] ?? "");
+  const zoomed = await camera();
+  await page.evaluate(() => {
+    (window as unknown as { e2eCanvas?: Element | null }).e2eCanvas =
+      document.querySelector(".map-view-canvas canvas");
+  });
 
-  await page.setViewportSize({ width: 900, height: 600 });
-  // The panel moves in once the resize has been observed.
-  await expect
-    .poll(async () => {
-      const small = await browser.boundingBox();
-      const smallStage = await page.locator(".dm-stage").boundingBox();
-      if (!small || !smallStage) return Infinity;
-      return small.x + small.width - (smallStage.x + smallStage.width);
-    })
-    .toBeLessThanOrEqual(1);
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Karte" }).click();
+  await expect(page.locator(".map-view-canvas canvas")).toHaveCount(0);
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Karte" }).click();
+
+  await expect(page.locator(".map-view-canvas canvas")).toHaveCount(1);
+  // The very same canvas: the renderer was never torn down, the view keeps its zoom.
   expect(
-    await page.evaluate(() => localStorage.getItem("dm.hud.browser")),
-  ).toBe(remembered);
+    await page.evaluate(
+      () =>
+        (window as unknown as { e2eCanvas?: Element | null }).e2eCanvas ===
+        document.querySelector(".map-view-canvas canvas"),
+    ),
+  ).toBe(true);
+  expect(await camera()).toBe(zoomed);
+});
 
-  await page.setViewportSize({ width: 1280, height: 800 });
+test("a panel is resized by dragging its edge, and keeps its size after a restart (T-172a)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  const data = page.locator(".dm-datapanel");
+  const before = await data.boundingBox();
+  if (!before) throw new Error("data panel not laid out");
+  // The edge between Daten and the map.
+  const edgeX = before.x + before.width;
+  const y = before.y + before.height / 2;
+  await page.mouse.move(edgeX, y);
+  await page.mouse.down();
+  await page.mouse.move(edgeX + 120, y, { steps: 6 });
+  await page.mouse.up();
   await expect
-    .poll(async () => (await browser.boundingBox())?.x)
-    .toBeCloseTo(placed.x, 0);
+    .poll(async () => (await data.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(before.width + 100);
+  const resized = (await data.boundingBox())?.width ?? 0;
+
+  await page.reload();
+  await closeWelcome(page);
+  await expect
+    .poll(
+      async () =>
+        (await page.locator(".dm-datapanel").boundingBox())?.width ?? 0,
+    )
+    .toBeGreaterThan(resized - 2);
 });
 
 test("selecting a scene in the browser shows its properties on the right", async ({
@@ -279,46 +278,22 @@ test("selecting a scene in the browser shows its properties on the right", async
 }) => {
   await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
-  const details = page.getByRole("region", { name: "Eigenschaften" });
+  const details = page.getByRole("tabpanel", { name: "Eigenschaften" });
   await expect(
     details.getByText("Wähle im Browser einen Eintrag."),
   ).toBeVisible();
   await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
   await expect(details.getByText("krypta.png")).toBeVisible();
 
-  // It sits at the right of the map area.
+  // Default layout (DM decision, T-172a): right of the map, below the browser.
   const stage = await page.locator(".dm-stage").boundingBox();
   const box = await details.boundingBox();
-  if (!stage || !box) throw new Error("not laid out");
-  expect(stage.x + stage.width - (box.x + box.width)).toBeLessThan(40);
-});
-
-test("the properties panel folds and remembers it apart from the browser", async ({
-  page,
-}) => {
-  await openDmWindow(page);
-  // The panel belongs to an open campaign.
-  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
-  const fold = page.getByRole("button", {
-    name: "Eigenschaften ein- oder ausklappen",
-  });
-  await fold.click();
-  await expect(fold).toHaveAttribute("aria-expanded", "false");
-  await page.reload();
-  await closeWelcome(page);
-  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
-  await expect(
-    page.getByRole("button", { name: "Eigenschaften ein- oder ausklappen" }),
-  ).toHaveAttribute("aria-expanded", "false");
-  await expect(
-    page.getByRole("button", { name: "Browser ein- oder ausklappen" }),
-  ).toHaveAttribute("aria-expanded", "true");
-  const stored = await page.evaluate(() => ({
-    details: localStorage.getItem("dm.hud.details"),
-    browser: localStorage.getItem("dm.hud.browser"),
-  }));
-  expect(stored.details).toContain('"collapsed":true');
-  expect(stored.browser).toBeNull();
+  const browser = await page
+    .getByRole("tabpanel", { name: "Browser" })
+    .boundingBox();
+  if (!stage || !box || !browser) throw new Error("not laid out");
+  expect(box.x).toBeGreaterThanOrEqual(stage.x + stage.width - 1);
+  expect(box.y).toBeGreaterThanOrEqual(browser.y + browser.height - 1);
 });
 
 test("the DM plans a session and adds a scene to it from the browser", async ({
@@ -388,7 +363,7 @@ test("the DM opens the campaign note from the browser (T-161b)", async ({
   await campaign.focus();
   await page.keyboard.press("Shift+F10");
   await page.getByRole("menuitem", { name: "Notiz öffnen" }).click();
-  const details = page.getByRole("region", { name: "Eigenschaften" });
+  const details = page.getByRole("tabpanel", { name: "Eigenschaften" });
   await expect(
     details.getByRole("heading", { name: "Fluch der Krypta" }),
   ).toBeVisible();
@@ -403,7 +378,7 @@ test("a note renders as Markdown with its image, and a wiki link opens the linke
   await openDmWindow(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("treeitem", { name: "Kampagnennotiz" }).click();
-  const details = page.getByRole("region", { name: "Eigenschaften" });
+  const details = page.getByRole("tabpanel", { name: "Eigenschaften" });
   await expect(
     details.getByRole("heading", { name: "Fluch der Krypta" }),
   ).toBeVisible();

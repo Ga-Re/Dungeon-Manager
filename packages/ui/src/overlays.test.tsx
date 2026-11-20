@@ -29,6 +29,25 @@ describe("Menu", () => {
     expect(document.activeElement).toBe(menuButton());
   });
 
+  it("announces on/off settings as checkbox items (T-172a)", () => {
+    render(
+      <Menu
+        label="Ansicht"
+        items={[
+          { id: "data", label: "Daten", checked: true, toggle: true },
+          { id: "map", label: "Karte", checked: false, toggle: true },
+        ]}
+        onSelect={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ansicht" }));
+    expect(
+      screen
+        .getAllByRole("menuitemcheckbox")
+        .map((entry) => entry.getAttribute("aria-checked")),
+    ).toEqual(["true", "false"]);
+  });
+
   it("can name its open menu apart from the button and mark the current choice (T-164)", () => {
     render(
       <Menu

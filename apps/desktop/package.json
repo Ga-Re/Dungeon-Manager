@@ -26,6 +26,7 @@
     "@dungeon-manager/storage": "workspace:*",
     "@dungeon-manager/ui": "workspace:*",
     "@tauri-apps/api": "2.12.4",
+    "dockview-react": "8.9.1",
     "i18next": "27.1.2",
     "lucide-react": "1.68.0",
     "pixi.js": "8.22.0",

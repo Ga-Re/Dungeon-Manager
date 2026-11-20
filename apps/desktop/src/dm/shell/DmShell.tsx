@@ -1,17 +1,29 @@
 import { IconButton, Menu } from "@dungeon-manager/ui";
 import {
+  DockviewReact,
+  type DockviewApi,
+  type DockviewMessages,
+  type DockviewTheme,
+  type DockviewReadyEvent,
+  type IDockviewPanelProps,
+} from "dockview-react";
+import "dockview-react/dist/styles/dockview.css";
+import {
   BookMarked,
   BookOpen,
   Boxes,
   FolderPlus,
   Map as MapIcon,
+  LayoutPanelLeft,
   PanelLeft,
   PawPrint,
   Settings,
   Swords,
 } from "lucide-react";
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -20,15 +32,27 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { ShellSlotsContext, type ShellSlot } from "./slots.js";
 import {
   isAppCommand,
+  type AppCommand,
   type AppMenuLabels,
   type AppMenuService,
 } from "../../platform/app-menu.js";
 import { AppCommandsContext, createAppCommands } from "./app-commands.js";
-import { HudLayoutContext, useHudLayoutStore } from "./hud-layout.js";
+import {
+  PANELS,
+  SlotHost,
+  buildDefaultLayout,
+  hidePanel,
+  readLayout,
+  restoreLayout,
+  saveLayout,
+  showPanel,
+  type PanelId,
+} from "./panel-layout.js";
 import { FogLookContext } from "./fog-look.js";
 import {
   FADE_MAX_SECONDS,
@@ -48,6 +72,20 @@ import {
   type Workspace,
 } from "./workspace.js";
 
+/** The panels' look comes from the design tokens; the colour scheme follows the app's theme. */
+const PANEL_THEME: DockviewTheme = {
+  name: "dungeon-manager",
+  className: "dm-dockview-theme",
+};
+
+/** The app command that shows or hides each panel (View menu). */
+const PANEL_COMMAND = {
+  data: "toggleData",
+  map: "toggleMap",
+  browser: "toggleBrowser",
+  details: "toggleDetails",
+} as const satisfies Record<PanelId, AppCommand>;
+
 const MODES = ["scene", "fog", "display"] as const;
 type Mode = (typeof MODES)[number];
 
@@ -63,6 +101,69 @@ const WORKSPACE_ICON: Record<Workspace, ReactNode> = {
   creatures: <PawPrint />,
   campaignAtlas: <BookMarked />,
   gameOrchestrator: <Swords />,
+};
+
+/** The slots that live in panels: stable elements the panels adopt (T-172a). */
+interface PanelHosts {
+  readonly dataPanel: HTMLElement;
+  readonly canvas: HTMLElement;
+  readonly browser: HTMLElement;
+  readonly details: HTMLElement;
+  readonly notices: HTMLElement;
+  readonly dock: HTMLElement;
+}
+
+function createHost(className: string): HTMLElement {
+  const element = document.createElement("div");
+  element.className = className;
+  return element;
+}
+
+const PanelHostsContext = createContext<PanelHosts | null>(null);
+
+function usePanelHosts(): PanelHosts {
+  const hosts = useContext(PanelHostsContext);
+  if (!hosts) throw new Error("Panels render inside the DM shell");
+  return hosts;
+}
+
+/** The map panel: the canvas fills it; notices and the dock float at its bottom (ADR-0014). */
+function MapPanel() {
+  const hosts = usePanelHosts();
+  return (
+    <div className="dm-stage">
+      <SlotHost element={hosts.canvas} />
+      <div className="dm-stage-bottom">
+        <SlotHost element={hosts.notices} />
+        <SlotHost element={hosts.dock} />
+      </div>
+    </div>
+  );
+}
+
+const PANEL_COMPONENTS: Record<
+  PanelId,
+  (props: IDockviewPanelProps) => ReactNode
+> = {
+  data: () => (
+    <SlotHost
+      element={usePanelHosts().dataPanel}
+      className="dm-panel-body dm-datapanel"
+    />
+  ),
+  map: () => <MapPanel />,
+  browser: () => (
+    <SlotHost
+      element={usePanelHosts().browser}
+      className="dm-panel-body dm-browser-panel"
+    />
+  ),
+  details: () => (
+    <SlotHost
+      element={usePanelHosts().details}
+      className="dm-panel-body dm-details-panel"
+    />
+  ),
 };
 
 /** Cmd+B on macOS, Ctrl+B elsewhere; not in rich-text fields, where it means bold. */
@@ -102,7 +203,8 @@ export function DmShell({
   readonly appMenu?: AppMenuService | undefined;
 }) {
   const { t } = useTranslation();
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panels, setPanels] = useState<DockviewApi | null>(null);
+  const [shown, setShown] = useState<ReadonlySet<PanelId>>(new Set());
   const [mode, setMode] = useState<Mode>("display");
   const [workspace, setWorkspace] = useState(() => readWorkspace(storage));
   const inGame = workspace === "gameOrchestrator";
@@ -121,14 +223,12 @@ export function DmShell({
   const [theme, setTheme] = useThemeSetting(storage, root);
   const [uiScale, setUiScale] = useUiScale(storage, root);
   const [fogLook, setFogLook] = useState(() => readFogLook(storage));
-  const hudLayout = useHudLayoutStore(storage);
   const [slots, setSlots] = useState<Partial<Record<ShellSlot, HTMLElement>>>(
     {},
   );
   const tabs = useRef(new Map<Mode, HTMLButtonElement>());
   const settingsButton = useRef<HTMLButtonElement>(null);
   const panelButton = useRef<HTMLButtonElement>(null);
-  const dataPanelRef = useRef<HTMLElement>(null);
   const idPrefix = useId();
 
   // One stable ref callback per slot, so React does not re-register them on every render.
@@ -139,13 +239,7 @@ export function DmShell({
       "ribbonScene",
       "ribbonFog",
       "ribbonDisplay",
-      "canvas",
-      "browser",
-      "dataPanel",
       "settings",
-      "details",
-      "notices",
-      "dock",
     ];
     for (const name of names) {
       refs[name] = (element) => {
@@ -159,13 +253,111 @@ export function DmShell({
     return refs;
   }, []);
 
-  const togglePanel = useCallback(() => {
-    // Hiding the panel would drop focus inside it to <body>; keep it on the toggle instead.
-    const active = document.activeElement;
-    if (active && dataPanelRef.current?.contains(active))
-      panelButton.current?.focus();
-    setPanelOpen((open) => !open);
-  }, []);
+  // The slots inside panels are created once, so their content survives hiding and moving.
+  const hosts = useMemo<PanelHosts>(
+    () => ({
+      dataPanel: createHost("dm-datapanel-content"),
+      canvas: createHost("dm-canvas"),
+      browser: createHost("dm-browser"),
+      details: createHost("dm-details"),
+      notices: createHost("dm-notices"),
+      dock: createHost("dm-dock"),
+    }),
+    [],
+  );
+  useEffect(() => {
+    hosts.dock.setAttribute("role", "group");
+    hosts.dock.setAttribute("aria-label", t("shell.dock"));
+  }, [hosts, t]);
+  const allSlots = useMemo(
+    () => ({
+      ...slots,
+      dataPanel: hosts.dataPanel,
+      canvas: hosts.canvas,
+      browser: hosts.browser,
+      details: hosts.details,
+      notices: hosts.notices,
+      dock: hosts.dock,
+    }),
+    [slots, hosts],
+  );
+  // What dockview says to screen readers and names its tab buttons with, in the DM's language.
+  // The keyboard-docking messages belong to an enterprise module this app does not use.
+  const panelMessages = useMemo<Partial<DockviewMessages>>(
+    () => ({
+      panelOpened: (title) => t("shell.panelMessages.opened", { title }),
+      panelClosed: (title) => t("shell.panelMessages.closed", { title }),
+      groupMaximized: (title) => t("shell.panelMessages.maximized", { title }),
+      groupRestored: (title) => t("shell.panelMessages.restored", { title }),
+      groupFloated: (title) => t("shell.panelMessages.floated", { title }),
+      groupDocked: (title) => t("shell.panelMessages.docked", { title }),
+      groupPoppedOut: (title) => t("shell.panelMessages.poppedOut", { title }),
+      closeTab: (title) => t("shell.panelMessages.close", { title }),
+      closeTabPlain: () => t("shell.panelMessages.closePlain"),
+    }),
+    [t],
+  );
+  const titles = useMemo<Record<PanelId, string>>(
+    () => ({
+      data: t("shell.panels.data"),
+      map: t("shell.panels.map"),
+      browser: t("shell.panels.browser"),
+      details: t("shell.panels.details"),
+    }),
+    [t],
+  );
+
+  const onPanelsReady = (event: DockviewReadyEvent) => {
+    const { api } = event;
+    restoreLayout(api, readLayout(storage), titles);
+    const persist = () => {
+      // Closing the window takes every panel down with it; that is no layout to keep. (A DM who
+      // hides all panels gets the default back on the next start.)
+      if (api.panels.length > 0) saveLayout(storage, api.toJSON());
+    };
+    const update = () => {
+      const ids = api.panels.map((panel) => panel.id as PanelId);
+      // Only a real change rebuilds the menus (a reset fires many events).
+      setShown((current) =>
+        current.size === ids.length && ids.every((id) => current.has(id))
+          ? current
+          : new Set(ids),
+      );
+      persist();
+    };
+    update();
+    api.onDidAddPanel(update);
+    api.onDidRemovePanel(update);
+    // Sizes and moves.
+    api.onDidLayoutChange(persist);
+    setPanels(api);
+  };
+  // Tab titles follow the language.
+  useEffect(() => {
+    for (const panel of panels?.panels ?? [])
+      panel.api.setTitle(titles[panel.id as PanelId]);
+  }, [panels, titles]);
+
+  const togglePanel = useCallback(
+    (id: PanelId) => {
+      if (!panels) return;
+      const panel = panels.getPanel(id);
+      if (!panel) {
+        showPanel(panels, id, titles[id]);
+        return;
+      }
+      // Hiding a panel would drop focus inside it (also its tab or the map's dock) to <body>;
+      // keep it in the title bar instead.
+      const active = document.activeElement;
+      if (active && panel.group.element.contains(active))
+        panelButton.current?.focus();
+      hidePanel(panels, id);
+    },
+    [panels, titles],
+  );
+  const resetLayout = useCallback(() => {
+    if (panels) buildDefaultLayout(panels, titles);
+  }, [panels, titles]);
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -182,7 +374,7 @@ export function DmShell({
       }
       if (!isPanelShortcut(event)) return;
       event.preventDefault();
-      togglePanel();
+      togglePanel("data");
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -197,11 +389,22 @@ export function DmShell({
     const removeModal = commands.registerModal(() => {
       setSettingsOpen(false);
     });
+    const removeView = [
+      ...PANELS.map((id) =>
+        commands.register(PANEL_COMMAND[id], () => {
+          togglePanel(id);
+        }),
+      ),
+      commands.register("resetLayout", resetLayout),
+    ];
     return () => {
       removeCommand();
       removeModal();
+      removeView.forEach((remove) => {
+        remove();
+      });
     };
-  }, [commands]);
+  }, [commands, togglePanel, resetLayout]);
 
   // The native menu bar, again when the language changes; a menu button where there is none.
   useEffect(() => {
@@ -231,6 +434,13 @@ export function DmShell({
       minimize: t("shell.appMenu.minimize"),
       zoom: t("shell.appMenu.zoom"),
       fullscreen: t("shell.appMenu.fullscreen"),
+      view: t("shell.appMenu.view"),
+      panels: PANELS.map((id) => ({
+        command: PANEL_COMMAND[id],
+        text: titles[id],
+        checked: shown.has(id),
+      })),
+      resetLayout: t("shell.appMenu.resetLayout"),
     };
     appMenu
       .install(labels, (command) => {
@@ -249,7 +459,7 @@ export function DmShell({
     return () => {
       active = false;
     };
-  }, [appMenu, commands, t]);
+  }, [appMenu, commands, t, titles, shown]);
 
   const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const index = MODES.indexOf(mode);
@@ -371,12 +581,7 @@ export function DmShell({
         <fieldset className="dm-settings-group">
           <legend>{t("shell.layout.label")}</legend>
           <p className="dm-settings-hint">{t("shell.layout.hint")}</p>
-          <button
-            type="button"
-            onClick={() => {
-              hudLayout.reset();
-            }}
-          >
+          <button type="button" onClick={resetLayout}>
             {t("shell.layout.reset")}
           </button>
         </fieldset>
@@ -385,20 +590,18 @@ export function DmShell({
   ];
 
   return (
-    <ShellSlotsContext value={slots}>
-      <HudLayoutContext value={hudLayout}>
-        <div
-          className="dm-shell dm-ui"
-          data-panel={panelOpen ? "open" : "closed"}
-        >
+    <ShellSlotsContext value={allSlots}>
+      <PanelHostsContext value={hosts}>
+        <div className="dm-shell dm-ui">
           <header className="dm-titlebar">
             <IconButton
               ref={panelButton}
               icon={<PanelLeft />}
               label={t("shell.toggleDataPanel")}
-              pressed={panelOpen}
-              aria-controls={`${idPrefix}-panel`}
-              onClick={togglePanel}
+              pressed={shown.has("data")}
+              onClick={() => {
+                togglePanel("data");
+              }}
             />
             <span className="dm-app-name">{t("app.title")}</span>
             {nativeMenu === false && (
@@ -419,6 +622,18 @@ export function DmShell({
                     id: "settings",
                     label: t("shell.appMenu.settings"),
                     icon: <Settings />,
+                  },
+                  // The View menu's commands (T-172a): panels on and off, the default layout.
+                  ...PANELS.map((id) => ({
+                    id: PANEL_COMMAND[id],
+                    label: titles[id],
+                    checked: shown.has(id),
+                    toggle: true,
+                  })),
+                  {
+                    id: "resetLayout",
+                    label: t("shell.appMenu.resetLayout"),
+                    icon: <LayoutPanelLeft />,
                   },
                 ]}
                 onSelect={(id) => {
@@ -448,15 +663,6 @@ export function DmShell({
               />
             </div>
           </header>
-          <aside
-            ref={dataPanelRef}
-            id={`${idPrefix}-panel`}
-            aria-label={t("shell.dataPanel")}
-            className="dm-datapanel"
-            hidden={!panelOpen}
-          >
-            <div ref={slotRefs.dataPanel} />
-          </aside>
           <div className="dm-main">
             <div className="dm-ribbon">
               {/* Each workspace has its own tabs (T-156); the Game-Orchestrator has today's tools. */}
@@ -539,25 +745,20 @@ export function DmShell({
                 )}
               </div>
             </div>
-            {/* The map area: the canvas fills it, HUD parts float over it (ADR-0014). */}
-            <div className="dm-stage">
-              <div ref={slotRefs.canvas} className="dm-canvas">
-                <p className="dm-canvas-empty">{t("shell.noScene")}</p>
-              </div>
-              <div ref={slotRefs.browser} className="dm-browser" />
-              <div ref={slotRefs.details} className="dm-details" />
-              {/* Bottom centre (T-131): notices stack right above the navigation dock. */}
-              <div className="dm-stage-bottom">
-                <div ref={slotRefs.notices} className="dm-notices" />
-                <div
-                  ref={slotRefs.dock}
-                  role="group"
-                  aria-label={t("shell.dock")}
-                  className="dm-dock"
-                />
-              </div>
-            </div>
+            {/* Below the ribbon: the panels (T-172a, ADR-0017), the map one of them. */}
+            <DockviewReact
+              className="dm-panels"
+              components={PANEL_COMPONENTS}
+              onReady={onPanelsReady}
+              // Our own theme class carries the design tokens (both themes, ADR-0015).
+              theme={PANEL_THEME}
+              messages={panelMessages}
+            />
           </div>
+          {createPortal(
+            <p className="dm-canvas-empty">{t("shell.noScene")}</p>,
+            hosts.canvas,
+          )}
           {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
           <div className="dm-shell-content">
             {/* Context passes through portals: what the children render gets it too. */}
@@ -566,7 +767,7 @@ export function DmShell({
             </AppCommandsContext>
           </div>
         </div>
-      </HudLayoutContext>
+      </PanelHostsContext>
     </ShellSlotsContext>
   );
 }

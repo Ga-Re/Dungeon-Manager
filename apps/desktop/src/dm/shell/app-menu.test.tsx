@@ -79,7 +79,12 @@ describe("app menu (T-130d)", () => {
     fireEvent.click(menuButton());
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Neue Kampagne …", "Willkommen …", "Einstellungen …"]);
+    ).toEqual([
+      "Neue Kampagne …",
+      "Willkommen …",
+      "Einstellungen …",
+      "Layout zurücksetzen",
+    ]);
     fireEvent.click(screen.getByRole("menuitem", { name: "Willkommen …" }));
     const welcome = screen.getByRole("dialog", { name: "Willkommen" });
     fireEvent.keyDown(welcome, { key: "Escape" });

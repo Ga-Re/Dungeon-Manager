@@ -7,7 +7,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
-import { HudPanel, Menu, Popover } from "@dungeon-manager/ui";
+import { Menu, Popover } from "@dungeon-manager/ui";
 import { BookOpen, FolderPlus } from "lucide-react";
 import { CampaignPanel } from "./CampaignPanel.js";
 import { CatalogPanel } from "./CatalogPanel.js";
@@ -23,13 +23,9 @@ import {
   type RecentCampaign,
 } from "./recent-campaigns.js";
 import { WelcomeDialog, type WelcomeLibrary } from "./WelcomeDialog.js";
-import { useHudPlacement } from "./shell/hud-layout.js";
 import { useAppCommand, useAppModal } from "./shell/app-commands.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
-
-/** Top left of the map area, unfolded. */
-const BROWSER_DEFAULT = { x: 12, y: 12, collapsed: false };
 
 /** Menu id of "Neue Kampagne …"; campaign slugs never contain a colon. */
 const NEW_CAMPAIGN = ":new";
@@ -110,10 +106,6 @@ export function LibraryPanel({
     readonly slug: string;
     readonly sceneId: string;
   } | null>(null);
-  const [browserPlacement, setBrowserPlacement] = useHudPlacement(
-    "browser",
-    BROWSER_DEFAULT,
-  );
   const active = useRef(true);
   // Only the most recent load may update the state: a slow earlier one (e.g. the initial load
   // finishing after the DM chose another folder) must not overwrite newer data.
@@ -308,17 +300,11 @@ export function LibraryPanel({
         <CatalogPanel service={service} ready={state.status === "open"} />
       </ShellPortal>
       <ShellPortal slot="browser">
-        <HudPanel
-          title={t("shell.tree.browserTitle")}
-          labels={{
-            move: t("shell.tree.move"),
-            fold: t("shell.tree.fold"),
-          }}
-          placement={browserPlacement}
-          onPlacementChange={setBrowserPlacement}
-          className="dm-campaign-browser"
-          headerActions={
-            state.status === "open" && (
+        {/* The Browser panel names the region (its tab, T-172a). */}
+        <div className="dm-campaign-browser">
+          {/* The campaign switch heads the browser panel (T-172a: the panel's tab names it). */}
+          <div className="dm-panel-toolbar">
+            {state.status === "open" && (
               <span className="dm-panel-head-menu">
                 <Menu
                   // The campaign itself heads the tree; the header only switches it.
@@ -365,9 +351,8 @@ export function LibraryPanel({
                   />
                 </Popover>
               </span>
-            )
-          }
-        >
+            )}
+          </div>
           {state.status === "loading" && <p>{t("library.loading")}</p>}
           {state.status === "none" && (
             <>
@@ -438,7 +423,7 @@ export function LibraryPanel({
               }}
             />
           )}
-        </HudPanel>
+        </div>
       </ShellPortal>
       <WelcomeDialog
         open={welcomeOpen}

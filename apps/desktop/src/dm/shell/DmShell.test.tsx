@@ -1,5 +1,11 @@
 import { createI18n } from "@dungeon-manager/ui";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, it } from "vitest";
 import { DmShell } from "./DmShell.js";
@@ -48,16 +54,13 @@ function setup(storage = memoryStorage()) {
   return { storage, root };
 }
 
-const toggleButton = () =>
-  screen.getByRole("button", { name: /Datenpanel ein- oder ausblenden/ });
-/** The panel the toggle controls (a hidden element has no accessible name to query by). */
-function panel(): HTMLElement {
-  const id = toggleButton().getAttribute("aria-controls");
-  const element = id ? document.getElementById(id) : null;
-  if (!element) throw new Error("data panel missing");
-  return element;
-}
-const toggle = toggleButton;
+const toggle = () =>
+  screen.getByRole("button", { name: /Daten ein- oder ausblenden/ });
+/** The data panel's content; it leaves the document while the panel is hidden (T-172a). */
+const dataContent = () =>
+  document.querySelector<HTMLElement>(".dm-datapanel-content");
+/** A hidden panel is closed in the layout; its content stays alive outside the document. */
+const panel = () => ({ hidden: dataContent() === null });
 
 const workspaceMenu = () =>
   within(screen.getByRole("group", { name: "Arbeitsbereich" })).getByRole(
@@ -140,7 +143,9 @@ describe("DmShell", () => {
   it("renders portalled parts into their zones", () => {
     setup();
     expect(screen.getByTestId("map").closest(".dm-canvas")).not.toBeNull();
-    expect(within(panel()).getByText("Bibliotheksinhalt")).toBeTruthy();
+    const data = dataContent();
+    if (!data) throw new Error("data panel missing");
+    expect(within(data).getByText("Bibliotheksinhalt")).toBeTruthy();
     // The library's settings appear in their category of the settings dialog.
     expect(screen.queryByText("Bibliotheksordner")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
@@ -276,13 +281,9 @@ describe("DmShell", () => {
     expect(library.getAttribute("aria-selected")).toBe("true");
     fireEvent.keyDown(library, { key: "End" });
     expect(
-      screen
-        .getByRole("tab", { name: "Werkzeugfenster" })
-        .getAttribute("aria-selected"),
+      screen.getByRole("tab", { name: "Panels" }).getAttribute("aria-selected"),
     ).toBe("true");
-    expect(
-      screen.getByRole("tabpanel", { name: "Werkzeugfenster" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("tabpanel", { name: "Panels" })).toBeTruthy();
     fireEvent.keyDown(document.activeElement ?? library, { key: "Home" });
     expect(
       screen.getByRole("radio", { name: "Dunkel (Werkstatt)" }),
@@ -292,7 +293,7 @@ describe("DmShell", () => {
   it("keeps focus on the toggle when hiding a panel that had it", () => {
     setup();
     const inside = document.createElement("button");
-    panel().append(inside);
+    dataContent()?.append(inside);
     inside.focus();
     fireEvent.keyDown(inside, { key: "b", ctrlKey: true });
     expect(panel().hidden).toBe(true);
@@ -306,19 +307,17 @@ describe("DmShell", () => {
     expect(panel().hidden).toBe(true);
   });
 
-  it("resets remembered tool window positions from the settings", () => {
+  it("resets the panel layout from the settings (T-172a)", () => {
     const { storage } = setup();
-    storage.setItem(
-      "dm.hud.browser",
-      JSON.stringify({ x: 300, y: 40, collapsed: true }),
-    );
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    expect(panel().hidden).toBe(true);
     storage.setItem("dm.theme", "light");
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Werkzeugfenster" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Panels" }));
     fireEvent.click(
-      screen.getByRole("button", { name: "Positionen zurücksetzen" }),
+      screen.getByRole("button", { name: "Layout zurücksetzen" }),
     );
-    expect(storage.getItem("dm.hud.browser")).toBeNull();
+    expect(panel().hidden).toBe(false);
     // Other settings stay.
     expect(storage.getItem("dm.theme")).toBe("light");
   });
@@ -329,5 +328,65 @@ describe("DmShell", () => {
     fireEvent.click(screen.getByRole("radio", { name: "125 %" }));
     expect(root.style.getPropertyValue("--dm-ui-scale")).toBe("1.25");
     expect(storage.getItem("dm.uiScale")).toBe("1.25");
+  });
+
+  describe("panels (T-172a)", () => {
+    const viewItem = (name: string) => {
+      fireEvent.click(screen.getByRole("button", { name: "Menü" }));
+      return screen.getByRole("menuitemcheckbox", { name });
+    };
+
+    it("starts with the default layout: Daten, Karte, Browser, Eigenschaften", () => {
+      setup();
+      fireEvent.click(screen.getByRole("button", { name: "Menü" }));
+      expect(
+        screen
+          .getAllByRole("menuitemcheckbox")
+          .map((item) => [item.textContent, item.getAttribute("aria-checked")]),
+      ).toEqual([
+        ["Daten", "true"],
+        ["Karte", "true"],
+        ["Browser", "true"],
+        ["Eigenschaften", "true"],
+      ]);
+    });
+
+    it("hides and shows a panel from the View menu; its content stays alive", () => {
+      setup();
+      const map = screen.getByTestId("map");
+      fireEvent.click(viewItem("Karte"));
+      expect(screen.queryByTestId("map")).toBeNull();
+      expect(viewItem("Karte").getAttribute("aria-checked")).toBe("false");
+      fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Karte" }));
+      // The very same element: what renders into the map was never unmounted.
+      expect(screen.getByTestId("map")).toBe(map);
+    });
+
+    it("keeps the layout on this device across a restart", () => {
+      const storage = memoryStorage();
+      setup(storage);
+      fireEvent.click(viewItem("Browser"));
+      cleanup();
+      setup(storage);
+      expect(viewItem("Browser").getAttribute("aria-checked")).toBe("false");
+      expect(
+        screen
+          .getByRole("menuitemcheckbox", { name: "Daten" })
+          .getAttribute("aria-checked"),
+      ).toBe("true");
+    });
+
+    it("falls back to the default layout when the stored one cannot be used", () => {
+      const storage = memoryStorage();
+      storage.setItem(
+        "dm.layout",
+        JSON.stringify({ version: 1, layout: { grid: "broken" } }),
+      );
+      setup(storage);
+      expect(panel().hidden).toBe(false);
+      expect(viewItem("Eigenschaften").getAttribute("aria-checked")).toBe(
+        "true",
+      );
+    });
   });
 });

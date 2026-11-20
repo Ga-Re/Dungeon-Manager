@@ -45,6 +45,12 @@ const LABELS: AppMenuLabels = {
   minimize: "Im Dock ablegen",
   zoom: "Zoomen",
   fullscreen: "Vollbild",
+  view: "Ansicht",
+  panels: [
+    { command: "toggleData", text: "Daten", checked: true },
+    { command: "toggleMap", text: "Karte", checked: false },
+  ],
+  resetLayout: "Layout zurücksetzen",
 };
 
 interface Entry {
@@ -52,6 +58,7 @@ interface Entry {
   text?: string;
   item?: unknown;
   accelerator?: string;
+  checked?: boolean;
   action?: () => void;
   items?: Entry[];
 }
@@ -88,6 +95,7 @@ describe("the native app menu (T-130d)", () => {
       "Dungeon Manager",
       "Ablage",
       "Bearbeiten",
+      "Ansicht",
       "Fenster",
     ]);
     // Text fields keep copy and paste once the default menu is replaced.
@@ -118,6 +126,23 @@ describe("the native app menu (T-130d)", () => {
       ["welcome"],
       ["settings"],
     ]);
+  });
+
+  it("has a View menu with the panels as check items and the layout reset (T-172a)", async () => {
+    const onCommand = vi.fn();
+    await createTauriAppMenu("macos").install(LABELS, onCommand);
+    const view = builtMenu().find((menu) => menu.text === "Ansicht");
+    expect(
+      view?.items?.map((each) => [each.id ?? each.item, each.checked]),
+    ).toEqual([
+      ["toggleData", true],
+      ["toggleMap", false],
+      ["Separator", undefined],
+      ["resetLayout", undefined],
+    ]);
+    view?.items?.find((each) => each.id === "toggleMap")?.action?.();
+    view?.items?.find((each) => each.id === "resetLayout")?.action?.();
+    expect(onCommand.mock.calls).toEqual([["toggleMap"], ["resetLayout"]]);
   });
 
   it("does not exist elsewhere: the DM window shows its menu button", async () => {

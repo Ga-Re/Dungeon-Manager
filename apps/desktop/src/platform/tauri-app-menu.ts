@@ -74,6 +74,27 @@ export function createTauriAppMenu(platform: PlatformFamily): AppMenuService {
             ],
           },
           {
+            text: labels.view,
+            items: [
+              ...labels.panels.map((panel) => ({
+                id: panel.command,
+                text: panel.text,
+                checked: panel.checked,
+                action: () => {
+                  onCommand(panel.command);
+                },
+              })),
+              { item: "Separator" as const },
+              {
+                id: "resetLayout",
+                text: labels.resetLayout,
+                action: () => {
+                  onCommand("resetLayout");
+                },
+              },
+            ],
+          },
+          {
             text: labels.window,
             items: [
               { item: "Minimize", text: labels.minimize },

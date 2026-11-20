@@ -1,7 +1,5 @@
-import { HudPanel } from "@dungeon-manager/ui";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useHudPlacement } from "./shell/hud-layout.js";
 
 /** One fact of the inspected item; `mono` shows file names and values in the monospace face. */
 export interface DetailRow {
@@ -22,19 +20,8 @@ export interface Details {
 }
 
 /**
- * Far right of the map area: the panel's display clamp puts it at the right edge until the DM
- * moves it (T-159). Folding stores this x as it is, so the panel stays right-anchored.
- */
-const DETAILS_DEFAULT = {
-  x: Number.MAX_SAFE_INTEGER,
-  y: 12,
-  collapsed: false,
-};
-
-/**
- * The details panel (DM request, T-159): the facts of what is selected in the browser, as a
- * tool window on the right of the map area that folds and moves like the browser. Read-only for
- * now; editing moves in as features need it.
+ * The details panel (DM request, T-159): the facts of what is selected in the browser, in the
+ * Eigenschaften panel (T-172a). Read-only for now; editing moves in as features need it.
  */
 export function DetailsPanel({
   details,
@@ -45,15 +32,9 @@ export function DetailsPanel({
   readonly selected: boolean;
 }) {
   const { t } = useTranslation();
-  const [placement, setPlacement] = useHudPlacement("details", DETAILS_DEFAULT);
   return (
-    <HudPanel
-      title={t("shell.details.title")}
-      labels={{ move: t("shell.details.move"), fold: t("shell.details.fold") }}
-      placement={placement}
-      onPlacementChange={setPlacement}
-      className="dm-details-panel"
-    >
+    // The Eigenschaften panel names the region (its tab, T-172a).
+    <div className="dm-details-body-wrap">
       {details ? (
         <>
           <p className="dm-details-heading">
@@ -80,6 +61,6 @@ export function DetailsPanel({
           {selected ? t("shell.details.nothing") : t("shell.details.empty")}
         </p>
       )}
-    </HudPanel>
+    </div>
   );
 }
