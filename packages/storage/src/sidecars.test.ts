@@ -37,7 +37,10 @@ describe("sidecar files", () => {
       "campaigns/mine/campaign.json",
       "library/../campaigns/x.png",
       "library/maps/turm.png.dm.json",
-      "library/maps",
+      "library/.previews/turm.webp",
+      "library/maps/.hidden.png",
+      "library/maps\\..\\x.png",
+      "library",
     ])
       expect(() => sidecarFile(path)).toThrow();
   });
@@ -95,6 +98,9 @@ describe("sidecar files", () => {
       "library/maps/turm.png.dm.json": "{}",
       "library/maps/turm.png.dm (conflicted copy 2026-11-20).json": "{}",
       "library/maps/notes (1).json": "{}",
+      "library/maps/keller.png.dm.json": "{}",
+      "library/maps/keller.png.dm.sync-conflict-20261120-101500-ABCDEFG.json":
+        "{}",
     });
     expect(await listSidecarConflicts(fs, "library/maps")).toEqual([
       {
@@ -102,7 +108,13 @@ describe("sidecar files", () => {
         original: "turm.png.dm.json",
         provider: "Dropbox",
       },
+      {
+        copy: "keller.png.dm.sync-conflict-20261120-101500-ABCDEFG.json",
+        original: "keller.png.dm.json",
+        provider: "Syncthing",
+      },
     ]);
+    expect(await listSidecarConflicts(fs, "library/none")).toEqual([]);
   });
 
   test("the watcher tells sidecars from the files they describe", () => {
@@ -114,6 +126,9 @@ describe("sidecar files", () => {
     expect(
       classifyLibraryPath("library/maps/turm.png.dm (1).json"),
     ).toMatchObject({ kind: "sidecarFile", name: "turm.png.dm (1).json" });
+    expect(classifyLibraryPath("library/packs/notes.json")).toEqual({
+      kind: "other",
+    });
     expect(classifyLibraryPath("library/maps/turm.png")).toEqual({
       kind: "asset",
       path: "library/maps/turm.png",
@@ -142,19 +157,38 @@ describe("adopting a version 2 scene's map (ADR-0012 migration)", () => {
     });
   });
 
-  test("a sidecar that already fits needs nothing; global renames and new levels win", () => {
-    const later: Sidecar = {
-      ...sidecar,
-      map: {
-        grid,
-        levels: [
-          { id: "ground", name: "Hof" },
-          { id: "attic", name: "Dach" },
-        ],
-        rooms: [],
-      },
+  test("a sidecar holding exactly the scene's grid and levels fits", () => {
+    expect(adoptLegacyMap(sidecar, legacy, hash)).toEqual({ kind: "fits" });
+  });
+
+  test("other level names, added, reordered or archived levels differ: nothing is lost silently", () => {
+    const base = sidecar.map;
+    if (!base) throw new Error("the sample sidecar has a map");
+    const twoLevels = {
+      grid,
+      levels: [
+        { id: "ground", name: "Erdgeschoss" },
+        { id: "attic", name: "Dach" },
+      ],
     };
-    expect(adoptLegacyMap(later, legacy, hash)).toEqual({ kind: "fits" });
+    for (const levels of [
+      [{ id: "ground", name: "Taverne" }],
+      [...legacy.levels, { id: "attic", name: "Dach" }],
+      [{ id: "ground", name: "Erdgeschoss", archived: true }],
+    ])
+      expect(
+        adoptLegacyMap({ ...sidecar, map: { ...base, levels } }, legacy, hash),
+      ).toEqual({ kind: "differs" });
+    expect(
+      adoptLegacyMap(
+        {
+          ...sidecar,
+          map: { ...base, levels: [...twoLevels.levels].reverse() },
+        },
+        twoLevels,
+        hash,
+      ),
+    ).toEqual({ kind: "differs" });
   });
 
   test("another grid, a missing level or another level image differs: the DM decides", () => {

@@ -50,14 +50,17 @@ export const sessionFile = (slug: string, sessionId: string) =>
 export const SIDECAR_SUFFIX = ".dm.json";
 
 /**
- * The sidecar `<file>.dm.json` of a library file (ADR-0012). Only files in `library/` have one.
- * @throws on a path outside the library, an unsafe path, or a sidecar itself
+ * The sidecar `<file>.dm.json` of a library file (ADR-0012). Only files in `library/` have one,
+ * like the watcher's assets (`classifyLibraryPath`); hidden folders such as `.previews` hold
+ * generated files and have none.
+ * @throws on a path outside the library, an unsafe or hidden path, or a sidecar itself
  */
 export function sidecarFile(assetPath: string): string {
   const parts = assetPath.split("/");
   if (
     parts[0] !== "library" ||
-    parts.length < 3 ||
+    parts.length < 2 ||
+    parts.some((part) => part.startsWith(".")) ||
     !assetRefSchema.shape.path.safeParse(assetPath).success ||
     assetPath.endsWith(SIDECAR_SUFFIX)
   )

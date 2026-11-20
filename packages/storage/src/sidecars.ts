@@ -38,11 +38,19 @@ export type LegacyAdoption =
 const sameAsset = (a: Level["asset"], b: Level["asset"]) =>
   a?.path === b?.path && a?.hash === b?.hash;
 
+// Compares the grid fields known today; a field added to the loose grid schema must be added here.
+const sameGrid = (a: Grid, b: Grid) =>
+  a.cellSizePx === b.cellSizePx &&
+  a.offsetXPx === b.offsetXPx &&
+  a.offsetYPx === b.offsetYPx;
+
 /**
- * Decides how a version 2 scene's grid and levels move into its map's sidecar. The first scene
- * of a map seeds it. Later scenes fit when the grid is the same and the sidecar still has each of
- * their levels with the same image – level names and added levels are global edits and win.
- * Anything else would move tokens or fog, so it is left to the DM. `hash` is the map file's.
+ * Decides how a version 2 scene's grid and levels move into its map's sidecar (ADR-0012). The
+ * first scene of a map seeds it. A later scene fits only when the sidecar holds exactly its grid
+ * and levels – same ids, names, images and order, none archived. Any difference keeps the
+ * scene's copy for the DM to adopt or discard, because each version 2 scene had its own copy
+ * and nothing may be lost silently. `sidecar` is `null` only for a missing sidecar: a
+ * placeholder or broken one must never be seeded over. `hash` is the map file's.
  */
 export function adoptLegacyMap(
   sidecar: Sidecar | null,
@@ -62,14 +70,19 @@ export function adoptLegacyMap(
   if (!sidecar.map)
     return { kind: "seed", sidecar: { ...sidecar, map: seeded } };
   const { grid, levels } = sidecar.map;
-  const sameGrid =
-    grid.cellSizePx === legacy.grid.cellSizePx &&
-    grid.offsetXPx === legacy.grid.offsetXPx &&
-    grid.offsetYPx === legacy.grid.offsetYPx;
-  const keepsLevels = legacy.levels.every((wanted) =>
-    levels.some(
-      (level) => level.id === wanted.id && sameAsset(level.asset, wanted.asset),
-    ),
-  );
-  return sameGrid && keepsLevels ? { kind: "fits" } : { kind: "differs" };
+  const sameLevels =
+    levels.length === legacy.levels.length &&
+    legacy.levels.every((wanted, index) => {
+      const level = levels[index];
+      return (
+        level !== undefined &&
+        level.id === wanted.id &&
+        level.name === wanted.name &&
+        level.archived !== true &&
+        sameAsset(level.asset, wanted.asset)
+      );
+    });
+  return sameGrid(grid, legacy.grid) && sameLevels
+    ? { kind: "fits" }
+    : { kind: "differs" };
 }

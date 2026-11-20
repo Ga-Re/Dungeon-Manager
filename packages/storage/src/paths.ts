@@ -10,7 +10,7 @@ export type LibraryPathKind =
   | { readonly kind: "sceneFile"; readonly slug: string; readonly name: string }
   | { readonly kind: "asset"; readonly path: string }
   /**
-   * A JSON file in the library: a sidecar (ADR-0012) or a conflict copy of one, told apart by
+   * A sidecar (ADR-0012) or a conflict copy of one (`turm.png.dm (1).json`), told apart by
    * re-listing the folder (`listSidecarConflicts`).
    */
   | {
@@ -32,12 +32,16 @@ export function classifyLibraryPath(path: string): LibraryPathKind {
   const [root, second = "", third, fourth, ...rest] = parts;
   if (root === "library") {
     if (parts.length < 2 || second === ".previews") return { kind: "other" };
-    if (path.endsWith(".json"))
-      return {
-        kind: "sidecarFile",
-        directory: parts.slice(0, -1).join("/"),
-        name: parts.at(-1) ?? "",
-      };
+    const name = parts.at(-1) ?? "";
+    // Sync clients put their conflict mark before the last extension: `x.png.dm (1).json`.
+    if (name.endsWith(".json"))
+      return name.slice(0, -".json".length).includes(".dm")
+        ? {
+            kind: "sidecarFile",
+            directory: parts.slice(0, -1).join("/"),
+            name,
+          }
+        : { kind: "other" };
     return { kind: "asset", path };
   }
   if (root !== "campaigns" || !isValidSlug(second)) return { kind: "other" };

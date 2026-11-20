@@ -812,6 +812,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Scene schema v3: migration `map → { kind, asset, overrides, legacyMap }`; opening a scene seeds a missing sidecar from `legacyMap` (`adoptLegacyMap`); differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures)
   - [ ] A map without sidecar shows with defaults; the first edit creates the sidecar
+  - [ ] Only a missing sidecar is seeded; a placeholder or broken one is never overwritten (test)
   - [ ] Opening, playing and the TV use the resolved map (component + E2E tests)
 - **Notes:** Split from T-134 (2026-11-20). From the T-134 review: undo/redo snapshots hold whole `SessionState`s; undo must restore the scene only and re-attach the current resolved map, so a global edit is never undone by a scene undo (T-134b too).
 
