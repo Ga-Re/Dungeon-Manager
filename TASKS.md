@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223, T-114, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -479,8 +479,8 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-114 Autosave and crash recovery
 
-- **Status:** todo · **Depends on:** T-103b, T-102b, T-174, T-223
-- Periodic and on-change save of scene state; recovery on next start. With document tabs (T-223), every open document (scene, map, asset, creature) is saved and recovered.
+- **Status:** todo · **Depends on:** T-103b, T-102b, T-174, T-223a
+- Periodic and on-change save of scene state; recovery on next start. With document tabs (T-223a), every open document (scene, map, asset, creature) is saved and recovered.
 - **Acceptance criteria**
   - [ ] Killing the app mid-session loses at most the last few seconds (E2E test with forced kill)
 
@@ -944,14 +944,23 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] The group overview follows HP and condition changes (component test)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). DM decision: the first workspace to fill after the shared frame (T-171–T-175).
 
-### T-223 Document tabs
+### T-223a Scene tabs; the TV only on command
 
-- **Status:** todo · **Depends on:** T-172a · **Refs:** ADR-0017, ADR-0011
-- Several documents open at once – the campaign's Atlas, scenes, maps, assets, creatures – as tabs in the title bar with an unsaved-changes dot; each tab keeps its own undo history (T-174).
+- **Status:** done · **Depends on:** T-172a, T-174 · **Refs:** ADR-0017, ADR-0011
+- Several scenes open at once as tabs in the title bar; each keeps its edits and undo history (T-174). Switching tabs never changes the TV: "Szene auf den TV" (ribbon, Szene) puts the shown scene there, and its tab carries a TV mark.
 - **Acceptance criteria**
-  - [ ] Open, switch and close document tabs by mouse and keyboard (component + E2E test)
-  - [ ] Closing a tab with unsaved changes asks first
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+  - [x] Open, switch and close scene tabs by mouse and keyboard (component + E2E test)
+  - [x] Switching tabs leaves the TV on its scene; closing the TV's scene leaves the TV dark (component test)
+- **Notes:** Split from T-223 (2026-11-20). DM decisions (2026-11-20): the TV changes only on command, never by switching tabs; only scenes are tabs for now – the tab bar takes other documents with T-176, T-180 and T-181. Opening a scene while none is on the TV puts it there, as before tabs (the last scene reopens on start). Open scenes stay mounted with their session; only the shown one renders its map, ribbon and title bar part and answers the keys. Notes cannot be linked to any open scene (its saves would overwrite the link).
+
+### T-223b Unsaved-changes dot and closing a tab
+
+- **Status:** todo · **Depends on:** T-223a · **Refs:** ADR-0017
+- Each tab shows a dot while its document has a save pending or failed (DM decision, 2026-11-20: documents keep saving every change).
+- **Acceptance criteria**
+  - [ ] The dot shows while a save is pending or failed, on every tab (component test)
+  - [ ] Closing a tab whose last save failed asks first; nothing else asks (component + E2E test)
+- **Notes:** Split from T-223 (2026-11-20).
 
 ### T-176 Map Forge: open and edit library maps
 

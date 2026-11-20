@@ -117,7 +117,7 @@ describe("CampaignPanel", () => {
         .getAttribute("aria-selected"),
     ).toBe("true");
     expect(await screen.findByRole("treeitem", { name: "Nebel" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Szene schließen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Eingang schließen" }));
     expect(screen.queryByText("Geöffnete Szene: Eingang")).toBeNull();
   });
 

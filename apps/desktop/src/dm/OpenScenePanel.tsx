@@ -18,8 +18,8 @@ import {
   withMap,
 } from "@dungeon-manager/storage";
 import { IconButton, Popover, RibbonGroup } from "@dungeon-manager/ui";
-import { ImagePlus, Trash2 } from "lucide-react";
-import { useContext, useEffect, useRef, useState } from "react";
+import { ImagePlus, Trash2, Tv } from "lucide-react";
+import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
@@ -31,7 +31,7 @@ import { MapView, MapViewContext, type MapTool } from "./MapView.js";
 import { releaseVideo } from "../platform/map-images.js";
 import type { FogShape } from "./fog-shapes.js";
 import { FogToolbar } from "./FogToolbar.js";
-import { SceneTitle } from "./SceneTitle.js";
+import { SceneTabs, SceneTitle } from "./SceneTitle.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useSceneSession } from "./useSceneSession.js";
 import { softEdgeWidth } from "../fog-settings.js";
@@ -96,6 +96,10 @@ export function OpenScenePanel({
   onDeleted,
   onClose,
   subScenes = NO_SUB_SCENES,
+  active = true,
+  onTv: sceneOnTv = true,
+  onShowOnTv,
+  tabs,
 }: {
   readonly service: LibraryService;
   readonly slug: string;
@@ -115,6 +119,17 @@ export function OpenScenePanel({
   readonly onClose: () => void;
   /** The scene's sub-scenes (T-152): asked about when it is deleted. */
   readonly subScenes?: SubScenes;
+  /**
+   * Whether its tab is the one shown (T-223a). Another open scene keeps its state and undo
+   * history but shows nothing and ignores the keys.
+   */
+  readonly active?: boolean;
+  /** Whether this scene is the one on the TV (T-223a): only that one feeds it. */
+  readonly onTv?: boolean;
+  /** "Szene auf den TV": the DM puts this scene on the TV. */
+  readonly onShowOnTv?: (() => void) | undefined;
+  /** The open scenes' tabs for the title bar; `busy`: this scene must not close now. */
+  readonly tabs?: ((busy: boolean) => ReactNode) | undefined;
 }) {
   const { t } = useTranslation();
   const fogLook = useContext(FogLookContext);
@@ -125,7 +140,7 @@ export function OpenScenePanel({
   const [keepSubScenes, setKeepSubScenes] = useState(true);
   const [error, setError] = useState("");
   const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
-  const session = useSceneSession(service, slug, opened);
+  const session = useSceneSession(service, slug, opened, sceneOnTv);
   const { scene, map, notOnTv } = session;
   const [tool, setTool] = useState<MapTool>("pan");
   // The scene is the Game-Orchestrator's document (T-174): undo and redo act on it only while
@@ -154,8 +169,9 @@ export function OpenScenePanel({
     reportScene.current = onSceneChange;
   });
   useEffect(() => {
-    reportScene.current?.(scene, map, revealed);
-  }, [scene, map, revealed]);
+    // Only the shown tab speaks for the browser tree; again when it becomes the shown one.
+    if (active) reportScene.current?.(scene, map, revealed);
+  }, [scene, map, revealed, active]);
   // A new map (or a level with its own file) is measured again; until then "reveal all" has
   // no size to use.
   useEffect(() => {
@@ -178,7 +194,7 @@ export function OpenScenePanel({
     const onKey = (event: KeyboardEvent) => {
       const action = historyKey(event);
       // While the map changes or the scene is deleted, edits could land after the file moved.
-      if (!action || busy || !inGame) return;
+      if (!action || busy || !inGame || !active) return;
       event.preventDefault();
       if (action === "undo") session.undo();
       else session.redo();
@@ -318,6 +334,8 @@ export function OpenScenePanel({
       onDeleted(scene);
     });
 
+  // Another tab shows: this scene keeps its session (and feeds the TV if it is on it).
+  if (!active) return null;
   return (
     <div
       role="region"
@@ -328,9 +346,17 @@ export function OpenScenePanel({
       </p>
       <ShellPortal slot="titleScene">
         <SceneTitle
-          name={scene.name}
-          busy={busy}
-          onClose={onClose}
+          tabs={
+            tabs?.(busy) ?? (
+              <SceneTabs
+                tabs={[{ id: scene.id, name: scene.name, onTv: sceneOnTv }]}
+                activeId={scene.id}
+                busy={busy}
+                onSelect={() => undefined}
+                onClose={onClose}
+              />
+            )
+          }
           canUndo={session.canUndo && !busy && inGame}
           canRedo={session.canRedo && !busy && inGame}
           onUndo={() => {
@@ -382,6 +408,15 @@ export function OpenScenePanel({
             disabled={busy}
             onClick={() => void changeMap()}
           />
+          {onShowOnTv && (
+            <IconButton
+              showLabel
+              icon={<Tv />}
+              label={t("campaign.showSceneOnTv")}
+              disabled={sceneOnTv}
+              onClick={onShowOnTv}
+            />
+          )}
           <p className="dm-ribbon-meta">
             {scene.map
               ? t("campaign.map", { file: fileName(scene.map.asset.path) })

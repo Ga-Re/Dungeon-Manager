@@ -296,16 +296,49 @@ label {
   min-width: 0;
 }
 
+/* The open scenes' tabs (T-223a): the shown one on the panel colour, the others on the chrome. */
+.dm-scene-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dm-space-1);
+}
+
 .dm-scene-tab {
   display: inline-flex;
   align-items: center;
   gap: var(--dm-space-1);
-  padding-left: var(--dm-space-3);
-  background: var(--dm-surface-panel);
-  color: var(--dm-text-primary);
+  color: var(--dm-text-on-chrome-muted);
   border-radius: var(--dm-radius-md) var(--dm-radius-md) 0 0;
   font-family: var(--dm-font-mono);
   font-size: var(--dm-font-size-sm);
+}
+
+.dm-scene-tab[data-current="true"] {
+  background: var(--dm-surface-panel);
+  color: var(--dm-text-primary);
+}
+
+.dm-scene-tab-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dm-space-1);
+  padding: 0 0 0 var(--dm-space-3);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dm-scene-tab-name:focus-visible {
+  outline: var(--dm-focus-width) solid var(--dm-focus);
+  outline-offset: 1px;
+}
+
+/* In the tab's text colour: the shown tab is light in the parchment theme, the others dark. */
+.dm-scene-tab-tv {
+  width: 0.875rem;
+  height: 0.875rem;
 }
 
 .dm-save-status {

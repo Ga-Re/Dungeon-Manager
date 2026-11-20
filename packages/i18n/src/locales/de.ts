@@ -148,7 +148,11 @@ export const de = {
       tokens: "Tokens entfernen (samt ihren Initiative-Einträgen)",
       apply: "Karte übernehmen",
     },
-    closeScene: "Szene schließen",
+    closeSceneNamed: "{{name}} schließen",
+    openScenes: "Offene Szenen",
+    sceneOnTv: "(auf dem TV)",
+    showSceneOnTv: "Szene auf den TV",
+    sceneShownOnTv: "{{name}} ist jetzt auf dem TV",
     mapData: {
       changed:
         "Die Daten dieser Karte wurden geändert, z. B. auf einem anderen Gerät. Der TV zeigt sie erst, wenn du sie übernimmst.",

@@ -4,19 +4,94 @@ import {
   CircleCheck,
   LoaderCircle,
   Redo2,
+  Tv,
   Undo2,
   X,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+/** One open scene's tab (T-223a). */
+export interface SceneTabEntry {
+  readonly id: string;
+  readonly name: string;
+  /** It is the scene on the TV. */
+  readonly onTv: boolean;
+}
+
 /**
- * The open scene's part of the title bar: undo/redo, its tab and the save status. Scenes save
+ * The open scenes as tabs in the title bar (T-223a, ADR-0017): the shown one is marked current,
+ * the one on the TV carries a TV mark. Switching tabs never changes the TV (DM decision,
+ * 2026-11-20). Buttons, so the keyboard reaches each tab and its ✕ with Tab.
+ */
+export function SceneTabs({
+  tabs,
+  activeId,
+  busy,
+  onSelect,
+  onClose,
+}: {
+  readonly tabs: readonly SceneTabEntry[];
+  readonly activeId: string | null;
+  /** The shown scene must not close now (its map changes or it is being deleted). */
+  readonly busy: boolean;
+  readonly onSelect: (id: string) => void;
+  readonly onClose: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <span
+      role="group"
+      aria-label={t("campaign.openScenes")}
+      className="dm-scene-tabs"
+    >
+      {tabs.map((tab) => {
+        const current = tab.id === activeId;
+        return (
+          <span
+            key={tab.id}
+            className="dm-scene-tab"
+            data-current={current ? "true" : undefined}
+          >
+            <button
+              type="button"
+              className="dm-scene-tab-name"
+              aria-current={current ? "true" : undefined}
+              onClick={() => {
+                onSelect(tab.id);
+              }}
+            >
+              {tab.name}
+              {tab.onTv && (
+                <>
+                  <Tv aria-hidden="true" className="dm-scene-tab-tv" />
+                  <span className="visually-hidden">
+                    {t("campaign.sceneOnTv")}
+                  </span>
+                </>
+              )}
+            </button>
+            <IconButton
+              icon={<X />}
+              label={t("campaign.closeSceneNamed", { name: tab.name })}
+              disabled={current && busy}
+              onClick={() => {
+                onClose(tab.id);
+              }}
+            />
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/**
+ * The open scene's part of the title bar: undo/redo, the scene tabs and the save status. Scenes save
  * on every change, so there is a status instead of a save button (DM decision, T-130).
  */
 export function SceneTitle({
-  name,
-  busy,
-  onClose,
+  tabs,
   canUndo,
   canRedo,
   onUndo,
@@ -25,9 +100,8 @@ export function SceneTitle({
   saveFailed,
   onRetrySave,
 }: {
-  readonly name: string;
-  readonly busy: boolean;
-  readonly onClose: () => void;
+  /** The open scenes' tabs ({@link SceneTabs}). */
+  readonly tabs: ReactNode;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly onUndo: () => void;
@@ -52,15 +126,7 @@ export function SceneTitle({
         disabled={!canRedo}
         onClick={onRedo}
       />
-      <span className="dm-scene-tab">
-        <span className="dm-scene-tab-name">{name}</span>
-        <IconButton
-          icon={<X />}
-          label={t("campaign.closeScene")}
-          disabled={busy}
-          onClick={onClose}
-        />
-      </span>
+      {tabs}
       {saveFailed ? (
         <span
           role="alert"

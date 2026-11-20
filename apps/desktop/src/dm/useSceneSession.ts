@@ -82,12 +82,13 @@ export interface SceneSession {
  * undo history, every change is saved to the scene file in order, and the table TV gets the
  * projection of each state – synchronously, so edits never blank it. The campaign (visibility
  * defaults) is read once per open scene; until then, and if it cannot be read, the TV shows
- * nothing (fail closed).
+ * nothing (fail closed). Only the scene `onTv` feeds the TV (T-223a): several may be open.
  */
 export function useSceneSession(
   service: LibraryService,
   slug: string,
   opened: Scene,
+  onTv = true,
 ): SceneSession {
   const feed = useContext(PlayerFeedContext);
   const { t } = useTranslation();
@@ -154,10 +155,12 @@ export function useSceneSession(
   const map = resolved?.map ?? null;
   const mapLoading = mapData.status === "loading";
 
-  // The TV follows every state; nothing while the campaign is unknown or the map loads, nothing
-  // after closing.
+  // The TV follows every state of the scene on it (T-223a: one of the open scenes, chosen by
+  // the DM); nothing while the campaign is unknown or the map loads, nothing after closing it.
+  const shownOnTv = useRef(onTv);
+  shownOnTv.current = onTv;
   useEffect(() => {
-    if (!feed || !campaign || mapLoading) return;
+    if (!onTv || !feed || !campaign || mapLoading) return;
     try {
       feed.show(projectForViewer({ campaign, scene, map }, { kind: "table" }));
       setNotOnTv(false);
@@ -166,10 +169,11 @@ export function useSceneSession(
       feed.show(null);
       setNotOnTv(true);
     }
-  }, [feed, campaign, scene, map, mapLoading]);
+  }, [onTv, feed, campaign, scene, map, mapLoading]);
   useEffect(
     () => () => {
-      feed?.show(null);
+      // Another open scene leaves the TV alone (the one on it may already be showing).
+      if (shownOnTv.current) feed?.show(null);
     },
     [feed],
   );
