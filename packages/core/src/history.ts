@@ -66,10 +66,10 @@ export function undo<T>(
   state: T,
   history: History<T>,
 ): { state: T; history: History<T> } | null {
-  const previous = history.past.at(-1);
-  if (!previous) return null;
+  // By length, not by value: a snapshot may be falsy (0, "") for other documents.
+  if (history.past.length === 0) return null;
   return {
-    state: previous,
+    state: history.past[history.past.length - 1] as T,
     history: {
       past: history.past.slice(0, -1),
       future: [state, ...history.future],
@@ -82,7 +82,10 @@ export function redo<T>(
   state: T,
   history: History<T>,
 ): { state: T; history: History<T> } | null {
+  if (history.future.length === 0) return null;
   const [next, ...future] = history.future;
-  if (!next) return null;
-  return { state: next, history: { past: [...history.past, state], future } };
+  return {
+    state: next as T,
+    history: { past: [...history.past, state], future },
+  };
 }

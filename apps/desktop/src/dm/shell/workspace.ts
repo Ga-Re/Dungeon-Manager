@@ -60,7 +60,7 @@ export function saveWorkspace(
  * mounted but must not react to undo, redo or tool shortcuts.
  */
 export const ActiveWorkspaceContext =
-  createContext<Workspace>(DEFAULT_WORKSPACE);
+  createContext<Workspace>("gameOrchestrator");
 
 /** The workspace the DM window shows; outside the shell, the Game-Orchestrator. */
 export function useActiveWorkspace(): Workspace {

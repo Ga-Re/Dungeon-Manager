@@ -532,7 +532,7 @@ export function OpenScenePanel({
               kind={media.kind}
               label={scene.name}
               fog={revealed}
-              tool={busy ? "pan" : tool}
+              tool={busy || !inGame ? "pan" : tool}
               shape={shape}
               // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
               brushRadius={(brushCells * map.grid.cellSizePx) / 2}

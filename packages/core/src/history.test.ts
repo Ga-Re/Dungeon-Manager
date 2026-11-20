@@ -155,6 +155,18 @@ describe("history of any document (T-174)", () => {
     expect(record(back.history, 0).future).toEqual([]);
   });
 
+  test("a falsy snapshot (0, an empty name) is undone to and redone from like any other", () => {
+    const back = undo(1, record(createHistory<number>(), 0));
+    expect(back?.state).toBe(0);
+    if (!back) throw new Error("nothing to undo");
+    expect(redo(back.state, back.history)?.state).toBe(1);
+    const empty = undo("Fass", record(createHistory<string>(), ""));
+    expect(empty?.state).toBe("");
+    if (!empty) throw new Error("nothing to undo");
+    expect(undo("x", { past: [], future: [""] })).toBeNull();
+    expect(redo("x", { past: [], future: [""] })?.state).toBe("");
+  });
+
   test("histories of two documents are independent", () => {
     const scene = record(createHistory<string>(), "Szene vorher");
     const map = createHistory<string>();
