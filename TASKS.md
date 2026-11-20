@@ -364,6 +364,15 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Rotation 0/90/180/270 in the player window (already there; the calibrated camera keeps it)
 - **Notes:** Split from T-106 (2026-11-20). DM decisions (2026-11-20): diagonal in inches plus check square and fine correction; the DM moves the TV's view (T-106c); grid lines in the DM window always available, on the TV switchable, default off (T-106b); the cell size in inches or cm in the settings. Device storage: `dm.displayCalibration` (per display by name and resolution), `dm.tvCellSize`. The player-view message gets an optional strict `scale: { inchPx, cellInches, checkSquare }`. Workspace interview: the map's grid calibration lives in the Map Forge (T-176/T-177).
 
+### T-106d Calibrate the TV by measuring a check square
+
+- **Status:** done · **Depends on:** T-106a · **Refs:** SPEC 2.2
+- DM request (2026-11-20): instead of entering the diagonal, the TV shows a check square (a third of its shorter side) while "TV kalibrieren …" is open; the DM measures one side with a ruler and enters it in cm or inches, and the TV's scale follows at once.
+- **Acceptance criteria**
+  - [x] The measured side gives the TV's pixels per inch; a length that cannot be right is refused and never sent (unit + component tests)
+  - [x] The check square shows only while calibrating, at its exact physical size (component test; manual check on the TV)
+- **Notes:** Replaces T-106a's diagonal and fine correction. `dm.displayCalibration` version 2 keeps `{ inchPx }` per display; version 1 entries are converted on reading. The player-view message: `scale: { inchPx, cellInches }` and `checkSquarePx`.
+
 ### T-106b Grid lines
 
 - **Status:** todo · **Depends on:** T-106a · **Refs:** SPEC 2.2, ADR-0012

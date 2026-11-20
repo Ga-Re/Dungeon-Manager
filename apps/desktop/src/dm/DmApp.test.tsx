@@ -192,7 +192,13 @@ describe("DmApp", () => {
     render(
       <I18nextProvider i18n={createI18n("de")}>
         <PlayerFeedContext
-          value={{ show: vi.fn(), rotate, rotation: 270, calibrate: vi.fn() }}
+          value={{
+            show: vi.fn(),
+            rotate,
+            rotation: 270,
+            calibrate: vi.fn(),
+            showCheckSquare: vi.fn(),
+          }}
         >
           <DmApp
             displayService={fakeService()}
@@ -211,13 +217,20 @@ describe("DmApp", () => {
     ).toBeTruthy();
   });
 
-  test("calibrates the TV per display; one cell has the size set in the settings (T-106a)", async () => {
+  test("calibrates the TV by a measured check square; one cell has the size set in the settings (T-106d)", async () => {
     const calibrate = vi.fn();
+    const showCheckSquare = vi.fn();
     const storage = memoryStorage();
     render(
       <I18nextProvider i18n={createI18n("de")}>
         <PlayerFeedContext
-          value={{ show: vi.fn(), rotate: vi.fn(), rotation: 0, calibrate }}
+          value={{
+            show: vi.fn(),
+            rotate: vi.fn(),
+            rotation: 0,
+            calibrate,
+            showCheckSquare,
+          }}
         >
           <DmApp
             displayService={fakeService()}
@@ -228,12 +241,16 @@ describe("DmApp", () => {
         </PlayerFeedContext>
       </I18nextProvider>,
     );
-    fireEvent.click(await openButton());
-    await waitFor(() => {
-      expect(calibrate).toHaveBeenLastCalledWith(null);
-    });
+    // Before the player view runs there is nothing to measure.
+    fireEvent.click(
+      await screen.findByRole("button", { name: "TV kalibrieren …" }),
+    );
+    let popover = within(screen.getByRole("group", { name: "TV kalibrieren" }));
+    expect(popover.getByText(/Öffne zuerst die Spieleransicht/)).toBeTruthy();
+    expect(showCheckSquare).toHaveBeenLastCalledWith(null);
+    fireEvent.click(screen.getByRole("button", { name: "TV kalibrieren …" }));
 
-    // The cell size, in the settings: 2.5 cm, kept on this device.
+    // The cell size, in the settings: 2.5 cm.
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
     fireEvent.click(screen.getByRole("tab", { name: "Spieleransicht" }));
     fireEvent.change(screen.getByLabelText("Größe"), {
@@ -242,69 +259,74 @@ describe("DmApp", () => {
     fireEvent.change(screen.getByLabelText("Einheit"), {
       target: { value: "cm" },
     });
-    expect(storage.getItem("dm.tvCellSize")).toBe('{"value":2.5,"unit":"cm"}');
     fireEvent.click(
       screen.getByRole("button", { name: "Einstellungen schließen" }),
     );
 
+    fireEvent.click(await openButton());
     fireEvent.click(screen.getByRole("button", { name: "TV kalibrieren …" }));
-    const popover = within(
-      screen.getByRole("group", { name: "TV kalibrieren" }),
-    );
-    fireEvent.change(popover.getByLabelText("Bilddiagonale (Zoll)"), {
-      target: { value: "55" },
-    });
-    const diagonalPx = Math.hypot(tv.width, tv.height);
+    popover = within(screen.getByRole("group", { name: "TV kalibrieren" }));
+    // The TV shows a square of a third of its shorter side (2160 / 3 = 720 px).
     await waitFor(() => {
-      expect(calibrate).toHaveBeenLastCalledWith({
-        inchPx: diagonalPx / 55,
-        cellInches: 2.5 / 2.54,
-        checkSquare: false,
-      });
+      expect(showCheckSquare).toHaveBeenLastCalledWith(720);
     });
-    fireEvent.change(popover.getByLabelText("Feinkorrektur (%)"), {
-      target: { value: "2,5" },
-    });
-    fireEvent.click(
-      popover.getByLabelText("Prüfquadrat (2 Zoll) auf dem TV zeigen"),
-    );
-    await waitFor(() => {
-      expect(calibrate).toHaveBeenLastCalledWith({
-        inchPx: (diagonalPx / 55) * 1.025,
-        cellInches: 2.5 / 2.54,
-        checkSquare: true,
-      });
-    });
-    expect(
-      JSON.parse(storage.getItem("dm.displayCalibration") ?? "{}"),
-    ).toEqual({
-      version: 1,
-      displays: {
-        "|3840x2160": { diagonalInches: 55, correctionPercent: 2.5 },
-      },
-    });
-
-    // A mistyped correction is shown as wrong and never sent: the TV keeps the last good one.
+    // A length that cannot be right is refused and never sent.
     const sentBefore = calibrate.mock.calls.length;
-    fireEvent.change(popover.getByLabelText("Feinkorrektur (%)"), {
-      target: { value: "-100" },
+    fireEvent.change(popover.getByLabelText("Gemessene Seitenlänge"), {
+      target: { value: "0,01" },
     });
-    expect(
-      popover.getByText("Die Korrektur liegt zwischen −50 und +50 Prozent."),
-    ).toBeTruthy();
+    fireEvent.click(popover.getByRole("button", { name: "Übernehmen" }));
+    expect(popover.getByRole("alert").textContent).toMatch(
+      /kann nicht stimmen/,
+    );
     expect(calibrate.mock.calls.length).toBe(sentBefore);
-    fireEvent.change(popover.getByLabelText("Feinkorrektur (%)"), {
-      target: { value: "2,5" },
+
+    // 720 px measured as 22,86 cm (9 inches): 80 px per inch, cells of 2.5 cm.
+    fireEvent.change(popover.getByLabelText("Gemessene Seitenlänge"), {
+      target: { value: "22,86" },
+    });
+    fireEvent.click(popover.getByRole("button", { name: "Übernehmen" }));
+    await waitFor(() => {
+      expect(calibrate).toHaveBeenLastCalledWith({
+        inchPx: expect.closeTo(80, 6) as number,
+        cellInches: 2.5 / 2.54,
+      });
+    });
+    const stored = JSON.parse(
+      storage.getItem("dm.displayCalibration") ?? "{}",
+    ) as { version: number; displays: Record<string, { inchPx: number }> };
+    expect(stored.version).toBe(2);
+    expect(stored.displays["|3840x2160"]?.inchPx).toBeCloseTo(80);
+
+    // The popover goes away without being closed (a display re-search): the square goes too.
+    fireEvent.click(screen.getByRole("button", { name: "Spieleransicht" }));
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Displays neu suchen" }),
+    );
+    await waitFor(() => {
+      expect(showCheckSquare).toHaveBeenLastCalledWith(null);
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "TV kalibrieren …" }),
+    );
+    await waitFor(() => {
+      expect(showCheckSquare).toHaveBeenLastCalledWith(720);
     });
 
+    // Closing the popover takes the square away; removing the calibration fits the map again.
+    fireEvent.click(screen.getByRole("button", { name: "TV kalibrieren …" }));
+    await waitFor(() => {
+      expect(showCheckSquare).toHaveBeenLastCalledWith(null);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "TV kalibrieren …" }));
     fireEvent.click(
-      popover.getByRole("button", { name: "Kalibrierung entfernen" }),
+      within(screen.getByRole("group", { name: "TV kalibrieren" })).getByRole(
+        "button",
+        { name: "Kalibrierung entfernen" },
+      ),
     );
     await waitFor(() => {
       expect(calibrate).toHaveBeenLastCalledWith(null);
     });
-    expect(
-      popover.getByText("Ohne Kalibrierung zeigt der TV die ganze Karte."),
-    ).toBeTruthy();
   });
 });

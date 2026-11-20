@@ -19,17 +19,17 @@ export const playerViewMessageSchema = z.strictObject({
     z.literal(270),
   ]),
   /**
-   * The TV's calibration (T-106a): its physical pixels per inch and the size of one grid cell in
-   * inches, so minis fit, and whether to show a check square to measure. Absent: the whole map
-   * fits the TV.
+   * The TV's calibration (T-106a/d): its physical pixels per inch and the size of one grid cell in
+   * inches, so minis fit. Absent: the whole map fits the TV.
    */
   scale: z
     .strictObject({
       inchPx: z.number().positive(),
       cellInches: z.number().positive(),
-      checkSquare: z.boolean(),
     })
     .optional(),
+  /** A check square of this many physical pixels for the DM to measure (T-106d). */
+  checkSquarePx: z.number().positive().optional(),
 });
 
 /** How the TV is calibrated (T-106a). */
@@ -38,8 +38,6 @@ export interface PlayerViewScale {
   readonly inchPx: number;
   /** How big one grid cell is on the TV, in inches (the DM's setting, e.g. 1″ or 2.5 cm). */
   readonly cellInches: number;
-  /** Show a square of a few inches to measure on the TV. */
-  readonly checkSquare: boolean;
 }
 
 export interface PlayerViewMessage {
@@ -47,6 +45,7 @@ export interface PlayerViewMessage {
   readonly scene: ViewerScene | null;
   readonly rotation: 0 | 90 | 180 | 270;
   readonly scale?: PlayerViewScale | undefined;
+  readonly checkSquarePx?: number | undefined;
 }
 
 /** Validates a received message; `null` if it is not a valid player-view message. */

@@ -24,14 +24,17 @@ export const de = {
       open: "TV kalibrieren …",
       title: "TV kalibrieren",
       display: "Display: {{name}}",
-      diagonalInvalid: "Gib die Diagonale als Zahl über 0 an, z. B. 55.",
-      correctionInvalid:
-        "Die Korrektur liegt zwischen −{{max}} und +{{max}} Prozent.",
-      diagonal: "Bilddiagonale (Zoll)",
-      correction: "Feinkorrektur (%)",
-      checkSquare: "Prüfquadrat (2 Zoll) auf dem TV zeigen",
+      measure:
+        "Auf dem TV ist ein Quadrat zu sehen. Miss eine Seite mit dem Lineal und trag die Länge ein.",
+      openFirst:
+        "Öffne zuerst die Spieleransicht auf diesem Display – dann erscheint dort das Prüfquadrat.",
+      measured: "Gemessene Seitenlänge",
+      unit: "Einheit der Messung",
+      measuredInvalid:
+        "Diese Länge kann nicht stimmen. Miss eine Seite des Quadrats, z. B. 23,5 cm.",
+      apply: "Übernehmen",
       current:
-        "{{pixels}} Pixel pro Zoll – ein Feld hat die Größe aus den Einstellungen. Miss das Prüfquadrat nach und korrigiere in Prozent.",
+        "Kalibriert: {{pixels}} Pixel pro Zoll – ein Feld hat die Größe aus den Einstellungen.",
       none: "Ohne Kalibrierung zeigt der TV die ganze Karte.",
       remove: "Kalibrierung entfernen",
     },

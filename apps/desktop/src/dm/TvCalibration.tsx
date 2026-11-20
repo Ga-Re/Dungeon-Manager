@@ -1,68 +1,80 @@
 import { IconButton, Popover } from "@dungeon-manager/ui";
 import { Ruler } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  MAX_CORRECTION_PERCENT,
-  isValidCorrection,
-  pixelsPerInch,
+  checkSquareSide,
+  measuredInchPx,
   type Calibration,
+  type CellSize,
   type DisplaySize,
 } from "../display-calibration.js";
 
 /**
- * "TV kalibrieren …" (T-106a, SPEC 2.2; DM decision 2026-11-20): the DM enters the display's
- * diagonal in inches, checks a square on the TV with a ruler and corrects in percent. Without a
+ * "TV kalibrieren …" (T-106d, SPEC 2.2; DM decision 2026-11-20): while it is open the TV shows a
+ * check square; the DM measures one side with a ruler and enters it, which gives the TV's pixels
+ * per inch – the TV then shows one grid cell at the size set in the settings. Without a
  * calibration the TV shows the whole map.
  */
 export function TvCalibration({
   display,
   displayLabel,
+  running,
   calibration,
-  checkSquare,
+  unit,
+  onOpenChange,
   onChange,
-  onCheckSquare,
 }: {
   readonly display: DisplaySize;
-  /** Translated name of the display being calibrated (the TV's while the player view runs). */
+  /** Translated name of the display being calibrated. */
   readonly displayLabel: string;
+  /** The player view runs on `display`, so the check square can show there. */
+  readonly running: boolean;
   readonly calibration: Calibration | null;
-  readonly checkSquare: boolean;
+  /** The unit offered first (the one of the cell size setting). */
+  readonly unit: CellSize["unit"];
+  /** The popover opened or closed: the TV shows the check square while it is open. */
+  readonly onOpenChange: (open: boolean) => void;
   /** A valid calibration, or `null` to remove it. */
   readonly onChange: (calibration: Calibration | null) => void;
-  readonly onCheckSquare: (show: boolean) => void;
 }) {
   const { t, i18n } = useTranslation();
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [diagonal, setDiagonal] = useState(
-    calibration ? String(calibration.diagonalInches) : "",
+  const [measured, setMeasured] = useState("");
+  const [measuredUnit, setMeasuredUnit] = useState(unit);
+  const [invalid, setInvalid] = useState(false);
+  // Gone while open (e.g. another display, a re-search): the TV must not keep the square.
+  const openChanged = useRef(onOpenChange);
+  useEffect(() => {
+    openChanged.current = onOpenChange;
+  });
+  useEffect(
+    () => () => {
+      openChanged.current(false);
+    },
+    [],
   );
-  const [correction, setCorrection] = useState(
-    calibration ? String(calibration.correctionPercent) : "0",
-  );
-  // Commas are what German keyboards type.
-  const number = (text: string) => Number(text.replace(",", "."));
-  const diagonalValue = number(diagonal);
-  const correctionValue = correction.trim() === "" ? 0 : number(correction);
-  const diagonalInvalid =
-    diagonal.trim() !== "" &&
-    !(Number.isFinite(diagonalValue) && diagonalValue > 0);
-  const correctionInvalid = !isValidCorrection(correctionValue);
-  const change = (nextDiagonal: string, nextCorrection: string) => {
-    setDiagonal(nextDiagonal);
-    setCorrection(nextCorrection);
-    const entered = {
-      diagonalInches: number(nextDiagonal),
-      correctionPercent:
-        nextCorrection.trim() === "" ? 0 : number(nextCorrection),
-    };
-    // Only a calibration that gives a usable scale is kept and sent (never a frozen TV).
-    if (nextDiagonal.trim() !== "" && pixelsPerInch(display, entered) !== null)
-      onChange(entered);
+  const toggle = (next: boolean) => {
+    // Each time anew: the unit of the cell size setting, which may have changed meanwhile.
+    if (next) setMeasuredUnit(unit);
+    setOpen(next);
+    onOpenChange(next);
   };
-  const inchPx = calibration ? pixelsPerInch(display, calibration) : null;
+  const apply = () => {
+    // Commas are what German keyboards type.
+    const value = Number(measured.replace(",", "."));
+    const inchPx = measuredInchPx(checkSquareSide(display), {
+      value,
+      unit: measuredUnit,
+    });
+    // Only a length that gives a usable scale is kept and sent (never a frozen TV).
+    setInvalid(inchPx === null);
+    if (inchPx !== null) onChange({ inchPx });
+  };
+  const pixels = (inchPx: number) =>
+    inchPx.toLocaleString(i18n.language, { maximumFractionDigits: 1 });
   return (
     <>
       <IconButton
@@ -73,13 +85,13 @@ export function TvCalibration({
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         onClick={() => {
-          setOpen((current) => !current);
+          toggle(!open);
         }}
       />
       <Popover
         open={open}
         onClose={() => {
-          setOpen(false);
+          toggle(false);
         }}
         anchor={button}
         label={t("dm.calibration.title")}
@@ -89,89 +101,76 @@ export function TvCalibration({
           id={id}
           onSubmit={(event) => {
             event.preventDefault();
+            apply();
           }}
         >
           <fieldset>
             <legend>
               {t("dm.calibration.display", { name: displayLabel })}
             </legend>
-            <label htmlFor={`${id}-diagonal`}>
-              {t("dm.calibration.diagonal")}
+            <p id={`${id}-hint`} className="dm-settings-hint">
+              {running
+                ? t("dm.calibration.measure")
+                : t("dm.calibration.openFirst")}
+            </p>
+            <label htmlFor={`${id}-measured`}>
+              {t("dm.calibration.measured")}
             </label>
             <input
-              id={`${id}-diagonal`}
+              id={`${id}-measured`}
               inputMode="decimal"
-              value={diagonal}
-              aria-invalid={diagonalInvalid || undefined}
+              value={measured}
+              disabled={!running}
+              aria-invalid={invalid || undefined}
               aria-describedby={
-                diagonalInvalid ? `${id}-diagonal-error` : undefined
+                invalid ? `${id}-hint ${id}-error` : `${id}-hint`
               }
               onChange={(event) => {
-                change(event.target.value, correction);
+                setMeasured(event.target.value);
+                setInvalid(false);
               }}
             />
-            {diagonalInvalid && (
-              <p id={`${id}-diagonal-error`} role="alert">
-                {t("dm.calibration.diagonalInvalid")}
-              </p>
-            )}
-            <label htmlFor={`${id}-correction`}>
-              {t("dm.calibration.correction")}
-            </label>
-            <input
-              id={`${id}-correction`}
-              inputMode="decimal"
-              value={correction}
-              aria-invalid={correctionInvalid || undefined}
-              aria-describedby={
-                correctionInvalid ? `${id}-correction-error` : undefined
-              }
+            <label htmlFor={`${id}-unit`}>{t("dm.calibration.unit")}</label>
+            <select
+              id={`${id}-unit`}
+              value={measuredUnit}
+              disabled={!running}
               onChange={(event) => {
-                change(diagonal, event.target.value);
+                setMeasuredUnit(event.target.value === "in" ? "in" : "cm");
               }}
-            />
-            {correctionInvalid && (
-              <p id={`${id}-correction-error`} role="alert">
-                {t("dm.calibration.correctionInvalid", {
-                  max: MAX_CORRECTION_PERCENT,
-                })}
+            >
+              <option value="cm">{t("dm.cellSize.centimetres")}</option>
+              <option value="in">{t("dm.cellSize.inches")}</option>
+            </select>
+            {invalid && (
+              <p id={`${id}-error`} role="alert">
+                {t("dm.calibration.measuredInvalid")}
               </p>
             )}
-            <label>
-              <input
-                type="checkbox"
-                checked={checkSquare}
-                disabled={inchPx === null}
-                onChange={(event) => {
-                  onCheckSquare(event.target.checked);
-                }}
-              />
-              {t("dm.calibration.checkSquare")}
-            </label>
           </fieldset>
           <p role="status">
-            {inchPx === null
-              ? t("dm.calibration.none")
-              : t("dm.calibration.current", {
-                  pixels: inchPx.toLocaleString(i18n.language, {
-                    maximumFractionDigits: 1,
-                  }),
-                })}
+            {calibration
+              ? t("dm.calibration.current", {
+                  pixels: pixels(calibration.inchPx),
+                })
+              : t("dm.calibration.none")}
           </p>
-          {calibration && (
-            <div className="dm-popover-actions">
+          <div className="dm-popover-actions">
+            <button type="submit" disabled={!running || measured.trim() === ""}>
+              {t("dm.calibration.apply")}
+            </button>
+            {calibration && (
               <button
                 type="button"
                 onClick={() => {
-                  setDiagonal("");
-                  setCorrection("0");
+                  setMeasured("");
                   onChange(null);
                 }}
               >
                 {t("dm.calibration.remove")}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </form>
       </Popover>
     </>

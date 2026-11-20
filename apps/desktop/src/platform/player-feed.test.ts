@@ -44,11 +44,19 @@ test("sends the TV's calibration, again when the player window reloads, and leav
       ready = callback;
     },
   );
-  const scale = { inchPx: 80, cellInches: 1, checkSquare: false };
+  const scale = { inchPx: 80, cellInches: 1 };
   feed.calibrate(scale);
+  feed.showCheckSquare(720);
   ready();
-  expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0, scale });
+  expect(sent.at(-1)).toEqual({
+    v: 1,
+    scene: null,
+    rotation: 0,
+    scale,
+    checkSquarePx: 720,
+  });
   feed.calibrate(null);
+  feed.showCheckSquare(null);
   expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0 });
   expect("scale" in (sent.at(-1) ?? {})).toBe(false);
 });

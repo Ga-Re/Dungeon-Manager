@@ -18,7 +18,7 @@ import { TvCalibration } from "./TvCalibration.js";
 import {
   calibrationKey,
   cellInches,
-  pixelsPerInch,
+  checkSquareSide,
   readCalibrations,
   readCellSize,
   saveCalibration,
@@ -69,7 +69,8 @@ export function DmApp({
   const [calibrations, setCalibrations] = useState(() =>
     readCalibrations(storage),
   );
-  const [checkSquare, setCheckSquare] = useState(false);
+  // The calibration popover is open: the TV shows the check square to measure (T-106d).
+  const [measuring, setMeasuring] = useState(false);
   // How big one cell is on the TV (DM, 2026-11-20): 1 inch by default, or in centimetres.
   const [cellSize, setCellSize] = useState<CellSize>(() =>
     readCellSize(storage),
@@ -82,18 +83,16 @@ export function DmApp({
     saveCellSize(storage, next);
   };
   const [tvDisplay, setTvDisplay] = useState<Display | null>(null);
-  const tvCalibration = tvDisplay
-    ? calibrations[calibrationKey(tvDisplay)]
-    : undefined;
-  const tvInchPx =
-    tvDisplay && tvCalibration ? pixelsPerInch(tvDisplay, tvCalibration) : null;
+  const tvInchPx = tvDisplay
+    ? (calibrations[calibrationKey(tvDisplay)]?.inchPx ?? null)
+    : null;
   useEffect(() => {
     playerFeed?.calibrate(
       tvInchPx === null
         ? null
-        : { inchPx: tvInchPx, cellInches: cellInches(cellSize), checkSquare },
+        : { inchPx: tvInchPx, cellInches: cellInches(cellSize) },
     );
-  }, [playerFeed, tvInchPx, checkSquare, cellSize]);
+  }, [playerFeed, tvInchPx, cellSize]);
 
   // Players sit around the table; the TV view turns in quarter steps (SPEC 2.2).
   const rotateTv = () => {
@@ -138,6 +137,15 @@ export function DmApp({
     (state.status === "ready" &&
       state.displays.find((display) => display.id === tvDisplay?.id)) ||
     selectedDisplay;
+  // The square the TV shows while the DM measures: from the same display entry the popover
+  // computes with, and only on the display the player view runs on.
+  const checkSquarePx =
+    measuring && calibrated && tvDisplay?.id === calibrated.id
+      ? checkSquareSide(calibrated)
+      : null;
+  useEffect(() => {
+    playerFeed?.showCheckSquare(checkSquarePx);
+  }, [playerFeed, checkSquarePx]);
   const displayName = (display: Display, index: number) =>
     display.name ?? t("dm.unnamedDisplay", { number: index + 1 });
 
@@ -234,10 +242,12 @@ export function DmApp({
                       calibrated,
                       state.displays.indexOf(calibrated),
                     )}
+                    running={tvDisplay?.id === calibrated.id}
                     calibration={
                       calibrations[calibrationKey(calibrated)] ?? null
                     }
-                    checkSquare={checkSquare}
+                    unit={cellSize.unit}
+                    onOpenChange={setMeasuring}
                     onChange={(next) => {
                       saveCalibration(
                         storage,
@@ -246,7 +256,6 @@ export function DmApp({
                       );
                       setCalibrations(readCalibrations(storage));
                     }}
-                    onCheckSquare={setCheckSquare}
                   />
                 )}
               </>
