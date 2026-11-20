@@ -39,14 +39,60 @@ export type LoadResult<T> =
       readonly reason: "path" | "json" | "schema" | MigrationErrorReason;
     };
 
+/**
+ * Version 1 allowed capitals in ids and so in file names (T-119). A case-insensitive file system
+ * (macOS, Windows) finds `Turm.json` under `turm.json` anyway; a case-sensitive one (Linux) does
+ * not, so a missing file is looked up again among the names in its folder, ignoring case.
+ * @returns the file and, if found under another name, that name's path
+ */
+async function readIgnoringCase(
+  fs: FileSystem,
+  path: string,
+): Promise<{ file: ReadResult; legacyPath: string | null }> {
+  const file = await fs.read(path);
+  if (file.kind !== "missing") return { file, legacyPath: null };
+  const slash = path.lastIndexOf("/");
+  const name = path.slice(slash + 1);
+  const entries = (await fs.list(path.slice(0, slash))) ?? [];
+  const legacy = entries.find(
+    (entry) =>
+      entry.kind === "file" &&
+      entry.name !== name &&
+      entry.name.toLowerCase() === name,
+  );
+  if (!legacy) return { file, legacyPath: null };
+  const legacyPath = `${path.slice(0, slash)}/${legacy.name}`;
+  return { file: await fs.read(legacyPath), legacyPath };
+}
+
+/**
+ * Moves a document found under a version 1 name to its lowercase name: written there first, the
+ * old file then goes to the trash. If either step fails, the document still loads from the old
+ * name next time, so the failure is not reported.
+ */
+async function moveToLowercaseName(
+  fs: FileSystem,
+  path: string,
+  legacyPath: string,
+  value: unknown,
+): Promise<void> {
+  try {
+    await fs.writeAtomic(path, serialize(value));
+    await fs.moveToTrash(legacyPath);
+  } catch {
+    // See above: the old name keeps working.
+  }
+}
+
 async function loadDocument<T>(
   fs: FileSystem,
   path: string,
   type: DocumentType<T>,
 ): Promise<LoadResult<T>> {
   let file: ReadResult;
+  let legacyPath: string | null;
   try {
-    file = await fs.read(path);
+    ({ file, legacyPath } = await readIgnoringCase(fs, path));
   } catch {
     return { status: "unreadable" };
   }
@@ -58,14 +104,18 @@ async function loadDocument<T>(
   } catch {
     return { status: "invalid", reason: "json" };
   }
+  let value: T;
   try {
-    return { status: "ok", value: migrateDocument(json, type) };
+    value = migrateDocument(json, type);
   } catch (error) {
     return {
       status: "invalid",
       reason: error instanceof MigrationError ? error.reason : "schema",
     };
   }
+  if (legacyPath !== null)
+    await moveToLowercaseName(fs, path, legacyPath, value);
+  return { status: "ok", value };
 }
 
 /** JSON as stored in the library: readable diffs for sync clients, trailing newline. */
@@ -131,13 +181,17 @@ async function isConfirmedCopy(
   conflict: ConflictCopy,
   idInFile: (id: string) => Promise<string | null>,
 ): Promise<boolean> {
-  const id = conflict.copy.slice(0, -".json".length);
+  // Ids are lowercase since T-119; a version 1 name is found under its lowercase id.
+  const id = conflict.copy.slice(0, -".json".length).toLowerCase();
   if (conflict.provider !== "OneDrive" || !isValidFileId(id)) return true;
   const stored = await idInFile(id);
   return stored !== null && stored !== id;
 }
 
-/** Document ids (`<id>.json`) in a folder, plus conflict copies found next to them. */
+/**
+ * Document ids (`<id>.json`) in a folder, plus conflict copies found next to them. Version 1 names
+ * with capitals are listed under their lowercase id, once (T-119).
+ */
 async function listDocumentIds(
   fs: FileSystem,
   directory: string,
@@ -155,10 +209,9 @@ async function listDocumentIds(
   const copies = new Set(conflicts.map((conflict) => conflict.copy));
   const ids = names
     .filter((name) => name.endsWith(".json") && !copies.has(name))
-    .map((name) => name.slice(0, -".json".length))
-    .filter(isValidFileId)
-    .sort();
-  return { ids, conflicts };
+    .map((name) => name.slice(0, -".json".length).toLowerCase())
+    .filter(isValidFileId);
+  return { ids: [...new Set(ids)].sort(), conflicts };
 }
 
 /**

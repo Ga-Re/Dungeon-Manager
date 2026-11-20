@@ -22,7 +22,9 @@ export type MigrationErrorReason =
   | "invalidVersion"
   | "newerVersion"
   | "missingMigration"
-  | "invalidMigration";
+  | "invalidMigration"
+  /** Two ids differ only in case and would become one when lowercased (T-119). */
+  | "idCollision";
 
 /** A document that cannot be brought to the latest version. */
 export class MigrationError extends Error {

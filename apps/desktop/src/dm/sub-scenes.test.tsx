@@ -13,7 +13,7 @@ import { fakeLibraryService } from "./fake-library.test-data.js";
 
 const sceneFile = (id: string, name: string, parentSceneId?: string) =>
   JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id,
     name,
     map: null,
@@ -195,7 +195,7 @@ describe("sub-scenes (T-152)", () => {
         "burg",
       ),
       "campaigns/mine/sessions/abend.json": JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         id: "abend",
         name: "Abend",
         sceneIds: ["keller"],

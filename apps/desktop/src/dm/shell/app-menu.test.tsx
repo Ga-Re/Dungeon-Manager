@@ -19,7 +19,7 @@ import { memoryStorage } from "../memory-storage.test-data.js";
 import { DmShell } from "./DmShell.js";
 
 const campaign = JSON.stringify({
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "c1",
   name: "Die verlorene Mine",
   players: [],

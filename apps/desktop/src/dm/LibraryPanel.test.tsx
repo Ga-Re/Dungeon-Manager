@@ -8,7 +8,7 @@ import { LibraryPanel } from "./LibraryPanel.js";
 
 const campaignFile = (name: string) =>
   JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: "c1",
     name,
     players: [],

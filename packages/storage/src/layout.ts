@@ -27,8 +27,8 @@ export function isValidSlug(slug: string): boolean {
 }
 
 /**
- * Entity ids usable as file names: `idSchema` minus Windows device names. Ids differing only
- * in case still collide on case-insensitive file systems (T-119).
+ * Entity ids usable as file names: `idSchema` minus Windows device names. Ids are lowercase
+ * (T-119), so two ids never name the same file on a case-insensitive file system.
  */
 export function isValidFileId(id: string): boolean {
   return idSchema.safeParse(id).success && !WINDOWS_RESERVED.test(id);

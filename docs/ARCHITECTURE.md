@@ -127,7 +127,7 @@ apply(state: SessionState, command: Command, ctx: Ctx): { state: SessionState; e
 
 Coordinates: grid cells (integer `col,row`) for game logic; map pixels for rendering. Conversion lives in `core`.
 
-The entities are zod schemas in `packages/schema`. Only the files carry `schemaVersion` – `campaign.json`, one file per scene (version 1 since T-101) and one sidecar per library file (ADR-0012); the other entities are embedded in them.
+The entities are zod schemas in `packages/schema`. Only the files carry `schemaVersion` – `campaign.json`, one file per scene and one per session (version 2 since T-119: lowercase ids) and one sidecar per library file (ADR-0012); the other entities are embedded in them.
 
 A scene references its map (ADR-0012) and keeps overrides by element id; `core` resolves the effective map with a pure `resolveMap(sidecar, overrides)` that renderer, vision and `projectForViewer` all use. Overrides whose target id no longer exists stay stored, are inactive and are reported as orphaned. Grid and scale are never overridden per scene. A global edit reaches a scene that is live on the TV only after the DM confirms it. Unknown fields are kept on round-trip, documents from a newer app version are refused instead of downgraded, and older ones are migrated step by step (`migrateDocument`).
 
@@ -171,6 +171,7 @@ Notes (T-161): every campaign, session and scene has a fixed Markdown note in `n
 
 - **One file per entity.** Never a single database file in the sync folder.
 - Every JSON file has `schemaVersion`. Reading runs migrations in `schema`; writing always uses the latest version.
+- **Ids are lowercase** (`a–z`, digits, `-`, `_`; T-119) because they name files, and `Scene-1.json` and `scene-1.json` are one file on macOS and Windows. Version 1 files may hold capitals: the migration to version 2 lowercases every id and every reference the same way and refuses a document in which two ids differ only in case. A version 1 file name with capitals is listed under its lowercase id; on a case-sensitive file system (Linux) it is found ignoring case and moved to the lowercase name on load, the old file going to the trash. Own notes (`notes/scenes/<id>.md`) of such a scene are not renamed.
 - Asset references are **relative paths from the library root** plus a content hash, so moved/renamed files can be re-linked.
 - Writes are atomic: write to `*.tmp`, then rename.
 - **Conflict detection:** recognise conflict copies of common providers (e.g. `name (conflicted copy …)`, `name (1)`, `name-DESKTOP-XXXX`) and offer a diff/merge UI. Never silently delete either version.

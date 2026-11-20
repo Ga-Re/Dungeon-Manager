@@ -6,7 +6,7 @@ import { describeItem, type DetailsData } from "./details.js";
 const t = createI18n("de").t;
 
 const scene = (id: string, name: string): Scene => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   id,
   name,
   map: null,
@@ -25,7 +25,7 @@ const data: DetailsData = {
     {
       id: "s1",
       session: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         id: "s1",
         name: "Session 1",
         date: "2026-11-28",

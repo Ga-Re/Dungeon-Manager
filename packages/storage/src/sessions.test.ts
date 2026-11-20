@@ -12,7 +12,7 @@ import {
 } from "./index.js";
 
 const session: Session = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "s-1",
   name: "Session 1",
   sceneIds: ["a", "b"],
@@ -77,7 +77,7 @@ describe("session files (T-160)", () => {
       date: "2026-12-05",
     });
     expect(created).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: "s-2",
       name: "Session 2",
       date: "2026-12-05",

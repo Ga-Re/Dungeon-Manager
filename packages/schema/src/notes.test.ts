@@ -37,14 +37,14 @@ describe("note links (T-161)", () => {
 
   it("is an optional list on campaign, session and scene files", () => {
     const campaign = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: "c",
       name: "Mine",
       players: [],
       visibilityDefaults: {},
     };
     const scene = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       id: "s",
       name: "Höhle",
       map: null,
@@ -52,7 +52,7 @@ describe("note links (T-161)", () => {
       fog: { levels: {} },
       initiative: null,
     };
-    const session = { schemaVersion: 1, id: "x", name: "S", sceneIds: [] };
+    const session = { schemaVersion: 2, id: "x", name: "S", sceneIds: [] };
     for (const [schema, doc] of [
       [campaignSchema, campaign],
       [sceneSchema, scene],

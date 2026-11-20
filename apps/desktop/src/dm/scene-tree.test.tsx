@@ -8,7 +8,7 @@ const i18n = createI18n("de");
 const hash = `sha256:${"a".repeat(64)}`;
 
 const scene = (levels: number, table?: Scene["table"]): Scene => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "s",
   name: "Turm",
   map: {

@@ -8,17 +8,23 @@ import {
   tokenSchema,
   visibilityRulesSchema,
 } from "./entities.js";
+import {
+  campaignToVersion2,
+  sceneToVersion2,
+  sessionToVersion2,
+} from "./lowercase-ids.js";
 import type { DocumentType } from "./migrate.js";
 
 // Documents are the JSON files in the library (ARCHITECTURE §6.2): `campaign.json` and one file
 // per scene. Only documents carry `schemaVersion`; the entities above are embedded in them.
+// Version 2 of each (T-119): ids are lowercase.
 
 /** Current version of `campaign.json`. */
-export const CAMPAIGN_VERSION = 1;
+export const CAMPAIGN_VERSION = 2;
 /** Current version of a scene file. */
-export const SCENE_VERSION = 1;
+export const SCENE_VERSION = 2;
 /** Current version of a session file. */
-export const SESSION_VERSION = 1;
+export const SESSION_VERSION = 2;
 
 /** `campaigns/<slug>/campaign.json`. */
 export const campaignSchema = z.looseObject({
@@ -92,19 +98,19 @@ export type Session = z.infer<typeof sessionSchema>;
 export const campaignDocument: DocumentType<Campaign> = {
   schema: campaignSchema,
   latestVersion: CAMPAIGN_VERSION,
-  migrations: [],
+  migrations: [campaignToVersion2],
 };
 
 /** Reading a scene file: migrations from older versions, then validation. */
 export const sceneDocument: DocumentType<Scene> = {
   schema: sceneSchema,
   latestVersion: SCENE_VERSION,
-  migrations: [],
+  migrations: [sceneToVersion2],
 };
 
 /** Reading a session file: migrations from older versions, then validation. */
 export const sessionDocument: DocumentType<Session> = {
   schema: sessionSchema,
   latestVersion: SESSION_VERSION,
-  migrations: [],
+  migrations: [sessionToVersion2],
 };

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { sceneSchema } from "./documents.js";
 
 const scene = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "kammer",
   name: "Geheimkammer",
   map: null,

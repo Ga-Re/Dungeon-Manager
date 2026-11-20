@@ -181,11 +181,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-119 Case-insensitive id collisions in file names
 
-- **Status:** todo · **Depends on:** T-103a · **Refs:** ARCHITECTURE §6, ADR-0005
+- **Status:** done · **Depends on:** T-103a · **Refs:** ARCHITECTURE §6, ADR-0005
 - Ids allow mixed case (`idSchema`), and scenes are stored as `<id>.json`. On the default macOS/Windows file systems `Scene-1` and `scene-1` are the same file, so saving one overwrites the other.
 - **Acceptance criteria**
-  - [ ] Two entities whose ids differ only in case can never overwrite each other's files (e.g. lowercase ids, or collision check on save)
-- **Notes:** From the T-103a review. Touches the id scheme in `schema` (v1 unreleased) – ask the DM which option before implementing.
+  - [x] Two entities whose ids differ only in case can never overwrite each other's files (e.g. lowercase ids, or collision check on save)
+- **Notes:** From the T-103a review. DM decision (2026-11-20): lowercase ids only. Campaign, scene and session files are version 2; the migration lowercases ids and references and refuses ids that differ only in case. Version 1 names with capitals are found ignoring case and moved to the lowercase name (ARCHITECTURE §6.3).
 
 ### T-103a Storage package: layout, documents, conflict copies
 
@@ -780,7 +780,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - Versioned zod schema for `<file>.dm.json` (metadata, scale, levels, rooms; walls/doors/lights/blockers/variants reserved for stage 5, all with stable ids); storage reads, watches and writes sidecars atomically, incl. conflict copies and placeholders; scenes reference the map and keep overrides by element id; pure `resolveMap(sidecar, overrides)` in `core` with orphan detection.
 - **Acceptance criteria**
   - [ ] A missing sidecar yields defaults; the first edit creates it
-  - [ ] Scene schema v2: migration `map → { asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v1 fixtures)
+  - [ ] Scene schema v3: migration `map → { asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures)
   - [ ] `resolveMap` applies overrides and reports orphaned ones (unit tests ≥ 80 %)
   - [ ] A level still used by scenes cannot be deleted, only archived; fog, tokens and released levels stay resolvable
   - [ ] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open

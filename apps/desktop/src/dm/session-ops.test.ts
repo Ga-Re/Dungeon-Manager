@@ -5,7 +5,7 @@ import { addScene, moveScene, removeScene } from "./session-ops.js";
 import { noteNodeId, parseTreeId, sceneNodeId } from "./tree-ids.js";
 
 const session: Session = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   id: "s",
   name: "Session 1",
   sceneIds: ["a", "b", "c"],

@@ -9,13 +9,17 @@ import { z } from "zod";
 
 /**
  * Stable identifier of an entity, unique within its campaign. Restricted to characters that are
- * safe in file names, because storage derives names such as `scenes/<id>.json` from it.
+ * safe in file names, because storage derives names such as `scenes/<id>.json` from it, and
+ * lowercase, because `Scene-1.json` and `scene-1.json` are one file on macOS and Windows (T-119).
  * Ids are generated and opaque (random) – never derived from names: projections send ids to
  * players even when a name is hidden.
  */
 export const idSchema = z
   .string()
-  .regex(/^[A-Za-z0-9_-]{1,64}$/, "must be 1–64 letters, digits, '-' or '_'");
+  .regex(
+    /^[a-z0-9_-]{1,64}$/,
+    "must be 1–64 lowercase letters, digits, '-' or '_'",
+  );
 
 /** A grid cell in game coordinates (ARCHITECTURE §5.2); map pixels are a rendering concern. */
 export const gridCellSchema = z.looseObject({
