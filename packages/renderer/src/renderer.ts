@@ -67,13 +67,23 @@ export interface GridLines {
   readonly alpha?: number;
 }
 
-/** The x (or y) positions of grid lines across `length` map pixels. */
+/**
+ * Most grid lines drawn per axis: more would freeze the view (a sidecar with a tiny cell size)
+ * and could not be told apart on screen anyway.
+ */
+export const MAX_GRID_LINES = 2000;
+
+/**
+ * The x (or y) positions of grid lines across `length` map pixels; none when there would be
+ * more than {@link MAX_GRID_LINES}.
+ */
 export function gridLinePositions(
   length: number,
   cellSizePx: number,
   offsetPx: number,
 ): number[] {
   if (!(cellSizePx > 0) || !(length > 0)) return [];
+  if (length / cellSizePx > MAX_GRID_LINES) return [];
   const positions: number[] = [];
   // The first line inside the map: the offset moved back by whole cells.
   const first = offsetPx - Math.floor(offsetPx / cellSizePx) * cellSizePx;
@@ -146,6 +156,9 @@ export async function createRenderer(
   const gridLayer = new Graphics();
   world.addChild(gridLayer);
   let gridInput: GridLines | null = null;
+  // What the drawn lines were built from: an equal request (the player view gets the whole
+  // state with every message) keeps them instead of rebuilding.
+  let gridBuiltFrom: string | null = null;
   let map: Sprite | null = null;
   let fog: Container | null = null;
   // The last fog asked for: rebuilt when the map changes, as soft edges follow the map's size.
@@ -211,6 +224,9 @@ export async function createRenderer(
   options.canvas.addEventListener("webglcontextrestored", onContextRestored);
 
   const drawGrid = () => {
+    const key = JSON.stringify([gridInput, mapSize]);
+    if (key === gridBuiltFrom) return;
+    gridBuiltFrom = key;
     gridLayer.clear();
     if (!gridInput || !mapSize) return;
     const { cellSizePx, offsetXPx, offsetYPx } = gridInput;
@@ -440,8 +456,11 @@ export async function createRenderer(
     destroy() {
       destroyed = true;
       dropFade();
-      // The fog's graphics contexts too, as on every rebuild.
+      // The fog's graphics contexts too, as on every rebuild; and the grid's (Pixi keeps a
+      // Graphics' own context when destroyed with options).
       replaceFog(null);
+      world.removeChild(gridLayer);
+      gridLayer.destroy({ context: true });
       gate.destroyed();
       hideVideo();
       video?.removeEventListener("resize", onVideoResize);

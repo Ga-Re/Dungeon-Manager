@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { gridLinePositions } from "./renderer.js";
+import { MAX_GRID_LINES, gridLinePositions } from "./renderer.js";
 
 // Grid lines (T-106b): where they lie on the map, from the sidecar's calibration.
 
@@ -16,5 +16,12 @@ describe("grid line positions", () => {
     expect(gridLinePositions(300, 0, 0)).toEqual([]);
     expect(gridLinePositions(300, -5, 0)).toEqual([]);
     expect(gridLinePositions(0, 100, 0)).toEqual([]);
+  });
+
+  test("are none when there would be too many to draw (a tiny cell size)", () => {
+    expect(gridLinePositions(10_000, 10_000 / MAX_GRID_LINES, 0)).toHaveLength(
+      MAX_GRID_LINES + 1,
+    );
+    expect(gridLinePositions(10_000, 1, 0)).toEqual([]);
   });
 });

@@ -95,6 +95,8 @@ async function failClosedScenario(canvas: HTMLCanvasElement) {
   renderer.setCamera(cameraFor("zoomed"));
   await renderer.drawn();
   const hard = capture(canvas);
+  // With grid lines too (T-106b): they lie under the fog, so none may show where it covers.
+  renderer.setGrid({ cellSizePx: 100, offsetXPx: 50, offsetYPx: 0 });
   renderer.setFog(REVEALED_NESTED, { opacity: 1, softEdge: SOFT_EDGE });
   await renderer.drawn();
   const soft = capture(canvas);
