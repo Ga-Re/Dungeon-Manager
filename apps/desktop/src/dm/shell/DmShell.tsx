@@ -626,12 +626,18 @@ export function DmShell({
       if (!panels || !entry) return;
       // One message for the whole switch, not one per panel dockview rebuilds.
       quiet.current = true;
+      let used: boolean;
       try {
-        restoreLayout(panels, entry.layout, titles);
+        used = restoreLayout(panels, entry.layout, titles);
       } finally {
         quiet.current = false;
       }
-      announce(t("shell.namedLayouts.applied", { name: entry.name }));
+      // A layout dockview cannot use (e.g. one without any panel) gives the default instead.
+      announce(
+        t(used ? "shell.namedLayouts.applied" : "shell.namedLayouts.unusable", {
+          name: entry.name,
+        }),
+      );
     },
     [namedLayouts, panels, titles, announce, t],
   );
@@ -862,7 +868,15 @@ export function DmShell({
             onSave={saveCurrentLayout}
             onApply={applyNamedLayout}
             onRename={(id, name) => {
+              const before = namedLayouts.find((each) => each.id === id);
               changeNamedLayouts(renameNamedLayout(namedLayouts, id, name));
+              if (before)
+                announce(
+                  t("shell.namedLayouts.renamed", {
+                    before: before.name,
+                    name: name.trim(),
+                  }),
+                );
             }}
             onRemove={(id) => {
               const entry = namedLayouts.find((each) => each.id === id);

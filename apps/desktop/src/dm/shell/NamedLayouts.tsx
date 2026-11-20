@@ -132,6 +132,16 @@ function LayoutRow({
             return Promise.resolve(found === null);
           }}
         />
+        {/* Escape closes the whole settings dialog; this ends renaming only. */}
+        <button
+          type="button"
+          onClick={() => {
+            setProblem(null);
+            setRenaming(false);
+          }}
+        >
+          {t("shell.namedLayouts.cancel")}
+        </button>
         {problem !== null && <p role="alert">{problem}</p>}
       </li>
     );

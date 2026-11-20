@@ -306,6 +306,7 @@ export const de = {
       apply: "Anwenden",
       rename: "Umbenennen",
       renameConfirm: "Umbenennen",
+      cancel: "Abbrechen",
       remove: "Löschen",
       applyNamed: "{{name}} anwenden",
       renameNamed: "{{name}} umbenennen",
@@ -314,6 +315,9 @@ export const de = {
       saved: "Layout „{{name}}“ gespeichert",
       applied: "Layout „{{name}}“ angewendet",
       removed: "Layout „{{name}}“ gelöscht",
+      renamed: "Layout „{{before}}“ heißt jetzt „{{name}}“",
+      unusable:
+        "Layout „{{name}}“ ließ sich nicht anwenden – das Standardlayout gilt",
       problem: {
         empty: "Gib dem Layout einen Namen.",
         tooLong: "Der Name ist zu lang (höchstens {{max}} Zeichen).",

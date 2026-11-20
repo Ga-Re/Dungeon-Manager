@@ -28,6 +28,8 @@ function readAll(storage: Storage | undefined): Record<string, unknown> {
     const raw = storage?.getItem(STORAGE_KEY);
     if (!raw) return {};
     const stored: unknown = JSON.parse(raw);
+    // Another version (e.g. from a newer build) is dropped as a whole: these are device
+    // preferences, and the next save starts over.
     if (!isRecord(stored) || stored["version"] !== VERSION) return {};
     const workspaces = stored["workspaces"];
     return isRecord(workspaces) ? workspaces : {};

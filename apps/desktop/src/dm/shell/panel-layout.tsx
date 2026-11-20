@@ -214,13 +214,13 @@ export function saveLayout(
 /**
  * Restores the stored layout, or builds the default when there is none or it cannot be read
  * (anything dockview refuses counts as none). Panels the stored layout does not name were
- * hidden on purpose and stay hidden.
+ * hidden on purpose and stay hidden. Returns whether the stored layout was used.
  */
 export function restoreLayout(
   api: DockviewApi,
   stored: unknown,
   titles: Readonly<Record<PanelId, string>>,
-): void {
+): boolean {
   if (stored !== null) {
     try {
       api.fromJSON(stored as Parameters<DockviewApi["fromJSON"]>[0]);
@@ -232,12 +232,13 @@ export function restoreLayout(
         const group = api.getGroup(id);
         if (group) fold(group, remToPixels(UNFOLD_HEIGHT_REM));
       }
-      if (api.panels.length > 0) return;
+      if (api.panels.length > 0) return true;
     } catch (error) {
       console.error("The stored panel layout cannot be used.", error);
     }
   }
   buildDefaultLayout(api, titles);
+  return false;
 }
 
 /**

@@ -294,7 +294,7 @@ export const en: Messages = {
     },
     namedLayouts: {
       label: "Saved layouts",
-      hint: "Apply to the {{workspace}} workspace on this device.",
+      hint: "These apply to the {{workspace}} workspace on this device.",
       none: "No layouts saved yet.",
       name: "Layout name",
       saveAs: "Save current layout",
@@ -304,6 +304,7 @@ export const en: Messages = {
       apply: "Apply",
       rename: "Rename",
       renameConfirm: "Rename",
+      cancel: "Cancel",
       remove: "Delete",
       applyNamed: "Apply {{name}}",
       renameNamed: "Rename {{name}}",
@@ -312,6 +313,8 @@ export const en: Messages = {
       saved: "Layout “{{name}}” saved",
       applied: "Layout “{{name}}” applied",
       removed: "Layout “{{name}}” deleted",
+      renamed: "Layout “{{before}}” is now “{{name}}”",
+      unusable: "Layout “{{name}}” could not be applied – the default applies",
       problem: {
         empty: "Give the layout a name.",
         tooLong: "The name is too long (at most {{max}} characters).",

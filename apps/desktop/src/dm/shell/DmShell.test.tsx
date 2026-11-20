@@ -558,6 +558,15 @@ describe("DmShell", () => {
       fireEvent.change(field, { target: { value: "Patrouille" } });
       await submit(settings.getByRole("button", { name: "Umbenennen" }));
       expect(settings.getByText("Patrouille")).toBeTruthy();
+      expect(
+        await screen.findByText("Layout „Erkundung“ heißt jetzt „Patrouille“"),
+      ).toBeTruthy();
+      // Renaming can be left without a change.
+      fireEvent.click(
+        settings.getByRole("button", { name: "Patrouille umbenennen" }),
+      );
+      fireEvent.click(settings.getByRole("button", { name: "Abbrechen" }));
+      expect(settings.queryByDisplayValue("Patrouille")).toBeNull();
       // The keyboard stays on the row it renamed.
       expect(document.activeElement).toBe(
         settings.getByRole("button", { name: "Patrouille umbenennen" }),
