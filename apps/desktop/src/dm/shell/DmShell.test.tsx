@@ -115,6 +115,18 @@ describe("DmShell", () => {
     ).toBe("true");
   });
 
+  it("opens a workspace remembered under its name before T-171", () => {
+    const storage = memoryStorage();
+    storage.setItem("dm.workspace", "assetStudio");
+    setup(storage);
+    expect(workspaceMenu().textContent).toBe("Asset Vault");
+    expect(
+      screen.getByText(
+        "Hier verwaltest du bald Requisiten, Handouts und Sounds.",
+      ),
+    ).toBeTruthy();
+  });
+
   it("starts in the workspace last used on this device", () => {
     const storage = memoryStorage();
     storage.setItem("dm.workspace", "campaignAtlas");

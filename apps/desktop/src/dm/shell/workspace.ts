@@ -35,7 +35,7 @@ export function readWorkspace(storage: Storage | undefined): Workspace {
   try {
     const value = storage?.getItem(STORAGE_KEY);
     if (isWorkspace(value)) return value;
-    return (value != null && RENAMED.get(value)) || DEFAULT_WORKSPACE;
+    return RENAMED.get(value ?? "") ?? DEFAULT_WORKSPACE;
   } catch {
     return DEFAULT_WORKSPACE;
   }

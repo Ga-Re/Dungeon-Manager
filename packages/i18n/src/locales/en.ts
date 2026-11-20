@@ -315,7 +315,7 @@ export const en: Messages = {
       assetVault: "Asset Vault",
       creatures: "Tokens & Creatures",
       campaignAtlas: "Campaign Atlas",
-      gameOrchestrator: "Game Orchestrator",
+      gameOrchestrator: "Game-Orchestrator",
       coming: {
         mapForge: "Editing your maps comes here soon.",
         assetVault: "Managing props, handouts and sounds comes here soon.",

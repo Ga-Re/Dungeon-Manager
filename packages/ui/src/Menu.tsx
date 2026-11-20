@@ -9,7 +9,7 @@ export interface MenuProps {
   label: string;
   /**
    * Translated name of the open menu, where the button shows the current choice instead (the
-   * workspace selector: "Arbeitsbereich" for a button saying "Game Mode"). `label` otherwise.
+   * workspace selector: "Arbeitsbereich" for a button saying "Game-Orchestrator"). `label` otherwise.
    */
   menuLabel?: string | undefined;
   items: readonly MenuItem[];
