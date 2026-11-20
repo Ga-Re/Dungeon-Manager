@@ -8,9 +8,13 @@ export interface RecentCampaign {
   readonly slug: string;
   /** Its name when last opened, shown even if the campaign is gone now. */
   readonly name: string;
-  /** The scene open last, opened again with the campaign. */
+  /** The scene last on the TV, opened again with the campaign. */
   readonly sceneId: string | null;
   readonly sceneName: string | null;
+  /** The open scene tabs, in order (T-114a); missing in entries from before. */
+  readonly openSceneIds?: readonly string[];
+  /** The tab shown last (T-114a). */
+  readonly activeSceneId?: string | null;
   /** When it was last opened (ISO 8601). */
   readonly openedAt: string;
 }
@@ -41,7 +45,12 @@ function isRecent(value: unknown): value is RecentCampaign {
     isText(entry["name"]) &&
     isTextOrNull(entry["sceneId"]) &&
     isTextOrNull(entry["sceneName"]) &&
-    isText(entry["openedAt"])
+    isText(entry["openedAt"]) &&
+    (entry["openSceneIds"] === undefined ||
+      (Array.isArray(entry["openSceneIds"]) &&
+        entry["openSceneIds"].every(isText))) &&
+    (entry["activeSceneId"] === undefined ||
+      isTextOrNull(entry["activeSceneId"]))
   );
 }
 
@@ -82,6 +91,10 @@ export function recordCampaign(
     name: campaign.name,
     sceneId: previous?.sceneId ?? null,
     sceneName: previous?.sceneName ?? null,
+    ...(previous?.openSceneIds && { openSceneIds: previous.openSceneIds }),
+    ...(previous?.activeSceneId !== undefined && {
+      activeSceneId: previous.activeSceneId,
+    }),
     openedAt: now.toISOString(),
   };
   return [entry, ...list.filter((each) => !isSame(each, campaign))].slice(
@@ -123,4 +136,23 @@ export function recentIn(
   root: string,
 ): RecentCampaign[] {
   return list.filter((entry) => entry.root === root);
+}
+
+/** Remembers the open scene tabs of a listed campaign (T-114a); other lists stay as they are. */
+export function recordTabs(
+  list: readonly RecentCampaign[],
+  campaign: CampaignRef,
+  tabs: { readonly open: readonly string[]; readonly active: string | null },
+  now: Date,
+): RecentCampaign[] {
+  return list.map((entry) =>
+    isSame(entry, campaign)
+      ? {
+          ...entry,
+          openSceneIds: tabs.open,
+          activeSceneId: tabs.active,
+          openedAt: now.toISOString(),
+        }
+      : entry,
+  );
 }

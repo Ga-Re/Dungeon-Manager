@@ -5,6 +5,7 @@ import {
   closeSceneTabs,
   openSceneTab,
   replaceSceneTab,
+  restoreSceneTabs,
   selectSceneTab,
   sendSceneTabToTv,
 } from "./scene-tabs.js";
@@ -74,5 +75,28 @@ describe("scene tabs (T-223a)", () => {
   it("replace an open scene by its newer state", () => {
     const renamed = replaceSceneTab(three, { ...scene("b"), name: "Gruft" });
     expect(renamed.open[1]?.name).toBe("Gruft");
+  });
+
+  it("restore the remembered tabs that still exist (T-114a)", () => {
+    const scenes = [scene("a"), scene("b"), scene("c")];
+    const restored = restoreSceneTabs(scenes, {
+      open: ["c", "gone", "a"],
+      active: "a",
+      tv: "c",
+    });
+    expect(ids(restored)).toEqual(["c", "a"]);
+    expect(restored.active).toBe("a");
+    expect(restored.tv).toBe("c");
+    // After a crash the TV stays dark; a gone shown tab falls back to the last one.
+    const afterCrash = restoreSceneTabs(scenes, {
+      open: ["a", "b"],
+      active: "gone",
+      tv: null,
+    });
+    expect(afterCrash.active).toBe("b");
+    expect(afterCrash.tv).toBeNull();
+    expect(
+      restoreSceneTabs(scenes, { open: ["a"], active: null, tv: "gone" }).tv,
+    ).toBeNull();
   });
 });

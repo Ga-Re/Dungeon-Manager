@@ -13,6 +13,7 @@ import "@dungeon-manager/ui/styles/tokens.css";
 import "@dungeon-manager/ui/styles/components.css";
 import "../dm.css";
 import { DmApp } from "./DmApp.js";
+import { endSession, startSession } from "./crash-marker.js";
 import { MapViewContext } from "./MapView.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 import { applyTheme, deviceStorage, readThemeSetting } from "./shell/theme.js";
@@ -40,6 +41,14 @@ export function renderDmWindow(services: DmWindowServices): void {
   applyUiScale(readUiScale(deviceStorage()), documentRoot);
   const root = document.getElementById("root");
   if (!root) throw new Error("#root is missing");
+  // Once per window, outside React (StrictMode would run an initialiser twice): a session
+  // still marked as running was killed or crashed (T-114a).
+  const afterCrash = startSession(deviceStorage());
+  const endClean = () => {
+    endSession(deviceStorage());
+  };
+  window.addEventListener("pagehide", endClean);
+  window.addEventListener("beforeunload", endClean);
 
   createRoot(root).render(
     <StrictMode>
@@ -51,6 +60,7 @@ export function renderDmWindow(services: DmWindowServices): void {
               libraryService={services.libraryService}
               newId={services.newId}
               appMenu={services.appMenu}
+              afterCrash={afterCrash}
             />
           </MapViewContext>
         </PlayerFeedContext>

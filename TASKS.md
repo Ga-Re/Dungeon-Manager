@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -477,12 +477,21 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Benchmark scene (ARCHITECTURE §11) with TV + DM monitor + DM window open stays within budget, measured on the reference notebook
 - **Notes:** Requested by the DM (2026-11-18). A third renderer decoding the same 4K video costs GPU time; if the budget is missed, render the monitor window at reduced resolution or frame rate. Open: should it follow the TV's rotation or stay upright for the DM?
 
-### T-114 Autosave and crash recovery
+### T-114a Restore the scene tabs; the TV stays dark after a crash
 
-- **Status:** todo · **Depends on:** T-103b, T-102b, T-174, T-223a
-- Periodic and on-change save of scene state; recovery on next start. With document tabs (T-223a), every open document (scene, map, asset, creature) is saved and recovered.
+- **Status:** done · **Depends on:** T-103b, T-102b, T-174, T-223a
+- Scenes already save every change at once and atomically. The next start opens the campaign's scene tabs again (order, shown tab); after a clean end the TV's scene goes back on the TV, after a crash or kill the TV stays dark until the DM sends a scene (DM decision, 2026-11-20).
 - **Acceptance criteria**
-  - [ ] Killing the app mid-session loses at most the last few seconds (E2E test with forced kill)
+  - [x] Killing the app mid-session brings back the open tabs, with the TV dark (E2E test with a forced kill: the device storage as at the kill, nothing run on the way out)
+- **Notes:** Split from T-114 (2026-11-20). The tabs are kept per campaign with the recent campaigns (device storage, additive fields). A marker in device storage (`dm.sessionRunning`) is set at start and removed on `pagehide`/`beforeunload`; still set at the next start means the session was killed. If a platform does not fire those events on closing, every start counts as after a crash – the TV then just stays dark, the safe side.
+
+### T-114b Rescue copy when a save fails
+
+- **Status:** todo · **Depends on:** T-114a · **Refs:** ARCHITECTURE §5
+- A change whose save fails (e.g. the cloud folder is unreachable) is kept as a rescue copy outside the library – in the app's data folder, never synced – and offered on the next start (DM decision, 2026-11-20).
+- **Acceptance criteria**
+  - [ ] A scene whose save failed is offered for recovery after a forced kill; taking it writes it to the library, discarding drops the copy (component + E2E test)
+- **Notes:** Split from T-114 (2026-11-20). A new local file format (the scene document plus where it belongs): describe it in ARCHITECTURE; with document tabs every kind of document uses it (T-176, T-180).
 
 ### T-129 UI design tokens and base primitives
 
@@ -1055,7 +1064,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-115 MVP end-to-end flow
 
-- **Status:** todo · **Depends on:** T-107 … T-114, T-134b, T-135, T-136a, T-136b
+- **Status:** todo · **Depends on:** T-107 … T-114b, T-134b, T-135, T-136a, T-136b
 - E2E: choose library → import map → create scene → place tokens → reveal fog → run two initiative rounds → blackout → restart → state restored.
 - **Acceptance criteria**
   - [ ] Flow passes in CI; benchmark run on reference notebook documented in `docs/benchmarks/`

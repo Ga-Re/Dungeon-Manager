@@ -86,3 +86,34 @@ export function replaceSceneTab(
     open: state.open.map((each) => (each.id === scene.id ? scene : each)),
   };
 }
+
+/** The tabs remembered on this device for a campaign (T-114a). */
+export interface RememberedSceneTabs {
+  readonly open: readonly string[];
+  readonly active: string | null;
+  /** The scene to put on the TV; `null` after a crash (DM decision, 2026-11-20). */
+  readonly tv: string | null;
+}
+
+/**
+ * The tabs to start with: the remembered scenes that still exist, in their order; a scene that
+ * is gone is skipped, also as the shown one or the TV's.
+ */
+export function restoreSceneTabs(
+  scenes: readonly Scene[],
+  remembered: RememberedSceneTabs,
+): SceneTabsState {
+  const open = remembered.open.flatMap((id) => {
+    const scene = scenes.find((each) => each.id === id);
+    return scene ? [scene] : [];
+  });
+  const has = (id: string | null) =>
+    id !== null && open.some((each) => each.id === id);
+  return {
+    open,
+    active: has(remembered.active)
+      ? remembered.active
+      : (open.at(-1)?.id ?? null),
+    tv: has(remembered.tv) ? remembered.tv : null,
+  };
+}

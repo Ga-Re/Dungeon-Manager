@@ -29,6 +29,7 @@ export function DmApp({
   root = document.documentElement,
   welcome = true,
   appMenu,
+  afterCrash = false,
 }: {
   readonly displayService: DisplayService;
   readonly libraryService: LibraryService;
@@ -41,6 +42,8 @@ export function DmApp({
   readonly welcome?: boolean;
   /** The native menu bar (macOS, T-130d); without it the title bar has a menu button. */
   readonly appMenu?: AppMenuService | undefined;
+  /** The last session did not end cleanly (T-114a): the TV stays dark until the DM sends a scene. */
+  readonly afterCrash?: boolean;
 }) {
   const { t } = useTranslation();
   const [state, setState] = useState<DisplayState>({ status: "loading" });
@@ -116,6 +119,7 @@ export function DmApp({
           newId={newId}
           welcome={welcome}
           storage={storage}
+          afterCrash={afterCrash}
         />
         <ShellPortal slot="ribbonDisplay">
           <RibbonGroup
