@@ -375,6 +375,7 @@ export function DmShell({
       "ribbonFog",
       "ribbonDisplay",
       "settings",
+      "settingsTv",
     ];
     for (const name of names) {
       refs[name] = (element) => {
@@ -850,6 +851,12 @@ export function DmShell({
       label: t("shell.settingsCategory.library"),
       // The library panel puts the folder choice here (it owns the library state).
       content: <div ref={slotRefs.settings} />,
+    },
+    {
+      id: "tv",
+      label: t("shell.settingsCategory.tv"),
+      // The player view's settings (T-106a) come from the DM app, which owns the TV state.
+      content: <div ref={slotRefs.settingsTv} />,
     },
     {
       id: "layout",

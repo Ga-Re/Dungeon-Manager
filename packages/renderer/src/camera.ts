@@ -42,6 +42,25 @@ export function fitCamera(map: Size, view: Size, rotation: Rotation): Camera {
   return { centerX: map.width / 2, centerY: map.height / 2, zoom, rotation };
 }
 
+/**
+ * The camera that shows the map at a true size on a calibrated display (T-106a, SPEC 2.2): one
+ * grid cell (`cellSizePx` map pixels) becomes `viewPxPerCell` view pixels – e.g. one inch, so
+ * physical minis fit. Centred on the map; the DM moves the view (T-106c).
+ */
+export function inchCamera(
+  map: Size,
+  rotation: Rotation,
+  cellSizePx: number,
+  viewPxPerCell: number,
+): Camera {
+  return {
+    centerX: map.width / 2,
+    centerY: map.height / 2,
+    zoom: cellSizePx > 0 ? clampZoom(viewPxPerCell / cellSizePx) : 1,
+    rotation,
+  };
+}
+
 /** Turns a screen-space offset into the matching map-space offset. */
 function screenOffsetToMap(camera: Camera, offset: Point): Point {
   const angle = -radians(camera.rotation);

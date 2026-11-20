@@ -1,5 +1,10 @@
 import type { PlayerViewMessage } from "@dungeon-manager/protocol";
-import { fitCamera, type Renderer, type Size } from "@dungeon-manager/renderer";
+import {
+  fitCamera,
+  inchCamera,
+  type Renderer,
+  type Size,
+} from "@dungeon-manager/renderer";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { levelMedia } from "../level-media.js";
@@ -67,9 +72,37 @@ export function PlayerApp({
     };
     mark("none");
 
+    // A square of this many inches to measure the calibration on the TV (T-106a).
+    const CHECK_INCHES = 2;
+    const checkSquare = document.createElement("div");
+    checkSquare.className = "player-check-square";
+    element.appendChild(checkSquare);
+    const showCheckSquare = () => {
+      const scale = message?.scale;
+      checkSquare.hidden = scale?.checkSquare !== true;
+      if (!scale) return;
+      // The renderer and the page work in CSS pixels; the calibration is in physical ones.
+      const side = (CHECK_INCHES * scale.inchPx) / window.devicePixelRatio;
+      checkSquare.style.width = `${String(side)}px`;
+      checkSquare.style.height = `${String(side)}px`;
+    };
+
     const fit = () => {
+      showCheckSquare();
       if (renderer && mapSize && message) {
-        renderer.setCamera(fitCamera(mapSize, windowSize(), message.rotation));
+        const scale = message.scale;
+        const cellSizePx = message.scene?.map?.grid.cellSizePx;
+        // Calibrated: one cell has the DM's size on the table (T-106a); else the whole map fits.
+        renderer.setCamera(
+          scale && cellSizePx !== undefined
+            ? inchCamera(
+                mapSize,
+                message.rotation,
+                cellSizePx,
+                (scale.inchPx * scale.cellInches) / window.devicePixelRatio,
+              )
+            : fitCamera(mapSize, windowSize(), message.rotation),
+        );
       }
     };
 
@@ -110,6 +143,7 @@ export function PlayerApp({
       const view = renderer;
       if (!view) return;
       const map = next.scene?.map ?? null;
+      showCheckSquare();
       // Fog first: everything not revealed on the shown level stays covered.
       applyFog(view, next, sameScene);
       if (!map || !media) {

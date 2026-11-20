@@ -20,6 +20,22 @@ const scene: ViewerScene = {
 };
 
 describe("parsePlayerViewMessage", () => {
+  test("carries the TV's calibration, strictly (T-106a)", () => {
+    const scale = { inchPx: 80.1, cellInches: 1, checkSquare: true };
+    expect(
+      parsePlayerViewMessage({ v: 1, scene: null, rotation: 0, scale }),
+    ).toEqual({ v: 1, scene: null, rotation: 0, scale });
+    for (const bad of [
+      { inchPx: 0, cellInches: 1, checkSquare: false },
+      { inchPx: 80, cellInches: 0, checkSquare: false },
+      { inchPx: 80, checkSquare: false },
+      { inchPx: 80, cellInches: 1, checkSquare: false, extra: 1 },
+    ])
+      expect(
+        parsePlayerViewMessage({ v: 1, scene: null, rotation: 0, scale: bad }),
+      ).toBeNull();
+  });
+
   test("accepts a projected scene, or none, with a rotation", () => {
     const message = { v: PLAYER_VIEW_VERSION, scene, rotation: 90 };
     expect(parsePlayerViewMessage(message)).toEqual(message);
