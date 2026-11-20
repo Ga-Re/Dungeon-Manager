@@ -732,10 +732,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-169 Flaky focus check in the welcome dialog test
 
-- **Status:** todo · **Depends on:** T-153 · **Refs:** ARCHITECTURE §12
+- **Status:** done · **Depends on:** T-153 · **Refs:** ARCHITECTURE §12
 - `WelcomeDialog.test.tsx` checks the first focus synchronously (`document.activeElement` right after the dialog shows) and failed once in a full `pnpm check` run (T-118a review); wait for the focus as the T-164 fix did elsewhere.
 - **Acceptance criteria**
-  - [ ] The focus assertions wait for the focus; the file passes 20 runs in a row
+  - [x] The focus assertions wait for the focus; the file passes 20 runs in a row
+- **Notes:** It failed main's CI after #81 (run #214, 2026-11-20), so it was pulled forward.
 
 ### T-167 Fog spreads from the revealed edge
 
