@@ -119,6 +119,24 @@ describe("projectForViewer", () => {
     expect(JSON.stringify(projected)).not.toContain("trap below");
   });
 
+  test("never sends a token's creature reference (T-180a): its values stay on the host", () => {
+    const revealedState = run(state, revealAll);
+    const withCreature: SessionState = {
+      ...revealedState,
+      scene: {
+        ...revealedState.scene,
+        tokens: revealedState.scene.tokens.map((t) => ({
+          ...t,
+          creature: { source: "library" as const, id: "goblin-boss" },
+          shape: { source: "library" as const, id: "wolf" },
+        })),
+      },
+    };
+    const projected = JSON.stringify(projectForViewer(withCreature, table));
+    expect(projected).not.toContain("goblin-boss");
+    expect(projected).not.toContain("wolf");
+  });
+
   test("is empty without a map", () => {
     expect(
       ids({ ...state, scene: { ...state.scene, map: null }, map: null }),

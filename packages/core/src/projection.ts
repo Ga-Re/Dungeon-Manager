@@ -5,7 +5,6 @@ import {
   type ApproximateHp,
   type Combatant,
   type Token,
-  type TokenSize,
   type ViewerCombatant,
   type ViewerEvent,
   type ViewerScene,
@@ -14,6 +13,7 @@ import {
   type VisibilityElementType,
 } from "@dungeon-manager/schema";
 import type { DomainEvent } from "./commands.js";
+import { gridFootprint } from "./footprint.js";
 import { isInside } from "./fog.js";
 import type { SessionState } from "./state.js";
 
@@ -21,16 +21,6 @@ import type { SessionState } from "./state.js";
 export type Viewer =
   | { readonly kind: "table" }
   | { readonly kind: "player"; readonly playerId: string };
-
-/** Grid cells covered per side by each size (SPEC §5); tiny and small still use one cell. */
-const CELLS_PER_SIDE: Record<TokenSize, number> = {
-  tiny: 1,
-  small: 1,
-  medium: 1,
-  large: 2,
-  huge: 3,
-  gargantuan: 4,
-};
 
 /**
  * What `viewer` may see of `state` (ARCHITECTURE §5.1). Hidden data never leaves the host:
@@ -265,11 +255,11 @@ function isTokenVisible(
   if (visibilityOf(state, "token", token) === "hidden") return false;
   const { map } = state;
   if (!map) return false;
-  const span = CELLS_PER_SIDE[token.size];
+  const { cols, rows } = gridFootprint(token.size);
   const cell = map.grid.cellSizePx;
   const centre: [number, number] = [
-    map.grid.offsetXPx + (token.position.col + span / 2) * cell,
-    map.grid.offsetYPx + (token.position.row + span / 2) * cell,
+    map.grid.offsetXPx + (token.position.col + cols / 2) * cell,
+    map.grid.offsetYPx + (token.position.row + rows / 2) * cell,
   ];
   return isInside(
     state.scene.fog.levels[token.levelId]?.revealed ?? [],

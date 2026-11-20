@@ -5,6 +5,7 @@ import type { FileSystem } from "./fs.js";
 export const LIBRARY_DIRECTORIES = [
   "library/maps",
   "library/tokens",
+  "library/creatures",
   "library/assets",
   "library/sounds",
   "library/effects",
@@ -45,6 +46,50 @@ export const sessionsDirectory = (slug: string) =>
   `${campaignDirectory(slug)}/sessions`;
 export const sessionFile = (slug: string, sessionId: string) =>
   `${sessionsDirectory(slug)}/${sessionId}.json`;
+
+/** Global creatures (T-180a, ADR-0018), in folders the DM makes. */
+export const CREATURES_DIRECTORY = "library/creatures";
+
+/**
+ * A file or folder name that works on every OS the library may be synced to – the same rule as
+ * the desktop adapter's (`is_portable_segment` in `library.rs`): not empty, `.` or `..`; no
+ * backslash, colon or NUL; no trailing dot or space; no Windows device name, also with an
+ * extension (`con.txt`).
+ */
+export function isPortableSegment(segment: string): boolean {
+  const stem = (segment.split(".")[0] ?? "").toLowerCase();
+  return (
+    segment !== "" &&
+    segment !== "." &&
+    segment !== ".." &&
+    !/[\\:\0]/.test(segment) &&
+    !/[. ]$/.test(segment) &&
+    !WINDOWS_RESERVED.test(stem)
+  );
+}
+
+/**
+ * Whether `folder` (inside `library/creatures`, `""` for the top) is a folder path the app uses:
+ * portable names separated by `/`, none hidden.
+ */
+export function isValidCreatureFolder(folder: string): boolean {
+  if (folder === "") return true;
+  return folder
+    .split("/")
+    .every((part) => isPortableSegment(part) && !part.startsWith("."));
+}
+
+/** `library/creatures/<folder>/<id>.json` (T-180a). */
+export const creatureFile = (folder: string, creatureId: string) =>
+  folder === ""
+    ? `${CREATURES_DIRECTORY}/${creatureId}.json`
+    : `${CREATURES_DIRECTORY}/${folder}/${creatureId}.json`;
+
+/** A campaign's player characters (T-180a): creatures of the campaign. */
+export const charactersDirectory = (slug: string) =>
+  `${campaignDirectory(slug)}/characters`;
+export const characterFile = (slug: string, characterId: string) =>
+  `${charactersDirectory(slug)}/${characterId}.json`;
 
 /** Sidecars are named after the file they describe (ADR-0012). */
 export const SIDECAR_SUFFIX = ".dm.json";

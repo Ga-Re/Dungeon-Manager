@@ -1045,13 +1045,13 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-180a Creature schema and token reference
 
-- **Status:** todo · **Depends on:** T-134 · **Refs:** SPEC §5, §2.5
+- **Status:** done · **Depends on:** T-134 · **Refs:** SPEC §5, §2.5
 - The zod schema for global creatures (5e core, own fields, size with grid footprint and pivot, senses, look) and how a token refers to its creature, so that T-107 builds tokens on it and no token data has to be migrated later. Per-session state (HP, conditions) stays in the scene.
 - **Acceptance criteria**
-  - [ ] Creature schema with storage round trip and migration hook (schema + storage tests ≥ 80 %)
-  - [ ] Tokens refer to a creature by id; a missing creature shows a placeholder token
-  - [ ] The grid footprint covers T-233's rule: one token per cell, up to four Tiny ones share a cell
-- **Notes:** Split from T-180 (DM, 2026-11-20). A new file format: the schema is agreed with the DM before implementing.
+  - [x] Creature schema with storage round trip and migration hook (schema + storage tests ≥ 80 %)
+  - [x] Tokens refer to a creature by id; a missing creature shows a placeholder token (resolved by `resolveTokenCreature`; T-107 draws it)
+  - [x] The grid footprint covers T-233's rule: one token per cell, up to four Tiny ones share a cell
+- **Notes:** Review follow-ups for later tasks: T-180 keeps ids unique when saving (an id from another folder is refused; moving = write the new file, then delete the old one) and reports `skippedFolders` (names that do not work on every OS) to the DM; T-107 passes a creature's own footprint into the projection's fog check (it uses the size's today) and decides whether a token's size becomes an optional override. Split from T-180 (DM, 2026-11-20). Format agreed with the DM in an interview (2026-11-20), recorded in ADR-0018: `library/creatures/<folders>/<id>.json`, player characters in `campaigns/<slug>/characters/`; lean 5e core, Markdown stat block in the file, own fields as a name/value list; tokens keep `creature`/`shape` references and their own values only. The file watcher does not react to creature files yet (T-180).
 
 ### T-180 Creature library: player characters and creatures
 
