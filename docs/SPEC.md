@@ -81,7 +81,7 @@ There is no DM phone app (ADR-0013). Planning on the go happens in tools the DM 
 
 ### 2.5 Workspaces (DM window)
 
-The DM window has five workspaces, each with its own layout, ribbon tabs and open document (ADR-0017, DM interview 2026-11-20). In all of them, the data panel holds the source the DM drags from. The browser lists the objects of the open document, like layers in Photoshop or the browser in Fusion 360, and only shows where there is such a document. Each document has its own undo history.
+The DM window has five workspaces, each with its own ribbon tabs and documents (ADR-0017, DM interview 2026-11-20). Every workspace is made of dockable panels, the map included: panels can be moved, resized, docked to the edges, folded and shown or hidden from the View menu. Each workspace has a default layout, and the DM can save their own named layouts per device. Open documents (the Atlas, scenes, maps, assets, creatures) are tabs in the title bar. In all workspaces, the data panel holds the source the DM drags from. The browser lists the objects of the open document, like layers in Photoshop or the browser in Fusion 360, and only shows where there is such a document. Each document has its own undo history.
 
 - **Map Forge – global maps** (sidecar data, ADR-0012):
   - **Files:** import and manage map files; 2-click grid calibration by dragging over a 3×3 cell box, so every map has the same cell size on the TV.
@@ -102,11 +102,14 @@ The DM window has five workspaces, each with its own layout, ribbon tabs and ope
   - **Variants:** clones with generated names; shapes (e.g. a druid's beast form) to switch in play; encounter pods (groups of creatures).
   - **Display:** faction rings; previews of conditions, auras and sight.
   - **Exchange:** stat-block import (SRD 5.1) and creature import/export.
+  - **Animation:** creatures can use animated sprites or video files, so their tokens move on the TV.
 - **Campaign Atlas – building campaigns:**
-  - **Structure:** the campaign explorer (sessions as folders of scenes, notes, wiki and lore) and a scene flow graph; a checklist per session.
-  - **Scene editor:** tokens and creatures, props on top of the map's own, traps, triggers and secrets, map pins with room descriptions and read-aloud text, start states (doors, lights, fog), and overrides of map settings.
-  - **Planning aids:** what the players already know, a campaign timeline, loot and rewards, and encounter balance.
-- **Game-Orchestrator – running the session:**
+  - **Layout (default):** explorer left, the open document centre (with an optional split drawer for the flow graph), inspector right, session timeline at the bottom.
+  - **Structure:** the campaign explorer (sessions as folders of scenes, notes, wiki and lore); a world map with scene pins and travel routes; a scene flow graph with requirements and unlocks; a checklist per session; a search over the whole campaign; scene and session templates.
+  - **Scene editor:** an opened scene is a document of the Atlas (not a separate workspace) with tokens and creatures, props on top of the map's own, traps, triggers and secrets, map pins with room descriptions and read-aloud text, start states (doors, lights, fog), phases (start setup → ambush → reinforcements), and overrides of map settings. The Atlas edits a scene's start state; for the scene live in the Orchestrator, a change takes effect on "reset scene" or after the DM confirms.
+  - **Planning aids:** what the players already know, a campaign timeline, loot and rewards, encounter balance, and a relationship network of NPCs and factions.
+- **Game-Orchestrator – running the session** (filled first, after the shared frame):
+  - **Layout (default):** the map large; initiative, group, dice and inspector as small panels to show, hide and dock as needed.
   - **TV:** a live preview of the player view; centring the players' view; pause, title and blackout screens.
   - **Scenes:** a scene bar with quick preparation of the next scene without touching the TV.
   - **On the map:** asset actions (e.g. roof off), doors and traps, ambience presets, area-of-effect templates.
