@@ -149,6 +149,16 @@ export const de = {
       apply: "Karte übernehmen",
     },
     closeScene: "Szene schließen",
+    mapData: {
+      unavailable:
+        "Die Daten dieser Karte (Raster, Ebenen) sind noch nicht heruntergeladen oder beschädigt. Die Karte erscheint, sobald sie gelesen werden können.",
+      legacy:
+        "Diese Szene hat ein eigenes Raster oder eigene Ebenen, die von den Daten der Karte abweichen. Sie nutzt vorerst ihre eigenen.",
+      orphaned_one:
+        "Eine Anpassung dieser Szene gilt einem Element, das die Karte nicht mehr hat.",
+      orphaned_other:
+        "{{count}} Anpassungen dieser Szene gelten Elementen, die die Karte nicht mehr hat.",
+    },
     scene: {
       notAvailable: "{{id}} (noch nicht heruntergeladen)",
       invalid: "{{id}} (kann nicht gelesen werden)",

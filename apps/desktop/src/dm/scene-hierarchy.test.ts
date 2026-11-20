@@ -6,7 +6,7 @@ const scene = (id: string, parentSceneId?: string): SceneEntry => ({
   id,
   problem: null,
   scene: {
-    schemaVersion: 2,
+    schemaVersion: 3,
     id,
     name: id,
     map: null,

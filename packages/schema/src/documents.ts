@@ -3,7 +3,6 @@ import { idSchema, noteLinksSchema } from "./common.js";
 import {
   fogStateSchema,
   initiativeStateSchema,
-  mapSchema,
   playerSchema,
   tokenSchema,
   visibilityRulesSchema,
@@ -14,15 +13,17 @@ import {
   sessionToVersion2,
 } from "./lowercase-ids.js";
 import type { DocumentType } from "./migrate.js";
+import { sceneMapSchema, sceneToVersion3 } from "./scene-map.js";
 
 // Documents are the JSON files in the library (ARCHITECTURE §6.2): `campaign.json` and one file
 // per scene. Only documents carry `schemaVersion`; the entities above are embedded in them.
-// Version 2 of each (T-119): ids are lowercase.
+// Version 2 of each (T-119): ids are lowercase. Scene version 3 (T-134d): the scene refers to
+// its map; grid and levels live in the map's sidecar.
 
 /** Current version of `campaign.json`. */
 export const CAMPAIGN_VERSION = 2;
 /** Current version of a scene file. */
-export const SCENE_VERSION = 2;
+export const SCENE_VERSION = 3;
 /** Current version of a session file. */
 export const SESSION_VERSION = 2;
 
@@ -48,7 +49,7 @@ export const sceneSchema = z.looseObject({
   schemaVersion: z.literal(SCENE_VERSION),
   id: idSchema,
   name: z.string().min(1),
-  map: mapSchema.nullable(),
+  map: sceneMapSchema.nullable(),
   tokens: z.array(tokenSchema),
   fog: fogStateSchema,
   initiative: initiativeStateSchema.nullable(),
@@ -105,7 +106,7 @@ export const campaignDocument: DocumentType<Campaign> = {
 export const sceneDocument: DocumentType<Scene> = {
   schema: sceneSchema,
   latestVersion: SCENE_VERSION,
-  migrations: [sceneToVersion2],
+  migrations: [sceneToVersion2, sceneToVersion3],
 };
 
 /** Reading a session file: migrations from older versions, then validation. */

@@ -6,7 +6,7 @@ import { describeItem, type DetailsData } from "./details.js";
 const t = createI18n("de").t;
 
 const scene = (id: string, name: string): Scene => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   id,
   name,
   map: null,

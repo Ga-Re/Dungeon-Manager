@@ -1,3 +1,4 @@
+import type { ResolvedMap } from "@dungeon-manager/core";
 import type { Player, Polygon, Scene } from "@dungeon-manager/schema";
 import type { TreeNode } from "@dungeon-manager/ui";
 import { ownNotePath } from "@dungeon-manager/storage";
@@ -45,6 +46,7 @@ export interface CampaignTreeData {
   /** The open scene as edited, and the tree id under which its content is shown. */
   readonly open: {
     readonly scene: Scene;
+    readonly map: ResolvedMap | null;
     readonly revealed: readonly Polygon[];
     readonly nodeId: string;
   } | null;
@@ -104,7 +106,9 @@ export function buildCampaignTree(
       return childEntry ? [sceneItem(slot, childEntry)] : [];
     });
     const children = [
-      ...(open ? sceneContentNodes(t, open.scene, open.revealed) : []),
+      ...(open
+        ? sceneContentNodes(t, open.scene, open.map, open.revealed)
+        : []),
       ...subScenes,
     ];
     return {

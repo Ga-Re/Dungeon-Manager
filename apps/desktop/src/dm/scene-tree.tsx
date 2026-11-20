@@ -1,4 +1,4 @@
-import { tableLevels } from "@dungeon-manager/core";
+import { tableLevels, type ResolvedMap } from "@dungeon-manager/core";
 import type { Polygon, Scene } from "@dungeon-manager/schema";
 import type { TreeNode } from "@dungeon-manager/ui";
 import type { TFunction } from "i18next";
@@ -15,13 +15,14 @@ const CONTENT = "content:";
 export function sceneContentNodes(
   t: TFunction,
   scene: Scene,
+  map: ResolvedMap | null,
   revealed: readonly Polygon[],
 ): TreeNode[] {
-  const { current, released } = tableLevels(scene, scene.map);
+  const { current, released } = tableLevels(scene, map);
   // Which levels the TV shows and the players have seen (T-118c); with one level there is
   // nothing to tell apart, as with the level switcher.
   const levelMeta = (id: string) =>
-    (scene.map?.levels.length ?? 0) < 2 ? undefined : id === current ? (
+    (map?.levels.length ?? 0) < 2 ? undefined : id === current ? (
       <span className="dm-level-on-tv">
         <Tv aria-hidden="true" />
         {t("shell.browser.levelOnTv")}
@@ -29,7 +30,7 @@ export function sceneContentNodes(
     ) : released.has(id) ? (
       t("shell.browser.levelReleased")
     ) : undefined;
-  const map: TreeNode = scene.map
+  const mapNode: TreeNode = scene.map
     ? {
         id: `${CONTENT}map`,
         label: t("shell.browser.map"),
@@ -44,7 +45,7 @@ export function sceneContentNodes(
             id: `${CONTENT}levels`,
             label: t("shell.browser.levels"),
             icon: <Layers />,
-            children: scene.map.levels.map((level) => ({
+            children: (map?.levels ?? []).map((level) => ({
               id: `${CONTENT}level-${level.id}`,
               label: level.name,
               meta: levelMeta(level.id),
@@ -63,5 +64,5 @@ export function sceneContentNodes(
     icon: <Cloud />,
     meta: t("shell.browser.fogAreas", { count: revealed.length }),
   };
-  return [map, fog];
+  return [mapNode, fog];
 }

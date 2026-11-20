@@ -1,4 +1,4 @@
-import type { Sidecar } from "@dungeon-manager/schema";
+import type { Scene, Sidecar } from "@dungeon-manager/schema";
 import { describe, expect, test } from "vitest";
 import {
   adoptLegacyMap,
@@ -7,6 +7,7 @@ import {
   listSidecarConflicts,
   loadSidecar,
   saveSidecar,
+  settleLegacyMap,
   sidecarFile,
 } from "./index.js";
 
@@ -228,5 +229,65 @@ describe("adopting a version 2 scene's map (ADR-0012 migration)", () => {
         hash,
       ),
     ).toEqual({ kind: "differs" });
+  });
+});
+
+describe("settling a scene's legacy map when it opens (T-134d)", () => {
+  const asset = { path: "library/maps/turm.png", hash };
+  const legacyScene: Scene = {
+    schemaVersion: 3,
+    id: "turm",
+    name: "Turm",
+    map: {
+      kind: "image",
+      asset,
+      overrides: {},
+      legacyMap: { grid, levels: [{ id: "ground", name: "Erdgeschoss" }] },
+    },
+    tokens: [],
+    fog: { levels: {} },
+    initiative: null,
+  };
+  const reference = { kind: "image", asset, overrides: {} };
+
+  test("the first scene of a map seeds its sidecar and drops its copy", async () => {
+    const fs = createMemoryFileSystem();
+    const settled = await settleLegacyMap(fs, legacyScene);
+    expect(settled.map).toEqual(reference);
+    expect(await loadSidecar(fs, asset.path)).toEqual({
+      status: "ok",
+      value: sidecar,
+    });
+  });
+
+  test("a scene that fits the sidecar drops its copy; one that differs keeps it", async () => {
+    const fs = createMemoryFileSystem();
+    await saveSidecar(fs, asset.path, sidecar);
+    expect((await settleLegacyMap(fs, legacyScene)).map).toEqual(reference);
+    const renamed: Scene = {
+      ...legacyScene,
+      map: {
+        ...reference,
+        kind: "image",
+        legacyMap: { grid, levels: [{ id: "ground", name: "Taverne" }] },
+      },
+    };
+    expect(await settleLegacyMap(fs, renamed)).toBe(renamed);
+    expect(await loadSidecar(fs, asset.path)).toMatchObject({
+      value: sidecar,
+    });
+  });
+
+  test("a sidecar not downloaded yet is never seeded over", async () => {
+    const fs = createMemoryFileSystem({
+      "library/maps/turm.png.dm.json": { placeholder: true },
+    });
+    expect(await settleLegacyMap(fs, legacyScene)).toBe(legacyScene);
+    expect(fs.files().has("library/maps/turm.png.dm.json")).toBe(false);
+  });
+
+  test("scenes without a legacy map are left as they are", async () => {
+    const plain: Scene = { ...legacyScene, map: null };
+    expect(await settleLegacyMap(createMemoryFileSystem(), plain)).toBe(plain);
   });
 });

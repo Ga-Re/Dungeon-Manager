@@ -1,5 +1,12 @@
-import type { Grid, Level, Sidecar } from "@dungeon-manager/schema";
+import type {
+  Grid,
+  LegacyMap,
+  Level,
+  Scene,
+  Sidecar,
+} from "@dungeon-manager/schema";
 import { findConflictCopies, type ConflictCopy } from "./conflicts.js";
+import { loadSidecar, saveSidecar } from "./documents.js";
 import type { FileSystem } from "./fs.js";
 import { SIDECAR_SUFFIX } from "./layout.js";
 
@@ -18,12 +25,6 @@ export async function listSidecarConflicts(
   return findConflictCopies(names).filter((conflict) =>
     conflict.original.endsWith(SIDECAR_SUFFIX),
   );
-}
-
-/** The grid and levels a version 2 scene embedded, before they moved to the sidecar. */
-export interface LegacyMap {
-  readonly grid: Grid;
-  readonly levels: readonly Level[];
 }
 
 /** What becomes of a version 2 scene's embedded map data (ADR-0012 migration). */
@@ -85,4 +86,32 @@ export function adoptLegacyMap(
   return sameGrid(grid, legacy.grid) && sameLevels
     ? { kind: "fits" }
     : { kind: "differs" };
+}
+
+/**
+ * Moves a scene's `legacyMap` (its version 2 copy of grid and levels) into its map's sidecar
+ * where `adoptLegacyMap` allows it (ADR-0012). A sidecar that is not downloaded yet or broken
+ * is left alone and the scene keeps its copy, to try again later.
+ * @returns the scene without `legacyMap` once the sidecar holds its data, else the scene as it
+ *   was; the caller saves it. @throws when writing the sidecar fails
+ */
+export async function settleLegacyMap(
+  fs: FileSystem,
+  scene: Scene,
+): Promise<Scene> {
+  const map = scene.map;
+  if (!map?.legacyMap) return scene;
+  const loaded = await loadSidecar(fs, map.asset.path);
+  if (loaded.status !== "ok" && loaded.status !== "missing") return scene;
+  const adoption = adoptLegacyMap(
+    loaded.status === "ok" ? loaded.value : null,
+    map.legacyMap,
+    map.asset.hash,
+  );
+  if (adoption.kind === "differs") return scene;
+  if (adoption.kind === "seed")
+    await saveSidecar(fs, map.asset.path, adoption.sidecar);
+  const reference = { ...map };
+  delete reference.legacyMap;
+  return { ...scene, map: reference };
 }

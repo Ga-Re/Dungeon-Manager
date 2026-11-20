@@ -87,12 +87,13 @@ describe("lowercase ids", () => {
       },
       sceneDocument,
     );
+    // Version 1 scenes go on to version 3: grid and levels wait in `legacyMap` (T-134d).
     expect(scene).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 3,
       id: "turm",
       name: "Turm",
       parentSceneId: "stadt",
-      map: { levels: [{ id: "ground" }, { id: "cellar" }] },
+      map: { legacyMap: { levels: [{ id: "ground" }, { id: "cellar" }] } },
       tokens: [{ id: "goblin", levelId: "cellar", ownerPlayerId: "anna" }],
       fog: { levels: { ground: { revealed: [] } } },
       initiative: {
@@ -117,7 +118,7 @@ describe("lowercase ids", () => {
       },
       sceneDocument,
     );
-    expect(scene).toMatchObject({ schemaVersion: 2, id: "leer", map: null });
+    expect(scene).toMatchObject({ schemaVersion: 3, id: "leer", map: null });
   });
 
   test("a version 1 session lowercases its scene list", () => {

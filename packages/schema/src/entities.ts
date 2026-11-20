@@ -55,14 +55,6 @@ export const gridSchema = z.looseObject({
 /** Whether a map file is an image or a video (ADR-0010). */
 export const mapKindSchema = z.enum(["image", "video"]);
 
-/** A battle map: image or video, its grid and its levels. `asset` is the default image/video for all levels. */
-export const mapSchema = z.looseObject({
-  kind: mapKindSchema,
-  asset: assetRefSchema,
-  grid: gridSchema,
-  levels: z.array(levelSchema).min(1),
-});
-
 /** D&D size categories (SPEC §5). */
 export const tokenSizeSchema = z.enum([
   "tiny",
@@ -176,7 +168,6 @@ export type VisibilityRules = z.infer<typeof visibilityRulesSchema>;
 export type Level = z.infer<typeof levelSchema>;
 export type Grid = z.infer<typeof gridSchema>;
 export type MapKind = z.infer<typeof mapKindSchema>;
-export type MapSpec = z.infer<typeof mapSchema>;
 export type TokenSize = z.infer<typeof tokenSizeSchema>;
 export type Token = z.infer<typeof tokenSchema>;
 export type LevelFog = z.infer<typeof levelFogSchema>;

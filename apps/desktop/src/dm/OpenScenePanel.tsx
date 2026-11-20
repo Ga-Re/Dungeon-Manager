@@ -1,9 +1,11 @@
-import { tableLevels } from "@dungeon-manager/core";
+import { tableLevels, type ResolvedMap } from "@dungeon-manager/core";
 import type { Size } from "@dungeon-manager/renderer";
 import type { AssetRef, Polygon, Scene } from "@dungeon-manager/schema";
 import {
   deleteScene,
+  ensureMapData,
   loadScene,
+  mapDataForChange,
   reparentScene,
   saveScene,
   type MapReset,
@@ -95,7 +97,11 @@ export function OpenScenePanel({
    * The scene as edited and the revealed fog of the level the DM works on (T-118c), after every
    * change (browser tree).
    */
-  readonly onSceneChange?: (scene: Scene, revealed: readonly Polygon[]) => void;
+  readonly onSceneChange?: (
+    scene: Scene,
+    map: ResolvedMap | null,
+    revealed: readonly Polygon[],
+  ) => void;
   readonly onChanged: (scene: Scene) => void;
   readonly onDeleted: (scene: Scene) => void;
   readonly onClose: () => void;
@@ -111,19 +117,19 @@ export function OpenScenePanel({
   const [error, setError] = useState("");
   const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
   const session = useSceneSession(service, slug, opened);
-  const { scene, notOnTv } = session;
+  const { scene, map, notOnTv } = session;
   const [tool, setTool] = useState<MapTool>("pan");
   const [shape, setShape] = useState<FogShape>("rectangle");
   const [brushCells, setBrushCells] = useState(1);
   const [mapSize, setMapSize] = useState<Size | null>(null);
   // The DM works on a level of their choice, the TV's until they pick another (T-118c).
-  const onTv = tableLevels(scene, scene.map).current ?? undefined;
+  const onTv = tableLevels(scene, map).current ?? undefined;
   const [picked, setPicked] = useState<string | null>(null);
   const levelId =
-    picked !== null && scene.map?.levels.some(({ id }) => id === picked)
+    picked !== null && map?.levels.some(({ id }) => id === picked)
       ? picked
       : onTv;
-  const media = scene.map ? levelMedia(scene.map, levelId) : null;
+  const media = map ? levelMedia(map, levelId) : null;
   const revealed =
     (levelId === undefined ? undefined : scene.fog.levels[levelId]?.revealed) ??
     NOTHING_REVEALED;
@@ -133,8 +139,8 @@ export function OpenScenePanel({
     reportScene.current = onSceneChange;
   });
   useEffect(() => {
-    reportScene.current?.(scene, revealed);
-  }, [scene, revealed]);
+    reportScene.current?.(scene, map, revealed);
+  }, [scene, map, revealed]);
   // A new map (or a level with its own file) is measured again; until then "reveal all" has
   // no size to use.
   useEffect(() => {
@@ -209,10 +215,19 @@ export function OpenScenePanel({
         return;
       }
       const current = await loadScene(service.fs, slug, scene.id);
+      // A new map without data of its own takes the current map's grid and levels (ADR-0012).
+      await ensureMapData(
+        service.fs,
+        asset,
+        mapDataForChange(
+          session.mapData.status === "ready" ? session.mapData.data : null,
+          { id: newId(), name: t("campaign.defaultLevel") },
+          reset,
+        ),
+      );
       const changed = withMap(
         current.status === "ok" ? current.value : scene,
         asset,
-        { id: newId(), name: t("campaign.defaultLevel") },
         reset,
       );
       await saveScene(service.fs, slug, changed);
@@ -398,12 +413,12 @@ export function OpenScenePanel({
             </div>
           </Popover>
         </RibbonGroup>
-        {scene.map &&
-          scene.map.levels.length > 1 &&
+        {map &&
+          map.levels.length > 1 &&
           levelId !== undefined &&
           onTv !== undefined && (
             <LevelGroup
-              levels={scene.map.levels}
+              levels={map.levels}
               working={levelId}
               onTv={onTv}
               disabled={busy || notOnTv}
@@ -416,9 +431,10 @@ export function OpenScenePanel({
       </ShellPortal>
       <ShellPortal slot="notices">
         {notOnTv && <p role="alert">{t("player.notShown")}</p>}
+        <MapDataNotice session={session} />
         {error && <p role="alert">{error}</p>}
       </ShellPortal>
-      {scene.map && media && (
+      {map && media && (
         <>
           <ShellPortal slot="ribbonFog">
             <FogToolbar
@@ -447,13 +463,10 @@ export function OpenScenePanel({
               tool={busy ? "pan" : tool}
               shape={shape}
               // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
-              brushRadius={(brushCells * scene.map.grid.cellSizePx) / 2}
+              brushRadius={(brushCells * map.grid.cellSizePx) / 2}
               // Slightly rounded rectangles, as wide as the soft fog edge (T-170).
-              cornerRadius={scene.map.grid.cellSizePx / 4}
-              softEdge={softEdgeWidth(
-                scene.map.grid.cellSizePx,
-                fogLook.softEdges,
-              )}
+              cornerRadius={map.grid.cellSizePx / 4}
+              softEdge={softEdgeWidth(map.grid.cellSizePx, fogLook.softEdges)}
               fade={fogLook.fadeSeconds * 1000}
               onArea={(area, kind) => {
                 if (!busy)
@@ -469,4 +482,29 @@ export function OpenScenePanel({
       )}
     </div>
   );
+}
+
+/**
+ * What the DM should know about the map's data (ADR-0012): not available yet (nothing is shown),
+ * the scene playing its own version 2 copy, or overrides whose map element is gone.
+ */
+function MapDataNotice({
+  session,
+}: {
+  readonly session: ReturnType<typeof useSceneSession>;
+}) {
+  const { t } = useTranslation();
+  if (session.mapData.status === "unavailable")
+    return <p role="alert">{t("campaign.mapData.unavailable")}</p>;
+  if (session.mapData.status === "ready" && session.mapData.legacy)
+    return <p role="status">{t("campaign.mapData.legacy")}</p>;
+  if (session.orphanedOverrides.length > 0)
+    return (
+      <p role="status">
+        {t("campaign.mapData.orphaned", {
+          count: session.orphanedOverrides.length,
+        })}
+      </p>
+    );
+  return null;
 }

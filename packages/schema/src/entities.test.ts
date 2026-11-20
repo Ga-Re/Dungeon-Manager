@@ -6,8 +6,9 @@ import {
   combatantSchema,
   fogStateSchema,
   initiativeStateSchema,
-  mapSchema,
+  legacyMapSchema,
   playerSchema,
+  sceneMapSchema,
   sceneSchema,
   tokenSchema,
   visibilityRulesSchema,
@@ -17,7 +18,8 @@ import {
 const entities: [string, ZodType, unknown][] = [
   ["Campaign", campaignSchema, samples.campaign],
   ["Scene", sceneSchema, samples.scene],
-  ["Map", mapSchema, samples.map],
+  ["Scene map", sceneMapSchema, samples.sceneMap],
+  ["Legacy map", legacyMapSchema, samples.legacyMap],
   ["Token", tokenSchema, samples.token],
   ["FogState", fogStateSchema, samples.fog],
   ["InitiativeState", initiativeStateSchema, samples.initiative],
@@ -50,15 +52,15 @@ describe("unknown fields in nested objects", () => {
     const scene = {
       ...samples.scene,
       tokens: [{ ...samples.token, aura: "fire" }],
-      map: { ...samples.map, grid: { ...samples.map.grid, style: "hex" } },
+      map: { ...samples.sceneMap, frame: { style: "hex" } },
     };
     expect(roundTrip(sceneSchema, scene)).toEqual(scene);
   });
 });
 
-const asset = samples.map.asset;
+const asset = samples.sceneMap.asset;
 const withPath = (path: string) => ({
-  ...samples.map,
+  ...samples.sceneMap,
   asset: { ...asset, path },
 });
 const ring = (offset: number): [number, number][] => [
@@ -96,15 +98,22 @@ describe("validation", () => {
     ],
     [
       "a hash in the wrong format",
-      mapSchema,
-      { ...samples.map, asset: { ...asset, hash: "md5:abc" } },
+      sceneMapSchema,
+      { ...samples.sceneMap, asset: { ...asset, hash: "md5:abc" } },
     ],
     [
       "a non-positive cell size",
-      mapSchema,
-      { ...samples.map, grid: { ...samples.map.grid, cellSizePx: 0 } },
+      legacyMapSchema,
+      {
+        ...samples.legacyMap,
+        grid: { ...samples.legacyMap.grid, cellSizePx: 0 },
+      },
     ],
-    ["a map without levels", mapSchema, { ...samples.map, levels: [] }],
+    [
+      "a map without levels",
+      legacyMapSchema,
+      { ...samples.legacyMap, levels: [] },
+    ],
     [
       "temporary HP below zero",
       combatantSchema,
@@ -207,7 +216,7 @@ describe("validation", () => {
     "%2e%2e/x.png",
     "maps/..%2fx.png",
   ])("rejects the asset path %j", (path) => {
-    expect(mapSchema.safeParse(withPath(path)).success).toBe(false);
+    expect(sceneMapSchema.safeParse(withPath(path)).success).toBe(false);
   });
 
   test.each([
@@ -215,7 +224,7 @@ describe("validation", () => {
     "library/maps/Höhle (alt) – 2.webm",
     "x.png",
   ])("accepts the asset path %j", (path) => {
-    expect(mapSchema.safeParse(withPath(path)).success).toBe(true);
+    expect(sceneMapSchema.safeParse(withPath(path)).success).toBe(true);
   });
 
   test("accepts combat without an active combatant", () => {

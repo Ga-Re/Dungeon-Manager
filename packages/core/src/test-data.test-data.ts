@@ -2,10 +2,11 @@
 import type {
   Campaign,
   Combatant,
+  MapData,
   Polygon,
   Scene,
 } from "@dungeon-manager/schema";
-import type { Ctx, SessionState } from "./index.js";
+import { resolveMap, type Ctx, type SessionState } from "./index.js";
 
 export const ctx: Ctx = { now: () => 1_000, random: () => 0.5 };
 
@@ -28,18 +29,24 @@ export const goblin: Combatant = {
   conditions: [],
 };
 
+/** The cave map's global data, as its sidecar holds it (ADR-0012). */
+export const caveMap: MapData = {
+  grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+  levels: [
+    { id: "ground", name: "Erdgeschoss" },
+    { id: "cellar", name: "Keller" },
+  ],
+  rooms: [],
+};
+
 export const scene: Scene = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   id: "scene-1",
   name: "Höhle",
   map: {
     kind: "image",
     asset: { path: "library/maps/cave.png", hash },
-    grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-    levels: [
-      { id: "ground", name: "Erdgeschoss" },
-      { id: "cellar", name: "Keller" },
-    ],
+    overrides: {},
   },
   tokens: [
     {
@@ -61,22 +68,23 @@ export const scene: Scene = {
   initiative: null,
 };
 
-/**
- * A session on `scene`, its map resolved from the map the scene file still embeds (scene
- * version 2; the sidecar takes over its grid and levels in T-134c).
- */
-export function sessionOf(scene: Scene, of: Campaign = campaign): SessionState {
+/** A session on `scene`, its map resolved from `data` (the cave map's by default). */
+export function sessionOf(
+  scene: Scene,
+  of: Campaign = campaign,
+  data: MapData = caveMap,
+): SessionState {
   return {
     campaign: of,
     scene,
     map: scene.map
-      ? {
+      ? resolveMap({
           kind: scene.map.kind,
           asset: scene.map.asset,
-          grid: scene.map.grid,
-          levels: scene.map.levels,
-          rooms: [],
-        }
+          data,
+          overrides: scene.map.overrides,
+          defaultLevel: { id: "level-1", name: "Ebene 1" },
+        }).map
       : null,
   };
 }

@@ -1,3 +1,4 @@
+import type { ResolvedMap } from "@dungeon-manager/core";
 import type { Player, Polygon, Scene } from "@dungeon-manager/schema";
 import type { TFunction } from "i18next";
 import {
@@ -23,6 +24,7 @@ export interface DetailsData {
   /** The open scene as edited, if any. */
   readonly live: {
     readonly scene: Scene;
+    readonly map: ResolvedMap | null;
     readonly revealed: readonly Polygon[];
   } | null;
   readonly openSceneId: string | null;
@@ -106,6 +108,7 @@ export function describeItem(
       if (!scene) return null;
       const revealed =
         data.live?.scene.id === scene.id ? data.live.revealed.length : null;
+      const liveMap = data.live?.scene.id === scene.id ? data.live.map : null;
       const inSessions = data.sessions
         .filter((each) => each.session?.sceneIds.includes(scene.id))
         .map((each) => each.session?.name ?? each.id);
@@ -120,17 +123,18 @@ export function describeItem(
                 mono: true,
               }
             : { label: t("shell.details.map"), value: t("campaign.noMap") },
-          ...(scene.map
+          // Grid and levels belong to the map (ADR-0012): known for the open scene.
+          ...(liveMap
             ? [
                 {
                   label: t("shell.details.grid"),
                   value: t("shell.details.cellSize", {
-                    px: scene.map.grid.cellSizePx,
+                    px: liveMap.grid.cellSizePx,
                   }),
                 },
                 {
                   label: t("shell.details.levels"),
-                  value: scene.map.levels.map((level) => level.name).join(", "),
+                  value: liveMap.levels.map((level) => level.name).join(", "),
                 },
               ]
             : []),

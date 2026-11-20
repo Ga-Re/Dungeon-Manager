@@ -22,7 +22,7 @@ const campaign: Campaign = {
 };
 
 const scene: Scene = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   id: "scene-1",
   name: "Eingang",
   map: null,
