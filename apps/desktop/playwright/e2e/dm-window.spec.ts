@@ -1034,3 +1034,48 @@ test("after a crash the scene tabs come back and the TV stays dark until the DM 
   await expect(tabIn(next)).toContainText("auf dem TV");
   await next.context().close();
 });
+
+test("changes whose save failed survive a forced kill and are restored on the next start (T-114b)", async ({
+  page,
+  context,
+  browser,
+}) => {
+  await page.goto(`${HARNESS}?failSaves`);
+  await closeWelcome(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Nebel" }).click();
+  const revealAll = page.getByRole("button", { name: "Alles aufdecken" });
+  await expect(revealAll).toBeEnabled();
+  await revealAll.click();
+  await expect(
+    page.getByRole("group", { name: "Offene Szenen" }),
+  ).toContainText("nicht gespeichert");
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("dm.rescueCopies")))
+    .toContain("Krypta");
+
+  // Killed, then started again where saving works.
+  const killed = await context.storageState();
+  const next = await (
+    await browser.newContext({ storageState: killed })
+  ).newPage();
+  await next.goto(HARNESS);
+  await next
+    .getByRole("dialog", { name: "Willkommen" })
+    .getByRole("button", { name: /Fluch der Krypta/ })
+    .click();
+  await expect(
+    next.getByRole("treeitem", { name: /Nebel/ }).first(),
+  ).toContainText("0 Bereiche aufgedeckt");
+  await next
+    .getByRole("button", { name: "Änderungen an Krypta wiederherstellen" })
+    .click();
+  await expect(
+    next.getByText("Änderungen an Krypta wiederhergestellt"),
+  ).toBeVisible();
+  await expect(
+    next.getByRole("treeitem", { name: /Nebel/ }).first(),
+  ).toContainText("1 Bereich aufgedeckt");
+  await next.context().close();
+});

@@ -155,9 +155,23 @@ export const de = {
     sceneOnTv: "(auf dem TV)",
     tabSaving: "(speichert)",
     tabNotSaved: "(nicht gespeichert)",
+    rescue: {
+      label: "Nicht gespeicherte Änderungen",
+      summary_one:
+        "Änderungen an einer Szene konnten nicht gespeichert werden; sie liegen auf diesem Gerät.",
+      summary_other:
+        "Änderungen an {{count}} Szenen konnten nicht gespeichert werden; sie liegen auf diesem Gerät.",
+      found: "{{name}}, Stand {{time}}",
+      restore: "Wiederherstellen",
+      discard: "Verwerfen",
+      restoreNamed: "Änderungen an {{name}} wiederherstellen",
+      discardNamed: "Änderungen an {{name}} verwerfen",
+      restored: "Änderungen an {{name}} wiederhergestellt",
+      discarded: "Änderungen an {{name}} verworfen",
+    },
     closeUnsaved: {
       title: "Szene schließen?",
-      text: "Die letzten Änderungen an {{name}} konnten nicht gespeichert werden. Beim Schließen gehen sie verloren.",
+      text: "Die letzten Änderungen an {{name}} konnten nicht gespeichert werden. Eine Kopie bleibt auf diesem Gerät; beim nächsten Öffnen der Kampagne kannst du sie wiederherstellen.",
       cancel: "Offen lassen",
       dismiss: "Abbrechen",
       close: "Trotzdem schließen",

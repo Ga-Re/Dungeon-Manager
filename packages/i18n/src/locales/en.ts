@@ -154,9 +154,23 @@ export const en: Messages = {
     sceneOnTv: "(on the TV)",
     tabSaving: "(saving)",
     tabNotSaved: "(not saved)",
+    rescue: {
+      label: "Unsaved changes",
+      summary_one:
+        "Changes to one scene could not be saved; they are kept on this device.",
+      summary_other:
+        "Changes to {{count}} scenes could not be saved; they are kept on this device.",
+      found: "{{name}}, as of {{time}}",
+      restore: "Restore",
+      discard: "Discard",
+      restoreNamed: "Restore the changes to {{name}}",
+      discardNamed: "Discard the changes to {{name}}",
+      restored: "Changes to {{name}} restored",
+      discarded: "Changes to {{name}} discarded",
+    },
     closeUnsaved: {
       title: "Close the scene?",
-      text: "The latest changes to {{name}} could not be saved. Closing loses them.",
+      text: "The latest changes to {{name}} could not be saved. A copy stays on this device; you can restore it when you next open the campaign.",
       cancel: "Keep open",
       dismiss: "Cancel",
       close: "Close anyway",

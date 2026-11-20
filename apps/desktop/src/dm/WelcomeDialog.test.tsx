@@ -353,4 +353,79 @@ describe("WelcomeDialog", () => {
       expect(next.onTv()).toBeNull();
     });
   });
+
+  describe("rescue copies of scenes whose save failed (T-114b)", () => {
+    const rescued = () =>
+      memoryStorage({
+        "dm.recentCampaigns": JSON.stringify([
+          recentEntry("mine", "Die verlorene Mine"),
+        ]),
+        "dm.rescueCopies": JSON.stringify({
+          version: 1,
+          copies: [
+            {
+              root: "/lib",
+              slug: "mine",
+              savedAt: "2026-11-19T11:00:00.000Z",
+              // As kept by the app: the current scene version.
+              scene: {
+                ...(JSON.parse(sceneFile("a", "Eingang (neu)")) as object),
+                schemaVersion: 3,
+              },
+            },
+          ],
+        }),
+      });
+    const openMine = async () => {
+      fireEvent.click(
+        await within(dialog()).findByRole("button", {
+          name: /Die verlorene Mine/,
+        }),
+      );
+    };
+
+    test("are offered with their campaign; restoring writes them to the library", async () => {
+      const storage = rescued();
+      const library = fakeLibraryService("/lib", LIBRARY);
+      renderWelcome(library, storage);
+      await openMine();
+      const restore = await screen.findByRole("button", {
+        name: "Änderungen an Eingang (neu) wiederherstellen",
+      });
+      fireEvent.click(restore);
+      expect(
+        await screen.findByText(
+          "Änderungen an Eingang (neu) wiederhergestellt",
+        ),
+      ).toBeTruthy();
+      expect(library.fs.files().get("campaigns/mine/scenes/a.json")).toContain(
+        "Eingang (neu)",
+      );
+      expect(storage.getItem("dm.rescueCopies")).not.toContain("Eingang");
+      expect(
+        screen.queryByRole("button", {
+          name: "Änderungen an Eingang (neu) wiederherstellen",
+        }),
+      ).toBeNull();
+    });
+
+    test("discarding drops the copy and leaves the library as it is", async () => {
+      const storage = rescued();
+      const library = fakeLibraryService("/lib", LIBRARY);
+      renderWelcome(library, storage);
+      await openMine();
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: "Änderungen an Eingang (neu) verwerfen",
+        }),
+      );
+      expect(
+        await screen.findByText("Änderungen an Eingang (neu) verworfen"),
+      ).toBeTruthy();
+      expect(
+        library.fs.files().get("campaigns/mine/scenes/a.json"),
+      ).not.toContain("Eingang (neu)");
+      expect(storage.getItem("dm.rescueCopies")).not.toContain("Eingang");
+    });
+  });
 });

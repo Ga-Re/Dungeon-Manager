@@ -37,6 +37,7 @@ import { useSceneSession } from "./useSceneSession.js";
 import { softEdgeWidth } from "../fog-settings.js";
 import { FogLookContext } from "./shell/fog-look.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
+import { SceneRescueContext } from "./rescue-copies.js";
 
 /** A rectangle polygon in map pixels. */
 const rectangle = (size: Size): Polygon => ({
@@ -155,6 +156,7 @@ export function OpenScenePanel({
   const [error, setError] = useState("");
   const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
   const session = useSceneSession(service, slug, opened, sceneOnTv);
+  const rescue = useContext(SceneRescueContext);
   const reportSaveState = useRef(onSaveState);
   useEffect(() => {
     reportSaveState.current = onSaveState;
@@ -362,6 +364,9 @@ export function OpenScenePanel({
           await deleteScene(service.fs, slug, each);
         }
       await deleteScene(service.fs, slug, scene.id);
+      // A rescue copy of a deleted scene would bring it back (T-114b).
+      for (const id of [scene.id, ...(keepSubScenes ? [] : subScenes.all)])
+        rescue?.drop(slug, id);
       onDeleted(scene, keepSubScenes ? [] : subScenes.all);
     });
   };

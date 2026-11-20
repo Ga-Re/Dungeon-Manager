@@ -75,6 +75,8 @@ import { NewSceneForm } from "./NewSceneForm.js";
 import { NoteView } from "./NoteView.js";
 import { OpenScenePanel } from "./OpenScenePanel.js";
 import { SceneTabs } from "./SceneTitle.js";
+import { RescueOffer } from "./RescueOffer.js";
+import type { RescueCopy } from "./rescue-copies.js";
 import {
   NO_SCENE_TABS,
   closeSceneTabs,
@@ -197,12 +199,18 @@ export function CampaignPanel({
   newId,
   initialTabs = null,
   onTabsChange,
+  rescues = [],
+  onRescueHandled,
   onSceneOpen,
 }: {
   readonly service: LibraryService;
   readonly slug: string;
   readonly name: string;
   readonly newId: () => string;
+  /** Kept copies of this campaign's scenes whose save failed (T-114b), to restore or discard. */
+  readonly rescues?: readonly RescueCopy[];
+  /** A copy was restored or discarded: it can go. */
+  readonly onRescueHandled?: (sceneId: string) => void;
   /** Scene tabs to open once the campaign's lists are read (the last ones, T-153, T-114a). */
   readonly initialTabs?: RememberedSceneTabs | null;
   /** Told about the open tabs after each change, to open them again on the next start. */
@@ -1276,6 +1284,32 @@ export function CampaignPanel({
         />
       </ShellPortal>
       <ShellPortal slot="notices">
+        <RescueOffer
+          copies={rescues}
+          onRestore={(copy) => {
+            void (async () => {
+              try {
+                // Written to the library first; an open tab then shows it (with a fresh
+                // history, as for any scene replaced from outside).
+                await saveScene(service.fs, slug, copy.scene);
+                setTabs((current) => replaceSceneTab(current, copy.scene));
+                onRescueHandled?.(copy.scene.id);
+                setNotice(
+                  t("campaign.rescue.restored", { name: copy.scene.name }),
+                );
+                await reloadScenes();
+              } catch (error) {
+                setNotice(describeLibraryError(t, error));
+              }
+            })();
+          }}
+          onDiscard={(copy) => {
+            onRescueHandled?.(copy.scene.id);
+            setNotice(
+              t("campaign.rescue.discarded", { name: copy.scene.name }),
+            );
+          }}
+        />
         <p role="status">{notice}</p>
       </ShellPortal>
     </>

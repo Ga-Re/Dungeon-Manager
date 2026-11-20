@@ -58,7 +58,7 @@ describe("scene tabs (T-223b)", () => {
     );
     expect(
       dialog.getByText(
-        "Die letzten Änderungen an Turm konnten nicht gespeichert werden. Beim Schließen gehen sie verloren.",
+        "Die letzten Änderungen an Turm konnten nicht gespeichert werden. Eine Kopie bleibt auf diesem Gerät; beim nächsten Öffnen der Kampagne kannst du sie wiederherstellen.",
       ),
     ).toBeTruthy();
     fireEvent.click(dialog.getByRole("button", { name: "Offen lassen" }));

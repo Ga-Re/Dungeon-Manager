@@ -496,11 +496,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-114b Rescue copy when a save fails
 
-- **Status:** todo · **Depends on:** T-114a · **Refs:** ARCHITECTURE §5
+- **Status:** done · **Depends on:** T-114a · **Refs:** ARCHITECTURE §5
 - A change whose save fails (e.g. the cloud folder is unreachable) is kept as a rescue copy outside the library – in the app's data folder, never synced – and offered on the next start (DM decision, 2026-11-20).
 - **Acceptance criteria**
-  - [ ] A scene whose save failed is offered for recovery after a forced kill; taking it writes it to the library, discarding drops the copy (component + E2E test)
-- **Notes:** Split from T-114 (2026-11-20). A new local file format (the scene document plus where it belongs): describe it in ARCHITECTURE; with document tabs every kind of document uses it (T-176, T-180).
+  - [x] A scene whose save failed is offered for recovery after a forced kill; taking it writes it to the library, discarding drops the copy (component + E2E test)
+- **Notes:** Split from T-114 (2026-11-20). Kept in the webview's storage (`dm.rescueCopies`, versioned; the app's data folder, never synced, no new Tauri permission), described in ARCHITECTURE §6. The offer shows in the map's notices when the campaign opens. A later successful save drops only a copy kept in the same session; one from an earlier session stays until the DM restores or discards it, or deletes the scene. Copies are migrated like scene files, so an update keeps them. With document tabs every kind of document uses it (T-176, T-180).
 
 ### T-129 UI design tokens and base primitives
 

@@ -13,6 +13,7 @@ import { MapViewContext } from "./MapView.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
 import { ActiveWorkspaceContext, type Workspace } from "./shell/workspace.js";
+import { SceneRescueContext, type SceneRescue } from "./rescue-copies.js";
 
 const campaign = JSON.stringify({
   schemaVersion: 2,
@@ -77,6 +78,7 @@ const mappedScene: Scene = {
 function renderScene(
   files: Record<string, string | { readonly placeholder: true }>,
   opened: Scene = scene,
+  rescue: SceneRescue | null = null,
 ) {
   const library = fakeLibraryService("/lib", {
     [`${HOEHLE}.dm.json`]: hoehleSidecar,
@@ -89,21 +91,23 @@ function renderScene(
   const i18n = createI18n("de");
   const tree = (workspace: Workspace) => (
     <I18nextProvider i18n={i18n}>
-      <ActiveWorkspaceContext value={workspace}>
-        <PlayerFeedContext value={tv.feed}>
-          <MapViewContext value={maps.service}>
-            <OpenScenePanel
-              service={library.service}
-              slug="mine"
-              scene={opened}
-              newId={() => "new-level"}
-              onChanged={() => undefined}
-              onDeleted={() => undefined}
-              onClose={() => undefined}
-            />
-          </MapViewContext>
-        </PlayerFeedContext>
-      </ActiveWorkspaceContext>
+      <SceneRescueContext value={rescue}>
+        <ActiveWorkspaceContext value={workspace}>
+          <PlayerFeedContext value={tv.feed}>
+            <MapViewContext value={maps.service}>
+              <OpenScenePanel
+                service={library.service}
+                slug="mine"
+                scene={opened}
+                newId={() => "new-level"}
+                onChanged={() => undefined}
+                onDeleted={() => undefined}
+                onClose={() => undefined}
+              />
+            </MapViewContext>
+          </PlayerFeedContext>
+        </ActiveWorkspaceContext>
+      </SceneRescueContext>
     </I18nextProvider>
   );
   const result = render(tree("gameOrchestrator"));
@@ -311,10 +315,28 @@ describe("editing the fog", () => {
     expect(screen.queryByText("Speichert …")).toBeNull();
   });
 
-  test("a failed save is reported, blocks a map change and is cleared by the next save", async () => {
+  test("a successful save leaves a rescue copy from an earlier session to the DM (T-114b)", async () => {
+    const rescue = { keep: vi.fn(), drop: vi.fn() };
     const { library } = renderScene(
       { "campaigns/mine/campaign.json": campaign },
       mapped,
+      rescue,
+    );
+    fireEvent.click(await enabled("Alles aufdecken"));
+    await waitFor(() => {
+      expect(library.fs.files().has("campaigns/mine/scenes/s.json")).toBe(true);
+    });
+    // The scene opened from disk is older than a copy kept before a crash: never dropped here.
+    expect(rescue.drop).not.toHaveBeenCalled();
+    expect(rescue.keep).not.toHaveBeenCalled();
+  });
+
+  test("a failed save is reported, blocks a map change and is cleared by the next save", async () => {
+    const rescue = { keep: vi.fn(), drop: vi.fn() };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      mapped,
+      rescue,
     );
     const write = library.fs.writeAtomic.bind(library.fs);
     library.fs.writeAtomic = () =>
@@ -323,6 +345,11 @@ describe("editing the fog", () => {
     expect(
       await screen.findByText(/konnte nicht gespeichert werden/),
     ).toBeTruthy();
+    // Kept on this device until it is saved (T-114b).
+    expect(rescue.keep).toHaveBeenCalledWith(
+      "mine",
+      expect.objectContaining({ id: "s" }),
+    );
 
     library.service.importMap.mockResolvedValue({
       path: "library/maps/neu.webp",
@@ -341,6 +368,7 @@ describe("editing the fog", () => {
       expect(screen.queryByText(/konnte nicht gespeichert werden/)).toBeNull();
     });
     expect(library.fs.files().has("campaigns/mine/scenes/s.json")).toBe(true);
+    expect(rescue.drop).toHaveBeenLastCalledWith("mine", "s");
   });
 
   test("clicking the open scene in the list keeps its edits and undo history", async () => {
