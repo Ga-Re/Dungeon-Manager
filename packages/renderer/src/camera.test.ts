@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import {
   fitCamera,
   inchCamera,
@@ -134,7 +134,7 @@ describe("mapToScreen", () => {
 });
 
 describe("inchCamera (T-106a)", () => {
-  it("makes one grid cell one inch on the display, centred on the map", () => {
+  test("makes one grid cell one inch on the display, centred on the map", () => {
     // 80 view pixels per inch, cells of 100 map pixels: 0.8 view pixels per map pixel.
     const camera = inchCamera({ width: 2000, height: 1000 }, 90, 100, 80);
     expect(camera).toEqual({
@@ -149,7 +149,7 @@ describe("inchCamera (T-106a)", () => {
     expect(Math.hypot(right.x - left.x, right.y - left.y)).toBeCloseTo(80);
   });
 
-  it("stays usable without a cell size", () => {
+  test("stays usable without a cell size", () => {
     expect(inchCamera({ width: 10, height: 10 }, 0, 0, 80).zoom).toBe(1);
   });
 });

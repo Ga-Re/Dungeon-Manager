@@ -30,6 +30,16 @@ describe("pixels per inch", () => {
     ).toBeCloseTo(80.106 * 1.02, 3);
   });
 
+  it("are unknown for a correction beyond ±50 % (a typing error would freeze the TV)", () => {
+    for (const correctionPercent of [-100, -150, 51, Number.NaN])
+      expect(
+        pixelsPerInch(tv, { diagonalInches: 55, correctionPercent }),
+      ).toBeNull();
+    expect(
+      pixelsPerInch(tv, { diagonalInches: 55, correctionPercent: -50 }),
+    ).toBeGreaterThan(0);
+  });
+
   it("are unknown for a diagonal that cannot be right", () => {
     expect(
       pixelsPerInch(tv, { diagonalInches: 0, correctionPercent: 0 }),
@@ -88,6 +98,7 @@ describe("calibrations on this device", () => {
             a: { diagonalInches: 55, correctionPercent: 0 },
             b: { diagonalInches: "55" },
             c: { diagonalInches: -1, correctionPercent: 0 },
+            d: { diagonalInches: 55, correctionPercent: -100 },
           },
         }),
       ),

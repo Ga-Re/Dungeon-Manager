@@ -3,6 +3,8 @@ import { Ruler } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  MAX_CORRECTION_PERCENT,
+  isValidCorrection,
   pixelsPerInch,
   type Calibration,
   type DisplaySize,
@@ -15,12 +17,15 @@ import {
  */
 export function TvCalibration({
   display,
+  displayLabel,
   calibration,
   checkSquare,
   onChange,
   onCheckSquare,
 }: {
   readonly display: DisplaySize;
+  /** Translated name of the display being calibrated (the TV's while the player view runs). */
+  readonly displayLabel: string;
   readonly calibration: Calibration | null;
   readonly checkSquare: boolean;
   /** A valid calibration, or `null` to remove it. */
@@ -39,6 +44,12 @@ export function TvCalibration({
   );
   // Commas are what German keyboards type.
   const number = (text: string) => Number(text.replace(",", "."));
+  const diagonalValue = number(diagonal);
+  const correctionValue = correction.trim() === "" ? 0 : number(correction);
+  const diagonalInvalid =
+    diagonal.trim() !== "" &&
+    !(Number.isFinite(diagonalValue) && diagonalValue > 0);
+  const correctionInvalid = !isValidCorrection(correctionValue);
   const change = (nextDiagonal: string, nextCorrection: string) => {
     setDiagonal(nextDiagonal);
     setCorrection(nextCorrection);
@@ -47,6 +58,7 @@ export function TvCalibration({
       correctionPercent:
         nextCorrection.trim() === "" ? 0 : number(nextCorrection),
     };
+    // Only a calibration that gives a usable scale is kept and sent (never a frozen TV).
     if (nextDiagonal.trim() !== "" && pixelsPerInch(display, entered) !== null)
       onChange(entered);
   };
@@ -58,7 +70,8 @@ export function TvCalibration({
         showLabel
         icon={<Ruler />}
         label={t("dm.calibration.open")}
-        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? id : undefined}
         onClick={() => {
           setOpen((current) => !current);
         }}
@@ -72,58 +85,94 @@ export function TvCalibration({
         label={t("dm.calibration.title")}
         align="start"
       >
-        <label htmlFor={`${id}-diagonal`}>{t("dm.calibration.diagonal")}</label>
-        <input
-          id={`${id}-diagonal`}
-          inputMode="decimal"
-          value={diagonal}
-          onChange={(event) => {
-            change(event.target.value, correction);
+        <form
+          id={id}
+          onSubmit={(event) => {
+            event.preventDefault();
           }}
-        />
-        <label htmlFor={`${id}-correction`}>
-          {t("dm.calibration.correction")}
-        </label>
-        <input
-          id={`${id}-correction`}
-          inputMode="decimal"
-          value={correction}
-          onChange={(event) => {
-            change(diagonal, event.target.value);
-          }}
-        />
-        <label>
-          <input
-            type="checkbox"
-            checked={checkSquare}
-            disabled={inchPx === null}
-            onChange={(event) => {
-              onCheckSquare(event.target.checked);
-            }}
-          />
-          {t("dm.calibration.checkSquare")}
-        </label>
-        <p role="status">
-          {inchPx === null
-            ? t("dm.calibration.none")
-            : t("dm.calibration.current", {
-                pixels: inchPx.toLocaleString(i18n.language, {
-                  maximumFractionDigits: 1,
-                }),
-              })}
-        </p>
-        {calibration && (
-          <button
-            type="button"
-            onClick={() => {
-              setDiagonal("");
-              setCorrection("0");
-              onChange(null);
-            }}
-          >
-            {t("dm.calibration.remove")}
-          </button>
-        )}
+        >
+          <fieldset>
+            <legend>
+              {t("dm.calibration.display", { name: displayLabel })}
+            </legend>
+            <label htmlFor={`${id}-diagonal`}>
+              {t("dm.calibration.diagonal")}
+            </label>
+            <input
+              id={`${id}-diagonal`}
+              inputMode="decimal"
+              value={diagonal}
+              aria-invalid={diagonalInvalid || undefined}
+              aria-describedby={
+                diagonalInvalid ? `${id}-diagonal-error` : undefined
+              }
+              onChange={(event) => {
+                change(event.target.value, correction);
+              }}
+            />
+            {diagonalInvalid && (
+              <p id={`${id}-diagonal-error`} role="alert">
+                {t("dm.calibration.diagonalInvalid")}
+              </p>
+            )}
+            <label htmlFor={`${id}-correction`}>
+              {t("dm.calibration.correction")}
+            </label>
+            <input
+              id={`${id}-correction`}
+              inputMode="decimal"
+              value={correction}
+              aria-invalid={correctionInvalid || undefined}
+              aria-describedby={
+                correctionInvalid ? `${id}-correction-error` : undefined
+              }
+              onChange={(event) => {
+                change(diagonal, event.target.value);
+              }}
+            />
+            {correctionInvalid && (
+              <p id={`${id}-correction-error`} role="alert">
+                {t("dm.calibration.correctionInvalid", {
+                  max: MAX_CORRECTION_PERCENT,
+                })}
+              </p>
+            )}
+            <label>
+              <input
+                type="checkbox"
+                checked={checkSquare}
+                disabled={inchPx === null}
+                onChange={(event) => {
+                  onCheckSquare(event.target.checked);
+                }}
+              />
+              {t("dm.calibration.checkSquare")}
+            </label>
+          </fieldset>
+          <p role="status">
+            {inchPx === null
+              ? t("dm.calibration.none")
+              : t("dm.calibration.current", {
+                  pixels: inchPx.toLocaleString(i18n.language, {
+                    maximumFractionDigits: 1,
+                  }),
+                })}
+          </p>
+          {calibration && (
+            <div className="dm-popover-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setDiagonal("");
+                  setCorrection("0");
+                  onChange(null);
+                }}
+              >
+                {t("dm.calibration.remove")}
+              </button>
+            </div>
+          )}
+        </form>
       </Popover>
     </>
   );

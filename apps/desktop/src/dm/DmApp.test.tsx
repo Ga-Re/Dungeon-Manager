@@ -275,7 +275,27 @@ describe("DmApp", () => {
         checkSquare: true,
       });
     });
-    expect(storage.getItem("dm.displayCalibration")).toContain("2.5");
+    expect(
+      JSON.parse(storage.getItem("dm.displayCalibration") ?? "{}"),
+    ).toEqual({
+      version: 1,
+      displays: {
+        "|3840x2160": { diagonalInches: 55, correctionPercent: 2.5 },
+      },
+    });
+
+    // A mistyped correction is shown as wrong and never sent: the TV keeps the last good one.
+    const sentBefore = calibrate.mock.calls.length;
+    fireEvent.change(popover.getByLabelText("Feinkorrektur (%)"), {
+      target: { value: "-100" },
+    });
+    expect(
+      popover.getByText("Die Korrektur liegt zwischen −50 und +50 Prozent."),
+    ).toBeTruthy();
+    expect(calibrate.mock.calls.length).toBe(sentBefore);
+    fireEvent.change(popover.getByLabelText("Feinkorrektur (%)"), {
+      target: { value: "2,5" },
+    });
 
     fireEvent.click(
       popover.getByRole("button", { name: "Kalibrierung entfernen" }),

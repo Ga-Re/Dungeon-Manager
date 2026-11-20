@@ -132,6 +132,12 @@ export function DmApp({
     state.status === "ready"
       ? state.displays.find((display) => display.id === selectedId)
       : undefined;
+  // While the player view runs, its display is the one being calibrated (the dropdown may show
+  // another one); before that, the chosen one.
+  const calibrated =
+    (state.status === "ready" &&
+      state.displays.find((display) => display.id === tvDisplay?.id)) ||
+    selectedDisplay;
   const displayName = (display: Display, index: number) =>
     display.name ?? t("dm.unnamedDisplay", { number: index + 1 });
 
@@ -220,18 +226,22 @@ export function DmApp({
                   disabled={opening}
                   onClick={() => void openPlayerView()}
                 />
-                {selectedDisplay && (
+                {calibrated && (
                   <TvCalibration
-                    key={calibrationKey(selectedDisplay)}
-                    display={selectedDisplay}
+                    key={calibrationKey(calibrated)}
+                    display={calibrated}
+                    displayLabel={displayName(
+                      calibrated,
+                      state.displays.indexOf(calibrated),
+                    )}
                     calibration={
-                      calibrations[calibrationKey(selectedDisplay)] ?? null
+                      calibrations[calibrationKey(calibrated)] ?? null
                     }
                     checkSquare={checkSquare}
                     onChange={(next) => {
                       saveCalibration(
                         storage,
-                        calibrationKey(selectedDisplay),
+                        calibrationKey(calibrated),
                         next,
                       );
                       setCalibrations(readCalibrations(storage));

@@ -19,6 +19,13 @@ export interface Calibration {
 }
 
 const STORAGE_KEY = "dm.displayCalibration";
+
+/** The fine correction stays within ± this many percent: anything beyond is a typing error. */
+export const MAX_CORRECTION_PERCENT = 50;
+
+/** Whether a correction can be right. */
+export const isValidCorrection = (percent: number) =>
+  Number.isFinite(percent) && Math.abs(percent) <= MAX_CORRECTION_PERCENT;
 const VERSION = 1;
 
 /** Physical pixels per inch of `display`, or `null` if the numbers cannot be right. */
@@ -31,12 +38,15 @@ export function pixelsPerInch(
   if (
     !Number.isFinite(diagonalInches) ||
     diagonalInches <= 0 ||
-    !Number.isFinite(correctionPercent) ||
+    !isValidCorrection(correctionPercent) ||
     display.width <= 0 ||
     display.height <= 0
   )
     return null;
-  return (diagonalPixels / diagonalInches) * (1 + correctionPercent / 100);
+  const result =
+    (diagonalPixels / diagonalInches) * (1 + correctionPercent / 100);
+  // Never zero, negative or infinite: the TV refuses such a message and would stop updating.
+  return Number.isFinite(result) && result > 0 ? result : null;
 }
 
 /**
@@ -56,7 +66,7 @@ const isCalibration = (value: unknown): value is Calibration =>
   Number.isFinite(value["diagonalInches"]) &&
   value["diagonalInches"] > 0 &&
   typeof value["correctionPercent"] === "number" &&
-  Number.isFinite(value["correctionPercent"]);
+  isValidCorrection(value["correctionPercent"]);
 
 /** The calibrations on this device, by `calibrationKey`; anything unusable is skipped. */
 export function readCalibrations(

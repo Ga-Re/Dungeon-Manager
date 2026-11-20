@@ -76,6 +76,8 @@ export function PlayerApp({
     const CHECK_INCHES = 2;
     const checkSquare = document.createElement("div");
     checkSquare.className = "player-check-square";
+    // Black until the first message (fail closed): no square before the DM asks for one.
+    checkSquare.hidden = true;
     element.appendChild(checkSquare);
     const showCheckSquare = () => {
       const scale = message?.scale;
@@ -232,6 +234,7 @@ export function PlayerApp({
         renderer = null;
       });
       canvas.remove();
+      checkSquare.remove();
       releaseVideo(video);
     };
   }, [feed, maps, storage]);

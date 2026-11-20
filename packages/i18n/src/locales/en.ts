@@ -24,6 +24,10 @@ export const en: Messages = {
     calibration: {
       open: "Calibrate TV …",
       title: "Calibrate TV",
+      display: "Display: {{name}}",
+      diagonalInvalid: "Enter the diagonal as a number above 0, e.g. 55.",
+      correctionInvalid:
+        "The correction lies between −{{max}} and +{{max}} percent.",
       diagonal: "Screen diagonal (inches)",
       correction: "Fine correction (%)",
       checkSquare: "Show a check square (2 inches) on the TV",

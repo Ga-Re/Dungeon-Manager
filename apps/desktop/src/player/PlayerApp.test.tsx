@@ -3,7 +3,7 @@ import type { MapImage } from "@dungeon-manager/renderer";
 import type { ViewerScene } from "@dungeon-manager/schema";
 import { render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { fakeMapService } from "../fake-renderer.test-data.js";
 import { createI18n } from "@dungeon-manager/ui";
 import type { PlayerFeedReceiver } from "../platform/player-feed.js";
@@ -134,6 +134,20 @@ describe("PlayerApp", () => {
       expect(maps.camera()?.zoom).toBeCloseTo(1.6);
     });
     expect(square?.style.width).toBe("160px");
+
+    // A TV with two device pixels per CSS pixel: the same inch is half as many CSS pixels.
+    vi.stubGlobal("devicePixelRatio", 2);
+    feed.send({
+      v: 1,
+      scene,
+      rotation: 0,
+      scale: { inchPx: 80, cellInches: 1, checkSquare: true },
+    });
+    await waitFor(() => {
+      expect(maps.camera()?.zoom).toBeCloseTo(0.4);
+    });
+    expect(square?.style.width).toBe("80px");
+    vi.unstubAllGlobals();
 
     // Without a calibration the whole map fits again, and no square shows.
     feed.send({ v: 1, scene, rotation: 0 });

@@ -23,6 +23,10 @@ export const de = {
     calibration: {
       open: "TV kalibrieren …",
       title: "TV kalibrieren",
+      display: "Display: {{name}}",
+      diagonalInvalid: "Gib die Diagonale als Zahl über 0 an, z. B. 55.",
+      correctionInvalid:
+        "Die Korrektur liegt zwischen −{{max}} und +{{max}} Prozent.",
       diagonal: "Bilddiagonale (Zoll)",
       correction: "Feinkorrektur (%)",
       checkSquare: "Prüfquadrat (2 Zoll) auf dem TV zeigen",
