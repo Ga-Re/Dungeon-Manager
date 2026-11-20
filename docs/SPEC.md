@@ -69,7 +69,7 @@ There is no DM phone app (ADR-0013). Planning on the go happens in tools the DM 
 
 **Movement rules for player tokens**
 
-- Movement **snaps to the grid**
+- Movement follows the scene's grid mode (see 5): on the grid during combat, free outside combat if the scene allows it
 - **Free, DM can lock:** moves apply immediately; the DM locks individual players or everyone with one button
 - **Measurement rule configurable per campaign:**
   - 5e standard: diagonal = 1 cell (5 ft)
@@ -114,7 +114,7 @@ The DM window has five workspaces, each with its own ribbon tabs and documents (
   - **TV:** a live preview of the player view; centring the players' view; pause, title and blackout screens.
   - **Scenes:** a scene bar with quick preparation of the next scene without touching the TV.
   - **On the map:** asset actions (e.g. roof off), doors and traps, ambience presets, area-of-effect templates.
-  - **Combat:** a group overview of all characters; hidden dice, one roll for many targets; initiative that rolls for groups of monsters and focuses the next turn with its movement range.
+  - **Combat:** a combat switch that puts the tokens on the grid (see 5); a group overview of all characters; hidden dice, one roll for many targets; initiative that rolls for groups of monsters and focuses the next turn with its movement range.
   - **Media:** handouts; music playlists, ambience layers, a sound board and a volume mixer.
   - **Notes:** room notes in the inspector; quick notes into the session log; random generators (NPCs, rumours, loot); in-game time and weather.
 - **TV outside the Orchestrator:** set in the settings – pause only on a button, always pause, or pause only in the editing workspaces.
@@ -164,6 +164,8 @@ The DM window has five workspaces, each with its own ribbon tabs and documents (
 - Condition icons and HP bar on the token (visibility configurable)
 - **Default: the DM moves tokens digitally.** Fast input: tap token, tap target cell; keyboard shortcuts on desktop; move the whole party at once
 - Players may optionally move their own token via the companion (see 2.4)
+- **Grid mode per scene** (DM decision, 2026-11-20): "always on the grid", "free, on the grid in combat" or "always free"; new scenes take the campaign's default. Applies to all tokens alike; the DM can hold Alt to place a token freely at any time
+- **Combat switch:** the DM starts and ends combat with its own switch, independent of the initiative tracker. When combat starts, every token snaps (animated) to the nearest free cell, as one undoable step; only one token may stand on a cell, and a larger token claims every cell of its footprint. During combat a token dropped on an occupied cell goes to the nearest free one
 
 ### 5.1 Optional: camera detection of players and enemies
 
@@ -176,7 +178,7 @@ The DM window has five workspaces, each with its own ribbon tabs and documents (
 **Calibration**
 
 - The tool shows reference markers on the TV; each camera is calibrated individually (camera image → grid cell)
-- **Height compensation:** the sticker sits a few centimetres above the TV. For angled cameras the known height is factored out; grid snapping absorbs the rest
+- **Height compensation:** the sticker sits a few centimetres above the TV. For angled cameras the known height is factored out; grid snapping absorbs the rest (outside combat, in a scene with free movement, the detected position is used as is)
 - Recalibrate with one button if a camera moves
 
 **Multiple cameras**

@@ -370,6 +370,17 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] All move modes covered by component/E2E tests
   - [ ] Invisible-in-player-view tokens supported
 
+### T-233 Free movement outside combat, grid in combat
+
+- **Status:** todo · **Depends on:** T-107 · **Refs:** SPEC §2.4, §5
+- Each scene has a grid mode: "always on the grid", "free, on the grid in combat" or "always free"; new scenes take the campaign's default. It applies to all tokens (player characters and creatures); holding Alt places a token freely at any time.
+- A combat switch in the play ribbon (the Game-Orchestrator once T-171 builds it), independent of the initiative tracker, starts and ends combat. On start, every token on the level snaps (animated) to the nearest free cell in one undoable command: one token per cell, a larger token claims its whole footprint, and walls are respected once they exist. During combat, a token dropped on an occupied cell goes to the nearest free one. Ending combat leaves the tokens where they are.
+- **Acceptance criteria**
+  - [ ] Core: snap-on-combat-start assigns each token a free cell, nearest first, no two tokens share a cell, large footprints included; one undo restores all positions (unit + property tests)
+  - [ ] Free moves outside combat and snapped moves in combat, per grid mode, with Alt override (component tests)
+  - [ ] Combat on/off and the snap reach the TV (E2E)
+- **Notes:** DM request (2026-11-20). The grid mode belongs to the scene's start state (Atlas), the combat switch to its game state (ADR-0017). Both are new scene fields and a campaign default: schema change reviewed with the DM. Open: whether Tiny creatures may share a cell (5e allows it; the DM's rule is one token per cell). Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is.
+
 ### T-108a Fog: rectangle reveal/hide, undo, live on the TV
 
 - **Status:** done · **Depends on:** T-102b, T-105b · **Refs:** SPEC 4
