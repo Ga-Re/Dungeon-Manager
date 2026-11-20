@@ -34,3 +34,21 @@ test("sends every change and repeats the latest state when the player window loa
     { v: 1, scene: null, rotation: 180 },
   ]);
 });
+
+test("sends the TV's calibration, again when the player window reloads, and leaves it out when removed (T-106a)", () => {
+  const sent: PlayerViewMessage[] = [];
+  let ready: () => void = () => undefined;
+  const feed = createPlayerFeedSender(
+    (message) => sent.push(message),
+    (callback) => {
+      ready = callback;
+    },
+  );
+  const scale = { inchPx: 80, cellInches: 1, checkSquare: false };
+  feed.calibrate(scale);
+  ready();
+  expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0, scale });
+  feed.calibrate(null);
+  expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0 });
+  expect("scale" in (sent.at(-1) ?? {})).toBe(false);
+});

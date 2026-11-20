@@ -1,6 +1,7 @@
 import {
   PLAYER_VIEW_VERSION,
   type PlayerViewMessage,
+  type PlayerViewScale,
 } from "@dungeon-manager/protocol";
 import type { ViewerScene } from "@dungeon-manager/schema";
 
@@ -15,6 +16,8 @@ export interface PlayerFeedSender {
   show(scene: ViewerScene | null): void;
   rotate(rotation: TvRotation): void;
   readonly rotation: TvRotation;
+  /** The TV's calibration (T-106a), or `null`: the whole map fits the TV. */
+  calibrate(scale: PlayerViewScale | null): void;
 }
 
 /** Player side: calls `listener` with every valid message; invalid ones are dropped. */
@@ -36,8 +39,14 @@ export function createPlayerFeedSender(
 ): PlayerFeedSender {
   let scene: ViewerScene | null = null;
   let rotation: TvRotation = 0;
+  let scale: PlayerViewScale | null = null;
   const publish = () => {
-    send({ v: PLAYER_VIEW_VERSION, scene, rotation });
+    send({
+      v: PLAYER_VIEW_VERSION,
+      scene,
+      rotation,
+      ...(scale && { scale }),
+    });
   };
   onPlayerReady(publish);
   return {
@@ -51,6 +60,10 @@ export function createPlayerFeedSender(
     },
     get rotation() {
       return rotation;
+    },
+    calibrate(next) {
+      scale = next;
+      publish();
     },
   };
 }

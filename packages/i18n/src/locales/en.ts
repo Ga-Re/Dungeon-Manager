@@ -13,6 +13,29 @@ export const en: Messages = {
     loadingDisplays: "Looking for displays …",
     openPlayerView: "Open player view",
     playerViewOpened: "Player view is running on {{name}}.",
+    cellSize: {
+      label: "Cell size on the TV",
+      hint: "How big one grid cell is on a calibrated TV – to fit the minis (usually 1 inch = 2.54 cm).",
+      value: "Size",
+      unit: "Unit",
+      inches: "inches",
+      centimetres: "cm",
+    },
+    calibration: {
+      open: "Calibrate TV …",
+      title: "Calibrate TV",
+      display: "Display: {{name}}",
+      diagonalInvalid: "Enter the diagonal as a number above 0, e.g. 55.",
+      correctionInvalid:
+        "The correction lies between −{{max}} and +{{max}} percent.",
+      diagonal: "Screen diagonal (inches)",
+      correction: "Fine correction (%)",
+      checkSquare: "Show a check square (2 inches) on the TV",
+      current:
+        "{{pixels}} pixels per inch – one cell has the size set in the settings. Measure the check square and correct in percent.",
+      none: "Without a calibration the TV shows the whole map.",
+      remove: "Remove calibration",
+    },
     rotateTv: "Rotate TV view (now {{degrees}}°)",
     refreshDisplays: "Search displays again",
     error: "That did not work: {{message}}",
@@ -300,6 +323,7 @@ export const en: Messages = {
       fog: "Fog & animation",
       appearance: "Appearance",
       library: "Library",
+      tv: "Player view",
       layout: "Panels",
     },
     uiScale: {

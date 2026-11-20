@@ -48,6 +48,7 @@ function renderCampaign() {
     }),
     rotate: vi.fn(),
     rotation: 0,
+    calibrate: vi.fn(),
   };
   render(
     <I18nextProvider i18n={createI18n("de")}>

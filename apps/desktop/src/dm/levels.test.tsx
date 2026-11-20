@@ -71,6 +71,7 @@ function renderScene(opened: Scene, levels: readonly Level[] = towerLevels) {
     }),
     rotate: vi.fn(),
     rotation: 0,
+    calibrate: vi.fn(),
   };
   // The cellar's own image has another size than the tower's map.
   const maps = fakeMapService((path) =>

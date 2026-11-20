@@ -12,6 +12,29 @@ export const de = {
     loadingDisplays: "Displays werden gesucht …",
     openPlayerView: "Spieleransicht öffnen",
     playerViewOpened: "Spieleransicht läuft auf {{name}}.",
+    cellSize: {
+      label: "Feldgröße auf dem TV",
+      hint: "So groß ist ein Rasterfeld auf einem kalibrierten TV – passend zu den Minis (meist 1 Zoll = 2,54 cm).",
+      value: "Größe",
+      unit: "Einheit",
+      inches: "Zoll",
+      centimetres: "cm",
+    },
+    calibration: {
+      open: "TV kalibrieren …",
+      title: "TV kalibrieren",
+      display: "Display: {{name}}",
+      diagonalInvalid: "Gib die Diagonale als Zahl über 0 an, z. B. 55.",
+      correctionInvalid:
+        "Die Korrektur liegt zwischen −{{max}} und +{{max}} Prozent.",
+      diagonal: "Bilddiagonale (Zoll)",
+      correction: "Feinkorrektur (%)",
+      checkSquare: "Prüfquadrat (2 Zoll) auf dem TV zeigen",
+      current:
+        "{{pixels}} Pixel pro Zoll – ein Feld hat die Größe aus den Einstellungen. Miss das Prüfquadrat nach und korrigiere in Prozent.",
+      none: "Ohne Kalibrierung zeigt der TV die ganze Karte.",
+      remove: "Kalibrierung entfernen",
+    },
     rotateTv: "TV-Ansicht drehen (jetzt {{degrees}}°)",
     refreshDisplays: "Displays neu suchen",
     error: "Das hat nicht geklappt: {{message}}",
@@ -302,6 +325,7 @@ export const de = {
       fog: "Nebel & Animation",
       appearance: "Darstellung",
       library: "Bibliothek",
+      tv: "Spieleransicht",
       layout: "Panels",
     },
     uiScale: {

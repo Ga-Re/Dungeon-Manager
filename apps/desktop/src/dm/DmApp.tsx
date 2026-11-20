@@ -14,6 +14,17 @@ import { PlayerFeedContext } from "./player-feed-context.js";
 import { DmShell } from "./shell/DmShell.js";
 import { ShellPortal } from "./shell/slots.js";
 import { deviceStorage } from "./shell/theme.js";
+import { TvCalibration } from "./TvCalibration.js";
+import {
+  calibrationKey,
+  cellInches,
+  pixelsPerInch,
+  readCalibrations,
+  readCellSize,
+  saveCalibration,
+  saveCellSize,
+  type CellSize,
+} from "../display-calibration.js";
 
 type DisplayState =
   | { readonly status: "loading" }
@@ -53,6 +64,36 @@ export function DmApp({
   const [searchCount, setSearchCount] = useState(0);
   const playerFeed = useContext(PlayerFeedContext);
   const [rotation, setRotation] = useState(playerFeed?.rotation ?? 0);
+  // TV calibration (T-106a): per display on this device; sent for the display the player view
+  // runs on.
+  const [calibrations, setCalibrations] = useState(() =>
+    readCalibrations(storage),
+  );
+  const [checkSquare, setCheckSquare] = useState(false);
+  // How big one cell is on the TV (DM, 2026-11-20): 1 inch by default, or in centimetres.
+  const [cellSize, setCellSize] = useState<CellSize>(() =>
+    readCellSize(storage),
+  );
+  const [cellSizeText, setCellSizeText] = useState(() =>
+    String(cellSize.value),
+  );
+  const changeCellSize = (next: CellSize) => {
+    setCellSize(next);
+    saveCellSize(storage, next);
+  };
+  const [tvDisplay, setTvDisplay] = useState<Display | null>(null);
+  const tvCalibration = tvDisplay
+    ? calibrations[calibrationKey(tvDisplay)]
+    : undefined;
+  const tvInchPx =
+    tvDisplay && tvCalibration ? pixelsPerInch(tvDisplay, tvCalibration) : null;
+  useEffect(() => {
+    playerFeed?.calibrate(
+      tvInchPx === null
+        ? null
+        : { inchPx: tvInchPx, cellInches: cellInches(cellSize), checkSquare },
+    );
+  }, [playerFeed, tvInchPx, checkSquare, cellSize]);
 
   // Players sit around the table; the TV view turns in quarter steps (SPEC 2.2).
   const rotateTv = () => {
@@ -87,6 +128,16 @@ export function DmApp({
           message: error instanceof Error ? error.message : String(error),
         });
 
+  const selectedDisplay =
+    state.status === "ready"
+      ? state.displays.find((display) => display.id === selectedId)
+      : undefined;
+  // While the player view runs, its display is the one being calibrated (the dropdown may show
+  // another one); before that, the chosen one.
+  const calibrated =
+    (state.status === "ready" &&
+      state.displays.find((display) => display.id === tvDisplay?.id)) ||
+    selectedDisplay;
   const displayName = (display: Display, index: number) =>
     display.name ?? t("dm.unnamedDisplay", { number: index + 1 });
 
@@ -100,6 +151,7 @@ export function DmApp({
     setOpening(true);
     try {
       await displayService.openPlayerView(display, t("player.windowTitle"));
+      setTvDisplay(display);
       setNotice(
         t("dm.playerViewOpened", { name: displayName(display, index) }),
       );
@@ -174,9 +226,71 @@ export function DmApp({
                   disabled={opening}
                   onClick={() => void openPlayerView()}
                 />
+                {calibrated && (
+                  <TvCalibration
+                    key={calibrationKey(calibrated)}
+                    display={calibrated}
+                    displayLabel={displayName(
+                      calibrated,
+                      state.displays.indexOf(calibrated),
+                    )}
+                    calibration={
+                      calibrations[calibrationKey(calibrated)] ?? null
+                    }
+                    checkSquare={checkSquare}
+                    onChange={(next) => {
+                      saveCalibration(
+                        storage,
+                        calibrationKey(calibrated),
+                        next,
+                      );
+                      setCalibrations(readCalibrations(storage));
+                    }}
+                    onCheckSquare={setCheckSquare}
+                  />
+                )}
               </>
             )}
           </RibbonGroup>
+        </ShellPortal>
+        <ShellPortal slot="settingsTv">
+          <fieldset className="dm-settings-group">
+            <legend>{t("dm.cellSize.label")}</legend>
+            <p className="dm-settings-hint">{t("dm.cellSize.hint")}</p>
+            <div className="dm-settings-choices">
+              <label>
+                {t("dm.cellSize.value")}
+                <input
+                  inputMode="decimal"
+                  size={5}
+                  value={cellSizeText}
+                  onChange={(event) => {
+                    const text = event.target.value;
+                    setCellSizeText(text);
+                    // Commas are what German keyboards type.
+                    const value = Number(text.replace(",", "."));
+                    if (Number.isFinite(value) && value > 0)
+                      changeCellSize({ ...cellSize, value });
+                  }}
+                />
+              </label>
+              <label>
+                {t("dm.cellSize.unit")}
+                <select
+                  value={cellSize.unit}
+                  onChange={(event) => {
+                    changeCellSize({
+                      ...cellSize,
+                      unit: event.target.value === "cm" ? "cm" : "in",
+                    });
+                  }}
+                >
+                  <option value="in">{t("dm.cellSize.inches")}</option>
+                  <option value="cm">{t("dm.cellSize.centimetres")}</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
         </ShellPortal>
         {/* The TV in the dock (T-131): its rotation and what happened to the player view. */}
         <ShellPortal slot="dock">

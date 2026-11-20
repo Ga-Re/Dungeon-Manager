@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -284,8 +284,8 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-125 Asset metadata: scale, name, origin
 
-- **Status:** todo · **Depends on:** T-124, T-106, T-134b · **Refs:** SPEC 8.2, 3.1, ADR-0012
-- Metadata per catalog item so it always fits the map scale: for maps the grid calibration (pixels per cell, offset; filled from T-106 and reused by every scene with that map), for assets and tokens their footprint in grid cells. Plus display name and origin/license (SPEC 8.2).
+- **Status:** todo · **Depends on:** T-124, T-106a, T-134b · **Refs:** SPEC 8.2, 3.1, ADR-0012
+- Metadata per catalog item so it always fits the map scale: for maps the grid calibration (pixels per cell, offset; filled from T-176/T-177 and reused by every scene with that map), for assets and tokens their footprint in grid cells. Plus display name and origin/license (SPEC 8.2).
 - **Acceptance criteria**
   - [ ] A map's calibration is stored once and pre-fills the grid of every new scene using it
   - [ ] Assets and tokens are placed at the size given by their metadata, matching the map scale
@@ -314,7 +314,7 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-105b Player window shows the open scene
 
 - **Status:** done · **Depends on:** T-105a · **Refs:** ARCHITECTURE §5.1, §8
-- The DM window sends the player window the projected scene (`projectForViewer`) via a Tauri event; the player window's only permission is listening to events, and it validates every message with the strict viewer schema. Locked scale: the map is fitted to the TV until T-106 brings 1-inch calibration (then the DM window also pans the TV view); the DM rotates the TV view. Fog: opaque except revealed areas (first map level until levels can be switched).
+- The DM window sends the player window the projected scene (`projectForViewer`) via a Tauri event; the player window's only permission is listening to events, and it validates every message with the strict viewer schema. Scale: without a calibration the map is fitted to the TV; on a calibrated TV (T-106a) one grid cell has the size the DM set, centred until the DM pans the TV view (T-106c); the DM rotates the TV view. Fog: opaque except revealed areas (first map level until levels can be switched).
 - **Acceptance criteria**
   - [x] Opening a scene in the DM window shows its map on the TV; closing it clears the TV
   - [x] Screenshot test for the player view
@@ -355,16 +355,29 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Both views show the same moment of a video map within ~100 ms
 - **Notes:** From the T-105c review (ADR-0010 consequence).
 
-### T-106 Grid overlay and 1-inch calibration
+### T-106a TV calibration: true cell size on the table
 
-- **Status:** todo · **Depends on:** T-105b, T-134b · **Refs:** SPEC 2.2, ADR-0012
-- Grid overlay (calibration stored in the map's sidecar, T-134); align grid to the map; display calibration (screen diagonal / resolution → pixels per inch) per display in device settings.
+- **Status:** done · **Depends on:** T-105b, T-134b · **Refs:** SPEC 2.2
+- Display calibration per display in device settings: the DM enters the diagonal in inches (resolution from the system), checks a 2-inch square on the TV and corrects in percent ("TV kalibrieren …" in the display ribbon group). The cell size on the TV is set in the settings (category "Spieleransicht"), in inches or centimetres, 1 inch by default. A calibrated TV shows one grid cell at that size, centred on the map; without a calibration the whole map fits.
 - **Acceptance criteria**
-  - [ ] On a calibrated display one cell measures 1 inch (manual check documented; unit tests for the math)
-  - [ ] Rotation 0/90/180/270 in the player window
-- Workspace interview (2026-11-20): calibration lives in the Map Forge (T-176, two-click 3×3 box T-177); the display calibration stays in the device settings.
+  - [x] On a calibrated display one cell has the set size (unit tests for the math; component tests; manual check: measure the check square and a cell on the TV)
+  - [x] Rotation 0/90/180/270 in the player window (already there; the calibrated camera keeps it)
+- **Notes:** Split from T-106 (2026-11-20). DM decisions (2026-11-20): diagonal in inches plus check square and fine correction; the DM moves the TV's view (T-106c); grid lines in the DM window always available, on the TV switchable, default off (T-106b); the cell size in inches or cm in the settings. Device storage: `dm.displayCalibration` (per display by name and resolution), `dm.tvCellSize`. The player-view message gets an optional strict `scale: { inchPx, cellInches, checkSquare }`. Workspace interview: the map's grid calibration lives in the Map Forge (T-176/T-177).
 
+### T-106b Grid lines
+
+- **Status:** todo · **Depends on:** T-106a · **Refs:** SPEC 2.2, ADR-0012
+- Grid lines from the map's sidecar grid: in the DM window on and off per view; on the TV switchable in the display ribbon, off by default (DM decision, 2026-11-20).
+- **Acceptance criteria**
+  - [ ] Grid lines line up with the map's cells in both views and all rotations (renderer screenshot test)
 - **Notes:** From T-134b: the open scene's map data is held while it changes on disk; this task's own sidecar writes update the shown data first (`useMapData`), so their watcher echo asks nothing (test).
+
+### T-106c Move the TV's view
+
+- **Status:** todo · **Depends on:** T-106a · **Refs:** SPEC 2.2
+- At true size the map is usually larger than the TV: the DM window shows the TV's view as a frame on the map; the DM drags it where play happens (DM decision, 2026-11-20). The zoom stays at the calibrated size.
+- **Acceptance criteria**
+  - [ ] Dragging the frame moves the TV's view; rotation and calibration are kept (component + E2E test)
 
 ### T-116 Player view render resolution setting
 
@@ -377,7 +390,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-107 Tokens: create, place, move
 
-- **Status:** todo · **Depends on:** T-102b, T-106, T-172a, T-174, T-180a · **Refs:** SPEC 5
+- **Status:** todo · **Depends on:** T-102b, T-106a, T-172a, T-174, T-180a · **Refs:** SPEC 5
 - Tokens with D&D size categories; tap-token-tap-cell, drag, keyboard shortcuts, group move; snapping.
 - **Acceptance criteria**
   - [ ] All move modes covered by component/E2E tests
@@ -834,7 +847,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - Scene schema v3: the scene's map becomes `{ kind, asset, overrides }`; grid and levels move to the map's sidecar. The DM window loads the sidecar with the scene and works on `resolveMap`'s result (levels, grid, rendering, TV); `embeddedMap` is gone; new maps and map changes write the sidecar; a sidecar that is not available, a scene playing its own copy (`legacyMap`) and orphaned overrides show a hint to the DM.
 - **Acceptance criteria**
   - [x] Scene schema v3: migration `map → { kind, asset, overrides, legacyMap }`; opening a scene seeds a missing sidecar from `legacyMap` (`settleLegacyMap`); differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures; schema, storage and component tests)
-  - [x] A missing sidecar yields defaults (one level with the fixed id `level-1`); the first write creates it – today a new scene's map and a map change (`ensureMapData`), later the map edits of T-106/T-118d
+  - [x] A missing sidecar yields defaults (one level with the fixed id `level-1`); the first write creates it – today a new scene's map and a map change (`ensureMapData`), later the map edits of T-176/T-118d
   - [x] Only a missing sidecar is seeded; a placeholder or broken one is never overwritten, and its map is not shown (tests)
   - [x] Opening, playing and the TV use the resolved map (component + E2E tests)
 - **Notes:** Split from T-134 (2026-11-20). Undo restores scenes only and plays them on the current map data (`useSceneSession`). From the review: a missing sidecar counts as not available (not as defaults) while the scene refers to levels other than `level-1`, as it has most likely not synced yet. The details panel shows grid and levels for the open scene only (they belong to the map). ADR-0012 still names scene version 2 and `map → { asset, overrides }`: it is version 3 (T-119 took version 2) and keeps `kind` – a dated note for the DM to add, as accepted ADRs are not edited by the agent. Adopting or discarding a differing `legacyMap` follows in T-235. "Reset grid" in the map change now applies to a new map without data of its own; a map's calibration is never reset by a scene (ADR-0012) – T-121 revisits the map change.
@@ -853,7 +866,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - A global edit (e.g. a recalibration on another device) reaches the scene live on the TV only after the DM confirms.
 - **Acceptance criteria**
   - [x] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open (component test)
-- **Notes:** Split from T-134 (2026-11-20). The open scene is the one on the TV, so a change of its map's sidecar on disk waits for "Änderung übernehmen"; unchanged reloads (our own writes coming back from the watcher) ask nothing. The DM's own map edits in the open scene (T-118d, T-106) must update the shown data before writing the sidecar (e.g. an `applyOwnEdit` on `useMapData`), or their watcher echo would be held – noted there. A sidecar that cannot be read for a moment keeps what is shown. The catalog part moved to T-124, which builds the catalog.
+- **Notes:** Split from T-134 (2026-11-20). The open scene is the one on the TV, so a change of its map's sidecar on disk waits for "Änderung übernehmen"; unchanged reloads (our own writes coming back from the watcher) ask nothing. The DM's own map edits in the open scene (T-118d, T-176) must update the shown data before writing the sidecar (e.g. an `applyOwnEdit` on `useMapData`), or their watcher echo would be held – noted there. A sidecar that cannot be read for a moment keeps what is shown. The catalog part moved to T-124, which builds the catalog.
 
 ### T-168 Animated fog effects per map
 
@@ -1001,7 +1014,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-177 Two-click grid calibration with a 3×3 box
 
-- **Status:** todo · **Depends on:** T-176, T-106 · **Refs:** SPEC §2.2, §2.5
+- **Status:** todo · **Depends on:** T-176, T-106a · **Refs:** SPEC §2.2, §2.5
 - In the Map Forge the DM drags a box over 3×3 cells of the map's printed grid; cell size and offset follow, so every map shows the same cell size on the TV.
 - **Acceptance criteria**
   - [ ] Cell size and offset from a dragged 3×3 box, also on a turned view (unit tests for the math)

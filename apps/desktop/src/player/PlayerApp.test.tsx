@@ -3,7 +3,7 @@ import type { MapImage } from "@dungeon-manager/renderer";
 import type { ViewerScene } from "@dungeon-manager/schema";
 import { render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { fakeMapService } from "../fake-renderer.test-data.js";
 import { createI18n } from "@dungeon-manager/ui";
 import type { PlayerFeedReceiver } from "../platform/player-feed.js";
@@ -101,6 +101,60 @@ describe("PlayerApp", () => {
     expect(fogOrder).toBeLessThan(mapOrder);
     expect(maps.service.loadImage).toHaveBeenCalledWith("library/maps/a.png");
     expect(maps.camera()?.rotation).toBe(90);
+  });
+
+  test("on a calibrated TV, one cell has the DM's size and a check square can show (T-106a)", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const scene = sceneWith("library/maps/a.png");
+    feed.send({
+      v: 1,
+      scene,
+      rotation: 0,
+      scale: { inchPx: 80, cellInches: 1, checkSquare: true },
+    });
+    await waitFor(() => {
+      // 80 pixels per inch (devicePixelRatio 1 in tests) over cells of 100 map pixels.
+      expect(maps.camera()?.zoom).toBeCloseTo(0.8);
+    });
+    const square = document.querySelector<HTMLElement>(".player-check-square");
+    expect(square?.hidden).toBe(false);
+    expect(square?.style.width).toBe("160px");
+
+    // Cells of 2 inches (the DM's setting): twice as large; the square stays 2 inches.
+    feed.send({
+      v: 1,
+      scene,
+      rotation: 0,
+      scale: { inchPx: 80, cellInches: 2, checkSquare: true },
+    });
+    await waitFor(() => {
+      expect(maps.camera()?.zoom).toBeCloseTo(1.6);
+    });
+    expect(square?.style.width).toBe("160px");
+
+    // A TV with two device pixels per CSS pixel: the same inch is half as many CSS pixels.
+    vi.stubGlobal("devicePixelRatio", 2);
+    feed.send({
+      v: 1,
+      scene,
+      rotation: 0,
+      scale: { inchPx: 80, cellInches: 1, checkSquare: true },
+    });
+    await waitFor(() => {
+      expect(maps.camera()?.zoom).toBeCloseTo(0.4);
+    });
+    expect(square?.style.width).toBe("80px");
+    vi.unstubAllGlobals();
+
+    // Without a calibration the whole map fits again, and no square shows.
+    feed.send({ v: 1, scene, rotation: 0 });
+    await waitFor(() => {
+      expect(maps.camera()?.zoom).not.toBeCloseTo(0.8);
+    });
+    expect(square?.hidden).toBe(true);
   });
 
   test("removes the old map at once when the scene changes or closes", async () => {

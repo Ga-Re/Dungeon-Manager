@@ -1,4 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, test, vi } from "vitest";
 import { createI18n } from "@dungeon-manager/ui";
@@ -10,6 +16,7 @@ import {
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { DmApp } from "./DmApp.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
+import { memoryStorage } from "./memory-storage.test-data.js";
 
 const laptop: Display = {
   id: "0",
@@ -184,7 +191,9 @@ describe("DmApp", () => {
     const rotate = vi.fn();
     render(
       <I18nextProvider i18n={createI18n("de")}>
-        <PlayerFeedContext value={{ show: vi.fn(), rotate, rotation: 270 }}>
+        <PlayerFeedContext
+          value={{ show: vi.fn(), rotate, rotation: 270, calibrate: vi.fn() }}
+        >
           <DmApp
             displayService={fakeService()}
             libraryService={fakeLibraryService(null).service}
@@ -199,6 +208,103 @@ describe("DmApp", () => {
     expect(rotate).toHaveBeenCalledWith(0);
     expect(
       screen.getByRole("button", { name: "TV-Ansicht drehen (jetzt 0°)" }),
+    ).toBeTruthy();
+  });
+
+  test("calibrates the TV per display; one cell has the size set in the settings (T-106a)", async () => {
+    const calibrate = vi.fn();
+    const storage = memoryStorage();
+    render(
+      <I18nextProvider i18n={createI18n("de")}>
+        <PlayerFeedContext
+          value={{ show: vi.fn(), rotate: vi.fn(), rotation: 0, calibrate }}
+        >
+          <DmApp
+            displayService={fakeService()}
+            libraryService={fakeLibraryService(null).service}
+            newId={() => "id-1"}
+            storage={storage}
+          />
+        </PlayerFeedContext>
+      </I18nextProvider>,
+    );
+    fireEvent.click(await openButton());
+    await waitFor(() => {
+      expect(calibrate).toHaveBeenLastCalledWith(null);
+    });
+
+    // The cell size, in the settings: 2.5 cm, kept on this device.
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Spieleransicht" }));
+    fireEvent.change(screen.getByLabelText("Größe"), {
+      target: { value: "2,5" },
+    });
+    fireEvent.change(screen.getByLabelText("Einheit"), {
+      target: { value: "cm" },
+    });
+    expect(storage.getItem("dm.tvCellSize")).toBe('{"value":2.5,"unit":"cm"}');
+    fireEvent.click(
+      screen.getByRole("button", { name: "Einstellungen schließen" }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "TV kalibrieren …" }));
+    const popover = within(
+      screen.getByRole("group", { name: "TV kalibrieren" }),
+    );
+    fireEvent.change(popover.getByLabelText("Bilddiagonale (Zoll)"), {
+      target: { value: "55" },
+    });
+    const diagonalPx = Math.hypot(tv.width, tv.height);
+    await waitFor(() => {
+      expect(calibrate).toHaveBeenLastCalledWith({
+        inchPx: diagonalPx / 55,
+        cellInches: 2.5 / 2.54,
+        checkSquare: false,
+      });
+    });
+    fireEvent.change(popover.getByLabelText("Feinkorrektur (%)"), {
+      target: { value: "2,5" },
+    });
+    fireEvent.click(
+      popover.getByLabelText("Prüfquadrat (2 Zoll) auf dem TV zeigen"),
+    );
+    await waitFor(() => {
+      expect(calibrate).toHaveBeenLastCalledWith({
+        inchPx: (diagonalPx / 55) * 1.025,
+        cellInches: 2.5 / 2.54,
+        checkSquare: true,
+      });
+    });
+    expect(
+      JSON.parse(storage.getItem("dm.displayCalibration") ?? "{}"),
+    ).toEqual({
+      version: 1,
+      displays: {
+        "|3840x2160": { diagonalInches: 55, correctionPercent: 2.5 },
+      },
+    });
+
+    // A mistyped correction is shown as wrong and never sent: the TV keeps the last good one.
+    const sentBefore = calibrate.mock.calls.length;
+    fireEvent.change(popover.getByLabelText("Feinkorrektur (%)"), {
+      target: { value: "-100" },
+    });
+    expect(
+      popover.getByText("Die Korrektur liegt zwischen −50 und +50 Prozent."),
+    ).toBeTruthy();
+    expect(calibrate.mock.calls.length).toBe(sentBefore);
+    fireEvent.change(popover.getByLabelText("Feinkorrektur (%)"), {
+      target: { value: "2,5" },
+    });
+
+    fireEvent.click(
+      popover.getByRole("button", { name: "Kalibrierung entfernen" }),
+    );
+    await waitFor(() => {
+      expect(calibrate).toHaveBeenLastCalledWith(null);
+    });
+    expect(
+      popover.getByText("Ohne Kalibrierung zeigt der TV die ganze Karte."),
     ).toBeTruthy();
   });
 });
