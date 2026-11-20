@@ -117,7 +117,7 @@ export function OpenScenePanel({
   const [brushCells, setBrushCells] = useState(1);
   const [mapSize, setMapSize] = useState<Size | null>(null);
   // The DM works on a level of their choice, the TV's until they pick another (T-118c).
-  const onTv = tableLevels(scene).current ?? undefined;
+  const onTv = tableLevels(scene, scene.map).current ?? undefined;
   const [picked, setPicked] = useState<string | null>(null);
   const levelId =
     picked !== null && scene.map?.levels.some(({ id }) => id === picked)

@@ -87,7 +87,7 @@ describe("token.move", () => {
   });
 
   test("needs a map", () => {
-    const withoutMap = { ...state, scene: { ...scene, map: null } };
+    const withoutMap = { ...state, scene: { ...scene, map: null }, map: null };
     expect(
       apply(
         withoutMap,
@@ -750,7 +750,7 @@ describe("level.show", () => {
     });
     expect(
       apply(
-        { ...state, scene: { ...scene, map: null } },
+        { ...state, scene: { ...scene, map: null }, map: null },
         { type: "level.show", levelId: "ground" },
         ctx,
       ),

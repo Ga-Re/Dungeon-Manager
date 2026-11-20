@@ -17,7 +17,7 @@ export function sceneContentNodes(
   scene: Scene,
   revealed: readonly Polygon[],
 ): TreeNode[] {
-  const { current, released } = tableLevels(scene);
+  const { current, released } = tableLevels(scene, scene.map);
   // Which levels the TV shows and the players have seen (T-118c); with one level there is
   // nothing to tell apart, as with the level switcher.
   const levelMeta = (id: string) =>

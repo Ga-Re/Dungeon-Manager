@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134b, T-118d, T-171, T-172, T-174, T-223, T-114, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172, T-174, T-223, T-114, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -175,7 +175,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-118d Add and rename levels
 
-- **Status:** todo · **Depends on:** T-118c, T-134 · **Refs:** SPEC §3.1, ADR-0012
+- **Status:** todo · **Depends on:** T-118c, T-134d · **Refs:** SPEC §3.1, ADR-0012
 - DM decision (2026-11-20): the DM adds a level (name, optionally its own image or video of the map's size) and renames levels from the "Ebene" group; deleting waits for the sidecar files (T-134), as fog, tokens and released levels refer to level ids. Moved after T-134 (DM, 2026-11-20): levels are added to the map's sidecar, not to `scene.map`.
 - **Acceptance criteria**
   - [ ] Add a level with or without its own file; a file of another size is refused with an actionable message (component + E2E test)
@@ -783,22 +783,38 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Notes:** From ADR-0011. Left over from T-130 review: at 1280 px the open data panel covers the left end of today's map dock, and `.dm-notices` sits at a fixed offset above it – lay both out with the new dock; display status (`role="status"`) moves out of the hidden Anzeige tab into the dock. Found in T-156: the ribbon's height differs per tab and workspace (about 65–142 px at 1280 px; Nebel wraps the most), so the map below moves when switching – give the ribbon one height as in Fusion 360 when the fog tools become ribbon groups.
 - Done in T-131: the fog tools are ribbon groups (Werkzeug, Form, Ganze Karte); the dock holds zoom, fit and rotation of the DM view, the TV rotation and the player-view status; notices stack above it; the ribbon has one height (tabs row and panel fixed, tools never wrap). The TV rotation and player-feed status appear only with a player feed (not in the E2E harness).
 
-### T-134 Sidecar files for map and asset data
+### T-134 Sidecar schema and resolved map in core
 
-- **Status:** todo · **Depends on:** T-103b · **Refs:** ADR-0012, ARCHITECTURE §5.2, §6, §8
-- Versioned zod schema for `<file>.dm.json` (metadata, scale, levels, rooms; walls/doors/lights/blockers/variants reserved for stage 5, all with stable ids); storage reads, watches and writes sidecars atomically, incl. conflict copies and placeholders; scenes reference the map and keep overrides by element id; pure `resolveMap(sidecar, overrides)` in `core` with orphan detection.
+- **Status:** done · **Depends on:** T-103b · **Refs:** ADR-0012, ARCHITECTURE §5.2, §6, §8
+- Versioned zod schema for `<file>.dm.json` (metadata, scale, levels, rooms; walls/doors/lights/blockers/variants reserved for stage 5, all with stable ids) and scene overrides by element id; pure `resolveMap` in `core` with orphan detection; `SessionState` carries the resolved map. The scene file format does not change yet: the DM window resolves the map the scene still embeds.
+- **Acceptance criteria**
+  - [x] Sidecar schema (version 1) with grid, levels (archivable), rooms and unique element ids; overrides schema (schema tests)
+  - [x] `resolveMap` applies overrides and reports orphaned ones; a missing sidecar yields defaults (unit tests ≥ 80 %)
+  - [x] A level still used by scenes cannot be deleted, only archived; fog, tokens and released levels stay resolvable (`removeLevel`, unit tests)
+  - [x] `SessionState` carries the resolved map, `projectForViewer` takes it as input, and the existing projection property tests still pass
+- **Notes:** From the DM planning interview (2026-11-18). ADR-0012 accepted by the DM (2026-11-18), incl. "global edits reach the live scene only after confirmation". Format agreed with the DM (2026-11-20). Split 2026-11-20 into T-134 (core), T-134c (storage and migration), T-134d (DM window) and T-134b (live-scene confirmation and catalog). Tasks that depend on "T-134" need all four parts.
+
+### T-134c Sidecar storage and scene schema v3
+
+- **Status:** todo · **Depends on:** T-134 · **Refs:** ADR-0012, ARCHITECTURE §6
+- Storage reads, watches and writes sidecars atomically, incl. conflict copies and placeholders. Scene schema v3: the scene's map becomes `{ kind, asset, overrides }`; grid and levels move to the map's sidecar.
 - **Acceptance criteria**
   - [ ] A missing sidecar yields defaults; the first edit creates it
   - [ ] Scene schema v3: migration `map → { asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures)
-  - [ ] `resolveMap` applies overrides and reports orphaned ones (unit tests ≥ 80 %)
-  - [ ] A level still used by scenes cannot be deleted, only archived; fog, tokens and released levels stay resolvable
-  - [ ] `SessionState` carries the resolved map, `projectForViewer` takes it as input, and the existing projection property tests still pass
+- **Notes:** Split from T-134 (2026-11-20).
+
+### T-134d DM window plays the resolved map
+
+- **Status:** todo · **Depends on:** T-134c · **Refs:** ADR-0012, ARCHITECTURE §8
+- The DM window loads the map's sidecar with the scene and works on `resolveMap`'s result (levels, grid, rendering, TV); `embeddedMap` goes away; orphaned overrides and `legacyMap` show a hint to the DM.
+- **Acceptance criteria**
+  - [ ] Opening, playing and the TV use the resolved map (component + E2E tests)
   - [ ] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (regression test)
-- **Notes:** From the DM planning interview (2026-11-18). ADR-0012 accepted by the DM (2026-11-18), incl. "global edits reach the live scene only after confirmation". Split 2026-11-20: the live-scene confirmation and the catalog's handling of sidecars moved to T-134b. Tasks that depend on "T-134" need both parts.
+- **Notes:** Split from T-134 (2026-11-20).
 
 ### T-134b Sidecars: live-scene confirmation and catalog
 
-- **Status:** todo · **Depends on:** T-134 · **Refs:** ADR-0012
+- **Status:** todo · **Depends on:** T-134d · **Refs:** ADR-0012
 - A global edit (e.g. a new level) reaches the scene live on the TV only after the DM confirms; the catalog skips sidecars.
 - **Acceptance criteria**
   - [ ] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open

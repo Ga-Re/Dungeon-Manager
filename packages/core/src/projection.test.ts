@@ -120,7 +120,9 @@ describe("projectForViewer", () => {
   });
 
   test("is empty without a map", () => {
-    expect(ids({ ...state, scene: { ...state.scene, map: null } })).toEqual([]);
+    expect(
+      ids({ ...state, scene: { ...state.scene, map: null }, map: null }),
+    ).toEqual([]);
   });
 
   describe("initiative", () => {

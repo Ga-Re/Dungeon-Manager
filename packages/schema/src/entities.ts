@@ -44,16 +44,22 @@ export const levelSchema = z.looseObject({
   asset: assetRefSchema.optional(),
 });
 
+/** A map's grid calibration in map pixels (SPEC §2.2). */
+export const gridSchema = z.looseObject({
+  /** Size of one grid cell in map pixels. */
+  cellSizePx: z.number().positive(),
+  offsetXPx: z.number(),
+  offsetYPx: z.number(),
+});
+
+/** Whether a map file is an image or a video (ADR-0010). */
+export const mapKindSchema = z.enum(["image", "video"]);
+
 /** A battle map: image or video, its grid and its levels. `asset` is the default image/video for all levels. */
 export const mapSchema = z.looseObject({
-  kind: z.enum(["image", "video"]),
+  kind: mapKindSchema,
   asset: assetRefSchema,
-  grid: z.looseObject({
-    /** Size of one grid cell in map pixels. */
-    cellSizePx: z.number().positive(),
-    offsetXPx: z.number(),
-    offsetYPx: z.number(),
-  }),
+  grid: gridSchema,
   levels: z.array(levelSchema).min(1),
 });
 
@@ -168,6 +174,8 @@ export type Player = z.infer<typeof playerSchema>;
 export type VisibilityElementType = z.infer<typeof visibilityElementTypeSchema>;
 export type VisibilityRules = z.infer<typeof visibilityRulesSchema>;
 export type Level = z.infer<typeof levelSchema>;
+export type Grid = z.infer<typeof gridSchema>;
+export type MapKind = z.infer<typeof mapKindSchema>;
 export type MapSpec = z.infer<typeof mapSchema>;
 export type TokenSize = z.infer<typeof tokenSizeSchema>;
 export type Token = z.infer<typeof tokenSchema>;

@@ -6,3 +6,4 @@ export * from "./history.js";
 export * from "./permissions.js";
 export * from "./projection.js";
 export * from "./shapes.js";
+export * from "./map.js";
