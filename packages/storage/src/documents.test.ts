@@ -8,6 +8,7 @@ import {
   listScenes,
   loadCampaign,
   loadScene,
+  loadSession,
   saveCampaign,
   saveScene,
 } from "./index.js";
@@ -246,6 +247,51 @@ describe("version 1 file names with capitals (T-119)", () => {
     expect(
       files.some((path) => path.endsWith(".trash/1/scenes/Turm.json")),
     ).toBe(true);
+  });
+
+  test("listing never renames, and a OneDrive copy stays a copy", async () => {
+    const files = {
+      "campaigns/mine/scenes/keller.json": JSON.stringify({
+        ...scene,
+        id: "keller",
+      }),
+      "campaigns/mine/scenes/keller-DESKTOP-4F2KQ1.json": JSON.stringify({
+        ...scene,
+        id: "keller",
+        name: "Kopie",
+      }),
+      "campaigns/mine/scenes/Turm.json": legacy("Turm"),
+    };
+    const fs = createMemoryFileSystem(files);
+    const conflict = {
+      copy: "keller-DESKTOP-4F2KQ1.json",
+      original: "keller.json",
+      provider: "OneDrive",
+    };
+    for (let round = 0; round < 2; round++)
+      expect(await listScenes(fs, "mine")).toEqual({
+        sceneIds: ["keller", "turm"],
+        conflicts: [conflict],
+      });
+    expect([...fs.files().keys()].sort()).toEqual(Object.keys(files).sort());
+    // Opened under its lowercase name, the copy is not moved: its content names "keller".
+    await loadScene(fs, "mine", "keller-desktop-4f2kq1");
+    expect([...fs.files().keys()].sort()).toEqual(Object.keys(files).sort());
+  });
+
+  test("a version 1 session is moved to its lowercase name too", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/sessions/Abend.json": JSON.stringify({
+        schemaVersion: 1,
+        id: "Abend",
+        name: "Abend",
+        sceneIds: ["Turm"],
+      }),
+    });
+    const loaded = await loadSession(fs, "mine", "abend");
+    expect(loaded.status === "ok" && loaded.value.sceneIds).toEqual(["turm"]);
+    expect(fs.files().has("campaigns/mine/sessions/abend.json")).toBe(true);
+    expect(fs.files().has("campaigns/mine/sessions/Abend.json")).toBe(false);
   });
 
   test("the lowercase file wins when both exist", async () => {

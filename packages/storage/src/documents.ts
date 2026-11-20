@@ -66,9 +66,11 @@ async function readIgnoringCase(
 }
 
 /**
- * Moves a document found under a version 1 name to its lowercase name: written there first, the
- * old file then goes to the trash. If either step fails, the document still loads from the old
- * name next time, so the failure is not reported.
+ * Moves a document found under a version 1 name to its lowercase name: written there first (only
+ * if that name is still free), the old file then goes to the trash. If writing fails, the
+ * document keeps loading from the old name. If only the trash step fails, both files stay and the
+ * lowercase one is loaded from then on – the old one is a stale duplicate, never lost data.
+ * Neither failure stops the DM from working, so neither is reported.
  */
 async function moveToLowercaseName(
   fs: FileSystem,
@@ -77,17 +79,26 @@ async function moveToLowercaseName(
   value: unknown,
 ): Promise<void> {
   try {
+    // A save or a sync between reading the old file and now may have created the new one.
+    if ((await fs.read(path)).kind !== "missing") return;
     await fs.writeAtomic(path, serialize(value));
     await fs.moveToTrash(legacyPath);
   } catch {
-    // See above: the old name keeps working.
+    // See above.
   }
 }
 
-async function loadDocument<T>(
+/**
+ * Loads and migrates a document. `ownId` is the id its file is named after: a document found
+ * under a version 1 name is moved to the lowercase name only if its content carries that id, so a
+ * conflict copy (which holds the original's id) is never renamed. Without `ownId` loading never
+ * writes – used when listing checks what a file contains.
+ */
+async function loadDocument<T extends { readonly id?: string }>(
   fs: FileSystem,
   path: string,
   type: DocumentType<T>,
+  ownId?: string,
 ): Promise<LoadResult<T>> {
   let file: ReadResult;
   let legacyPath: string | null;
@@ -113,7 +124,7 @@ async function loadDocument<T>(
       reason: error instanceof MigrationError ? error.reason : "schema",
     };
   }
-  if (legacyPath !== null)
+  if (legacyPath !== null && ownId !== undefined && value.id === ownId)
     await moveToLowercaseName(fs, path, legacyPath, value);
   return { status: "ok", value };
 }
@@ -155,7 +166,7 @@ export function loadScene(
 ): Promise<LoadResult<Scene>> {
   if (!isValidSlug(slug) || !isValidFileId(sceneId))
     return Promise.resolve({ status: "invalid", reason: "path" });
-  return loadDocument(fs, sceneFile(slug, sceneId), sceneDocument);
+  return loadDocument(fs, sceneFile(slug, sceneId), sceneDocument, sceneId);
 }
 
 /** Validates and writes a scene file (named after its id) atomically. @throws on invalid input */
@@ -226,8 +237,9 @@ export async function listScenes(
   const { ids, conflicts } = await listDocumentIds(
     fs,
     scenesDirectory(slug),
+    // Read only: checking a possible conflict copy must never rename it.
     async (id) => {
-      const loaded = await loadScene(fs, slug, id);
+      const loaded = await loadDocument(fs, sceneFile(slug, id), sceneDocument);
       return loaded.status === "ok" ? loaded.value.id : null;
     },
   );
@@ -242,7 +254,12 @@ export function loadSession(
 ): Promise<LoadResult<Session>> {
   if (!isValidSlug(slug) || !isValidFileId(sessionId))
     return Promise.resolve({ status: "invalid", reason: "path" });
-  return loadDocument(fs, sessionFile(slug, sessionId), sessionDocument);
+  return loadDocument(
+    fs,
+    sessionFile(slug, sessionId),
+    sessionDocument,
+    sessionId,
+  );
 }
 
 /** Validates and writes a session file (named after its id) atomically. @throws on invalid input */
@@ -271,8 +288,13 @@ export async function listSessions(
   const { ids, conflicts } = await listDocumentIds(
     fs,
     sessionsDirectory(slug),
+    // Read only: checking a possible conflict copy must never rename it.
     async (id) => {
-      const loaded = await loadSession(fs, slug, id);
+      const loaded = await loadDocument(
+        fs,
+        sessionFile(slug, id),
+        sessionDocument,
+      );
       return loaded.status === "ok" ? loaded.value.id : null;
     },
   );

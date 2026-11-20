@@ -187,6 +187,13 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Two entities whose ids differ only in case can never overwrite each other's files (e.g. lowercase ids, or collision check on save)
 - **Notes:** From the T-103a review. DM decision (2026-11-20): lowercase ids only. Campaign, scene and session files are version 2; the migration lowercases ids and references and refuses ids that differ only in case. Version 1 names with capitals are found ignoring case and moved to the lowercase name (ARCHITECTURE §6.3).
 
+### T-234 Leftovers of version 1 ids with capitals
+
+- **Status:** todo · **Depends on:** T-119 · **Refs:** ARCHITECTURE §6.3
+- From the T-119 review; all only concern hand-edited version 1 files. (1) A document refused with `idCollision` shows the generic "invalid" message: name the two ids so the DM can fix the file. (2) On a case-sensitive file system, `Turm.json` next to `turm.json` lists only the lowercase one; report the other like a conflict copy instead of hiding it. (3) Own notes (`notes/scenes/<id>.md`) of a renamed scene are not found ignoring case on Linux.
+- **Acceptance criteria**
+  - [ ] Each of the three cases is shown to the DM with an actionable, translated message or handled (storage + component tests)
+
 ### T-103a Storage package: layout, documents, conflict copies
 
 - **Status:** done · **Depends on:** T-101 · **Refs:** ARCHITECTURE §6, ADR-0005

@@ -132,7 +132,31 @@ describe("lowercase ids", () => {
     });
   });
 
-  test("two ids that differ only in case are refused instead of merged", () => {
+  test("two tokens whose ids differ only in case are refused", () => {
+    const token = (id: string) => ({
+      id,
+      name: "Goblin",
+      size: "small",
+      position: { col: 0, row: 0 },
+      levelId: "ground",
+    });
+    expect(() =>
+      migrateDocument(
+        {
+          schemaVersion: 1,
+          id: "s",
+          name: "S",
+          map: null,
+          tokens: [token("Goblin"), token("goblin")],
+          fog: { levels: {} },
+          initiative: null,
+        },
+        sceneDocument,
+      ),
+    ).toThrow(new MigrationError("idCollision", 1));
+  });
+
+  test("two fog levels whose ids differ only in case are refused instead of merged", () => {
     expect(() =>
       migrateDocument(
         {
