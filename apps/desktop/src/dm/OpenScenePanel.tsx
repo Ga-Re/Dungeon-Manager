@@ -11,6 +11,7 @@ import {
   ensureMapData,
   loadScene,
   mapDataForChange,
+  mapKind,
   reparentScene,
   saveScene,
   type MapReset,
@@ -28,7 +29,6 @@ import { levelMedia } from "../level-media.js";
 import { LevelGroup, type LevelFile } from "./LevelGroup.js";
 import { MapView, MapViewContext, type MapTool } from "./MapView.js";
 import { releaseVideo } from "../platform/map-images.js";
-import { mapKind } from "@dungeon-manager/storage";
 import type { FogShape } from "./fog-shapes.js";
 import { FogToolbar } from "./FogToolbar.js";
 import { SceneTitle } from "./SceneTitle.js";
@@ -251,11 +251,12 @@ export function OpenScenePanel({
 
   // A level's own file must have the map's pixel size, so one calibration fits all (ADR-0012).
   const chooseLevelFile = async (): Promise<LevelFile | null> => {
+    // Without the map's size nothing could be checked: ask before copying a file in.
+    if (!mapSize || !mapImages)
+      return { kind: "refused", message: t("level.sizeUnknown") };
     try {
       const asset = await service.importMap(t("campaign.mapFilter"));
       if (!asset) return null;
-      if (!mapSize || !mapImages)
-        return { kind: "refused", message: t("level.sizeUnknown") };
       let size: Size;
       if (mapKind(asset.path) === "video") {
         const video = await mapImages.loadVideo(asset.path);
@@ -282,7 +283,9 @@ export function OpenScenePanel({
   const editLevels = async (change: Parameters<typeof session.editMap>[0]) => {
     setError("");
     try {
-      return await session.editMap(change);
+      const changed = await session.editMap(change);
+      if (!changed) setError(t("level.notChanged"));
+      return changed;
     } catch (caught) {
       setError(describeLibraryError(t, caught));
       return false;
@@ -464,7 +467,9 @@ export function OpenScenePanel({
             working={levelId}
             onTv={onTv}
             disabled={busy || notOnTv}
+            // Map data does not depend on the TV, so editing it does not wait for the campaign.
             canEdit={
+              !busy &&
               session.mapData.status === "ready" &&
               !session.mapData.legacy &&
               !session.mapChanged

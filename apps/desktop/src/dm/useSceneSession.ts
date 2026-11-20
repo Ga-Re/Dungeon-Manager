@@ -221,11 +221,14 @@ export function useSceneSession(
       const ref = scene.map;
       if (!ref || mapData.status !== "ready" || mapData.legacy || mapChanged)
         return false;
+      const defaults = newMapData(defaultLevelName);
+      // Written only onto what the DM sees, so a change from elsewhere still waits (ADR-0012).
       const written = await updateMapData(
         service.fs,
         ref.asset,
-        newMapData(defaultLevelName),
+        defaults,
         change,
+        mapData.data ?? defaults,
       );
       if (!written) return false;
       applyOwnEdit(written);

@@ -728,3 +728,32 @@ test("the DM adds a level to a one-level map and renames it (T-118d)", async ({
     page.getByRole("treeitem", { name: /Turmspitze/ }),
   ).toBeVisible();
 });
+
+test("a level's own image must have the map's size (T-118d)", async ({
+  page,
+}) => {
+  await page.goto(`${HARNESS}?levelFiles`);
+  await closeWelcome(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Szene" }).click();
+  await page.getByRole("button", { name: "Ebene", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Ebene hinzufügen …" }).click();
+
+  const choose = page.getByRole("button", {
+    name: "Eigenes Bild oder Video wählen …",
+  });
+  await choose.click();
+  await expect(
+    page.getByText(
+      /klein\.png ist 800 × 500 Pixel groß, die Karte 1600 × 1000/,
+    ),
+  ).toBeVisible();
+  await choose.click();
+  await expect(page.getByText("Eigene Datei: gruft.png")).toBeVisible();
+  await page.getByLabel("Name der Ebene").fill("Gruft");
+  await page.getByRole("button", { name: "Ebene anlegen" }).click();
+  await expect(
+    page.getByRole("button", { name: "Gruft", exact: true }),
+  ).toBeVisible();
+});

@@ -280,6 +280,17 @@ describe("adding and renaming levels (T-118d)", () => {
         /keller\.png ist 800 × 600 Pixel groß, die Karte 1000 × 500/,
       ),
     ).toBeTruthy();
+    // A video level is measured as a video.
+    library.service.importMap.mockResolvedValueOnce({
+      path: "library/maps/fluss.mp4",
+      hash,
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Eigenes Bild oder Video wählen …" }),
+    );
+    expect(
+      await screen.findByText(/fluss\.mp4 ist 320 × 200 Pixel groß/),
+    ).toBeTruthy();
     library.service.importMap.mockResolvedValueOnce({
       path: "library/maps/gruft.png",
       hash,

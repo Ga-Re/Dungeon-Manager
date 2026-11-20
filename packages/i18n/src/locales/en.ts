@@ -152,6 +152,8 @@ export const en: Messages = {
       changed:
         "This map's data was changed, e.g. on another device. The TV shows it only once you accept it.",
       acceptChange: "Accept change",
+      changedMeanwhile:
+        "This map's data was changed elsewhere meanwhile. Accept the change first, then try again.",
       notReadable:
         "This map's data is not downloaded yet or damaged. Try again once your sync service has loaded the file.",
       unavailable:
@@ -221,7 +223,9 @@ export const en: Messages = {
     wrongSize:
       "{{file}} is {{width}} × {{height}} pixels, the map {{mapWidth}} × {{mapHeight}}. Choose a file of the map's size so grid and fog fit on every level.",
     sizeUnknown:
-      "The map's size is not known yet. Wait until the map has loaded and choose the file again.",
+      "The map's size is not known yet. Wait until the map has loaded, then choose the file.",
+    notChanged:
+      "The levels cannot be changed right now: accept a waiting change of the map first, or the name is empty.",
   },
   fog: {
     tool: "Tool",

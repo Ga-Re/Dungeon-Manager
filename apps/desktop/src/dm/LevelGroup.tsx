@@ -50,12 +50,17 @@ export function LevelGroup({
   const { t } = useTranslation();
   const [editing, setEditing] = useState<"add" | "rename" | null>(null);
   const [file, setFile] = useState<LevelFile | null>(null);
+  const [choosing, setChoosing] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const nameOf = (id: string) =>
     levels.find((level) => level.id === id)?.name ?? "";
   const close = () => {
     setEditing(null);
     setFile(null);
+  };
+  // After a successful change the keyboard goes back to the menu; Escape is the popover's.
+  const done = () => {
+    close();
     menuButton.current?.focus();
   };
   const several = levels.length > 1;
@@ -67,12 +72,12 @@ export function LevelGroup({
           {
             id: "add",
             label: t("level.add"),
-            disabled: disabled || !canEdit,
+            disabled: !canEdit,
           },
           {
             id: "rename",
             label: t("level.rename"),
-            disabled: disabled || !canEdit,
+            disabled: !canEdit,
           },
         ],
         onSelect: (id) => {
@@ -122,11 +127,17 @@ export function LevelGroup({
             <p>
               <button
                 type="button"
-                onClick={() =>
-                  void onChooseFile().then((chosen) => {
-                    if (chosen) setFile(chosen);
-                  })
-                }
+                disabled={choosing}
+                onClick={() => {
+                  setChoosing(true);
+                  void onChooseFile()
+                    .then((chosen) => {
+                      if (chosen) setFile(chosen);
+                    })
+                    .finally(() => {
+                      setChoosing(false);
+                    });
+                }}
               >
                 {t("level.chooseFile")}
               </button>
@@ -142,12 +153,13 @@ export function LevelGroup({
               focusOnMount
               label={t("level.name")}
               submitLabel={t("level.create")}
+              disabled={choosing}
               onSubmit={async (name) => {
                 const added = await onAdd(
                   name,
                   file?.kind === "fits" ? file.asset : null,
                 );
-                if (added) close();
+                if (added) done();
                 return added;
               }}
             />
@@ -161,7 +173,7 @@ export function LevelGroup({
             submitLabel={t("level.renameConfirm")}
             onSubmit={async (name) => {
               const renamed = await onRename(name);
-              if (renamed) close();
+              if (renamed) done();
               return renamed;
             }}
           />

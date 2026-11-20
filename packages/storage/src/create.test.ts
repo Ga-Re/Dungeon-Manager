@@ -9,6 +9,7 @@ import {
   listScenes,
   DEFAULT_LEVEL_ID,
   loadSidecar,
+  MapDataChangedError,
   MapDataUnavailableError,
   mapDataForChange,
   mapKind,
@@ -500,6 +501,24 @@ describe("updateMapData (T-118d)", () => {
     );
     expect(await loadSidecar(fs, asset.path)).toMatchObject({
       value: { tags: ["Turm"], map: addCellar(defaults) },
+    });
+  });
+
+  test("nothing is written when the map's data changed elsewhere meanwhile", async () => {
+    const fs = createMemoryFileSystem();
+    await saveSidecar(fs, asset.path, {
+      schemaVersion: 1,
+      original: { hash: asset.hash },
+      map: {
+        ...defaults,
+        grid: { cellSizePx: 50, offsetXPx: 0, offsetYPx: 0 },
+      },
+    });
+    await expect(
+      updateMapData(fs, asset, defaults, addCellar, defaults),
+    ).rejects.toThrow(MapDataChangedError);
+    expect(await loadSidecar(fs, asset.path)).toMatchObject({
+      value: { map: { levels: defaults.levels } },
     });
   });
 

@@ -9,7 +9,10 @@ export function NameForm({
   onSubmit,
   focusOnMount = false,
   initial = "",
+  disabled = false,
 }: {
+  /** E.g. while a file for the new thing is still being chosen. */
+  readonly disabled?: boolean;
   readonly label: string;
   /** The name to start from, e.g. the current one when renaming. */
   readonly initial?: string;
@@ -30,7 +33,7 @@ export function NameForm({
 
   const submit = async (event: SyntheticEvent) => {
     event.preventDefault();
-    if (name.trim() === "" || busy) return;
+    if (name.trim() === "" || busy || disabled) return;
     setBusy(true);
     try {
       if (await onSubmit(name)) setName("");
@@ -51,7 +54,7 @@ export function NameForm({
           setName(event.target.value);
         }}
       />
-      <button type="submit" disabled={busy || name.trim() === ""}>
+      <button type="submit" disabled={disabled || busy || name.trim() === ""}>
         {submitLabel}
       </button>
     </form>
