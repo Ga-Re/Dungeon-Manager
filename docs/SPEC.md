@@ -84,25 +84,26 @@ There is no DM phone app (ADR-0013). Planning on the go happens in tools the DM 
 The DM window has five workspaces, each with its own ribbon tabs and documents (ADR-0017, DM interview 2026-11-20). Every workspace is made of dockable panels, the map included: panels can be moved, resized, docked to the edges, folded and shown or hidden from the View menu. Each workspace has a default layout, and the DM can save their own named layouts per device. Open documents (the Atlas, scenes, maps, assets, creatures) are tabs in the title bar. In all workspaces, the data panel holds the source the DM drags from. The browser lists the objects of the open document, like layers in Photoshop or the browser in Fusion 360, and only shows where there is such a document. Each document has its own undo history.
 
 - **Map Forge – global maps** (sidecar data, ADR-0012):
-  - **Files:** import and manage map files; 2-click grid calibration by dragging over a 3×3 cell box, so every map has the same cell size on the TV.
+  - **Files:** import and manage map files in a library of folders (a pack keeps its structure) and tags; 2-click grid calibration by dragging over a 3×3 cell box, so every map has the same cell size on the TV.
   - **Map data:** metadata (cell size, ambient sound, transitions, fog effects); rooms and areas with DM-only labels; levels with heights and stairs that move tokens to the next level.
-  - **Masks:** three sight masks – walls (block sight and movement both ways), cliffs and galleries (one way: those above see down, those below cannot see up), and cover (trees, pillars, statues: radial shadows behind them while the object itself stays lit). Masks can be made automatically and are checked for leaks; a test figure shows what a token would see.
-  - **Building:** parametric rooms, towers and corridors with automatic outer walls; terrain and floor layers with movement costs; light sources with radius, colour and flicker; ambient light presets (day, dusk, full-moon night, dark dungeon).
+  - **Masks:** vector lines on the grid, not painted masks. Three sight masks – walls (block sight and movement both ways), cliffs and galleries (one way: those above see down, those below cannot see up), and cover (trees, pillars, statues as circles or polygons: radial shadows behind them while the object itself stays lit). Automatic masks are suggestions from local image analysis that the DM confirms; masks are checked for leaks, and a test figure shows what a token would see.
+  - **Building:** parametric rooms, towers and corridors with automatic outer walls; terrain and floor layers with movement costs; light sources with radius, colour and flicker that belong to the map (whether they burn and the ambient light – day, dusk, full-moon night, dark dungeon – are set per scene).
   - **Props:** props that belong to the map in every scene, dragged from the Asset Vault; they snap to the grid, rotate in 15° steps and scale.
-  - **Image:** variants of a map (day/night, destroyed) sharing masks and rooms; composing a map from tiles; non-destructive crop, rotation and image adjustment (brightness, contrast, hue) for the TV.
+  - **Image:** variants per level (day/night, destroyed) – masks and rooms belong to the level and apply to all its variants; composing a map from tiles; non-destructive crop, rotation and image adjustment (brightness, contrast, hue) for the TV.
+  - **First stage:** import and library, metadata, 3×3 calibration, levels, crop and image adjustment, rooms for the fog; walls and vision follow with stage 5.
   - **Exchange:** UVTT import, and export/import with all files sorted into the library.
-- **Asset Vault – everything that is not a map:** props, map pieces, handouts, items and sound.
-  - **Organising:** metadata and tags for search (theme, type, tags), collections, favourites and recently used; duplicates are detected on import.
-  - **Editing:** batch editing; tinted colour variants; animated (video) assets; grid-based scale with a preview on a 5-ft grid.
-  - **Smart prefabs:** a tree brings its cover mask, a door its switchable wall mask, a lantern its light, a house its interior.
-  - **Items and loot:** cards with rarity and description; sound effects bound to traps and spells.
+- **Asset Vault – everything that is not a map:** props, map pieces (tiles, terrain textures), handout images and sounds.
+  - **Organising:** metadata from fixed fields (type, environment/theme, origin/licence), free tags and fields the DM defines; search, collections, favourites and recently used; duplicates are detected on import. A large pack is imported by choosing its subfolders; only those are copied, keeping their structure.
+  - **Editing:** each asset's size in grid cells with a preview on a 5-ft grid; batch editing; tinted colour variants; animated (video) assets.
+  - **Smart prefabs:** made in the asset editor by drawing mask, light and anchor on the asset's picture – a tree brings its cover mask, a door its switchable wall mask, a lantern its light, a house its interior.
+  - **Items and loot:** cards with rarity and description (postponed: global or per campaign is decided later); sound effects bound to traps and spells.
 - **Tokens & Kreaturen – player characters and creatures, global for all campaigns:**
-  - **Pictures:** token picture and portrait; a token made from the portrait.
-  - **Combat values:** HP with dice formula, AC, initiative modifier, speeds, size and grid footprint with pivot, and senses (sight, darkvision), which vision uses automatically.
-  - **Variants:** clones with generated names; shapes (e.g. a druid's beast form) to switch in play; encounter pods (groups of creatures).
+  - **Pictures:** token picture and portrait; a token made from the portrait; the look per creature – a round token with faction ring or a cut-out top-down figure.
+  - **Combat values:** a D&D 5e core the DM can extend with own fields – HP with dice formula, AC, initiative modifier, speeds, size and grid footprint with pivot, and senses (sight, darkvision), which vision uses automatically; actions, spells and tactics in a Markdown note. The DM maintains the player characters' values; players keep their paper sheets.
+  - **Variants:** clones with generated names – instances in the scene that refer to the library creature, with their own name, HP and conditions; shapes (e.g. a druid's beast form) to switch in play; encounter pods (groups of creatures).
   - **Display:** faction rings; previews of conditions, auras and sight.
   - **Exchange:** stat-block import (SRD 5.1) and creature import/export.
-  - **Animation:** creatures can use animated sprites or video files, so their tokens move on the TV.
+  - **Animation:** sprite sheets and animated WebP everywhere, videos with transparency where the platform plays them, else a still picture – so tokens move on the TV.
 - **Campaign Atlas – building campaigns:**
   - **Layout (default):** explorer left, the open document centre (with an optional split drawer for the flow graph), inspector right, session timeline at the bottom.
   - **Structure:** the campaign explorer (sessions as folders of scenes, notes, wiki and lore); a world map with scene pins and travel routes; a scene flow graph with requirements and unlocks; a checklist per session; a search over the whole campaign; scene and session templates.
