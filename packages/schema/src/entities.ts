@@ -65,6 +65,16 @@ export const tokenSizeSchema = z.enum([
   "gargantuan",
 ]);
 
+/**
+ * Where a token's creature lives (T-180a, ADR-0018): the global library
+ * (`library/creatures/…`) or the campaign's player characters (`campaigns/<slug>/characters/`).
+ * The id is unique in its place.
+ */
+export const creatureRefSchema = z.looseObject({
+  source: z.enum(["library", "campaign"]),
+  id: idSchema,
+});
+
 /** A token on the map, mirroring a physical mini or standing in for one. */
 export const tokenSchema = z.looseObject({
   id: idSchema,
@@ -77,6 +87,14 @@ export const tokenSchema = z.looseObject({
   ownerPlayerId: idSchema.optional(),
   /** Per-element overrides of the campaign's visibility defaults (token itself, name, HP, conditions …). */
   visibility: visibilityRulesSchema.optional(),
+  /**
+   * The creature this token is an instance of (T-180a, ADR-0018): its look, senses and values
+   * come from it; the token keeps only its own (name, position, size if different). Additive
+   * and optional: tokens without one stay valid. A missing creature shows a placeholder.
+   */
+  creature: creatureRefSchema.optional(),
+  /** The creature whose shape the token has now (e.g. a druid's beast form; used by T-180). */
+  shape: creatureRefSchema.optional(),
 });
 
 /**
@@ -169,6 +187,7 @@ export type Level = z.infer<typeof levelSchema>;
 export type Grid = z.infer<typeof gridSchema>;
 export type MapKind = z.infer<typeof mapKindSchema>;
 export type TokenSize = z.infer<typeof tokenSizeSchema>;
+export type CreatureRef = z.infer<typeof creatureRefSchema>;
 export type Token = z.infer<typeof tokenSchema>;
 export type LevelFog = z.infer<typeof levelFogSchema>;
 export type FogState = z.infer<typeof fogStateSchema>;

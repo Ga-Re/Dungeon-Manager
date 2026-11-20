@@ -1,6 +1,9 @@
 import {
   campaignDocument,
   campaignSchema,
+  creatureDocument,
+  creatureSchema,
+  type Creature,
   sidecarDocument,
   sidecarSchema,
   type Sidecar,
@@ -19,8 +22,13 @@ import {
 import { findConflictCopies, type ConflictCopy } from "./conflicts.js";
 import type { FileSystem, ReadResult } from "./fs.js";
 import {
+  CREATURES_DIRECTORY,
   campaignDirectory,
   campaignFile,
+  characterFile,
+  charactersDirectory,
+  creatureFile,
+  isValidCreatureFolder,
   isValidFileId,
   isValidSlug,
   sceneFile,
@@ -355,4 +363,145 @@ export async function saveSidecar(
 ): Promise<void> {
   const path = sidecarFile(assetPath);
   await fs.writeAtomic(path, serialize(sidecarSchema.parse(sidecar)));
+}
+
+/** A creature file found by `listCreatures`: its id and folder (`""`: the top). */
+export interface CreatureEntry {
+  readonly id: string;
+  readonly folder: string;
+}
+
+/** Loads `library/creatures/<folder>/<id>.json` (T-180a); a file naming another id is invalid. */
+export async function loadCreature(
+  fs: FileSystem,
+  folder: string,
+  creatureId: string,
+): Promise<LoadResult<Creature>> {
+  if (!isValidCreatureFolder(folder) || !isValidFileId(creatureId))
+    return { status: "invalid", reason: "path" };
+  return ownIdChecked(
+    await loadDocument(fs, creatureFile(folder, creatureId), creatureDocument),
+    creatureId,
+  );
+}
+
+/** Validates and writes a creature into `folder` (named after its id), atomically. @throws */
+export async function saveCreature(
+  fs: FileSystem,
+  folder: string,
+  creature: Creature,
+): Promise<void> {
+  if (!isValidCreatureFolder(folder))
+    throw new Error(`Invalid creature folder: ${folder}`);
+  const valid = creatureSchema.parse(creature);
+  if (!isValidFileId(valid.id))
+    throw new Error(`Invalid creature id: ${valid.id}`);
+  await fs.makeDirectory(
+    folder === "" ? CREATURES_DIRECTORY : `${CREATURES_DIRECTORY}/${folder}`,
+  );
+  await fs.writeAtomic(creatureFile(folder, valid.id), serialize(valid));
+}
+
+/**
+ * All library creatures, walking the folders under `library/creatures` (hidden ones skipped).
+ * Ids are unique in the library: an id found again in a later folder (by path order) is
+ * reported in `duplicates`, not used. Conflict copies are reported like scenes'.
+ */
+export async function listCreatures(fs: FileSystem): Promise<{
+  creatures: CreatureEntry[];
+  duplicates: CreatureEntry[];
+  conflicts: ConflictCopy[];
+}> {
+  const creatures: CreatureEntry[] = [];
+  const duplicates: CreatureEntry[] = [];
+  const conflicts: ConflictCopy[] = [];
+  const seen = new Set<string>();
+  const walk = async (folder: string): Promise<void> => {
+    const directory =
+      folder === "" ? CREATURES_DIRECTORY : `${CREATURES_DIRECTORY}/${folder}`;
+    const listed = await listDocumentIds(fs, directory, async (id) => {
+      const loaded = await loadDocument(
+        fs,
+        creatureFile(folder, id),
+        creatureDocument,
+      );
+      return loaded.status === "ok" ? loaded.value.id : null;
+    });
+    conflicts.push(...listed.conflicts);
+    for (const id of listed.ids) {
+      const entry = { id, folder };
+      if (seen.has(id)) duplicates.push(entry);
+      else {
+        seen.add(id);
+        creatures.push(entry);
+      }
+    }
+    const subfolders = ((await fs.list(directory)) ?? [])
+      .filter((entry) => entry.kind === "directory")
+      .map((entry) => (folder === "" ? entry.name : `${folder}/${entry.name}`))
+      .filter(isValidCreatureFolder)
+      .sort();
+    for (const sub of subfolders) await walk(sub);
+  };
+  await walk("");
+  return { creatures, duplicates, conflicts };
+}
+
+/** Loads `campaigns/<slug>/characters/<id>.json`, a player character (T-180a). */
+export async function loadCharacter(
+  fs: FileSystem,
+  slug: string,
+  characterId: string,
+): Promise<LoadResult<Creature>> {
+  if (!isValidSlug(slug) || !isValidFileId(characterId))
+    return { status: "invalid", reason: "path" };
+  return ownIdChecked(
+    await loadDocument(fs, characterFile(slug, characterId), creatureDocument),
+    characterId,
+  );
+}
+
+/** Validates and writes a player character of the campaign, atomically. @throws */
+export async function saveCharacter(
+  fs: FileSystem,
+  slug: string,
+  character: Creature,
+): Promise<void> {
+  requireSlug(slug);
+  const valid = creatureSchema.parse(character);
+  if (!isValidFileId(valid.id))
+    throw new Error(`Invalid character id: ${valid.id}`);
+  await fs.makeDirectory(charactersDirectory(slug));
+  await fs.writeAtomic(characterFile(slug, valid.id), serialize(valid));
+}
+
+/** The campaign's player character ids, plus conflict copies. @throws on an invalid slug */
+export async function listCharacters(
+  fs: FileSystem,
+  slug: string,
+): Promise<{ characterIds: string[]; conflicts: ConflictCopy[] }> {
+  requireSlug(slug);
+  const { ids, conflicts } = await listDocumentIds(
+    fs,
+    charactersDirectory(slug),
+    async (id) => {
+      const loaded = await loadDocument(
+        fs,
+        characterFile(slug, id),
+        creatureDocument,
+      );
+      return loaded.status === "ok" ? loaded.value.id : null;
+    },
+  );
+  return { characterIds: ids, conflicts };
+}
+
+/** A creature file names its creature: one naming another is not that creature. */
+function ownIdChecked(
+  loaded: LoadResult<Creature>,
+  id: string,
+): LoadResult<Creature> {
+  return loaded.status === "ok" && loaded.value.id !== id
+    ? { status: "invalid", reason: "schema" }
+    : loaded;
 }

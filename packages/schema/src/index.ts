@@ -6,3 +6,4 @@ export * from "./migrate.js";
 export * from "./viewer.js";
 export * from "./sidecar.js";
 export * from "./scene-map.js";
+export * from "./creature.js";

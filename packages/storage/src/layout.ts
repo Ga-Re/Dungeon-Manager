@@ -5,6 +5,7 @@ import type { FileSystem } from "./fs.js";
 export const LIBRARY_DIRECTORIES = [
   "library/maps",
   "library/tokens",
+  "library/creatures",
   "library/assets",
   "library/sounds",
   "library/effects",
@@ -45,6 +46,38 @@ export const sessionsDirectory = (slug: string) =>
   `${campaignDirectory(slug)}/sessions`;
 export const sessionFile = (slug: string, sessionId: string) =>
   `${sessionsDirectory(slug)}/${sessionId}.json`;
+
+/** Global creatures (T-180a, ADR-0018), in folders the DM makes. */
+export const CREATURES_DIRECTORY = "library/creatures";
+
+/**
+ * Whether `folder` (inside `library/creatures`, `""` for the top) is a safe folder path: plain
+ * names separated by `/`, none hidden or empty, no `.`/`..`, no backslash.
+ */
+export function isValidCreatureFolder(folder: string): boolean {
+  if (folder === "") return true;
+  return folder
+    .split("/")
+    .every(
+      (part) =>
+        part !== "" &&
+        !part.startsWith(".") &&
+        !part.includes("\\") &&
+        !WINDOWS_RESERVED.test(part),
+    );
+}
+
+/** `library/creatures/<folder>/<id>.json` (T-180a). */
+export const creatureFile = (folder: string, creatureId: string) =>
+  folder === ""
+    ? `${CREATURES_DIRECTORY}/${creatureId}.json`
+    : `${CREATURES_DIRECTORY}/${folder}/${creatureId}.json`;
+
+/** A campaign's player characters (T-180a): creatures of the campaign. */
+export const charactersDirectory = (slug: string) =>
+  `${campaignDirectory(slug)}/characters`;
+export const characterFile = (slug: string, characterId: string) =>
+  `${charactersDirectory(slug)}/${characterId}.json`;
 
 /** Sidecars are named after the file they describe (ADR-0012). */
 export const SIDECAR_SUFFIX = ".dm.json";
