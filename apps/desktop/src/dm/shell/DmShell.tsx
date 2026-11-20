@@ -55,6 +55,7 @@ import {
   floatPanel,
   hidePanel,
   isFolded,
+  settleFolds,
   toggleFold,
   type PanelEdge,
   readLayout,
@@ -170,9 +171,20 @@ const isPanelId = (id: string): id is PanelId =>
  * A panel's menu in its group's header (T-172b): dock it to an edge, let it float, fold it to
  * its title or hide it – everything dragging does, by keyboard too.
  */
-function PanelMenu({ activePanel }: IDockviewHeaderActionsProps) {
+function PanelMenu({ activePanel, containerApi }: IDockviewHeaderActionsProps) {
   const { t } = useTranslation();
   const commands = useContext(PanelCommandsContext);
+  // dockview re-renders header actions only on their own group's events; whether the panel can
+  // fold also depends on its neighbours (e.g. none once Eigenschaften is hidden).
+  const [, setLayoutChanges] = useState(0);
+  useEffect(() => {
+    const subscription = containerApi.onDidLayoutChange(() => {
+      setLayoutChanges((count) => count + 1);
+    });
+    return () => {
+      subscription.dispose();
+    };
+  }, [containerApi]);
   const id = activePanel?.id;
   if (!commands || !activePanel || id === undefined || !isPanelId(id))
     return null;
@@ -414,6 +426,9 @@ export function DmShell({
     [t],
   );
 
+  // Counts folds: a fold is no layout change dockview reports, so a new command object
+  // re-renders the panel menus to offer "Ausklappen".
+  const [foldings, setFoldings] = useState(0);
   const onPanelsReady = (event: DockviewReadyEvent) => {
     const { api } = event;
     restoreLayout(api, readLayout(storage), titles);
@@ -435,8 +450,11 @@ export function DmShell({
     update();
     api.onDidAddPanel(update);
     api.onDidRemovePanel(update);
-    // Sizes and moves.
-    api.onDidLayoutChange(persist);
+    // Sizes and moves; folded panels stay folded.
+    api.onDidLayoutChange(() => {
+      settleFolds(api);
+      persist();
+    });
     setPanels(api);
   };
   // Tab titles follow the language.
@@ -471,9 +489,6 @@ export function DmShell({
   // back and the command's own message is spoken instead.
   const [announcement, setAnnouncement] = useState("");
   const quiet = useRef(false);
-  // Folding changes no panel or layout dockview reports; a new command object re-renders the
-  // panel menus, so they offer "Ausklappen" for a folded panel.
-  const [foldings, setFoldings] = useState(0);
   const announce = useCallback((message: string) => {
     // A repeated message must be spoken again: clear first, then set.
     setAnnouncement("");
@@ -495,11 +510,13 @@ export function DmShell({
           return;
         }
         if (command === "fold") {
-          toggleFold(panels, id);
+          const folded = toggleFold(panels, id);
+          // Only what happened is announced.
+          if (folded === null) return;
           setFoldings((count) => count + 1);
           announce(
             t(
-              isFolded(panels, id)
+              folded
                 ? "shell.panelMessages.folded"
                 : "shell.panelMessages.unfolded",
               { title },

@@ -882,7 +882,16 @@ New tasks discovered during work are appended to the right stage with status `to
 - Every panel has a menu and keyboard commands: dock left/right/bottom, float, fold to its title, hide (DM decision, 2026-11-20: own commands on the free dockview API, no enterprise modules).
 - **Acceptance criteria**
   - [x] Move, dock, fold and hide panels with the keyboard only (E2E test); the commands are announced to screen readers
-- **Notes:** The menu sits in each group's header ("Panel Karte"); docking goes to the window's edge, folding only where a neighbour above or below takes the room. The tab's ✕ hides like the View menu (the map gets the room); own tab markup, as dockview's React tab names its ✕ in English. Announcements go through one German status line; dockview's open/close messages are held back while a command rebuilds a panel.
+- **Notes:** The menu sits in each group's header ("Panel Karte"); docking goes to the window's edge, folding only where a neighbour above or below takes the room. The tab's ✕ hides like the View menu (the map gets the room); own tab markup, as dockview's React tab names its ✕ in English. Announcements go through one German status line; dockview's open/close messages are held back while a command rebuilds a panel. From the review: a folded panel stays folded after a restart (read from the stored grid: a group in a column lower than dockview's minimum) and when the window grows; it unfolds once alone in its column. Menus and popovers inside a floating panel (a transformed container) open at their button. Follow-ups in T-236.
+
+### T-236 Panel details left from T-172b
+
+- **Status:** todo · **Depends on:** T-172b · **Refs:** ADR-0017, ADR-0014
+- Small gaps the T-172b review found that do not block keyboard docking.
+- **Acceptance criteria**
+  - [ ] Docking the map to an edge gives it the room the side panels leave, not an equal share (dockview hands freed room to the neighbour, so the side widths must be set in order) (unit test)
+  - [ ] Delete/Backspace on a focused tab and a middle click on a tab hide the panel the way its ✕ does (width kept, focus to the title bar), or are switched off (E2E test)
+- **Notes:** From the T-172b review (2026-11-20). dockview's tab list closes a panel on Delete/Backspace itself; our own tab dropped its middle click.
 
 ### T-172c Named layouts
 

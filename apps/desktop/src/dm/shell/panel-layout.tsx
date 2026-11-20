@@ -1,4 +1,4 @@
-import type { DockviewApi } from "dockview-react";
+import type { DockviewApi, IDockviewGroupPanel } from "dockview-react";
 import { useLayoutEffect, useRef } from "react";
 
 // The panels of the DM window (T-172a, ADR-0017): dockview panels below the ribbon that the DM
@@ -99,13 +99,30 @@ export function showPanel(api: DockviewApi, id: PanelId, title: string): void {
 export function hidePanel(api: DockviewApi, id: PanelId): void {
   const panel = api.getPanel(id);
   if (!panel) return;
+  const restoreWidths = keepSideWidths(api, id);
+  panel.api.close();
+  restoreWidths();
+}
+
+/**
+ * Remembers the widths of the side columns – every group but `id`'s and the map's – and returns
+ * a function that gives them back after a change, so the map takes the room that changes.
+ */
+function keepSideWidths(api: DockviewApi, id: PanelId): () => void {
+  const own = api.getPanel(id)?.group;
   const mapGroup = api.getPanel("map")?.group;
   const keep = api.groups
-    .filter((group) => group !== panel.group && group !== mapGroup)
+    .filter(
+      (group) =>
+        group !== own &&
+        group !== mapGroup &&
+        group.api.location.type === "grid",
+    )
     .map((group) => [group, group.api.width] as const);
-  panel.api.close();
-  for (const [group, width] of keep)
-    if (api.groups.includes(group)) group.api.setSize({ width });
+  return () => {
+    for (const [group, width] of keep)
+      if (api.groups.includes(group)) group.api.setSize({ width });
+  };
 }
 
 /** The default layout: Daten left, the map in the middle, Browser over Eigenschaften right. */
@@ -203,6 +220,11 @@ export function restoreLayout(
       // Titles follow the language, not the stored layout.
       for (const panel of api.panels)
         panel.api.setTitle(titles[panel.id as PanelId]);
+      // dockview keeps a folded group's height but not that it may be that small.
+      for (const id of foldedGroupIds(stored)) {
+        const group = api.getGroup(id);
+        if (group) fold(group, remToPixels(UNFOLD_HEIGHT_REM));
+      }
       if (api.panels.length > 0) return;
     } catch (error) {
       console.error("The stored panel layout cannot be used.", error);
@@ -257,9 +279,14 @@ export function dockPanel(
     title,
     position: { direction: edge === "bottom" ? "below" : edge },
   });
+  // The map is never squeezed to a side panel's width (map first, ADR-0014).
+  if (id === "map") return;
   if (edge === "bottom")
     panel.group.api.setSize({ height: remToPixels(BOTTOM_HEIGHT_REM) });
-  else panel.group.api.setSize({ width: remToPixels(WIDTH_REM[id] ?? 20) });
+  else
+    panel.group.api.setSize({
+      width: remToPixels(WIDTH_REM[id] ?? SIDE_WIDTH_REM),
+    });
 }
 
 /** Lets `id` float over the others, e.g. the browser over the map (T-172b). */
@@ -269,14 +296,65 @@ export function floatPanel(api: DockviewApi, id: PanelId): void {
     api.addFloatingGroup(panel);
 }
 
+/** A group of the layout; folding works on groups (a panel's frame). */
+type Group = IDockviewGroupPanel;
+
 /** Heights of folded groups before they were folded, to unfold them again. */
-const unfolded = new WeakMap<object, number>();
+const unfolded = new WeakMap<Group, number>();
 
 /** Height of a group folded to its tab row, in rem (the tab row's height). */
 const FOLDED_REM = 1.75;
 
+/** Height a group folded in an earlier session unfolds to, in rem (its old height is lost). */
+const UNFOLD_HEIGHT_REM = 14;
+
 /** dockview's own minimum height of a group, restored when it unfolds. */
 const UNFOLDED_MINIMUM_HEIGHT = 100;
+
+function fold(group: Group, unfoldTo: number): void {
+  unfolded.set(group, unfoldTo);
+  // Groups keep a minimum height; a folded one may shrink to its tab row.
+  const folded = remToPixels(FOLDED_REM);
+  group.api.setConstraints({ minimumHeight: folded });
+  group.api.setSize({ height: folded });
+}
+
+function unfold(group: Group): void {
+  const before = unfolded.get(group);
+  unfolded.delete(group);
+  group.api.setConstraints({ minimumHeight: UNFOLDED_MINIMUM_HEIGHT });
+  if (before !== undefined) group.api.setSize({ height: before });
+}
+
+/**
+ * Ids of the groups a stored layout has folded: those in a column (sizes there are heights)
+ * lower than an unfolded group may be. The stored layout is dockview's own (`toJSON`).
+ */
+export function foldedGroupIds(stored: unknown): string[] {
+  if (!isRecord(stored) || !isRecord(stored["grid"])) return [];
+  const grid = stored["grid"];
+  const found: string[] = [];
+  const visit = (node: unknown, column: boolean) => {
+    if (!isRecord(node) || !Array.isArray(node["data"])) return;
+    for (const child of node["data"] as unknown[]) {
+      if (!isRecord(child)) continue;
+      const data = child["data"];
+      if (
+        column &&
+        child["type"] === "leaf" &&
+        typeof child["size"] === "number" &&
+        child["size"] < UNFOLDED_MINIMUM_HEIGHT &&
+        isRecord(data) &&
+        typeof data["id"] === "string"
+      )
+        found.push(data["id"]);
+      // Branches alternate: a column's children are rows and the other way round.
+      if (child["type"] === "branch") visit(child, !column);
+    }
+  };
+  visit(grid["root"], grid["orientation"] === "VERTICAL");
+  return found;
+}
 
 /**
  * Whether `id` can fold to its title: only a panel that shares its column with another one
@@ -297,21 +375,43 @@ export function isFolded(api: DockviewApi, id: PanelId): boolean {
   return group !== undefined && unfolded.has(group);
 }
 
-/** Folds `id` to its title, or unfolds it to the height it had (T-172b). */
-export function toggleFold(api: DockviewApi, id: PanelId): void {
+/**
+ * Folds `id` to its title, or unfolds it to the height it had (T-172b). Returns whether it is
+ * folded now, or `null` when nothing changed (it cannot fold where it is).
+ */
+export function toggleFold(api: DockviewApi, id: PanelId): boolean | null {
   const group = api.getPanel(id)?.group;
-  if (!group) return;
-  const before = unfolded.get(group);
-  if (before !== undefined) {
-    unfolded.delete(group);
-    group.api.setConstraints({ minimumHeight: UNFOLDED_MINIMUM_HEIGHT });
-    group.api.setSize({ height: before });
-    return;
+  if (!group) return null;
+  if (unfolded.has(group)) {
+    unfold(group);
+    return false;
   }
-  if (!canFold(api, id)) return;
-  unfolded.set(group, group.api.height);
-  // Groups keep a minimum height; a folded one may shrink to its tab row.
+  if (!canFold(api, id)) return null;
+  fold(group, group.api.height);
+  return true;
+}
+
+/**
+ * Keeps folded groups folded after the layout changed: the window's resizing shares out height
+ * (also to a folded group) and the interface size changes what a rem is. A group that no longer
+ * shares a column (its neighbour was hidden) or floats unfolds. Returns whether one unfolded.
+ */
+export function settleFolds(api: DockviewApi): boolean {
+  if (api.height <= 0) return false;
   const folded = remToPixels(FOLDED_REM);
-  group.api.setConstraints({ minimumHeight: folded });
-  group.api.setSize({ height: folded });
+  let changed = false;
+  for (const group of api.groups) {
+    if (!unfolded.has(group)) continue;
+    if (
+      group.api.location.type !== "grid" ||
+      group.api.height >= api.height - 1
+    ) {
+      unfold(group);
+      changed = true;
+    } else if (Math.abs(group.api.height - folded) >= 1) {
+      group.api.setConstraints({ minimumHeight: folded });
+      group.api.setSize({ height: folded });
+    }
+  }
+  return changed;
 }

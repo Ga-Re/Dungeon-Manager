@@ -25,7 +25,7 @@ export function clampPoint(
 }
 
 /**
- * `at`, moved so the element in `ref` lies inside the viewport. Measured before paint, so it
+ * `at`, moved so the element in `ref` lies inside the viewport, as its fixed `left`/`top`. Measured before paint, so it
  * never shows at the overflowing spot first.
  */
 export function useClampedPoint(
@@ -44,10 +44,13 @@ export function useClampedPoint(
       const box = ref.current?.getBoundingClientRect();
       setClamped(
         keepIfSame(
-          clampPoint(
-            { x, y },
-            { width: box?.width ?? 0, height: box?.height ?? 0 },
-            viewport(),
+          toFixed(
+            ref.current,
+            clampPoint(
+              { x, y },
+              { width: box?.width ?? 0, height: box?.height ?? 0 },
+              viewport(),
+            ),
           ),
         ),
       );
@@ -62,6 +65,41 @@ const viewport = () => ({
   width: window.innerWidth,
   height: window.innerHeight,
 });
+
+/**
+ * Whether an element with this style is the box its `position: fixed` descendants are placed
+ * in, instead of the window (CSS Positioned Layout: transforms, filters, `will-change` and
+ * containment do that).
+ */
+function holdsFixedDescendants(style: CSSStyleDeclaration): boolean {
+  const set = (value: string | undefined) =>
+    value !== undefined && value !== "" && value !== "none";
+  return (
+    set(style.transform) ||
+    set(style.perspective) ||
+    set(style.filter) ||
+    set(style.backdropFilter) ||
+    /transform|perspective|filter/.test(style.willChange) ||
+    /paint|layout|strict|content/.test(style.contain)
+  );
+}
+
+/**
+ * `point` (in viewport pixels) as `left`/`top` of a fixed `element` (T-172b): usually the same,
+ * but inside a transformed container – a floating panel – fixed is relative to that container.
+ */
+function toFixed(element: HTMLElement | null, point: MenuPoint): MenuPoint {
+  for (let node = element?.parentElement; node; node = node.parentElement) {
+    if (holdsFixedDescendants(getComputedStyle(node))) {
+      const box = node.getBoundingClientRect();
+      return {
+        x: point.x - box.left - node.clientLeft,
+        y: point.y - box.top - node.clientTop,
+      };
+    }
+  }
+  return point;
+}
 
 /** A state update that keeps the previous point when nothing moved: no needless re-render. */
 const keepIfSame =
@@ -99,7 +137,7 @@ function watchLayout(
 const GAP = 4;
 
 /**
- * Where something opening under `anchor` goes, as a fixed viewport point (T-131): under the
+ * Where something opening under `anchor` goes, as its fixed `left`/`top` (T-131): under the
  * anchor, lined up with its `align` edge, and kept inside the window. Fixed, so a container
  * that clips or scrolls (the ribbon's panel) never cuts it off; it follows the anchor on
  * scrolling, resizing and size changes of its own. `undefined` while `active` is false.
@@ -129,7 +167,9 @@ export function useAnchoredPoint(
         x: align === "end" ? from.right - size.width : from.left,
         y: from.bottom + GAP,
       };
-      setPoint(keepIfSame(clampPoint(at, size, viewport())));
+      setPoint(
+        keepIfSame(toFixed(element.current, clampPoint(at, size, viewport()))),
+      );
     };
     place();
     return watchLayout(element.current, place, true);

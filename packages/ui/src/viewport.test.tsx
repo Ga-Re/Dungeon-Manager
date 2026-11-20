@@ -262,3 +262,85 @@ describe("clampPoint", () => {
     ).toEqual({ x: 8, y: 8 });
   });
 });
+
+describe("menus and popovers inside a transformed container (T-172b)", () => {
+  /**
+   * A floating panel is moved with a transform, which makes it the box `position: fixed` is
+   * placed in. Elements measure as `boxes` says (by test id), everything else as 200 × 100.
+   */
+  function measureBoxes(boxes: Record<string, Partial<DOMRect>>) {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: HTMLElement) {
+        const box = boxes[this.dataset["testid"] ?? ""] ?? {
+          left: 0,
+          top: 0,
+          width: 200,
+          height: 100,
+        };
+        const { left = 0, top = 0, width = 0, height = 0 } = box;
+        return {
+          left,
+          top,
+          width,
+          height,
+          right: left + width,
+          bottom: top + height,
+        } as DOMRect;
+      },
+    );
+  }
+
+  it("opens a popover under its anchor, not shifted by the container", () => {
+    measureBoxes({
+      floating: { left: 300, top: 200, width: 400, height: 300 },
+      anchor: { left: 350, top: 220, width: 30, height: 20 },
+    });
+    function Opened() {
+      const anchor = useRef<HTMLButtonElement>(null);
+      return (
+        <div
+          data-testid="floating"
+          style={{ transform: "translate3d(0px, 0px, 0px)" }}
+        >
+          <button type="button" ref={anchor} data-testid="anchor">
+            Anker
+          </button>
+          <Popover
+            open
+            anchor={anchor}
+            align="start"
+            label="Panel"
+            onClose={vi.fn()}
+          >
+            <input aria-label="Name" />
+          </Popover>
+        </div>
+      );
+    }
+    render(<Opened />);
+    const popover = screen.getByRole("group", { name: "Panel" });
+    // Under the anchor at (350, 244) in the window: (50, 44) from the container's corner.
+    expect(popover.style.left).toBe("50px");
+    expect(popover.style.top).toBe("44px");
+  });
+
+  it("opens a context menu at the pointer, not shifted by the container", () => {
+    measureBoxes({
+      floating: { left: 300, top: 200, width: 400, height: 300 },
+    });
+    render(
+      <div data-testid="floating" style={{ willChange: "transform" }}>
+        <ContextMenu
+          at={{ x: 400, y: 300 }}
+          label="Szene"
+          items={[{ id: "new", label: "Neue Szene …" }]}
+          onSelect={vi.fn()}
+          onClose={vi.fn()}
+        />
+      </div>,
+    );
+    const menu = screen.getByRole("menu", { name: "Szene" });
+    expect(menu.style.left).toBe("100px");
+    expect(menu.style.top).toBe("100px");
+  });
+});
