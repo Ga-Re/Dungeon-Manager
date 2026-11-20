@@ -149,6 +149,9 @@ export const en: Messages = {
     },
     closeScene: "Close scene",
     mapData: {
+      changed:
+        "This map's data was changed, e.g. on another device. The TV shows it only once you accept it.",
+      acceptChange: "Accept change",
       notReadable:
         "This map's data is not downloaded yet or damaged. Try again once your sync service has loaded the file.",
       unavailable:

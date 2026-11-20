@@ -45,6 +45,9 @@ export interface SceneSession {
   readonly mapData: MapDataState;
   /** Overrides of the scene whose map element is gone (shown to the DM as a hint). */
   readonly orphanedOverrides: readonly string[];
+  /** The map's data changed on disk; the scene keeps the old until `acceptMapChange`. */
+  readonly mapChanged: boolean;
+  acceptMapChange(): void;
   /** Applies a command; `false` if core rejected it (state unchanged). */
   run(command: Command): boolean;
   undo(): void;
@@ -118,7 +121,11 @@ export function useSceneSession(
 
   // A scene moving its version 2 copy of grid and levels into the sidecar is saved without it,
   // outside the history: it happens on opening, before any edit.
-  const mapData = useMapData(service, scene, () => {
+  const {
+    data: mapData,
+    changed: mapChanged,
+    acceptChange,
+  } = useMapData(service, scene, () => {
     // The scene as it is now: only the copy goes, nothing else from when the settling began.
     const settled = withoutLegacyMap(latestScene.current);
     setScene(settled);
@@ -199,6 +206,8 @@ export function useSceneSession(
     map,
     mapData,
     orphanedOverrides: resolved?.orphanedOverrides ?? [],
+    mapChanged,
+    acceptMapChange: acceptChange,
     run(command) {
       const current = state();
       if (!current) return false;

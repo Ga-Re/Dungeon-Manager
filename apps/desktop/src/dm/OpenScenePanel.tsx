@@ -480,8 +480,9 @@ export function OpenScenePanel({
 }
 
 /**
- * What the DM should know about the map's data (ADR-0012): not available yet (nothing is shown),
- * the scene playing its own version 2 copy, or overrides whose map element is gone.
+ * What the DM should know about the map's data (ADR-0012): a change waiting to reach the TV, not
+ * available yet (nothing is shown), the scene playing its own version 2 copy, or overrides whose
+ * map element is gone.
  */
 function MapDataNotice({
   session,
@@ -489,6 +490,20 @@ function MapDataNotice({
   readonly session: ReturnType<typeof useSceneSession>;
 }) {
   const { t } = useTranslation();
+  if (session.mapChanged)
+    return (
+      <p role="status">
+        {t("campaign.mapData.changed")}{" "}
+        <button
+          type="button"
+          onClick={() => {
+            session.acceptMapChange();
+          }}
+        >
+          {t("campaign.mapData.acceptChange")}
+        </button>
+      </p>
+    );
   if (session.mapData.status === "unavailable")
     return <p role="alert">{t("campaign.mapData.unavailable")}</p>;
   if (session.mapData.status === "ready" && session.mapData.legacy)

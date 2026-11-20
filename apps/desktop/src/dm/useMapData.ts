@@ -26,9 +26,23 @@ export type MapDataState =
   /** The sidecar is not downloaded yet or broken: nothing is shown, nothing written. */
   | { readonly status: "unavailable" };
 
+/** The open scene's map data, and a newer version that waits for the DM. */
+export interface MapDataSession {
+  /** What the scene plays (and the TV shows). */
+  readonly data: MapDataState;
+  /**
+   * The map's data changed on disk (another device, another workspace) while the scene is on
+   * the TV: it is applied only when the DM accepts it (ADR-0012).
+   */
+  readonly changed: boolean;
+  readonly acceptChange: () => void;
+}
+
 /**
- * Loads the open scene's map data from the map's sidecar and reloads it when the sidecar changes
- * on disk. A scene still carrying its version 2 copy (`legacyMap`) moves it into the sidecar
+ * Loads the open scene's map data from the map's sidecar. A later change of the sidecar on disk
+ * waits for the DM (`changed`), because the open scene is live on the TV and a global edit must
+ * not change the table view by surprise (ADR-0012); a change to what is shown already is taken
+ * silently. A scene still carrying its version 2 copy (`legacyMap`) moves it into the sidecar
  * first (`settleLegacyMap`); `onSettled` then drops the copy from the scene and saves it.
  *
  * A missing sidecar means defaults – unless the scene refers to other levels than the default
@@ -39,8 +53,13 @@ export function useMapData(
   service: LibraryService,
   scene: Scene,
   onSettled: () => void,
-): MapDataState {
+): MapDataSession {
   const [state, setState] = useState<MapDataState>({ status: "loading" });
+  const [pending, setPending] = useState<MapDataState | null>(null);
+  // The map (and copy) the shown data belongs to: a reload of the same map waits for the DM.
+  const loadedFor = useRef<string | null>(null);
+  const shown = useRef(state);
+  shown.current = state;
   const [version, setVersion] = useState(0);
   const settled = useRef(onSettled);
   useEffect(() => {
@@ -62,11 +81,18 @@ export function useMapData(
 
   useEffect(() => {
     if (path === undefined) {
+      loadedFor.current = null;
       setState({ status: "noMap" });
+      setPending(null);
       return;
     }
     let active = true;
-    setState({ status: "loading" });
+    const key = `${path}\n${legacy ? "legacy" : ""}`;
+    const reload = loadedFor.current === key;
+    if (!reload) {
+      setState({ status: "loading" });
+      setPending(null);
+    }
     const load = async (): Promise<MapDataState> => {
       if (legacy) {
         const outcome = await settleLegacyMap(service.fs, latest.current).catch(
@@ -105,11 +131,28 @@ export function useMapData(
     };
     load().then(
       (next) => {
-        if (active) setState(next);
+        if (!active) return;
+        loadedFor.current = key;
+        const current = shown.current;
+        if (!reload || current.status !== "ready") {
+          setState(next);
+          setPending(null);
+        } else if (
+          next.status !== "ready" ||
+          JSON.stringify(next) === JSON.stringify(current)
+        ) {
+          // Our own write coming back from the watcher changes nothing; a sidecar that cannot
+          // be read for a moment (evicted, mid-sync) keeps what the TV shows.
+          setPending(null);
+        } else setPending(next);
       },
       (error: unknown) => {
         console.error("The map data cannot be read.", error);
-        if (active) setState({ status: "unavailable" });
+        if (!active) return;
+        setPending(null);
+        // As above: what is shown stays when only a reload fails.
+        if (!reload || shown.current.status !== "ready")
+          setState({ status: "unavailable" });
       },
     );
     return () => {
@@ -117,5 +160,13 @@ export function useMapData(
     };
   }, [service, path, legacy, version]);
 
-  return state;
+  return {
+    data: state,
+    changed: pending !== null,
+    acceptChange: () => {
+      if (!pending) return;
+      setState(pending);
+      setPending(null);
+    },
+  };
 }

@@ -181,6 +181,8 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Add a level with or without its own file; a file of another size is refused with an actionable message (component + E2E test)
   - [ ] Rename a level; the new name reaches the TV's projection only for released levels
 
+- **Notes:** From T-134b: the open scene's map data is held while it changes on disk; this task's own sidecar writes update the shown data first (`useMapData`), so their watcher echo asks nothing (test).
+
 ### T-119 Case-insensitive id collisions in file names
 
 - **Status:** done · **Depends on:** T-103a · **Refs:** ARCHITECTURE §6, ADR-0005
@@ -278,6 +280,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Catalog lists all maps in the library with a preview, across campaigns
   - [ ] DM picks a map from the catalog for a new scene and when changing a scene's map
   - [ ] Deleting a scene leaves its map in the catalog
+  - [ ] The catalog ignores sidecars (`*.dm.json`) and maps sidecar conflict copies back to their original (`listSidecarConflicts`; from T-134b)
 - **Notes:** DM request (2026-11-17). Previews go to `library/.previews/` as ARCHITECTURE §6.5 already plans (shared with the web app and handouts); maps picked but not used (e.g. a cancelled map change) simply stay in the catalog.
 
 ### T-125 Asset metadata: scale, name, origin
@@ -361,6 +364,8 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] On a calibrated display one cell measures 1 inch (manual check documented; unit tests for the math)
   - [ ] Rotation 0/90/180/270 in the player window
 - Workspace interview (2026-11-20): calibration lives in the Map Forge (T-176, two-click 3×3 box T-177); the display calibration stays in the device settings.
+
+- **Notes:** From T-134b: the open scene's map data is held while it changes on disk; this task's own sidecar writes update the shown data first (`useMapData`), so their watcher echo asks nothing (test).
 
 ### T-116 Player view render resolution setting
 
@@ -824,14 +829,13 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Both choices from the hint, with a confirmation before a global change; the scene then has no `legacyMap` (component test)
 - **Notes:** From T-134d (2026-11-20). Only for libraries with several scenes of the same map from before scene version 3.
 
-### T-134b Sidecars: live-scene confirmation and catalog
+### T-134b Sidecars: live-scene confirmation
 
-- **Status:** todo · **Depends on:** T-134d · **Refs:** ADR-0012
-- A global edit (e.g. a new level) reaches the scene live on the TV only after the DM confirms; the catalog skips sidecars.
+- **Status:** done · **Depends on:** T-134d · **Refs:** ADR-0012
+- A global edit (e.g. a recalibration on another device) reaches the scene live on the TV only after the DM confirms.
 - **Acceptance criteria**
-  - [ ] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open
-  - [ ] The catalog ignores sidecars and maps sidecar conflict copies back to their original (once T-124 builds the catalog, its tests cover this)
-- **Notes:** Split from T-134 (2026-11-20).
+  - [x] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open (component test)
+- **Notes:** Split from T-134 (2026-11-20). The open scene is the one on the TV, so a change of its map's sidecar on disk waits for "Änderung übernehmen"; unchanged reloads (our own writes coming back from the watcher) ask nothing. The DM's own map edits in the open scene (T-118d, T-106) must update the shown data before writing the sidecar (e.g. an `applyOwnEdit` on `useMapData`), or their watcher echo would be held – noted there. A sidecar that cannot be read for a moment keeps what is shown. The catalog part moved to T-124, which builds the catalog.
 
 ### T-168 Animated fog effects per map
 
