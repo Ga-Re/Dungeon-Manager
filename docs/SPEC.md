@@ -79,6 +79,42 @@ There is no DM phone app (ADR-0013). Planning on the go happens in tools the DM 
 - **Fog:** the DM decides per map whether players may move into fog and whether movement auto-reveals with dynamic vision
 - Every permission is per player and can be revoked at any time
 
+### 2.5 Workspaces (DM window)
+
+The DM window has five workspaces, each with its own layout, ribbon tabs and open document (ADR-0017, DM interview 2026-11-20). In all of them, the data panel holds the source the DM drags from. The browser lists the objects of the open document, like layers in Photoshop or the browser in Fusion 360, and only shows where there is such a document. Each document has its own undo history.
+
+- **Map Forge – global maps** (sidecar data, ADR-0012):
+  - **Files:** import and manage map files; 2-click grid calibration by dragging over a 3×3 cell box, so every map has the same cell size on the TV.
+  - **Map data:** metadata (cell size, ambient sound, transitions, fog effects); rooms and areas with DM-only labels; levels with heights and stairs that move tokens to the next level.
+  - **Masks:** three sight masks – walls (block sight and movement both ways), cliffs and galleries (one way: those above see down, those below cannot see up), and cover (trees, pillars, statues: radial shadows behind them while the object itself stays lit). Masks can be made automatically and are checked for leaks; a test figure shows what a token would see.
+  - **Building:** parametric rooms, towers and corridors with automatic outer walls; terrain and floor layers with movement costs; light sources with radius, colour and flicker; ambient light presets (day, dusk, full-moon night, dark dungeon).
+  - **Props:** props that belong to the map in every scene, dragged from the Asset Vault; they snap to the grid, rotate in 15° steps and scale.
+  - **Image:** variants of a map (day/night, destroyed) sharing masks and rooms; composing a map from tiles; non-destructive crop, rotation and image adjustment (brightness, contrast, hue) for the TV.
+  - **Exchange:** UVTT import, and export/import with all files sorted into the library.
+- **Asset Vault – everything that is not a map:** props, map pieces, handouts, items and sound.
+  - **Organising:** metadata and tags for search (theme, type, tags), collections, favourites and recently used; duplicates are detected on import.
+  - **Editing:** batch editing; tinted colour variants; animated (video) assets; grid-based scale with a preview on a 5-ft grid.
+  - **Smart prefabs:** a tree brings its cover mask, a door its switchable wall mask, a lantern its light, a house its interior.
+  - **Items and loot:** cards with rarity and description; sound effects bound to traps and spells.
+- **Tokens & Kreaturen – player characters and creatures, global for all campaigns:**
+  - **Pictures:** token picture and portrait; a token made from the portrait.
+  - **Combat values:** HP with dice formula, AC, initiative modifier, speeds, size and grid footprint with pivot, and senses (sight, darkvision), which vision uses automatically.
+  - **Variants:** clones with generated names; shapes (e.g. a druid's beast form) to switch in play; encounter pods (groups of creatures).
+  - **Display:** faction rings; previews of conditions, auras and sight.
+  - **Exchange:** stat-block import (SRD 5.1) and creature import/export.
+- **Campaign Atlas – building campaigns:**
+  - **Structure:** the campaign explorer (sessions as folders of scenes, notes, wiki and lore) and a scene flow graph; a checklist per session.
+  - **Scene editor:** tokens and creatures, props on top of the map's own, traps, triggers and secrets, map pins with room descriptions and read-aloud text, start states (doors, lights, fog), and overrides of map settings.
+  - **Planning aids:** what the players already know, a campaign timeline, loot and rewards, and encounter balance.
+- **Game-Orchestrator – running the session:**
+  - **TV:** a live preview of the player view; centring the players' view; pause, title and blackout screens.
+  - **Scenes:** a scene bar with quick preparation of the next scene without touching the TV.
+  - **On the map:** asset actions (e.g. roof off), doors and traps, ambience presets, area-of-effect templates.
+  - **Combat:** a group overview of all characters; hidden dice, one roll for many targets; initiative that rolls for groups of monsters and focuses the next turn with its movement range.
+  - **Media:** handouts; music playlists, ambience layers, a sound board and a volume mixer.
+  - **Notes:** room notes in the inspector; quick notes into the session log; random generators (NPCs, rumours, loot); in-game time and weather.
+- **TV outside the Orchestrator:** set in the settings – pause only on a button, always pause, or pause only in the editing workspaces.
+
 ---
 
 ## 3. Maps

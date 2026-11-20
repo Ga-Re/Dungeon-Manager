@@ -351,6 +351,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] On a calibrated display one cell measures 1 inch (manual check documented; unit tests for the math)
   - [ ] Rotation 0/90/180/270 in the player window
+- Workspace interview (2026-11-20): calibration lives in the Map Forge (T-176, two-click 3×3 box T-177); the display calibration stays in the device settings.
 
 ### T-116 Player view render resolution setting
 
@@ -423,6 +424,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Reducer tests for all initiative commands
   - [ ] Active token highlighted in player window (screenshot)
 - **Notes:** From T-102a: removing all combatants resets the tracker (round 0); an explicit "end combat" command, delay/ready and manual reordering belong here (adding a combatant inserts without re-sorting, so manual order is kept).
+- Workspace interview (2026-11-20): group rolls and next-turn focus follow in T-213.
 
 ### T-112 HP and conditions
 
@@ -439,6 +441,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Blackout reachable by button and keyboard shortcut; E2E test
   - [ ] The preview shows exactly the projected player view (incl. blackout), never DM-only data; component/E2E test
 - **Notes:** Preview placement decided by the DM (2026-11-18, PR #27).
+- Workspace interview (2026-11-20): the pause/title screen and its setting are T-175.
 
 ### T-133 Player-view preview on an additional DM monitor
 
@@ -550,6 +553,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Transparent body readable over any map (text shadow or scrim; WCAG AA checked on light and dark maps)
   - [x] Collapse/expand, drag by the header grip within the map area, keyboard alternative; position per device; component + E2E tests
 - **Notes:** DM decision (2026-11-19): groups Kampagneneinstellungen, Szenen, Karten (maps used by the campaign's scenes), Spieler & Charaktere (character pictures come with tokens, T-107), Handouts & Hinweise (filled by T-137) and Notizen (filled by T-150); folded, only the header bar stays. Campaign settings open in the details panel (T-159).
+- ADR-0017 (Proposed): the browser becomes the open document's object tree and the campaign tree moves into the Campaign Atlas (T-173).
 
 ### T-159 Details panel (properties) on the right
 
@@ -793,6 +797,112 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Benchmark incl. a video-to-video crossfade stays within ARCHITECTURE §11 (≤ 1 % missed refreshes); a crossfade between two videos needs a second `<video>` element under the canvas (extends ADR-0010's single slot)
 - **Notes:** From the DM planning interview (2026-11-18). Themed transitions are T-147.
 
+### T-171 Five workspaces: names and Tokens & Kreaturen
+
+- **Status:** todo · **Depends on:** T-156 · **Refs:** ADR-0017, SPEC §2.5
+- Rename Asset Studio → Asset Vault and Game Mode → Game-Orchestrator, add Tokens & Kreaturen; order: Map Forge, Asset Vault, Tokens & Kreaturen, Campaign Atlas, Game-Orchestrator.
+- **Acceptance criteria**
+  - [ ] The selector lists the five workspaces with translated names; a remembered workspace of the old ids still opens (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-172 Workspace layouts
+
+- **Status:** todo · **Depends on:** T-171 · **Refs:** ADR-0017, ADR-0014, ARCHITECTURE §15
+- A small layout layer: each workspace declares its zones (docked column, ribbon tabs, canvas, floating browser, dock, properties panel) and what fills them; the shell's slots become per workspace. The Game-Orchestrator keeps today's layout and stays mounted while another workspace shows.
+- **Acceptance criteria**
+  - [ ] Switching workspaces swaps the layout without losing the Orchestrator's state (component + E2E test)
+  - [ ] A DM-window screenshot per workspace layout (placeholders where content follows)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-173 Browser as the open document's object tree; campaign explorer in the Atlas
+
+- **Status:** todo · **Depends on:** T-172 · **Refs:** ADR-0017, T-158
+- The browser lists the objects of the open document (map, levels, fog; later masks, rooms, props, tokens), like layers. Today's campaign tree (sessions, scenes, notes, sub-scenes, context menus) moves into the Campaign Atlas data panel as the campaign explorer.
+- **Acceptance criteria**
+  - [ ] Browser shows the open scene's objects and only where a document is open
+  - [ ] The campaign explorer keeps every function of today's tree (E2E tests moved, screenshots regenerated)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-174 Undo per document; tools reset when leaving the Orchestrator
+
+- **Status:** todo · **Depends on:** T-172 · **Refs:** ADR-0017, ARCHITECTURE §5.1
+- Each open document (map, asset, creature, scene) has its own undo history; Cmd/Ctrl+Z acts on the active workspace's document. Leaving the Orchestrator drops the fog tool back to panning (from the T-156 review).
+- **Acceptance criteria**
+  - [ ] Undo in one workspace never changes another workspace's document (component test)
+  - [ ] Leaving the Orchestrator with an active fog tool leaves panning active
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-175 Pause and title screen for the TV, with a setting
+
+- **Status:** todo · **Depends on:** T-105b, T-155, T-172 · **Refs:** SPEC §2.2, §2.5, ADR-0017
+- A pause/title image (self-made default) on the TV from a button in the Orchestrator. Setting "TV outside the Orchestrator": pause only on the button, always pause, or pause only in the editing workspaces (Map Forge, Asset Vault, Tokens & Kreaturen).
+- **Acceptance criteria**
+  - [ ] The pause screen hides the scene completely and fail-closed (screenshot + E2E test)
+  - [ ] The setting changes what a workspace switch does to the TV (E2E test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). The DM left the default open; the agent assumes "only on the button" until the DM decides. Belongs together with the blackout of T-113.
+
+### T-176 Map Forge: open and edit library maps
+
+- **Status:** todo · **Depends on:** T-124, T-134, T-172 · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
+- The Map Forge opens a map from the library (data panel) as its document, without a scene. Ribbon tabs for the map's data; the browser lists levels, rooms, masks and props. First content: map metadata (name, cell size, ambient sound, transition, fog effect) in the sidecar.
+- **Acceptance criteria**
+  - [ ] Open a library map and edit its metadata; saved in its sidecar (component + E2E test)
+  - [ ] An edit reaches a scene live on the TV only after the DM confirms (ADR-0012)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-177 Two-click grid calibration with a 3×3 box
+
+- **Status:** todo · **Depends on:** T-176, T-106 · **Refs:** SPEC §2.2, §2.5
+- In the Map Forge the DM drags a box over 3×3 cells of the map's printed grid; cell size and offset follow, so every map shows the same cell size on the TV.
+- **Acceptance criteria**
+  - [ ] Cell size and offset from a dragged 3×3 box, also on a turned view (unit tests for the math)
+  - [ ] Without a printed grid, an overlay grid can be laid over the map
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-178 Asset Vault: library, metadata and search
+
+- **Status:** todo · **Depends on:** T-124, T-125, T-126, T-172 · **Refs:** SPEC §2.5, §8.2, ADR-0017
+- The Asset Vault opens assets from the library: props, map pieces, handouts, items and sounds. Metadata (theme, type, tags), search, collections, favourites and recently used; a preview on a 5-ft grid shows the asset's scale.
+- **Acceptance criteria**
+  - [ ] Find assets by theme, type and tags; collections and favourites persist (component + E2E test)
+  - [ ] The grid preview shows an asset at its calibrated size
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-179 Duplicate detection on import
+
+- **Status:** todo · **Depends on:** T-124 · **Refs:** SPEC §8.2
+- Importing a file the library already has (same hash) keeps one file and tells the DM where it is.
+- **Acceptance criteria**
+  - [ ] A second import of the same file adds no copy (storage test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-180 Creature library: player characters and creatures
+
+- **Status:** todo · **Depends on:** T-107, T-172 · **Refs:** SPEC §2.5, §5, §11
+- Global creatures (DM decision: player characters too, campaigns refer to them): token picture and portrait, HP with dice formula, AC, initiative modifier, speeds, size with grid footprint and pivot, senses (sight, darkvision) for vision. Per-session state (HP, conditions) stays in the scene/session state.
+- **Acceptance criteria**
+  - [ ] Create and edit a creature; a token placed from it carries its values (component + E2E test)
+  - [ ] A campaign refers to its player characters without copying them
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). A new file format: design the schema with the DM before implementing (CLAUDE.md).
+
+### T-181 Campaign Atlas: explorer and scene editor
+
+- **Status:** todo · **Depends on:** T-173 · **Refs:** SPEC §2.5, §12, ADR-0017
+- The Atlas shows the campaign explorer (sessions as folders of scenes, notes) in its data panel and opens a selected scene in its scene editor, with its own ribbon.
+- **Acceptance criteria**
+  - [ ] Open, create, move and delete scenes from the explorer (E2E test)
+  - [ ] The rule for editing the scene that is live on the TV is decided with the DM and tested
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). Open question for the DM: what happens when the Atlas edits the scene that is live in the Orchestrator.
+
+### T-182 Game-Orchestrator: scene bar and group overview
+
+- **Status:** todo · **Depends on:** T-172, T-111, T-112 · **Refs:** SPEC §2.5, §13.2
+- A scene bar with the session's scenes; the next scene can be prepared quickly (fog) without touching the TV and then switched live. A group overview shows all player characters with HP, conditions and concentration.
+- **Acceptance criteria**
+  - [ ] Preparing the next scene never changes the TV (E2E test)
+  - [ ] The group overview follows HP and condition changes (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
 ### T-115 MVP end-to-end flow
 
 - **Status:** todo · **Depends on:** T-107 … T-114, T-134 … T-136
@@ -845,6 +955,55 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Notes:** From the DM planning interview (2026-11-18).
 
 ---
+
+### T-183 Map pins with room descriptions and read-aloud text
+
+- **Status:** todo · **Depends on:** T-181, T-161a, T-108c · **Refs:** SPEC §2.5, §12
+- DM-only pins on rooms in the scene editor that open the room's description, read-aloud text and linked creatures; in the Orchestrator they show in the inspector.
+- **Acceptance criteria**
+  - [ ] Pins never reach the TV or companions (projection test)
+  - [ ] A pin opens its note in the inspector (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-184 Session checklist
+
+- **Status:** todo · **Depends on:** T-181, T-160a · **Refs:** SPEC §2.5, §12
+- Per session: the scenes, handouts, creatures and music it needs, each with a "prepared" state.
+- **Acceptance criteria**
+  - [ ] Checklist items are saved with the session and show what is still missing (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-185 Wiki and lore in the Campaign Atlas
+
+- **Status:** todo · **Depends on:** T-181, T-150 · **Refs:** SPEC §12
+- NPCs, places, factions, quests and items as linked notes in the Atlas, with status (alive/dead, quest open/done) and links to scenes and pins.
+- **Acceptance criteria**
+  - [ ] Create and link wiki entries; links resolve in both directions (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-186 Quick notes into the session log
+
+- **Status:** todo · **Depends on:** T-182 · **Refs:** SPEC §12, §13.2
+- A shortcut in the Orchestrator opens a one-line note that goes into the session log with the time.
+- **Acceptance criteria**
+  - [ ] A quick note lands in the session log without leaving the map (E2E test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-187 Sound in the Asset Vault and the Orchestrator
+
+- **Status:** todo · **Depends on:** T-178, T-182 · **Refs:** SPEC §9, §2.5
+- Music playlists with crossfade, ambience layers, a sound board for one-shot effects and a volume mixer (music, ambience, effects).
+- **Acceptance criteria**
+  - [ ] Plan the sound area with the DM (formats, output device, licences) before implementing
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). Sound has no tasks yet; this is the umbrella to split after planning.
+
+### T-188 Random generators
+
+- **Status:** todo · **Depends on:** T-182 · **Refs:** SPEC §2.5
+- NPC (name, quirk, motivation), tavern rumours, random encounters and loot tables in one click; tables editable by the DM.
+- **Acceptance criteria**
+  - [ ] Generated results use the DM's tables; bundled tables are self-made or CC0 (SOURCES noted)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
 ## Stage 3 – Networked at the table
 
@@ -903,6 +1062,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Screenshot tests for each brightness level, dim vs bright, darkvision and a coloured light
   - [ ] Flicker is seeded (deterministic in tests) and stays within the photosensitivity limits (SPEC 10.3, ARCHITECTURE §9), which this task also applies to on-screen light
+- Workspace interview (2026-11-20): ambient light presets per map (day 100 %, dusk, full-moon night, dark dungeon 0 %) set in the Map Forge.
 
 ### T-144 Asset placement and asset blockers
 
@@ -930,6 +1090,207 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ---
 
+### T-189 Room labels on maps
+
+- **Status:** todo · **Depends on:** T-176, T-108c · **Refs:** SPEC §2.5, §8.1
+- DM-only room numbers and names on the map in the Map Forge, shown in every scene with the map.
+- **Acceptance criteria**
+  - [ ] Labels never reach the TV (projection test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-190 Compose a map from tiles
+
+- **Status:** todo · **Depends on:** T-176 · **Refs:** SPEC §2.5, §8.1
+- Build one map from several images (dungeon tiles, map sections), aligned on the grid.
+- **Acceptance criteria**
+  - [ ] Composed maps render within the texture limits (T-127) and the benchmark budget
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-191 Map variants
+
+- **Status:** todo · **Depends on:** T-176, T-134 · **Refs:** SPEC §2.5, §8.1
+- Variants of a map (day/night, destroyed, flooded) share masks, rooms and grid; a scene picks one.
+- **Acceptance criteria**
+  - [ ] Switching variants keeps fog, masks and rooms (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-192 Crop, rotation and image adjustment of maps
+
+- **Status:** todo · **Depends on:** T-176 · **Refs:** SPEC §2.5
+- Non-destructive crop, rotation and brightness/contrast/hue per map, so dark or glaring maps read well on the TV.
+- **Acceptance criteria**
+  - [ ] The original file stays untouched; settings live in the sidecar
+  - [ ] Same look on the TV and in the DM window (screenshot test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-193 Cliff and cover masks
+
+- **Status:** todo · **Depends on:** T-140, T-142 · **Refs:** SPEC §2.5, §8.1
+- Besides walls: cliffs and galleries (one way – those above see down, those below cannot see up) and cover (trees, pillars, statues cast radial shadows behind them while staying lit).
+- **Acceptance criteria**
+  - [ ] Vision tests for one-way and cover masks (unit tests in core)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-194 Vision test and mask check in the Map Forge
+
+- **Status:** todo · **Depends on:** T-142, T-176 · **Refs:** SPEC §2.5
+- A test figure on the map shows live what a token would see; open wall ends, overlapping doors and rooms without walls are flagged.
+- **Acceptance criteria**
+  - [ ] Leaks in a fixture map are found (unit tests)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-195 Parametric rooms, towers and corridors
+
+- **Status:** todo · **Depends on:** T-140, T-176 · **Refs:** SPEC §2.5, §8.1
+- Drag rectangular rooms, round towers and corridors on the 5-ft grid; outer walls follow automatically, shared edges become openings.
+- **Acceptance criteria**
+  - [ ] Walls follow the drawn shapes (core unit tests)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-196 Terrain and floor layers with movement cost
+
+- **Status:** todo · **Depends on:** T-176 · **Refs:** SPEC §2.5, §8.1
+- Paint or fill floors (cobblestones, forest floor, water, lava, difficult terrain); difficult terrain doubles movement cost for movement ranges.
+- **Acceptance criteria**
+  - [ ] Movement range respects terrain cost (core unit tests)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-197 Level heights and stairs
+
+- **Status:** todo · **Depends on:** T-118d, T-107, T-176 · **Refs:** SPEC §2.5, §3.1
+- Levels get a height (e.g. −10 ft, 0 ft, +15 ft); stair zones move a token to the next level.
+- **Acceptance criteria**
+  - [ ] A token entering a stair zone moves to the linked level (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-198 UVTT import in the Map Forge
+
+- **Status:** todo · **Depends on:** T-140, T-143, T-176 · **Refs:** SPEC §3.1
+- Import `.uvtt`/`.dd2vtt` with image, grid, walls, doors and lights into a new library map.
+- **Acceptance criteria**
+  - [ ] Import of a self-made fixture keeps walls, doors and lights (storage test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-199 Batch editing in the Asset Vault
+
+- **Status:** todo · **Depends on:** T-178 · **Refs:** SPEC §2.5
+- Tag, scale or file many assets at once.
+- **Acceptance criteria**
+  - [ ] One edit applies to every selected asset and can be undone as one step
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-200 Tinted asset variants
+
+- **Status:** todo · **Depends on:** T-178, T-144 · **Refs:** SPEC §2.5
+- Colour variants of an asset by tint (red/blue carpet) without a new file.
+- **Acceptance criteria**
+  - [ ] Tints render the same on the TV and in the DM window (screenshot test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-201 Animated assets
+
+- **Status:** todo · **Depends on:** T-144, T-128 · **Refs:** SPEC §2.5
+- Short video assets (campfire, waterfall) as props, in sync between DM window and TV.
+- **Acceptance criteria**
+  - [ ] Animated props stay within the benchmark budget
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-202 Smart prefabs: masks and lights on assets
+
+- **Status:** todo · **Depends on:** T-140, T-143, T-144 · **Refs:** SPEC §2.5, §8.1
+- An asset carries its own mask or light: a door its switchable wall mask, a lantern its light, a tree its cover; house interiors come with T-146.
+- **Acceptance criteria**
+  - [ ] Placing a prefab brings its mask/light into the scene (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-203 Token from portrait
+
+- **Status:** todo · **Depends on:** T-180 · **Refs:** SPEC §2.5
+- Cut a round token picture from the portrait with frame and movable crop.
+- **Acceptance criteria**
+  - [ ] Crop and frame are stored; the original picture stays untouched
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). Background removal by click needs a local model or library: a dependency decision for the DM.
+
+### T-204 Clones with generated names
+
+- **Status:** todo · **Depends on:** T-180 · **Refs:** SPEC §2.5
+- Create Goblin #1…#n from one creature, with generated names, slight colour changes and individual HP rolls.
+- **Acceptance criteria**
+  - [ ] Clones get distinct names and rolled HP (unit tests with injected RNG)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-205 Encounter pods
+
+- **Status:** todo · **Depends on:** T-180 · **Refs:** SPEC §2.5
+- Groups of creatures (e.g. a vampire and three spawn) placed as one package.
+- **Acceptance criteria**
+  - [ ] Placing a pod places all its creatures (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-206 Stat-block import and creature exchange
+
+- **Status:** todo · **Depends on:** T-180 · **Refs:** SPEC §2.5
+- Import creatures from the SRD 5.1 (CC-BY) or JSON; export and import creatures.
+- **Acceptance criteria**
+  - [ ] Import validates with zod; attribution for SRD content is shown (licence check with the DM)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-207 Creature shapes
+
+- **Status:** todo · **Depends on:** T-180, T-107 · **Refs:** SPEC §2.5
+- Several pictures and values per creature (beast form, werewolf, disguise), switched in play.
+- **Acceptance criteria**
+  - [ ] Switching a shape keeps the token's position and HP state (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-208 Faction rings and previews
+
+- **Status:** todo · **Depends on:** T-180, T-112, T-142 · **Refs:** SPEC §2.5
+- Token rings in faction colours (players, allies, enemies, neutral) with a shape as well as a colour; previews of conditions, auras and sight radius.
+- **Acceptance criteria**
+  - [ ] Colour is never the only signal (ADR-0011); screenshot tests
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-209 Scene editor: tokens, props and start states
+
+- **Status:** todo · **Depends on:** T-181, T-107, T-144, T-145 · **Refs:** SPEC §2.5, §8
+- Place creatures and props (on top of the map's own, ADR-0012) and set start states: closed doors, lights on, fog.
+- **Acceptance criteria**
+  - [ ] "Reset scene" restores the start state (core tests)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-210 Traps, triggers and secrets
+
+- **Status:** todo · **Depends on:** T-209 · **Refs:** SPEC §8.1
+- Trigger zones (sound, light, message to the DM, reveal trap, switch scene), chest contents and secrets in the scene editor.
+- **Acceptance criteria**
+  - [ ] Triggers fire when a token enters; hidden from the TV until fired (core + projection tests)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-211 Area templates and rolls for many targets
+
+- **Status:** todo · **Depends on:** T-107, T-222 · **Refs:** SPEC §7, §2.5
+- Fireball circles, cones and lines on the grid mark every token hit; saves and attacks are rolled for all targets at once.
+- **Acceptance criteria**
+  - [ ] Hit detection on the grid (core unit tests); one roll action for all marked targets
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-212 Centre the players' view and ambience presets
+
+- **Status:** todo · **Depends on:** T-143, T-182 · **Refs:** SPEC §2.5
+- Lead the TV's camera to an event or room by button; switch light and weather mood (sunny day, blood moon, torchlight, thunderstorm with lightning).
+- **Acceptance criteria**
+  - [ ] Centring never reveals more than the fog allows
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-213 Initiative: group rolls and next-turn focus
+
+- **Status:** todo · **Depends on:** T-111, T-180 · **Refs:** SPEC §11
+- Roll initiative for all monsters (grouped by kind); "next turn" (space) centres the active creature and shows its movement range (walk/dash).
+- **Acceptance criteria**
+  - [ ] Rolls use the creatures' modifiers (unit tests with injected RNG)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
 ## Stage 6 – Campaign & comfort
 
 ### T-147 Themed scene transitions
@@ -947,3 +1308,76 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Export → import round-trip keeps metadata, walls, rooms and variants
   - [ ] Import validates the sidecar with zod and rejects unsafe paths inside the bundle (zip-slip test)
 - **Notes:** A ZIP library is a dependency decision for the DM (Rust `zip` crate vs. alternatives).
+- Workspace interview (2026-11-20): an import sorts all files of the bundle into the library's folder structure.
+
+### T-214 Items and loot cards
+
+- **Status:** todo · **Depends on:** T-178, T-180 · **Refs:** SPEC §2.5, §12
+- Potions, scrolls and artefacts with rarity and description; show a card on the TV or send it to a player.
+- **Acceptance criteria**
+  - [ ] Item cards reach the TV only when shown (projection test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-215 Sounds bound to traps and spells
+
+- **Status:** todo · **Depends on:** T-187, T-210 · **Refs:** SPEC §2.5, §9
+- Short effects (sword clash, fireball, thunder) on trap or spell assets, played when they fire.
+- **Acceptance criteria**
+  - [ ] A firing trap plays its sound once
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-216 Scene flow graph
+
+- **Status:** todo · **Depends on:** T-181 · **Refs:** SPEC §2.5, §12
+- Scenes connected as a graph (door A leads to scene B, "when quest X is done") to plan branching adventures.
+- **Acceptance criteria**
+  - [ ] The flow is saved with the campaign and opens scenes on click
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-217 What the players know
+
+- **Status:** todo · **Depends on:** T-185 · **Refs:** SPEC §2.5, §12
+- Mark which wiki entries and facts the players know; the recap and handouts can build on it.
+- **Acceptance criteria**
+  - [ ] Player knowledge is per campaign and never shows unknown entries to players
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-218 Campaign timeline
+
+- **Status:** todo · **Depends on:** T-185 · **Refs:** SPEC §2.5, §12
+- An in-game calendar with events, sessions and deadlines.
+- **Acceptance criteria**
+  - [ ] Events appear on the timeline in in-game order
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-219 Loot and rewards overview
+
+- **Status:** todo · **Depends on:** T-214 · **Refs:** SPEC §2.5, §12
+- Items, gold and milestones handed out per session and character.
+- **Acceptance criteria**
+  - [ ] The overview sums per character and session
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-220 Encounter balance
+
+- **Status:** todo · **Depends on:** T-180, T-205 · **Refs:** SPEC §2.5, §11
+- Difficulty of an encounter from the 5e XP budget against the group.
+- **Acceptance criteria**
+  - [ ] Budget math matches the SRD tables (unit tests)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-221 In-game time and weather
+
+- **Status:** todo · **Depends on:** T-143, T-187 · **Refs:** SPEC §2.5
+- In-game clock, calendar and weather that adjust light and ambience.
+- **Acceptance criteria**
+  - [ ] Advancing time changes the scene's light preset (component test)
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+
+### T-222 Hidden dice
+
+- **Status:** todo · **Depends on:** T-182 · **Refs:** SPEC §11, §2.5
+- DM dice with formulas (2d6+3), hidden or shown on the TV, recorded in the session log.
+- **Acceptance criteria**
+  - [ ] Formula parser and rolls tested with injected RNG
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
