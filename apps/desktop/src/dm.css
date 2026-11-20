@@ -197,6 +197,24 @@ label {
   text-transform: uppercase;
 }
 
+/* Our own tab and the panel menu render lucide icons, which are 24px unless sized. */
+.dm-panels .dv-default-tab-action svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.dm-panel-menu {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-inline: var(--dm-space-1);
+}
+
+.dm-panel-menu svg {
+  width: 1rem;
+  height: 1rem;
+}
+
 .dm-panel-body {
   height: 100%;
   overflow: auto;

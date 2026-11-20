@@ -732,3 +732,118 @@ test("a level's own image must have the map's size (T-118d)", async ({
     page.getByRole("button", { name: "Gruft", exact: true }),
   ).toBeVisible();
 });
+
+test("panels are folded, docked and hidden with the keyboard only (T-172b)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  const menu = page.getByRole("button", { name: "Panel Browser" });
+  const choose = async (item: string) => {
+    await menu.focus();
+    await page.keyboard.press("Enter");
+    const entry = page.getByRole("menuitem", { name: item });
+    // Down from the first entry until the wanted one has the focus.
+    for (let step = 0; step < 6; step++) {
+      if (await entry.evaluate((element) => element === document.activeElement))
+        break;
+      await page.keyboard.press("ArrowDown");
+    }
+    await page.keyboard.press("Enter");
+  };
+  const browserPanel = page.getByRole("tabpanel", { name: "Browser" });
+  const before = await browserPanel.boundingBox();
+  if (!before) throw new Error("browser not laid out");
+
+  // Fold to its title: Eigenschaften below takes the room; unfold again.
+  await choose("Einklappen");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Browser eingeklappt" }),
+  ).toHaveCount(1);
+  await expect
+    .poll(async () => (await browserPanel.boundingBox())?.height ?? 0)
+    .toBeLessThan(10);
+  await choose("Ausklappen");
+  await expect
+    .poll(async () => (await browserPanel.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(before.height - 2);
+
+  // Dock it left of everything; the keyboard stays on its menu.
+  await choose("Links andocken");
+  await expect(menu).toBeFocused();
+  const map = await page.locator(".dm-stage").boundingBox();
+  const docked = await browserPanel.boundingBox();
+  expect((docked?.x ?? 0) + (docked?.width ?? 0)).toBeLessThanOrEqual(
+    (map?.x ?? 0) + 1,
+  );
+
+  // Hide it; the keyboard moves to the title bar.
+  await choose("Ausblenden");
+  await expect(page.getByRole("button", { name: "Panel Browser" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("button", { name: /Daten ein- oder ausblenden/ }),
+  ).toBeFocused();
+});
+
+test("a folded panel stays folded on the next start and unfolds when alone in its column (T-172b)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  const browserPanel = page.getByRole("tabpanel", { name: "Browser" });
+  const height = async () => (await browserPanel.boundingBox())?.height ?? 0;
+  const menu = page.getByRole("button", { name: "Panel Browser" });
+  await menu.click();
+  await page.getByRole("menuitem", { name: "Einklappen" }).click();
+  await expect.poll(height).toBeLessThan(10);
+
+  await page.reload();
+  await closeWelcome(page);
+  await expect.poll(height).toBeLessThan(10);
+  // A bigger window shares out height, never to a folded panel.
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await expect.poll(height).toBeLessThan(10);
+  await menu.click();
+  await expect(
+    page.getByRole("menuitem", { name: "Ausklappen" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Without Eigenschaften below it, Browser has the column: unfolded, nothing to fold, and
+  // choosing it anyway announces nothing.
+  await page.getByRole("button", { name: "Eigenschaften ausblenden" }).click();
+  await expect.poll(height).toBeGreaterThan(200);
+  await menu.click();
+  await expect(
+    page.getByRole("menuitem", { name: "Einklappen" }),
+  ).toHaveAttribute("aria-disabled", "true");
+});
+
+test("a floating panel's menu opens at its button (T-172b)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  const menu = page.getByRole("button", { name: "Panel Browser" });
+  await menu.click();
+  await page.getByRole("menuitem", { name: "Schwebend" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Browser schwebt" }),
+  ).toHaveCount(1);
+
+  await menu.click();
+  const button = await menu.boundingBox();
+  const list = await page
+    .getByRole("menu", { name: "Panel Browser" })
+    .boundingBox();
+  if (!button || !list) throw new Error("menu not laid out");
+  // Right under the button (4 px gap), not shifted by the floating window's position.
+  expect(Math.abs(list.y - (button.y + button.height + 4))).toBeLessThan(2);
+  expect(list.x).toBeLessThanOrEqual(button.x + 1);
+  expect(list.x + list.width).toBeGreaterThan(button.x);
+
+  // Back into the grid from its own menu.
+  await page.getByRole("menuitem", { name: "Rechts andocken" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Browser rechts angedockt" }),
+  ).toHaveCount(1);
+});

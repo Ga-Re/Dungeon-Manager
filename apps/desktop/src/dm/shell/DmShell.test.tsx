@@ -389,4 +389,66 @@ describe("DmShell", () => {
       );
     });
   });
+
+  describe("panel menus (T-172b)", () => {
+    const panelMenu = (title: string) =>
+      screen.getByRole("button", { name: `Panel ${title}` });
+
+    it("offer docking, floating, folding and hiding for each panel", () => {
+      setup();
+      fireEvent.click(panelMenu("Karte"));
+      expect(
+        screen
+          .getAllByRole("menuitem")
+          .map((item) => [
+            item.textContent,
+            item.getAttribute("aria-disabled") === "true",
+          ]),
+      ).toEqual([
+        ["Links andocken", false],
+        ["Rechts andocken", false],
+        ["Unten andocken", false],
+        ["Schwebend", false],
+        // The map has no neighbour above or below to give the room to.
+        ["Einklappen", true],
+        ["Ausblenden", false],
+      ]);
+    });
+
+    it("dock a panel elsewhere, keep its content and say so", async () => {
+      setup();
+      const map = screen.getByTestId("map");
+      fireEvent.click(panelMenu("Karte"));
+      fireEvent.click(
+        screen.getByRole("menuitem", { name: "Rechts andocken" }),
+      );
+      expect(screen.getByTestId("map")).toBe(map);
+      expect(
+        await screen.findByText("Karte rechts angedockt", {
+          selector: '[role="status"]',
+        }),
+      ).toBeTruthy();
+    });
+
+    it("hide a panel from its menu or its tab's close button", () => {
+      setup();
+      fireEvent.click(panelMenu("Browser"));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Ausblenden" }));
+      expect(
+        screen.queryByRole("button", { name: "Panel Browser" }),
+      ).toBeNull();
+      fireEvent.click(
+        screen.getByRole("button", { name: "Eigenschaften ausblenden" }),
+      );
+      expect(
+        screen.queryByRole("button", { name: "Panel Eigenschaften" }),
+      ).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Menü" }));
+      expect(
+        screen
+          .getByRole("menuitemcheckbox", { name: "Eigenschaften" })
+          .getAttribute("aria-checked"),
+      ).toBe("false");
+    });
+  });
 });
