@@ -12,6 +12,7 @@ import type { Campaign, Scene } from "@dungeon-manager/schema";
 import { loadCampaign, saveScene } from "@dungeon-manager/storage";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { LibraryService } from "../platform/library.js";
+import { embeddedMap } from "./embedded-map.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 
 /** Time and randomness for core commands (ARCHITECTURE §4: injected, never read inside core). */
@@ -92,7 +93,12 @@ export function useSceneSession(
   useEffect(() => {
     if (!feed || !campaign) return;
     try {
-      feed.show(projectForViewer({ campaign, scene }, { kind: "table" }));
+      feed.show(
+        projectForViewer(
+          { campaign, scene, map: embeddedMap(scene) },
+          { kind: "table" },
+        ),
+      );
       setNotOnTv(false);
     } catch (error) {
       console.error("The scene cannot be shown on the TV.", error);
@@ -140,7 +146,7 @@ export function useSceneSession(
 
   // Commands only touch the scene here; the campaign is read-only in this session.
   const state = (): SessionState | null =>
-    campaign ? { campaign, scene } : null;
+    campaign ? { campaign, scene, map: embeddedMap(scene) } : null;
 
   return {
     scene,

@@ -19,7 +19,12 @@ import {
   type SessionState,
   type Viewer,
 } from "./index.js";
-import { ctx, state as base, square } from "./test-data.test-data.js";
+import {
+  ctx,
+  state as base,
+  sessionOf,
+  square,
+} from "./test-data.test-data.js";
 
 const CELL = 100;
 const LEVELS = ["ground", "cellar"] as const;
@@ -162,7 +167,7 @@ function build(spec: Spec): SessionState {
   );
   const map = base.scene.map;
   if (!map) throw new Error("sample scene needs a map");
-  const start: SessionState = {
+  const files = {
     campaign: {
       ...base.campaign,
       players: PLAYERS.map((id) => ({ id, name: id })),
@@ -197,6 +202,7 @@ function build(spec: Spec): SessionState {
           : null,
     },
   };
+  const start: SessionState = sessionOf(files.scene, files.campaign);
   return spec.reveals.reduce((current, r) => {
     const result = apply(
       current,

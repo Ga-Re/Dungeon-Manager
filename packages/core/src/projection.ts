@@ -46,8 +46,8 @@ export function projectForViewer(
   state: SessionState,
   viewer: Viewer,
 ): ViewerScene {
-  const { scene } = state;
-  const { current, released } = tableLevels(scene);
+  const { scene, map } = state;
+  const { current, released } = tableLevels(scene, map);
   const visibleTokens = scene.tokens.filter((token) =>
     isTokenVisible(state, token, viewer, released),
   );
@@ -58,19 +58,19 @@ export function projectForViewer(
     id: scene.id,
     name: scene.name,
     map:
-      scene.map && current !== null
+      map && current !== null
         ? {
-            kind: scene.map.kind,
+            kind: map.kind,
             ...(withAssets && {
-              asset: { path: scene.map.asset.path, hash: scene.map.asset.hash },
+              asset: { path: map.asset.path, hash: map.asset.hash },
             }),
             currentLevelId: current,
             grid: {
-              cellSizePx: scene.map.grid.cellSizePx,
-              offsetXPx: scene.map.grid.offsetXPx,
-              offsetYPx: scene.map.grid.offsetYPx,
+              cellSizePx: map.grid.cellSizePx,
+              offsetXPx: map.grid.offsetXPx,
+              offsetYPx: map.grid.offsetYPx,
             },
-            levels: scene.map.levels
+            levels: map.levels
               .filter((level) => released.has(level.id))
               .map((level) => ({
                 id: level.id,
@@ -123,7 +123,7 @@ export function projectEvents(
 ): ViewerEvent[] {
   const view = projectForViewer(stateAfter, viewer);
   const visibleTokens = new Set(view.tokens.map((token) => token.id));
-  const { released } = tableLevels(stateAfter.scene);
+  const { released } = tableLevels(stateAfter.scene, stateAfter.map);
   const listed = new Map(
     view.initiative?.combatants.map((combatant) => [combatant.id, combatant]),
   );
@@ -189,19 +189,22 @@ export function projectEvents(
 
 /**
  * The level on the TV and the released levels (SPEC §3.1, T-118a): `scene.table` where it names
- * levels of the map, else the map's first level; ids of levels the map no longer has are
- * ignored. `current` is `null` only without a map.
+ * levels of the scene's resolved `map`, else the map's first level; ids of levels the map no
+ * longer has are ignored. `current` is `null` only without a map.
  */
-export function tableLevels(scene: Scene): {
+export function tableLevels(
+  scene: Scene,
+  map: { readonly levels: readonly { readonly id: string }[] } | null,
+): {
   readonly current: string | null;
   readonly released: ReadonlySet<string>;
 } {
-  const levels = new Set(scene.map?.levels.map((level) => level.id));
+  const levels = new Set(map?.levels.map((level) => level.id));
   const wanted = scene.table?.levelId;
   const current =
     wanted !== undefined && levels.has(wanted)
       ? wanted
-      : (scene.map?.levels[0]?.id ?? null);
+      : (map?.levels[0]?.id ?? null);
   const released = new Set(
     (scene.table?.shownLevelIds ?? []).filter((id) => levels.has(id)),
   );

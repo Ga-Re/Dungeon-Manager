@@ -120,7 +120,37 @@ describe("projectForViewer", () => {
   });
 
   test("is empty without a map", () => {
-    expect(ids({ ...state, scene: { ...state.scene, map: null } })).toEqual([]);
+    expect(
+      ids({ ...state, scene: { ...state.scene, map: null }, map: null }),
+    ).toEqual([]);
+  });
+
+  test("takes the map from the resolved map, not from the scene file (T-134)", () => {
+    expect(projectForViewer({ ...state, map: null }, table).map).toBeNull();
+  });
+
+  test("an archived level shows like any other once released, without its flag", () => {
+    const map = state.map;
+    if (!map) throw new Error("the sample scene has a map");
+    const archived: SessionState = {
+      ...state,
+      scene: {
+        ...state.scene,
+        table: { levelId: "ground", shownLevelIds: ["ground", "cellar"] },
+      },
+      map: {
+        ...map,
+        levels: map.levels.map((level) => ({ ...level, archived: true })),
+      },
+    };
+    expect(projectForViewer(archived, table).map?.levels).toEqual([
+      { id: "ground", name: "Erdgeschoss" },
+      { id: "cellar", name: "Keller" },
+    ]);
+    // Not shown yet: an archived level stays out like any other.
+    expect(
+      projectForViewer({ ...archived, scene: state.scene }, table).map?.levels,
+    ).toEqual([{ id: "ground", name: "Erdgeschoss" }]);
   });
 
   describe("initiative", () => {

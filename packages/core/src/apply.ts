@@ -10,6 +10,7 @@ import type {
 import type { Command, DomainEvent, RejectionReason } from "./commands.js";
 import { EMPTY_LEVEL_FOG, hideArea, revealArea } from "./fog.js";
 import { tableLevels } from "./projection.js";
+import type { ResolvedMap } from "./map.js";
 import type { Ctx, SessionState } from "./state.js";
 
 /** The new state and what happened, or why the command was rejected (state unchanged). */
@@ -61,9 +62,9 @@ function applyChange(state: SessionState, command: Command): Change {
       );
       if (!token) return "unknownToken";
       if (!isCell(command.to)) return "invalidCell";
-      if (!scene.map) return "noMap";
+      if (!state.map) return "noMap";
       const levelId = command.levelId ?? token.levelId;
-      if (!hasLevel(scene, levelId)) return "unknownLevel";
+      if (!hasLevel(state.map, levelId)) return "unknownLevel";
       return {
         state: withScene(state, {
           tokens: replaceToken(scene, {
@@ -85,8 +86,8 @@ function applyChange(state: SessionState, command: Command): Change {
     }
     case "fog.reveal":
     case "fog.hide": {
-      if (!scene.map) return "noMap";
-      if (!hasLevel(scene, command.levelId)) return "unknownLevel";
+      if (!state.map) return "noMap";
+      if (!hasLevel(state.map, command.levelId)) return "unknownLevel";
       const current = scene.fog.levels[command.levelId] ?? EMPTY_LEVEL_FOG;
       const next = changeFog(current, command);
       if (!next) return "invalidArea";
@@ -106,9 +107,9 @@ function applyChange(state: SessionState, command: Command): Change {
       };
     }
     case "level.show": {
-      if (!scene.map) return "noMap";
-      if (!hasLevel(scene, command.levelId)) return "unknownLevel";
-      const { current, released } = tableLevels(scene);
+      if (!state.map) return "noMap";
+      if (!hasLevel(state.map, command.levelId)) return "unknownLevel";
+      const { current, released } = tableLevels(scene, state.map);
       // Already on the TV (also the first level, shown without `table`): nothing changes,
       // nothing to undo (T-118c).
       if (current === command.levelId) return { state, events: [] };
@@ -196,8 +197,8 @@ function withScene(state: SessionState, changes: Partial<Scene>): SessionState {
   return { ...state, scene: { ...state.scene, ...changes } };
 }
 
-function hasLevel(scene: Scene, levelId: string): boolean {
-  return scene.map?.levels.some((level) => level.id === levelId) ?? false;
+function hasLevel(map: ResolvedMap, levelId: string): boolean {
+  return map.levels.some((level) => level.id === levelId);
 }
 
 /** Grid cells are non-negative integers; anything else would corrupt the scene file. */

@@ -61,7 +61,27 @@ export const scene: Scene = {
   initiative: null,
 };
 
-export const state: SessionState = { campaign, scene };
+/**
+ * A session on `scene`, its map resolved from the map the scene file still embeds (scene
+ * version 2; the sidecar takes over its grid and levels in T-134c).
+ */
+export function sessionOf(scene: Scene, of: Campaign = campaign): SessionState {
+  return {
+    campaign: of,
+    scene,
+    map: scene.map
+      ? {
+          kind: scene.map.kind,
+          asset: scene.map.asset,
+          grid: scene.map.grid,
+          levels: scene.map.levels,
+          rooms: [],
+        }
+      : null,
+  };
+}
+
+export const state: SessionState = sessionOf(scene);
 
 /** An axis-aligned square in map pixels. */
 export function square(x: number, y: number, size: number): Polygon {
