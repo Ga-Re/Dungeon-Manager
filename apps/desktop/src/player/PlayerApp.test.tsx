@@ -103,53 +103,60 @@ describe("PlayerApp", () => {
     expect(maps.camera()?.rotation).toBe(90);
   });
 
-  test("on a calibrated TV, one cell has the DM's size and a check square can show (T-106a)", async () => {
+  test("on a calibrated TV, one cell has the DM's size; a check square shows to measure (T-106a/d)", async () => {
     const { maps, feed } = renderPlayer();
     await waitFor(() => {
       expect(feed.subscribed()).toBe(true);
     });
+    const square = document.querySelector<HTMLElement>(".player-check-square");
+    // Black until asked: no square before the first message.
+    expect(square?.hidden).toBe(true);
     const scene = sceneWith("library/maps/a.png");
+    feed.send({ v: 1, scene, rotation: 0, checkSquarePx: 720 });
+    await waitFor(() => {
+      expect(square?.hidden).toBe(false);
+    });
+    expect(square?.style.width).toBe("720px");
+
     feed.send({
       v: 1,
       scene,
       rotation: 0,
-      scale: { inchPx: 80, cellInches: 1, checkSquare: true },
+      scale: { inchPx: 80, cellInches: 1 },
     });
     await waitFor(() => {
       // 80 pixels per inch (devicePixelRatio 1 in tests) over cells of 100 map pixels.
       expect(maps.camera()?.zoom).toBeCloseTo(0.8);
     });
-    const square = document.querySelector<HTMLElement>(".player-check-square");
-    expect(square?.hidden).toBe(false);
-    expect(square?.style.width).toBe("160px");
+    expect(square?.hidden).toBe(true);
 
-    // Cells of 2 inches (the DM's setting): twice as large; the square stays 2 inches.
+    // Cells of 2 inches (the DM's setting): twice as large.
     feed.send({
       v: 1,
       scene,
       rotation: 0,
-      scale: { inchPx: 80, cellInches: 2, checkSquare: true },
+      scale: { inchPx: 80, cellInches: 2 },
     });
     await waitFor(() => {
       expect(maps.camera()?.zoom).toBeCloseTo(1.6);
     });
-    expect(square?.style.width).toBe("160px");
 
-    // A TV with two device pixels per CSS pixel: the same inch is half as many CSS pixels.
+    // Two device pixels per CSS pixel: the same inch and square are half as many CSS pixels.
     vi.stubGlobal("devicePixelRatio", 2);
     feed.send({
       v: 1,
       scene,
       rotation: 0,
-      scale: { inchPx: 80, cellInches: 1, checkSquare: true },
+      scale: { inchPx: 80, cellInches: 1 },
+      checkSquarePx: 720,
     });
     await waitFor(() => {
       expect(maps.camera()?.zoom).toBeCloseTo(0.4);
     });
-    expect(square?.style.width).toBe("80px");
+    expect(square?.style.width).toBe("360px");
     vi.unstubAllGlobals();
 
-    // Without a calibration the whole map fits again, and no square shows.
+    // Without a calibration the whole map fits again.
     feed.send({ v: 1, scene, rotation: 0 });
     await waitFor(() => {
       expect(maps.camera()?.zoom).not.toBeCloseTo(0.8);

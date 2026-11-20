@@ -18,6 +18,8 @@ export interface PlayerFeedSender {
   readonly rotation: TvRotation;
   /** The TV's calibration (T-106a), or `null`: the whole map fits the TV. */
   calibrate(scale: PlayerViewScale | null): void;
+  /** Shows a check square of `sidePx` physical pixels on the TV to measure, or hides it (T-106d). */
+  showCheckSquare(sidePx: number | null): void;
 }
 
 /** Player side: calls `listener` with every valid message; invalid ones are dropped. */
@@ -40,12 +42,14 @@ export function createPlayerFeedSender(
   let scene: ViewerScene | null = null;
   let rotation: TvRotation = 0;
   let scale: PlayerViewScale | null = null;
+  let checkSquarePx: number | null = null;
   const publish = () => {
     send({
       v: PLAYER_VIEW_VERSION,
       scene,
       rotation,
       ...(scale && { scale }),
+      ...(checkSquarePx !== null && { checkSquarePx }),
     });
   };
   onPlayerReady(publish);
@@ -63,6 +67,10 @@ export function createPlayerFeedSender(
     },
     calibrate(next) {
       scale = next;
+      publish();
+    },
+    showCheckSquare(next) {
+      checkSquarePx = next;
       publish();
     },
   };

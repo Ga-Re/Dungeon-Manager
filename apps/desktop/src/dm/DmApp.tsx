@@ -18,7 +18,7 @@ import { TvCalibration } from "./TvCalibration.js";
 import {
   calibrationKey,
   cellInches,
-  pixelsPerInch,
+  checkSquareSide,
   readCalibrations,
   readCellSize,
   saveCalibration,
@@ -69,7 +69,8 @@ export function DmApp({
   const [calibrations, setCalibrations] = useState(() =>
     readCalibrations(storage),
   );
-  const [checkSquare, setCheckSquare] = useState(false);
+  // The calibration popover is open: the TV shows the check square to measure (T-106d).
+  const [measuring, setMeasuring] = useState(false);
   // How big one cell is on the TV (DM, 2026-11-20): 1 inch by default, or in centimetres.
   const [cellSize, setCellSize] = useState<CellSize>(() =>
     readCellSize(storage),
@@ -82,18 +83,21 @@ export function DmApp({
     saveCellSize(storage, next);
   };
   const [tvDisplay, setTvDisplay] = useState<Display | null>(null);
-  const tvCalibration = tvDisplay
-    ? calibrations[calibrationKey(tvDisplay)]
-    : undefined;
-  const tvInchPx =
-    tvDisplay && tvCalibration ? pixelsPerInch(tvDisplay, tvCalibration) : null;
+  const tvInchPx = tvDisplay
+    ? (calibrations[calibrationKey(tvDisplay)]?.inchPx ?? null)
+    : null;
   useEffect(() => {
     playerFeed?.calibrate(
       tvInchPx === null
         ? null
-        : { inchPx: tvInchPx, cellInches: cellInches(cellSize), checkSquare },
+        : { inchPx: tvInchPx, cellInches: cellInches(cellSize) },
     );
-  }, [playerFeed, tvInchPx, checkSquare, cellSize]);
+  }, [playerFeed, tvInchPx, cellSize]);
+  const checkSquarePx =
+    measuring && tvDisplay ? checkSquareSide(tvDisplay) : null;
+  useEffect(() => {
+    playerFeed?.showCheckSquare(checkSquarePx);
+  }, [playerFeed, checkSquarePx]);
 
   // Players sit around the table; the TV view turns in quarter steps (SPEC 2.2).
   const rotateTv = () => {
@@ -234,10 +238,12 @@ export function DmApp({
                       calibrated,
                       state.displays.indexOf(calibrated),
                     )}
+                    running={tvDisplay?.id === calibrated.id}
                     calibration={
                       calibrations[calibrationKey(calibrated)] ?? null
                     }
-                    checkSquare={checkSquare}
+                    unit={cellSize.unit}
+                    onOpenChange={setMeasuring}
                     onChange={(next) => {
                       saveCalibration(
                         storage,
@@ -246,7 +252,6 @@ export function DmApp({
                       );
                       setCalibrations(readCalibrations(storage));
                     }}
-                    onCheckSquare={setCheckSquare}
                   />
                 )}
               </>

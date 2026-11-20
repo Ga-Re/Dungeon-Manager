@@ -72,19 +72,18 @@ export function PlayerApp({
     };
     mark("none");
 
-    // A square of this many inches to measure the calibration on the TV (T-106a).
-    const CHECK_INCHES = 2;
+    // A square of a known number of pixels for the DM to measure (T-106d).
     const checkSquare = document.createElement("div");
     checkSquare.className = "player-check-square";
     // Black until the first message (fail closed): no square before the DM asks for one.
     checkSquare.hidden = true;
     element.appendChild(checkSquare);
     const showCheckSquare = () => {
-      const scale = message?.scale;
-      checkSquare.hidden = scale?.checkSquare !== true;
-      if (!scale) return;
-      // The renderer and the page work in CSS pixels; the calibration is in physical ones.
-      const side = (CHECK_INCHES * scale.inchPx) / window.devicePixelRatio;
+      const sidePx = message?.checkSquarePx;
+      checkSquare.hidden = sidePx === undefined;
+      if (sidePx === undefined) return;
+      // The page works in CSS pixels; the square is given in physical ones.
+      const side = sidePx / window.devicePixelRatio;
       checkSquare.style.width = `${String(side)}px`;
       checkSquare.style.height = `${String(side)}px`;
     };

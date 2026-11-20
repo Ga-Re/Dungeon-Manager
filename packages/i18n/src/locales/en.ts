@@ -25,14 +25,16 @@ export const en: Messages = {
       open: "Calibrate TV …",
       title: "Calibrate TV",
       display: "Display: {{name}}",
-      diagonalInvalid: "Enter the diagonal as a number above 0, e.g. 55.",
-      correctionInvalid:
-        "The correction lies between −{{max}} and +{{max}} percent.",
-      diagonal: "Screen diagonal (inches)",
-      correction: "Fine correction (%)",
-      checkSquare: "Show a check square (2 inches) on the TV",
+      measure:
+        "The TV shows a square. Measure one side with a ruler and enter the length.",
+      openFirst:
+        "Open the player view on this display first – the check square then shows there.",
+      measured: "Measured side",
+      measuredInvalid:
+        "This length cannot be right. Measure one side of the square, e.g. 23.5 cm.",
+      apply: "Apply",
       current:
-        "{{pixels}} pixels per inch – one cell has the size set in the settings. Measure the check square and correct in percent.",
+        "Calibrated: {{pixels}} pixels per inch – one cell has the size set in the settings.",
       none: "Without a calibration the TV shows the whole map.",
       remove: "Remove calibration",
     },

@@ -5,82 +5,68 @@ import {
   cellInches,
   readCellSize,
   saveCellSize,
-  pixelsPerInch,
+  checkSquareSide,
+  measuredInchPx,
   readCalibrations,
   saveCalibration,
 } from "./display-calibration.js";
 import { memoryStorage } from "./dm/memory-storage.test-data.js";
 
-// Display calibration (T-106a, SPEC 2.2): the TV's size gives its pixels per inch, so one grid
-// cell can measure exactly one inch and physical minis fit.
+// Display calibration (T-106d, SPEC 2.2): a check square measured on the TV gives its pixels per
+// inch, so one grid cell has the set size and physical minis fit.
 
 const tv = { name: "Tisch-TV", width: 3840, height: 2160 };
 
-describe("pixels per inch", () => {
-  it("follow from the resolution and the diagonal", () => {
-    // A 55″ 4K TV: √(3840² + 2160²) / 55 ≈ 80.1 physical pixels per inch.
-    expect(
-      pixelsPerInch(tv, { diagonalInches: 55, correctionPercent: 0 }),
-    ).toBeCloseTo(80.106, 3);
+describe("calibration by measuring a check square (T-106d)", () => {
+  it("shows a square of a third of the shorter side", () => {
+    expect(checkSquareSide(tv)).toBe(720);
   });
 
-  it("are adjusted by the fine correction measured on the TV", () => {
-    expect(
-      pixelsPerInch(tv, { diagonalInches: 55, correctionPercent: 2 }),
-    ).toBeCloseTo(80.106 * 1.02, 3);
+  it("gives the pixels per inch from the measured side, in cm or inches", () => {
+    // 720 px measured as 9 inches: 80 px per inch; 22.86 cm is the same 9 inches.
+    expect(measuredInchPx(720, { value: 9, unit: "in" })).toBeCloseTo(80);
+    expect(measuredInchPx(720, { value: 22.86, unit: "cm" })).toBeCloseTo(80);
   });
 
-  it("are unknown for a correction beyond ±50 % (a typing error would freeze the TV)", () => {
-    for (const correctionPercent of [-100, -150, 51, Number.NaN])
-      expect(
-        pixelsPerInch(tv, { diagonalInches: 55, correctionPercent }),
-      ).toBeNull();
-    expect(
-      pixelsPerInch(tv, { diagonalInches: 55, correctionPercent: -50 }),
-    ).toBeGreaterThan(0);
-  });
-
-  it("are unknown for a diagonal that cannot be right", () => {
-    expect(
-      pixelsPerInch(tv, { diagonalInches: 0, correctionPercent: 0 }),
-    ).toBeNull();
-    expect(
-      pixelsPerInch(tv, { diagonalInches: -3, correctionPercent: 0 }),
-    ).toBeNull();
-    expect(
-      pixelsPerInch(tv, { diagonalInches: Number.NaN, correctionPercent: 0 }),
-    ).toBeNull();
-    expect(
-      pixelsPerInch(
-        { ...tv, width: 0 },
-        { diagonalInches: 55, correctionPercent: 0 },
-      ),
-    ).toBeNull();
+  it("refuses a length that cannot be right (it would freeze the TV)", () => {
+    expect(measuredInchPx(720, { value: 0, unit: "cm" })).toBeNull();
+    expect(measuredInchPx(720, { value: -3, unit: "cm" })).toBeNull();
+    expect(measuredInchPx(720, { value: Number.NaN, unit: "in" })).toBeNull();
+    // 720 px over 1 mm, or over 10 m: no display has that many or few pixels per inch.
+    expect(measuredInchPx(720, { value: 0.1, unit: "cm" })).toBeNull();
+    expect(measuredInchPx(720, { value: 1000, unit: "cm" })).toBeNull();
   });
 });
 
 describe("calibrations on this device", () => {
   it("are kept per display (name and resolution) and survive a restart", () => {
     const storage = memoryStorage();
-    saveCalibration(storage, calibrationKey(tv), {
-      diagonalInches: 55,
-      correctionPercent: -1.5,
-    });
+    saveCalibration(storage, calibrationKey(tv), { inchPx: 80 });
     saveCalibration(storage, calibrationKey({ ...tv, name: null }), {
-      diagonalInches: 43,
-      correctionPercent: 0,
+      inchPx: 100,
     });
     const read = readCalibrations(storage);
-    expect(read[calibrationKey(tv)]).toEqual({
-      diagonalInches: 55,
-      correctionPercent: -1.5,
+    expect(read[calibrationKey(tv)]).toEqual({ inchPx: 80 });
+    expect(read[calibrationKey({ ...tv, name: null })]).toEqual({
+      inchPx: 100,
     });
-    expect(read[calibrationKey({ ...tv, name: null })]?.diagonalInches).toBe(
-      43,
-    );
-    // Removing one leaves the others.
     saveCalibration(storage, calibrationKey(tv), null);
     expect(Object.keys(readCalibrations(storage))).toHaveLength(1);
+  });
+
+  it("from before (diagonal and correction) are converted, not lost", () => {
+    const storage = memoryStorage({
+      "dm.displayCalibration": JSON.stringify({
+        version: 1,
+        displays: {
+          "Tisch-TV|3840x2160": { diagonalInches: 55, correctionPercent: 0 },
+          "x|100x100": { diagonalInches: 55, correctionPercent: -100 },
+        },
+      }),
+    });
+    const read = readCalibrations(storage);
+    expect(read["Tisch-TV|3840x2160"]?.inchPx).toBeCloseTo(80.106, 3);
+    expect(read["x|100x100"]).toBeUndefined();
   });
 
   it("skip what cannot be used", () => {
@@ -89,20 +75,20 @@ describe("calibrations on this device", () => {
     expect(
       readCalibrations(memoryStorage({ "dm.displayCalibration": "{" })),
     ).toEqual({});
-    expect(readCalibrations(stored({ version: 2, displays: {} }))).toEqual({});
+    expect(readCalibrations(stored({ version: 3, displays: {} }))).toEqual({});
     expect(
       readCalibrations(
         stored({
-          version: 1,
+          version: 2,
           displays: {
-            a: { diagonalInches: 55, correctionPercent: 0 },
-            b: { diagonalInches: "55" },
-            c: { diagonalInches: -1, correctionPercent: 0 },
-            d: { diagonalInches: 55, correctionPercent: -100 },
+            a: { inchPx: 80 },
+            b: { inchPx: "80" },
+            c: { inchPx: 0 },
+            d: { inchPx: 1e9 },
           },
         }),
       ),
-    ).toEqual({ a: { diagonalInches: 55, correctionPercent: 0 } });
+    ).toEqual({ a: { inchPx: 80 } });
   });
 });
 

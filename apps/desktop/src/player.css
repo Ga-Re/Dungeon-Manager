@@ -20,7 +20,7 @@ body {
   inset: 0;
 }
 
-/* Check square of the TV calibration (T-106a): measured with a ruler on the table. */
+/* Check square of the TV calibration (T-106d): measured with a ruler on the table. */
 .player-check-square {
   position: absolute;
   top: 50%;

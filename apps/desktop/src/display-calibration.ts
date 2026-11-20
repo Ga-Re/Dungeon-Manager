@@ -1,7 +1,7 @@
-// Display calibration (T-106a, SPEC 2.2; DM decision 2026-11-20): the DM enters the TV's
-// diagonal in inches; with its resolution that gives its pixels per inch, so one grid cell can
-// measure exactly one inch on the table. A fine correction in percent fixes what a check square
-// measured on the TV shows. Kept per display on this device (screens differ), never in the library.
+// Display calibration (T-106d, SPEC 2.2; DM decision 2026-11-20): the TV shows a check square of
+// a known number of pixels; the DM measures it with a ruler and enters the length, which gives
+// the TV's pixels per inch – so one grid cell has the size set in the settings on the table.
+// Kept per display on this device (screens differ), never in the library.
 
 /** A display as far as its size goes. */
 export interface DisplaySize {
@@ -11,42 +11,53 @@ export interface DisplaySize {
   readonly height: number;
 }
 
-/** What the DM entered for a display. */
+/** A display's calibration: its physical pixels per inch, measured by the DM (T-106d). */
 export interface Calibration {
-  readonly diagonalInches: number;
-  /** Positive: cells were too small on the TV, so they grow. */
-  readonly correctionPercent: number;
+  readonly inchPx: number;
 }
 
 const STORAGE_KEY = "dm.displayCalibration";
+/** Version 2 keeps the measured pixels per inch; version 1 kept diagonal and correction. */
+const VERSION = 2;
 
-/** The fine correction stays within ± this many percent: anything beyond is a typing error. */
-export const MAX_CORRECTION_PERCENT = 50;
+/** Pixels per inch outside this range cannot be a TV or monitor: a measuring or typing error. */
+const MIN_INCH_PX = 10;
+const MAX_INCH_PX = 2000;
 
-/** Whether a correction can be right. */
-export const isValidCorrection = (percent: number) =>
-  Number.isFinite(percent) && Math.abs(percent) <= MAX_CORRECTION_PERCENT;
-const VERSION = 1;
+const isUsableInchPx = (inchPx: number) =>
+  Number.isFinite(inchPx) && inchPx >= MIN_INCH_PX && inchPx <= MAX_INCH_PX;
 
-/** Physical pixels per inch of `display`, or `null` if the numbers cannot be right. */
-export function pixelsPerInch(
-  display: DisplaySize,
-  calibration: Calibration,
+/**
+ * The check square's side on `display`, in physical pixels (T-106d): a third of the shorter
+ * side, large enough to measure precisely with a ruler.
+ */
+export function checkSquareSide(display: DisplaySize): number {
+  return Math.round(Math.min(display.width, display.height) / 3);
+}
+
+/** A length the DM measured, in centimetres or inches. */
+export interface Length {
+  readonly value: number;
+  readonly unit: "in" | "cm";
+}
+
+/** `length` in inches. */
+export const inches = (length: Length) =>
+  length.unit === "cm" ? length.value / 2.54 : length.value;
+
+/**
+ * The display's pixels per inch from the check square (`sidePx` physical pixels) and the side
+ * the DM measured on the TV; `null` if that cannot be right (never sent to the TV, which would
+ * refuse the message and stop updating).
+ */
+export function measuredInchPx(
+  sidePx: number,
+  measured: Length,
 ): number | null {
-  const { diagonalInches, correctionPercent } = calibration;
-  const diagonalPixels = Math.hypot(display.width, display.height);
-  if (
-    !Number.isFinite(diagonalInches) ||
-    diagonalInches <= 0 ||
-    !isValidCorrection(correctionPercent) ||
-    display.width <= 0 ||
-    display.height <= 0
-  )
-    return null;
-  const result =
-    (diagonalPixels / diagonalInches) * (1 + correctionPercent / 100);
-  // Never zero, negative or infinite: the TV refuses such a message and would stop updating.
-  return Number.isFinite(result) && result > 0 ? result : null;
+  const measuredInches = inches(measured);
+  if (!Number.isFinite(measuredInches) || measuredInches <= 0) return null;
+  const inchPx = sidePx / measuredInches;
+  return isUsableInchPx(inchPx) ? inchPx : null;
 }
 
 /**
@@ -60,13 +71,20 @@ export function calibrationKey(display: DisplaySize): string {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const isCalibration = (value: unknown): value is Calibration =>
-  isRecord(value) &&
-  typeof value["diagonalInches"] === "number" &&
-  Number.isFinite(value["diagonalInches"]) &&
-  value["diagonalInches"] > 0 &&
-  typeof value["correctionPercent"] === "number" &&
-  isValidCorrection(value["correctionPercent"]);
+/** A version 1 entry (diagonal and correction, T-106a) as pixels per inch, using the key's resolution. */
+function fromVersion1(key: string, value: unknown): Calibration | null {
+  const size = /\|(\d+)x(\d+)$/.exec(key);
+  if (!size || !isRecord(value)) return null;
+  const diagonal = value["diagonalInches"];
+  const correction = value["correctionPercent"];
+  if (typeof diagonal !== "number" || typeof correction !== "number")
+    return null;
+  if (!(diagonal > 0) || !(Math.abs(correction) <= 50)) return null;
+  const inchPx =
+    (Math.hypot(Number(size[1]), Number(size[2])) / diagonal) *
+    (1 + correction / 100);
+  return isUsableInchPx(inchPx) ? { inchPx } : null;
+}
 
 /** The calibrations on this device, by `calibrationKey`; anything unusable is skipped. */
 export function readCalibrations(
@@ -76,12 +94,25 @@ export function readCalibrations(
     const raw = storage?.getItem(STORAGE_KEY);
     if (!raw) return {};
     const stored: unknown = JSON.parse(raw);
-    if (!isRecord(stored) || stored["version"] !== VERSION) return {};
-    const displays = stored["displays"];
-    if (!isRecord(displays)) return {};
+    if (!isRecord(stored) || !isRecord(stored["displays"])) return {};
+    const entries = Object.entries(stored["displays"]);
+    if (stored["version"] === 1)
+      return Object.fromEntries(
+        entries.flatMap(([key, value]) => {
+          const calibration = fromVersion1(key, value);
+          return calibration ? [[key, calibration]] : [];
+        }),
+      );
+    if (stored["version"] !== VERSION) return {};
     return Object.fromEntries(
-      Object.entries(displays).filter(([, value]) => isCalibration(value)),
-    ) as Record<string, Calibration>;
+      entries.flatMap(([key, value]) =>
+        isRecord(value) &&
+        typeof value["inchPx"] === "number" &&
+        isUsableInchPx(value["inchPx"])
+          ? [[key, { inchPx: value["inchPx"] }]]
+          : [],
+      ),
+    );
   } catch {
     return {};
   }

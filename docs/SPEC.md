@@ -36,7 +36,7 @@ A tool for a Dungeon Master (DM) to plan campaigns and present them live at the 
 ### 2.2 Player view (table TV)
 
 - Fullscreen on the second display, no controls visible
-- **Grid calibration:** enter the screen's diagonal in inches, check a square on the TV with a ruler and fine-correct in percent; one cell then has the size set in the settings – in inches or centimetres, 1 inch (2.54 cm) by default – so physical minis fit (DM decision, 2026-11-20)
+- **Grid calibration:** the TV shows a check square; the DM measures one side with a ruler and enters the length (cm or inches), which gives the TV's scale; one cell then has the size set in the settings – in inches or centimetres, 1 inch (2.54 cm) by default – so physical minis fit (DM decisions, 2026-11-20)
 - Rotatable view (0°/90°/180°/270°) because the TV lies flat and players sit on all sides
 - **Render resolution** selectable in the settings (native, e.g. 4K, or Full HD upscaled) to trade sharpness for frame rate
 - Optional highlight of the active turn (glow ring around the token)
