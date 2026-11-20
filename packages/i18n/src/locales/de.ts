@@ -153,6 +153,15 @@ export const de = {
       "Schließe zuerst die offenen Unterszenen ({{names}}), dann lässt sich die Szene löschen.",
     openScenes: "Offene Szenen",
     sceneOnTv: "(auf dem TV)",
+    tabSaving: "(speichert)",
+    tabNotSaved: "(nicht gespeichert)",
+    closeUnsaved: {
+      title: "Szene schließen?",
+      text: "Die letzten Änderungen an {{name}} konnten nicht gespeichert werden. Beim Schließen gehen sie verloren.",
+      cancel: "Offen lassen",
+      dismiss: "Abbrechen",
+      close: "Trotzdem schließen",
+    },
     showSceneOnTv: "Szene auf den TV",
     sceneShownOnTv: "{{name}} ist jetzt auf dem TV",
     mapData: {

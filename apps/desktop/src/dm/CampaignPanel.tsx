@@ -233,6 +233,10 @@ export function CampaignPanel({
   // or opening a scene while none is on it.
   const [tabs, setTabs] = useState<SceneTabsState>(NO_SCENE_TABS);
   const { open: openScenes, active: activeSceneId, tv: tvSceneId } = tabs;
+  // Each open scene's save state, for its tab's dot (T-223b).
+  const [saveStates, setSaveStates] = useState<
+    Readonly<Record<string, { saving: boolean; saveFailed: boolean }>>
+  >({});
   // Where keyboard focus goes once the tab bar shows again (it moves with the shown scene).
   const [tabFocus, setTabFocus] = useState<string | null>(null);
   const openScene =
@@ -1141,6 +1145,9 @@ export function CampaignPanel({
           newId={newId}
           active={each.id === activeSceneId}
           onTv={each.id === tvSceneId}
+          onSaveState={(state) => {
+            setSaveStates((current) => ({ ...current, [each.id]: state }));
+          }}
           onShowOnTv={() => {
             setTabs((current) => sendSceneTabToTv(current, each.id));
             setNotice(t("campaign.sceneShownOnTv", { name: each.name }));
@@ -1151,6 +1158,7 @@ export function CampaignPanel({
                 id: tab.id,
                 name: tab.name,
                 onTv: tab.id === tvSceneId,
+                ...saveStates[tab.id],
               }))}
               activeId={activeSceneId}
               busy={busy}

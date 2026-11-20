@@ -152,6 +152,15 @@ export const en: Messages = {
       "Close the open sub-scenes first ({{names}}); then the scene can be deleted.",
     openScenes: "Open scenes",
     sceneOnTv: "(on the TV)",
+    tabSaving: "(saving)",
+    tabNotSaved: "(not saved)",
+    closeUnsaved: {
+      title: "Close the scene?",
+      text: "The latest changes to {{name}} could not be saved. Closing loses them.",
+      cancel: "Keep open",
+      dismiss: "Cancel",
+      close: "Close anyway",
+    },
     showSceneOnTv: "Scene to the TV",
     sceneShownOnTv: "{{name}} is on the TV now",
     mapData: {

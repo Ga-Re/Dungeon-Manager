@@ -335,6 +335,14 @@ label {
   outline-offset: 1px;
 }
 
+/* A save pending or failed (T-223b): a dot in the tab's text colour, as in editors. */
+.dm-scene-tab-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--dm-radius-pill);
+  background: currentColor;
+}
+
 /* In the tab's text colour: the shown tab is light in the parchment theme, the others dark. */
 .dm-scene-tab-tv {
   width: 0.875rem;
