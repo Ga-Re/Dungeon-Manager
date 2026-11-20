@@ -1,5 +1,6 @@
 import { createI18n } from "@dungeon-manager/ui";
 import {
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -26,14 +27,18 @@ const campaign = JSON.stringify({
   visibilityDefaults: {},
 });
 
-function renderWindow(appMenu?: AppMenuService, welcome = false) {
+function renderWindow(
+  appMenu?: AppMenuService,
+  welcome = false,
+  storage = memoryStorage(),
+) {
   const library = fakeLibraryService("/lib", {
     "campaigns/mine/campaign.json": campaign,
   });
   render(
     <I18nextProvider i18n={createI18n("de")}>
       <DmShell
-        storage={memoryStorage()}
+        storage={storage}
         root={document.createElement("html")}
         appMenu={appMenu}
       >
@@ -50,12 +55,18 @@ function renderWindow(appMenu?: AppMenuService, welcome = false) {
 /** A native menu bar that hands its labels and command callback to the test. */
 function fakeNativeMenu() {
   let send: (command: AppCommand) => void = () => undefined;
+  let choose: (layout: string) => void = () => undefined;
   let labels: AppMenuLabels | null = null;
   const service: AppMenuService = {
     install: vi.fn(
-      (given: AppMenuLabels, onCommand: (c: AppCommand) => void) => {
+      (
+        given: AppMenuLabels,
+        onCommand: (c: AppCommand) => void,
+        onLayout: (id: string) => void,
+      ) => {
         labels = given;
         send = onCommand;
+        choose = onLayout;
         return Promise.resolve(true);
       },
     ),
@@ -65,6 +76,9 @@ function fakeNativeMenu() {
     labels: () => labels,
     send: (command: AppCommand) => {
       send(command);
+    },
+    chooseLayout: (id: string) => {
+      choose(id);
     },
   };
 }
@@ -83,6 +97,7 @@ describe("app menu (T-130d)", () => {
       "Neue Kampagne …",
       "Willkommen …",
       "Einstellungen …",
+      "Layout speichern …",
       "Layout zurücksetzen",
     ]);
     fireEvent.click(screen.getByRole("menuitem", { name: "Willkommen …" }));
@@ -122,6 +137,42 @@ describe("app menu (T-130d)", () => {
     expect(
       await screen.findByRole("dialog", { name: "Willkommen" }),
     ).toBeTruthy();
+  });
+
+  it("lists the workspace's named layouts in the View menu and applies the one chosen (T-172c)", async () => {
+    const storage = memoryStorage();
+    renderWindow(undefined, false, storage);
+    await screen.findByText("Wähle eine Kampagne:");
+    // Save a layout without the browser through the menu button's dialog, then show it again.
+    fireEvent.click(menuButton());
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Browser" }));
+    fireEvent.click(menuButton());
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Layout speichern …" }),
+    );
+    fireEvent.change(screen.getByLabelText("Name des Layouts"), {
+      target: { value: "Kampf" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    cleanup();
+
+    const native = fakeNativeMenu();
+    renderWindow(native.service, false, storage);
+    const browserShown = () =>
+      native.labels()?.panels.find((each) => each.text === "Browser")?.checked;
+    await waitFor(() => {
+      expect(native.labels()?.layouts.map((each) => each.text)).toEqual([
+        "Layout „Kampf“",
+      ]);
+    });
+    native.send("toggleBrowser");
+    await waitFor(() => {
+      expect(browserShown()).toBe(true);
+    });
+    native.chooseLayout(native.labels()?.layouts[0]?.id ?? "");
+    await waitFor(() => {
+      expect(browserShown()).toBe(false);
+    });
   });
 
   it("closes the welcome dialog of the start before a menu command runs", async () => {

@@ -51,6 +51,8 @@ const LABELS: AppMenuLabels = {
     { command: "toggleMap", text: "Karte", checked: false },
   ],
   resetLayout: "Layout zurücksetzen",
+  layouts: [{ id: "a", text: "Layout „Kampf“" }],
+  saveLayout: "Layout speichern …",
 };
 
 interface Entry {
@@ -76,9 +78,9 @@ describe("the native app menu (T-130d)", () => {
 
   it("closes the previous menu bar when a new one (new language) replaces it", async () => {
     const menu = createTauriAppMenu("macos");
-    await menu.install(LABELS, vi.fn());
+    await menu.install(LABELS, vi.fn(), vi.fn());
     expect(tauri.close).not.toHaveBeenCalled();
-    await menu.install({ ...LABELS, file: "File" }, vi.fn());
+    await menu.install({ ...LABELS, file: "File" }, vi.fn(), vi.fn());
     expect(tauri.setAsAppMenu).toHaveBeenCalledTimes(2);
     expect(tauri.close).toHaveBeenCalledOnce();
   });
@@ -86,6 +88,7 @@ describe("the native app menu (T-130d)", () => {
   it("on macOS becomes the menu bar, in the DM's language, with the system items kept", async () => {
     const installed = await createTauriAppMenu("macos").install(
       LABELS,
+      vi.fn(),
       vi.fn(),
     );
     expect(installed).toBe(true);
@@ -113,7 +116,7 @@ describe("the native app menu (T-130d)", () => {
 
   it("sends its commands to the DM window", async () => {
     const onCommand = vi.fn();
-    await createTauriAppMenu("macos").install(LABELS, onCommand);
+    await createTauriAppMenu("macos").install(LABELS, onCommand, vi.fn());
     const entries = builtMenu().flatMap((menu) => menu.items ?? []);
     const command = (id: string) => entries.find((each) => each.id === id);
     expect(command("newCampaign")?.text).toBe("Neue Kampagne …");
@@ -128,9 +131,10 @@ describe("the native app menu (T-130d)", () => {
     ]);
   });
 
-  it("has a View menu with the panels as check items and the layout reset (T-172a)", async () => {
+  it("has a View menu with the panels as check items, the named layouts and the layout reset (T-172a, T-172c)", async () => {
     const onCommand = vi.fn();
-    await createTauriAppMenu("macos").install(LABELS, onCommand);
+    const onLayout = vi.fn();
+    await createTauriAppMenu("macos").install(LABELS, onCommand, onLayout);
     const view = builtMenu().find((menu) => menu.text === "Ansicht");
     expect(
       view?.items?.map((each) => [each.id ?? each.item, each.checked]),
@@ -138,16 +142,26 @@ describe("the native app menu (T-130d)", () => {
       ["toggleData", true],
       ["toggleMap", false],
       ["Separator", undefined],
+      ["layout:a", undefined],
+      ["saveLayout", undefined],
       ["resetLayout", undefined],
     ]);
     view?.items?.find((each) => each.id === "toggleMap")?.action?.();
+    view?.items?.find((each) => each.id === "layout:a")?.action?.();
+    view?.items?.find((each) => each.id === "saveLayout")?.action?.();
     view?.items?.find((each) => each.id === "resetLayout")?.action?.();
-    expect(onCommand.mock.calls).toEqual([["toggleMap"], ["resetLayout"]]);
+    expect(onCommand.mock.calls).toEqual([
+      ["toggleMap"],
+      ["saveLayout"],
+      ["resetLayout"],
+    ]);
+    expect(onLayout.mock.calls).toEqual([["a"]]);
   });
 
   it("does not exist elsewhere: the DM window shows its menu button", async () => {
     const installed = await createTauriAppMenu("other").install(
       LABELS,
+      vi.fn(),
       vi.fn(),
     );
     expect(installed).toBe(false);

@@ -1,5 +1,6 @@
 import { createI18n } from "@dungeon-manager/ui";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -449,6 +450,147 @@ describe("DmShell", () => {
           .getByRole("menuitemcheckbox", { name: "Eigenschaften" })
           .getAttribute("aria-checked"),
       ).toBe("false");
+    });
+  });
+
+  describe("named layouts (T-172c)", () => {
+    const openMenu = () => {
+      fireEvent.click(screen.getByRole("button", { name: "Menü" }));
+    };
+    const shown = (name: string) => {
+      openMenu();
+      const checked = screen
+        .getByRole("menuitemcheckbox", { name })
+        .getAttribute("aria-checked");
+      fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+      return checked === "true";
+    };
+    const toggleView = (name: string) => {
+      openMenu();
+      fireEvent.click(screen.getByRole("menuitemcheckbox", { name }));
+    };
+    const panelSettings = () => {
+      fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Panels" }));
+      return within(
+        screen.getByRole("group", { name: "Gespeicherte Layouts" }),
+      );
+    };
+    const closeSettings = () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Einstellungen schließen" }),
+      );
+    };
+    /** Submits a name form; it is ready again once its (async) submit has settled. */
+    const submit = async (button: HTMLElement) => {
+      fireEvent.click(button);
+      await act(() => Promise.resolve());
+    };
+    const saveAs = async (
+      settings: ReturnType<typeof panelSettings>,
+      name: string,
+    ) => {
+      fireEvent.change(settings.getByLabelText("Name des Layouts"), {
+        target: { value: name },
+      });
+      await submit(settings.getByRole("button", { name: "Speichern" }));
+    };
+
+    it("saves the layout under a name, switches to it from the View menu and keeps it on this device", async () => {
+      const storage = memoryStorage();
+      setup(storage);
+      toggleView("Browser");
+      const settings = panelSettings();
+      expect(
+        settings.getByText("Noch keine Layouts gespeichert."),
+      ).toBeTruthy();
+      await saveAs(settings, " Kampf ");
+      expect(settings.getByText("Kampf")).toBeTruthy();
+      closeSettings();
+
+      toggleView("Browser");
+      expect(shown("Browser")).toBe(true);
+      openMenu();
+      fireEvent.click(screen.getByRole("menuitem", { name: "Layout „Kampf“" }));
+      expect(shown("Browser")).toBe(false);
+      expect(await screen.findByText("Layout „Kampf“ angewendet")).toBeTruthy();
+
+      cleanup();
+      setup(storage);
+      openMenu();
+      expect(
+        screen.getByRole("menuitem", { name: "Layout „Kampf“" }),
+      ).toBeTruthy();
+    });
+
+    it("keeps named layouts per workspace", async () => {
+      setup();
+      await saveAs(panelSettings(), "Kampf");
+      closeSettings();
+      fireEvent.click(workspaceMenu());
+      fireEvent.click(screen.getByRole("menuitemradio", { name: "Map Forge" }));
+      openMenu();
+      expect(
+        screen.queryByRole("menuitem", { name: "Layout „Kampf“" }),
+      ).toBeNull();
+    });
+
+    it("renames and deletes them; a name must be its own and short enough", async () => {
+      setup();
+      const settings = panelSettings();
+      await saveAs(settings, "Kampf");
+      await saveAs(settings, "Erkundung");
+      await saveAs(settings, "x".repeat(41));
+      expect(settings.getByRole("alert").textContent).toBe(
+        "Der Name ist zu lang (höchstens 40 Zeichen).",
+      );
+
+      fireEvent.click(
+        settings.getByRole("button", { name: "Erkundung umbenennen" }),
+      );
+      const field = settings.getByDisplayValue("Erkundung");
+      fireEvent.change(field, { target: { value: "kampf" } });
+      await submit(settings.getByRole("button", { name: "Umbenennen" }));
+      const row = within(field.closest("li") ?? document.body);
+      expect(row.getByRole("alert").textContent).toBe(
+        "Ein anderes Layout heißt schon so.",
+      );
+      fireEvent.change(field, { target: { value: "Patrouille" } });
+      await submit(settings.getByRole("button", { name: "Umbenennen" }));
+      expect(settings.getByText("Patrouille")).toBeTruthy();
+      // The keyboard stays on the row it renamed.
+      expect(document.activeElement).toBe(
+        settings.getByRole("button", { name: "Patrouille umbenennen" }),
+      );
+
+      fireEvent.click(settings.getByRole("button", { name: "Kampf löschen" }));
+      expect(settings.queryByText("Kampf")).toBeNull();
+      expect(await screen.findByText("Layout „Kampf“ gelöscht")).toBeTruthy();
+      expect(document.activeElement).toBe(
+        settings.getByLabelText("Name des Layouts"),
+      );
+    });
+
+    it("saves the layout from the View menu, in a dialog", async () => {
+      setup();
+      openMenu();
+      fireEvent.click(
+        screen.getByRole("menuitem", { name: "Layout speichern …" }),
+      );
+      const dialog = within(
+        screen.getByRole("dialog", { name: "Layout speichern" }),
+      );
+      fireEvent.change(dialog.getByLabelText("Name des Layouts"), {
+        target: { value: "Erkundung" },
+      });
+      await submit(dialog.getByRole("button", { name: "Speichern" }));
+      expect(
+        screen.queryByRole("dialog", { name: "Layout speichern" }),
+      ).toBeNull();
+      openMenu();
+      expect(
+        screen.getByRole("menuitem", { name: "Layout „Erkundung“" }),
+      ).toBeTruthy();
     });
   });
 });

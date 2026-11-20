@@ -847,3 +847,51 @@ test("a floating panel's menu opens at its button (T-172b)", async ({
     page.getByRole("status").filter({ hasText: "Browser rechts angedockt" }),
   ).toHaveCount(1);
 });
+
+test("the DM saves, switches, renames and deletes named layouts; they survive a restart (T-172c)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  const menuButton = page.getByRole("button", { name: "Menü" });
+  const browserShown = async () => {
+    await menuButton.click();
+    const checked = await page
+      .getByRole("menuitemcheckbox", { name: "Browser" })
+      .getAttribute("aria-checked");
+    await page.keyboard.press("Escape");
+    return checked === "true";
+  };
+
+  // "Kampf": without the browser, saved from the View menu.
+  await page.getByRole("button", { name: "Browser ausblenden" }).click();
+  await menuButton.click();
+  await page.getByRole("menuitem", { name: "Layout speichern …" }).click();
+  await page.getByLabel("Name des Layouts").fill("Kampf");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Layout „Kampf“ gespeichert" }),
+  ).toHaveCount(1);
+
+  // Back to the default, then switch to "Kampf" from the View menu.
+  await menuButton.click();
+  await page.getByRole("menuitem", { name: "Layout zurücksetzen" }).click();
+  expect(await browserShown()).toBe(true);
+  await menuButton.click();
+  await page.getByRole("menuitem", { name: "Layout „Kampf“" }).click();
+  expect(await browserShown()).toBe(false);
+
+  // After a restart: still there; renamed and deleted in the settings.
+  await page.reload();
+  await closeWelcome(page);
+  await page.getByRole("button", { name: "Einstellungen" }).click();
+  await page.getByRole("tab", { name: "Panels" }).click();
+  const saved = page.getByRole("group", { name: "Gespeicherte Layouts" });
+  await saved.getByRole("button", { name: "Kampf umbenennen" }).click();
+  await saved.getByLabel("Name des Layouts").first().fill("Gefecht");
+  await saved.getByRole("button", { name: "Umbenennen" }).click();
+  await expect(saved.getByText("Gefecht")).toBeVisible();
+  await saved.getByRole("button", { name: "Gefecht löschen" }).click();
+  await expect(
+    saved.getByText("Noch keine Layouts gespeichert."),
+  ).toBeVisible();
+});

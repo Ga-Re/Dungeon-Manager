@@ -73,6 +73,15 @@ import {
   saveSoftEdges,
 } from "../../fog-settings.js";
 import { SettingsDialog, type SettingsCategory } from "./SettingsDialog.js";
+import { NamedLayoutSettings, SaveLayoutDialog } from "./NamedLayouts.js";
+import {
+  readNamedLayouts,
+  removeNamedLayout,
+  renameNamedLayout,
+  saveNamedLayout,
+  writeNamedLayouts,
+  type NamedLayout,
+} from "./named-layouts.js";
 import { THEME_SETTINGS, useThemeSetting } from "./theme.js";
 import { UI_SCALES, useUiScale } from "./ui-scale.js";
 import {
@@ -327,11 +336,17 @@ export function DmShell({
   const [mode, setMode] = useState<Mode>("display");
   const [workspace, setWorkspace] = useState(() => readWorkspace(storage));
   const inGame = workspace === "gameOrchestrator";
+  // The DM's named layouts of the current workspace (T-172c).
+  const [namedLayouts, setNamedLayouts] = useState(() =>
+    readNamedLayouts(storage, workspace),
+  );
   const chooseWorkspace = (id: string) => {
     if (!isWorkspace(id)) return;
     setWorkspace(id);
     saveWorkspace(storage, id);
+    setNamedLayouts(readNamedLayouts(storage, id));
   };
+  const [saveLayoutOpen, setSaveLayoutOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const commands = useMemo(createAppCommands, []);
   // With a menu service, whether it shows a menu bar is open until it says so: no menu button
@@ -591,12 +606,43 @@ export function DmShell({
     };
   }, [togglePanel]);
 
+  const changeNamedLayouts = useCallback(
+    (next: NamedLayout[]) => {
+      setNamedLayouts(next);
+      writeNamedLayouts(storage, workspace, next);
+    },
+    [storage, workspace],
+  );
+  const saveCurrentLayout = (name: string) => {
+    if (!panels) return;
+    changeNamedLayouts(
+      saveNamedLayout(namedLayouts, name, panels.toJSON(), crypto.randomUUID()),
+    );
+    announce(t("shell.namedLayouts.saved", { name: name.trim() }));
+  };
+  const applyNamedLayout = useCallback(
+    (id: string) => {
+      const entry = namedLayouts.find((each) => each.id === id);
+      if (!panels || !entry) return;
+      // One message for the whole switch, not one per panel dockview rebuilds.
+      quiet.current = true;
+      try {
+        restoreLayout(panels, entry.layout, titles);
+      } finally {
+        quiet.current = false;
+      }
+      announce(t("shell.namedLayouts.applied", { name: entry.name }));
+    },
+    [namedLayouts, panels, titles, announce, t],
+  );
+
   useEffect(() => {
     const removeCommand = commands.register("settings", () => {
       setSettingsOpen(true);
     });
     const removeModal = commands.registerModal(() => {
       setSettingsOpen(false);
+      setSaveLayoutOpen(false);
     });
     const removeView = [
       ...PANELS.map((id) =>
@@ -605,6 +651,9 @@ export function DmShell({
         }),
       ),
       commands.register("resetLayout", resetLayout),
+      commands.register("saveLayout", () => {
+        setSaveLayoutOpen(true);
+      }),
     ];
     return () => {
       removeCommand();
@@ -650,11 +699,23 @@ export function DmShell({
         checked: shown.has(id),
       })),
       resetLayout: t("shell.appMenu.resetLayout"),
+      layouts: namedLayouts.map((entry) => ({
+        id: entry.id,
+        text: t("shell.namedLayouts.menuItem", { name: entry.name }),
+      })),
+      saveLayout: t("shell.appMenu.saveLayout"),
     };
     appMenu
-      .install(labels, (command) => {
-        commands.run(command);
-      })
+      .install(
+        labels,
+        (command) => {
+          commands.run(command);
+        },
+        (id) => {
+          commands.closeModals();
+          applyNamedLayout(id);
+        },
+      )
       .then(
         (installed) => {
           if (active) setNativeMenu(installed);
@@ -668,7 +729,7 @@ export function DmShell({
     return () => {
       active = false;
     };
-  }, [appMenu, commands, t, titles, shown]);
+  }, [appMenu, commands, t, titles, shown, namedLayouts, applyNamedLayout]);
 
   const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const index = MODES.indexOf(mode);
@@ -787,13 +848,30 @@ export function DmShell({
       id: "layout",
       label: t("shell.settingsCategory.layout"),
       content: (
-        <fieldset className="dm-settings-group">
-          <legend>{t("shell.layout.label")}</legend>
-          <p className="dm-settings-hint">{t("shell.layout.hint")}</p>
-          <button type="button" onClick={resetLayout}>
-            {t("shell.layout.reset")}
-          </button>
-        </fieldset>
+        <>
+          <fieldset className="dm-settings-group">
+            <legend>{t("shell.layout.label")}</legend>
+            <p className="dm-settings-hint">{t("shell.layout.hint")}</p>
+            <button type="button" onClick={resetLayout}>
+              {t("shell.layout.reset")}
+            </button>
+          </fieldset>
+          <NamedLayoutSettings
+            workspaceName={t(`shell.workspace.${workspace}`)}
+            layouts={namedLayouts}
+            onSave={saveCurrentLayout}
+            onApply={applyNamedLayout}
+            onRename={(id, name) => {
+              changeNamedLayouts(renameNamedLayout(namedLayouts, id, name));
+            }}
+            onRemove={(id) => {
+              const entry = namedLayouts.find((each) => each.id === id);
+              changeNamedLayouts(removeNamedLayout(namedLayouts, id));
+              if (entry)
+                announce(t("shell.namedLayouts.removed", { name: entry.name }));
+            }}
+          />
+        </>
       ),
     },
   ];
@@ -840,6 +918,17 @@ export function DmShell({
                       checked: shown.has(id),
                       toggle: true,
                     })),
+                    // Named layouts (T-172c) of this workspace.
+                    ...namedLayouts.map((entry) => ({
+                      id: `layout:${entry.id}`,
+                      label: t("shell.namedLayouts.menuItem", {
+                        name: entry.name,
+                      }),
+                    })),
+                    {
+                      id: "saveLayout",
+                      label: t("shell.appMenu.saveLayout"),
+                    },
                     {
                       id: "resetLayout",
                       label: t("shell.appMenu.resetLayout"),
@@ -848,6 +937,8 @@ export function DmShell({
                   ]}
                   onSelect={(id) => {
                     if (isAppCommand(id)) commands.run(id);
+                    else if (id.startsWith("layout:"))
+                      applyNamedLayout(id.slice("layout:".length));
                   }}
                   className="dm-app-menu"
                 />
@@ -870,6 +961,14 @@ export function DmShell({
                   }}
                   returnFocus={settingsButton}
                   categories={settingsCategories}
+                />
+                <SaveLayoutDialog
+                  open={saveLayoutOpen}
+                  onClose={() => {
+                    setSaveLayoutOpen(false);
+                  }}
+                  layouts={namedLayouts}
+                  onSave={saveCurrentLayout}
                 />
               </div>
             </header>

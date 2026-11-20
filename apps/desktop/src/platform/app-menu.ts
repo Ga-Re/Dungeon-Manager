@@ -12,6 +12,8 @@ export const APP_COMMANDS = [
   "toggleBrowser",
   "toggleDetails",
   "resetLayout",
+  // Named layouts (T-172c): save the current one; choosing one is `onLayout`.
+  "saveLayout",
 ] as const;
 export type AppCommand = (typeof APP_COMMANDS)[number];
 
@@ -53,17 +55,22 @@ export interface AppMenuLabels {
     readonly checked: boolean;
   }[];
   readonly resetLayout: string;
+  /** The View menu's named layouts of the workspace (T-172c): their id and entry text. */
+  readonly layouts: readonly { readonly id: string; readonly text: string }[];
+  readonly saveLayout: string;
 }
 
 /** The platform's app menu. */
 export interface AppMenuService {
   /**
-   * Shows the native menu bar with `labels`, calling `onCommand` for the app's commands.
+   * Shows the native menu bar with `labels`, calling `onCommand` for the app's commands and
+   * `onLayout` with the id of a named layout chosen in the View menu.
    * Resolves to `false` where there is none (Windows, Linux): the DM window shows its own
    * menu button instead.
    */
   install(
     labels: AppMenuLabels,
     onCommand: (command: AppCommand) => void,
+    onLayout: (id: string) => void,
   ): Promise<boolean>;
 }

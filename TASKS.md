@@ -895,10 +895,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-172c Named layouts
 
-- **Status:** todo · **Depends on:** T-172a · **Refs:** ADR-0017
+- **Status:** done · **Depends on:** T-172a · **Refs:** ADR-0017
 - The DM saves the current layout under a name ("Kampf", "Erkundung"), per workspace and device, and switches between them from the View menu.
 - **Acceptance criteria**
-  - [ ] Save, switch, rename and delete named layouts per workspace; they survive a restart (component + E2E tests)
+  - [x] Save, switch, rename and delete named layouts per workspace; they survive a restart (component + E2E tests)
+- **Notes:** The View menu lists the workspace's layouts ("Layout „Kampf“") and "Layout speichern …" (a dialog); settings › Panels saves, applies, renames and deletes them. Saving under a taken name (ignoring case) replaces that layout; renaming onto one is refused. Stored in `dm.layouts` (device storage, not a campaign file). Until T-172d every workspace shows the same panels, so a layout saved in one workspace fits all of them; they are still kept apart.
 
 ### T-172d Default layouts of the other workspaces
 
