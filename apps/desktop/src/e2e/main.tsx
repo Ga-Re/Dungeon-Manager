@@ -15,9 +15,15 @@ renderDmWindow({
   displayService: e2eDisplays,
   // `?firstStart`: as on a new computer, before any library folder was chosen (T-153).
   // `?levels`: the scene's map has two levels (T-118c).
+  // `?levelFiles`: the file dialog returns a map of another size, then one that fits (T-118d).
   libraryService: options.has("firstStart")
     ? createFirstStartLibrary()
-    : await createE2eLibrary({ levels: options.has("levels") }),
+    : await createE2eLibrary({
+        levels: options.has("levels"),
+        imports: options.has("levelFiles")
+          ? ["library/maps/klein.png", "library/maps/gruft.png"]
+          : [],
+      }),
   mapViewService: e2eMapView,
   playerFeed: null,
   newId: () => `e2e-${String(++nextId)}`,

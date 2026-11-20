@@ -139,3 +139,32 @@ export function removeLevel(
     },
   };
 }
+
+/**
+ * Adds a level at the end of a map's levels (T-118d), optionally with its own image or video –
+ * which must have the map's pixel size, checked by the caller, as one calibration fits all levels
+ * (ADR-0012). @returns the new map data, or `null` for an id the map already uses or an empty name
+ */
+export function addLevel(data: MapData, level: Level): MapData | null {
+  const name = level.name.trim();
+  const ids = [...data.levels, ...data.rooms].map((element) => element.id);
+  if (name === "" || ids.includes(level.id)) return null;
+  return { ...data, levels: [...data.levels, { ...level, name }] };
+}
+
+/** Renames a level in every scene of the map. @returns `null` for an unknown level or empty name */
+export function renameLevel(
+  data: MapData,
+  levelId: string,
+  name: string,
+): MapData | null {
+  const trimmed = name.trim();
+  if (trimmed === "" || !data.levels.some((level) => level.id === levelId))
+    return null;
+  return {
+    ...data,
+    levels: data.levels.map((level) =>
+      level.id === levelId ? { ...level, name: trimmed } : level,
+    ),
+  };
+}

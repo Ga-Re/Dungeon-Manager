@@ -10,11 +10,13 @@ import {
   type ResolvedMap,
   type SessionState,
 } from "@dungeon-manager/core";
-import type { Campaign, Scene } from "@dungeon-manager/schema";
+import type { Campaign, MapData, Scene } from "@dungeon-manager/schema";
 import {
   DEFAULT_LEVEL_ID,
   loadCampaign,
+  newMapData,
   saveScene,
+  updateMapData,
   withoutLegacyMap,
 } from "@dungeon-manager/storage";
 import {
@@ -48,6 +50,12 @@ export interface SceneSession {
   /** The map's data changed on disk; the scene keeps the old until `acceptMapChange`. */
   readonly mapChanged: boolean;
   acceptMapChange(): void;
+  /**
+   * Changes the map's global data in its sidecar from this scene (T-118d) and shows the result at
+   * once. Only while the scene plays the map's data (not its own version 2 copy or a held change).
+   * @returns whether something was written. @throws when the sidecar cannot be read or written
+   */
+  editMap(change: (data: MapData) => MapData | null): Promise<boolean>;
   /** Applies a command; `false` if core rejected it (state unchanged). */
   run(command: Command): boolean;
   undo(): void;
@@ -125,6 +133,7 @@ export function useSceneSession(
     data: mapData,
     changed: mapChanged,
     acceptChange,
+    applyOwnEdit,
   } = useMapData(service, scene, () => {
     // The scene as it is now: only the copy goes, nothing else from when the settling began.
     const settled = withoutLegacyMap(latestScene.current);
@@ -208,6 +217,23 @@ export function useSceneSession(
     orphanedOverrides: resolved?.orphanedOverrides ?? [],
     mapChanged,
     acceptMapChange: acceptChange,
+    async editMap(change) {
+      const ref = scene.map;
+      if (!ref || mapData.status !== "ready" || mapData.legacy || mapChanged)
+        return false;
+      const defaults = newMapData(defaultLevelName);
+      // Written only onto what the DM sees, so a change from elsewhere still waits (ADR-0012).
+      const written = await updateMapData(
+        service.fs,
+        ref.asset,
+        defaults,
+        change,
+        mapData.data ?? defaults,
+      );
+      if (!written) return false;
+      applyOwnEdit(written);
+      return true;
+    },
     run(command) {
       const current = state();
       if (!current) return false;

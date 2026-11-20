@@ -1,6 +1,12 @@
 import type { MapData, Polygon, Scene } from "@dungeon-manager/schema";
 import { describe, expect, test } from "vitest";
-import { levelsInUse, removeLevel, resolveMap } from "./index.js";
+import {
+  addLevel,
+  levelsInUse,
+  removeLevel,
+  renameLevel,
+  resolveMap,
+} from "./index.js";
 import { deepFreeze, scene, square } from "./test-data.test-data.js";
 
 // Global map data plus a scene's overrides (ADR-0012, T-134).
@@ -169,5 +175,34 @@ describe("levels in use", () => {
     expect(removeLevel(tower, "basement", [])).toEqual({
       kind: "unknownLevel",
     });
+  });
+});
+
+describe("adding and renaming levels (T-118d)", () => {
+  test("a new level goes last, with or without its own file", () => {
+    const cellar = {
+      id: "vault",
+      name: "Gruft",
+      asset: { path: "library/maps/gruft.png", hash },
+    };
+    expect(addLevel(tower, cellar)?.levels.at(-1)).toEqual(cellar);
+    expect(addLevel(tower, { id: "x", name: "Leer" })?.levels).toHaveLength(4);
+  });
+
+  test("a level id the map already uses, or an empty name, is refused", () => {
+    expect(addLevel(tower, { id: "hall", name: "Doppelt" })).toBeNull();
+    expect(addLevel(tower, { id: "ground", name: "Doppelt" })).toBeNull();
+    expect(addLevel(tower, { id: "new", name: "  " })).toBeNull();
+  });
+
+  test("renaming changes only the name; unknown levels and empty names are refused", () => {
+    const renamed = renameLevel(tower, "cellar", " Weinkeller ");
+    expect(renamed?.levels[1]).toEqual({
+      id: "cellar",
+      name: "Weinkeller",
+      archived: true,
+    });
+    expect(renameLevel(tower, "attic-2", "X")).toBeNull();
+    expect(renameLevel(tower, "ground", "")).toBeNull();
   });
 });

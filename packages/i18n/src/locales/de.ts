@@ -153,6 +153,8 @@ export const de = {
       changed:
         "Die Daten dieser Karte wurden geändert, z. B. auf einem anderen Gerät. Der TV zeigt sie erst, wenn du sie übernimmst.",
       acceptChange: "Änderung übernehmen",
+      changedMeanwhile:
+        "Die Daten dieser Karte wurden inzwischen woanders geändert. Übernimm die Änderung zuerst, dann versuche es erneut.",
       notReadable:
         "Die Daten dieser Karte sind noch nicht heruntergeladen oder beschädigt. Versuche es erneut, sobald dein Sync-Dienst die Datei geladen hat.",
       unavailable:
@@ -211,6 +213,20 @@ export const de = {
     pick: "Ebene zum Bearbeiten",
     showOnTv: "Auf TV zeigen",
     onTv: "Auf dem TV: {{name}}",
+    add: "Ebene hinzufügen …",
+    rename: "Ebene umbenennen …",
+    name: "Name der Ebene",
+    create: "Ebene anlegen",
+    renameConfirm: "Umbenennen",
+    chooseFile: "Eigenes Bild oder Video wählen …",
+    ownFile: "Eigene Datei: {{file}}",
+    noOwnFile: "Ohne eigene Datei zeigt die Ebene das Bild der Karte.",
+    wrongSize:
+      "{{file}} ist {{width}} × {{height}} Pixel groß, die Karte {{mapWidth}} × {{mapHeight}}. Wähle eine Datei in der Größe der Karte, damit Raster und Nebel auf allen Ebenen passen.",
+    sizeUnknown:
+      "Die Größe der Karte ist noch nicht bekannt. Warte, bis die Karte geladen ist, und wähle die Datei dann.",
+    notChanged:
+      "Die Ebenen lassen sich gerade nicht ändern: Übernimm zuerst eine wartende Änderung der Karte, oder der Name ist leer.",
   },
   fog: {
     tool: "Werkzeug",

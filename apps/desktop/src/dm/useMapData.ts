@@ -36,6 +36,11 @@ export interface MapDataSession {
    */
   readonly changed: boolean;
   readonly acceptChange: () => void;
+  /**
+   * Shows data the DM just wrote to the sidecar from this scene (T-118d), so its watcher echo
+   * compares equal and is not held as a change from elsewhere.
+   */
+  readonly applyOwnEdit: (data: MapData) => void;
 }
 
 /**
@@ -166,6 +171,10 @@ export function useMapData(
     acceptChange: () => {
       if (!pending) return;
       setState(pending);
+      setPending(null);
+    },
+    applyOwnEdit: (data) => {
+      setState({ status: "ready", data, legacy: false });
       setPending(null);
     },
   };
