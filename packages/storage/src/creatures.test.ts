@@ -64,14 +64,42 @@ describe("library creatures", () => {
     );
     const listed = await listCreatures(fs);
     expect(listed.creatures).toEqual([{ id: "ghul", folder: "" }]);
-    expect(listed.conflicts.map((each) => each.copy)).toEqual([
-      "ghul (1).json",
+    expect(listed.conflicts.map((each) => [each.folder, each.copy])).toEqual([
+      ["", "ghul (1).json"],
+    ]);
+  });
+
+  test("skip folders whose names do not work on every OS, listing the others (Finder writes / as :)", async () => {
+    const fs = createMemoryFileSystem({
+      "library/creatures/CR 1:4/a.json": "{}",
+      "library/creatures/Untote /b.json": "{}",
+      "library/creatures/Kapitel 1./c.json": "{}",
+      "library/creatures/con.d/d.json": "{}",
+    });
+    await saveCreature(fs, "Untote", creature("ghul"));
+    const listed = await listCreatures(fs);
+    expect(listed.creatures).toEqual([{ id: "ghul", folder: "Untote" }]);
+    expect(listed.skippedFolders).toEqual([
+      "CR 1:4",
+      "Kapitel 1.",
+      "Untote ",
+      "con.d",
     ]);
   });
 
   test("refuse unsafe folders and ids", async () => {
     const fs = createMemoryFileSystem();
-    for (const folder of ["../x", "a//b", ".versteckt", "a\\b", "/abs"])
+    for (const folder of [
+      "../x",
+      "a//b",
+      ".versteckt",
+      "a\\b",
+      "/abs",
+      "CR 1:4",
+      "x.",
+      "x ",
+      "con.d",
+    ])
       await expect(
         saveCreature(fs, folder, creature("ghul")),
       ).rejects.toThrow();
@@ -97,6 +125,7 @@ describe("library creatures", () => {
       creatures: [],
       duplicates: [],
       conflicts: [],
+      skippedFolders: [],
     });
   });
 });

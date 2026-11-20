@@ -403,18 +403,23 @@ export async function saveCreature(
 }
 
 /**
- * All library creatures, walking the folders under `library/creatures` (hidden ones skipped).
- * Ids are unique in the library: an id found again in a later folder (by path order) is
- * reported in `duplicates`, not used. Conflict copies are reported like scenes'.
+ * All library creatures, walking the folders under `library/creatures`. Hidden folders are left
+ * out; folders whose names do not work on every OS (`CR 1:4`, a trailing dot or space, a Windows
+ * device name) are skipped and reported, so one odd folder never hides the whole library. Ids
+ * are unique in the library: an id found again in a later folder (by path order) is reported in
+ * `duplicates`, not used. Conflict copies are reported with their folder.
  */
 export async function listCreatures(fs: FileSystem): Promise<{
   creatures: CreatureEntry[];
   duplicates: CreatureEntry[];
-  conflicts: ConflictCopy[];
+  conflicts: (ConflictCopy & { readonly folder: string })[];
+  /** Folders (paths inside `library/creatures`) skipped for their names. */
+  skippedFolders: string[];
 }> {
   const creatures: CreatureEntry[] = [];
   const duplicates: CreatureEntry[] = [];
-  const conflicts: ConflictCopy[] = [];
+  const conflicts: (ConflictCopy & { readonly folder: string })[] = [];
+  const skippedFolders: string[] = [];
   const seen = new Set<string>();
   const walk = async (folder: string): Promise<void> => {
     const directory =
@@ -427,7 +432,9 @@ export async function listCreatures(fs: FileSystem): Promise<{
       );
       return loaded.status === "ok" ? loaded.value.id : null;
     });
-    conflicts.push(...listed.conflicts);
+    conflicts.push(
+      ...listed.conflicts.map((conflict) => ({ ...conflict, folder })),
+    );
     for (const id of listed.ids) {
       const entry = { id, folder };
       if (seen.has(id)) duplicates.push(entry);
@@ -437,14 +444,18 @@ export async function listCreatures(fs: FileSystem): Promise<{
       }
     }
     const subfolders = ((await fs.list(directory)) ?? [])
-      .filter((entry) => entry.kind === "directory")
+      .filter(
+        (entry) => entry.kind === "directory" && !entry.name.startsWith("."),
+      )
       .map((entry) => (folder === "" ? entry.name : `${folder}/${entry.name}`))
-      .filter(isValidCreatureFolder)
       .sort();
-    for (const sub of subfolders) await walk(sub);
+    for (const sub of subfolders) {
+      if (isValidCreatureFolder(sub)) await walk(sub);
+      else skippedFolders.push(sub);
+    }
   };
   await walk("");
-  return { creatures, duplicates, conflicts };
+  return { creatures, duplicates, conflicts, skippedFolders };
 }
 
 /** Loads `campaigns/<slug>/characters/<id>.json`, a player character (T-180a). */

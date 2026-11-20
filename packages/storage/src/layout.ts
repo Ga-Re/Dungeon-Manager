@@ -51,20 +51,32 @@ export const sessionFile = (slug: string, sessionId: string) =>
 export const CREATURES_DIRECTORY = "library/creatures";
 
 /**
- * Whether `folder` (inside `library/creatures`, `""` for the top) is a safe folder path: plain
- * names separated by `/`, none hidden or empty, no `.`/`..`, no backslash.
+ * A file or folder name that works on every OS the library may be synced to – the same rule as
+ * the desktop adapter's (`is_portable_segment` in `library.rs`): not empty, `.` or `..`; no
+ * backslash, colon or NUL; no trailing dot or space; no Windows device name, also with an
+ * extension (`con.txt`).
+ */
+export function isPortableSegment(segment: string): boolean {
+  const stem = (segment.split(".")[0] ?? "").toLowerCase();
+  return (
+    segment !== "" &&
+    segment !== "." &&
+    segment !== ".." &&
+    !/[\\:\0]/.test(segment) &&
+    !/[. ]$/.test(segment) &&
+    !WINDOWS_RESERVED.test(stem)
+  );
+}
+
+/**
+ * Whether `folder` (inside `library/creatures`, `""` for the top) is a folder path the app uses:
+ * portable names separated by `/`, none hidden.
  */
 export function isValidCreatureFolder(folder: string): boolean {
   if (folder === "") return true;
   return folder
     .split("/")
-    .every(
-      (part) =>
-        part !== "" &&
-        !part.startsWith(".") &&
-        !part.includes("\\") &&
-        !WINDOWS_RESERVED.test(part),
-    );
+    .every((part) => isPortableSegment(part) && !part.startsWith("."));
 }
 
 /** `library/creatures/<folder>/<id>.json` (T-180a). */

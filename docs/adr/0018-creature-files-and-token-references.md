@@ -42,7 +42,7 @@ Creatures are files, and tokens refer to them (option 3).
 
 **How a token refers to its creature**
 - **The reference:** `creature: { source: "library" | "campaign", id }`, plus an optional `shape` reference for a form the creature has taken (used by T-180).
-- **What the token keeps:** only its own values: name, position, level, a different size or picture, and later HP and conditions. Everything else comes from the creature, or from the active shape, when the scene is used. A correction therefore reaches every scene.
+- **What the token keeps:** only its own values: name, position, level, a different size or picture, and later HP and conditions. Everything else comes from the creature, or from the active shape, when the scene is used. A correction therefore reaches every scene – except the size: a token always carries its own size (the creature's when placed), so a token's footprint and a shape's size follow the token until T-107/T-180 decide whether the token's size becomes an optional override.
 - **Old tokens:** the fields are optional and additive, so existing tokens stay valid and no scene is migrated.
 
 **A missing creature**
