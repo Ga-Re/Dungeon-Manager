@@ -15,7 +15,7 @@ Dungeon Manager combines two distinct paradigms:
    - **Dockable panels (ADR-0017, T-172a):** below the fixed title bar and ribbon, the window is made of dockview panels the DM resizes, moves, docks and hides (View menu). New tool areas become panels (`PANELS` in `panel-layout.tsx`), not fixed zones or floating overlays.
    - **Map-First Viewport (ADR-0014):** The `MapView` (PixiJS + `<video>` layer) fills its map panel exactly, with zero wasted margins; nothing permanent covers it.
    - **Data Panel (`#1`, left in the default layout):** the source the DM drags from (catalogue). Cmd/Ctrl+B shows or hides it so the DM can maximize map space during play.
-   - **Contextual Ribbon Toolbar (Top Bar right of the data panel, docked, `#2` & `#4`):** Grouped by workflow mode (e.g., _Scene_, _Fog of War_, _Tokens_, _Display/Projection_) with clear primary icon buttons and dropdown sub-menus.
+   - **Contextual Ribbon Toolbar (full-width Top Bar below the title bar, docked, `#2` & `#4`):** Grouped by workflow mode (e.g., _Scene_, _Fog of War_, _Tokens_, _Display/Projection_) with clear primary icon buttons and dropdown sub-menus.
    - **Browser panel (`#3`, right column in the default layout):** a compact tree view of the open document (Map Layer, Video Layer, Fog Shapes, Tokens, Notes) with quick visibility (`eye`) toggles; Eigenschaften (inspector) below it.
    - **Floating Navigation & Display Dock (Bottom Center, `#8`):** Houses zoom, pan, fit-to-screen, rotation controls (`90°`), and live `PlayerFeed` projection status.
    - **Radial / Marking Context Menu (Right-Click, `#6`):** Fast, cursor-centered access to frequent actions (Undo/Redo, Reveal/Hide Fog, Rotate, Reset View).

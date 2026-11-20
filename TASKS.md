@@ -460,7 +460,7 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-113 Blackout button and DM preview of the player view
 
 - **Status:** todo · **Depends on:** T-105b, T-172a
-- Instant black/pause image in the player window; small live preview of the player view in the DM window as a floating HUD panel (ARCHITECTURE §15).
+- Instant black/pause image in the player window; small live preview of the player view in the DM window as a panel (T-172a, ARCHITECTURE §15).
 - **Acceptance criteria**
   - [ ] Blackout reachable by button and keyboard shortcut; E2E test
   - [ ] The preview shows exactly the projected player view (incl. blackout), never DM-only data; component/E2E test

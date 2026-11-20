@@ -299,7 +299,6 @@ export const de = {
       scene: "Szene",
       playerView: "Spieleransicht",
     },
-    dataPanel: "Datenpanel",
     toggleDataPanel: "Daten ein- oder ausblenden (⌘/Strg+B)",
     appMenu: {
       view: "Ansicht",
@@ -329,6 +328,17 @@ export const de = {
       fullscreen: "Vollbild",
     },
     dock: "Ansicht und TV",
+    panelMessages: {
+      opened: "{{title}} eingeblendet",
+      closed: "{{title}} ausgeblendet",
+      maximized: "{{title}} maximiert",
+      restored: "{{title}} wiederhergestellt",
+      floated: "{{title}} schwebt",
+      docked: "{{title}} angedockt",
+      poppedOut: "{{title}} in neuem Fenster",
+      close: "{{title}} ausblenden",
+      closePlain: "Ausblenden",
+    },
     panels: {
       data: "Daten",
       map: "Karte",
@@ -375,7 +385,6 @@ export const de = {
       date: "Datum",
       missing: "Fehlende Szenen",
       sessions: "Sessions",
-      title: "Eigenschaften",
       empty: "Wähle im Browser einen Eintrag.",
       nothing: "Für diesen Eintrag gibt es keine Eigenschaften.",
       campaign: "Kampagne",

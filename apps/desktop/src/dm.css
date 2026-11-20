@@ -140,10 +140,14 @@ label {
   min-height: 0;
 }
 
-/* The panels below the ribbon (T-172a): dockview, themed from the design tokens. */
+/* The panels below the ribbon (T-172a): dockview, themed from the design tokens. The theme
+   class sits on dockview's shell; the colour scheme is inherited from the app's theme. */
 .dm-panels {
   min-width: 0;
   min-height: 0;
+}
+
+.dm-dockview-theme {
   --dv-background-color: var(--dm-surface-chrome);
   --dv-group-view-background-color: var(--dm-surface-panel);
   --dv-tabs-and-actions-container-background-color: var(--dm-surface-chrome);
@@ -151,14 +155,16 @@ label {
   --dv-tabs-and-actions-container-font-size: var(--dm-font-size-xs);
   --dv-activegroup-visiblepanel-tab-background-color: var(--dm-surface-panel);
   --dv-activegroup-visiblepanel-tab-color: var(--dm-text-primary);
-  --dv-activegroup-hiddenpanel-tab-background-color: var(--dm-surface-chrome);
-  --dv-activegroup-hiddenpanel-tab-color: var(--dm-text-secondary);
   --dv-inactivegroup-visiblepanel-tab-background-color: var(--dm-surface-panel);
   --dv-inactivegroup-visiblepanel-tab-color: var(--dm-text-secondary);
+  /* Tabs of panels behind another one sit on the chrome: chrome text colours. */
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--dm-surface-chrome);
+  --dv-activegroup-hiddenpanel-tab-color: var(--dm-text-on-chrome);
   --dv-inactivegroup-hiddenpanel-tab-background-color: var(--dm-surface-chrome);
-  --dv-inactivegroup-hiddenpanel-tab-color: var(--dm-text-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--dm-text-on-chrome-muted);
   --dv-separator-border: var(--dm-border-strong);
   --dv-paneview-header-border-color: var(--dm-border-subtle);
+  --dv-paneview-active-outline-color: var(--dm-focus);
   --dv-sash-color: transparent;
   --dv-active-sash-color: var(--dm-accent);
   --dv-drag-over-background-color: color-mix(
@@ -170,7 +176,18 @@ label {
   --dv-icon-hover-background-color: var(--dm-surface-raised);
   --dv-tab-divider-color: var(--dm-border-subtle);
   --dv-border-radius: var(--dm-radius-sm);
+  --dv-floating-border: 1px solid var(--dm-border-strong);
   --dv-floating-box-shadow: var(--dm-shadow-panel);
+  --dv-scrollbar-background-color: var(--dm-border-strong);
+  color: var(--dm-text-primary);
+  background-color: var(--dm-surface-chrome);
+}
+
+/* Panel content scrolls inside its own body; focusing something deep in it must never scroll
+   the group and push its tab out of view. */
+.dm-panels .dv-groupview,
+.dm-panels .dv-content-container {
+  overflow: clip;
 }
 
 /* Tab titles as small uppercase captions, like the ribbon's (ADR-0015). */

@@ -210,6 +210,40 @@ test("panels are hidden and shown from the View menu; the layout survives a rest
   ).toBeVisible();
 });
 
+test("hiding and showing the map keeps its renderer and its zoom (T-172a)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  await page.getByRole("button", { name: "Vergrößern" }).click();
+  const camera = () =>
+    page.evaluate(() => document.body.dataset["e2eCamera"] ?? "");
+  const zoomed = await camera();
+  await page.evaluate(() => {
+    (window as unknown as { e2eCanvas?: Element | null }).e2eCanvas =
+      document.querySelector(".map-view-canvas canvas");
+  });
+
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Karte" }).click();
+  await expect(page.locator(".map-view-canvas canvas")).toHaveCount(0);
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Karte" }).click();
+
+  await expect(page.locator(".map-view-canvas canvas")).toHaveCount(1);
+  // The very same canvas: the renderer was never torn down, the view keeps its zoom.
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { e2eCanvas?: Element | null }).e2eCanvas ===
+        document.querySelector(".map-view-canvas canvas"),
+    ),
+  ).toBe(true);
+  expect(await camera()).toBe(zoomed);
+});
+
 test("a panel is resized by dragging its edge, and keeps its size after a restart (T-172a)", async ({
   page,
 }) => {

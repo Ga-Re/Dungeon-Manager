@@ -13,9 +13,16 @@ const STORAGE_KEY = "dm.layout";
 /** Bumped when stored layouts no longer fit the panels (they then fall back to the default). */
 const LAYOUT_VERSION = 1;
 
-/** Widths of the default layout's side columns, in CSS pixels. */
-const DATA_WIDTH = 352;
-const SIDE_WIDTH = 320;
+/** Widths of the default layout's side columns in rem, so they follow the interface size. */
+const DATA_WIDTH_REM = 22;
+const SIDE_WIDTH_REM = 20;
+
+function remToPixels(rem: number): number {
+  const root = Number.parseFloat(
+    getComputedStyle(document.documentElement).fontSize,
+  );
+  return Math.round(rem * (Number.isFinite(root) && root > 0 ? root : 14));
+}
 
 /**
  * Where a panel goes when it is shown again: next to the map, on the side of the default layout
@@ -31,29 +38,74 @@ function placeOf(
     }
   | undefined {
   const has = (other: PanelId) => api.getPanel(other) !== undefined;
-  if (id === "data" && has("map"))
-    return { referencePanel: "map", direction: "left" };
-  if (id === "browser" && has("details"))
-    return { referencePanel: "details", direction: "above" };
-  if (id === "details" && has("browser"))
-    return { referencePanel: "browser", direction: "below" };
-  if ((id === "browser" || id === "details") && has("map"))
-    return { referencePanel: "map", direction: "right" };
-  if (id === "map" && has("data"))
-    return { referencePanel: "data", direction: "right" };
-  return undefined;
+  // Left to right as in the default layout: Daten, Karte, then Browser over Eigenschaften.
+  const left = (["map", "browser", "details"] as const).find(has);
+  const right = (["browser", "details", "map", "data"] as const).find(has);
+  switch (id) {
+    case "data":
+      return left && { referencePanel: left, direction: "left" };
+    case "map":
+      if (has("data")) return { referencePanel: "data", direction: "right" };
+      return right && { referencePanel: right, direction: "left" };
+    case "browser":
+      if (has("details"))
+        return { referencePanel: "details", direction: "above" };
+      if (has("map")) return { referencePanel: "map", direction: "right" };
+      return has("data")
+        ? { referencePanel: "data", direction: "right" }
+        : undefined;
+    case "details":
+      if (has("browser"))
+        return { referencePanel: "browser", direction: "below" };
+      if (has("map")) return { referencePanel: "map", direction: "right" };
+      return has("data")
+        ? { referencePanel: "data", direction: "right" }
+        : undefined;
+  }
 }
 
-/** Shows `id` again where it belongs; `title` is its translated tab title. */
+/** The width a side panel comes back with; the map takes what is left. */
+const WIDTH_REM: Partial<Record<PanelId, number>> = {
+  data: DATA_WIDTH_REM,
+  browser: SIDE_WIDTH_REM,
+  details: SIDE_WIDTH_REM,
+};
+
+/**
+ * Shows `id` again where it belongs; `title` is its translated tab title. A side panel docked
+ * next to another one gets its default width instead of half of its neighbour (map first).
+ */
 export function showPanel(api: DockviewApi, id: PanelId, title: string): void {
   if (api.getPanel(id)) return;
   const position = placeOf(api, id);
-  api.addPanel({
+  const panel = api.addPanel({
     id,
     component: id,
     title,
     ...(position && { position }),
   });
+  const width = WIDTH_REM[id];
+  if (
+    width !== undefined &&
+    (position?.direction === "left" || position?.direction === "right")
+  )
+    panel.group.api.setSize({ width: remToPixels(width) });
+}
+
+/**
+ * Hides `id`. The other side columns keep their widths, so the room it frees goes to the map
+ * (map first, ADR-0014) instead of being shared out evenly.
+ */
+export function hidePanel(api: DockviewApi, id: PanelId): void {
+  const panel = api.getPanel(id);
+  if (!panel) return;
+  const mapGroup = api.getPanel("map")?.group;
+  const keep = api.groups
+    .filter((group) => group !== panel.group && group !== mapGroup)
+    .map((group) => [group, group.api.width] as const);
+  panel.api.close();
+  for (const [group, width] of keep)
+    if (api.groups.includes(group)) group.api.setSize({ width });
 }
 
 /** The default layout: Daten left, the map in the middle, Browser over Eigenschaften right. */
@@ -81,23 +133,40 @@ export function buildDefaultLayout(
     title: titles.details,
     position: { referencePanel: "browser", direction: "below" },
   });
-  api.getPanel("data")?.group.api.setSize({ width: DATA_WIDTH });
-  api.getPanel("browser")?.group.api.setSize({ width: SIDE_WIDTH });
+  api.getPanel("data")?.group.api.setSize({
+    width: remToPixels(DATA_WIDTH_REM),
+  });
+  api.getPanel("browser")?.group.api.setSize({
+    width: remToPixels(SIDE_WIDTH_REM),
+  });
 }
 
-/** The layout stored on this device, or `null` (none, unreadable or from another version). */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * The layout stored on this device, or `null` (none, unreadable, from another version, or naming
+ * panels this app does not have). Device storage is an edge: only our four panels, each showing
+ * its own component, and never a popout window (which would open a new window on start).
+ */
 export function readLayout(storage: Storage | undefined): unknown {
   try {
     const raw = storage?.getItem(STORAGE_KEY);
     if (!raw) return null;
     const stored: unknown = JSON.parse(raw);
-    if (
-      typeof stored !== "object" ||
-      stored === null ||
-      (stored as { version?: unknown }).version !== LAYOUT_VERSION
-    )
-      return null;
-    return (stored as { layout?: unknown }).layout ?? null;
+    if (!isRecord(stored) || stored["version"] !== LAYOUT_VERSION) return null;
+    const layout = stored["layout"];
+    if (!isRecord(layout) || !isRecord(layout["panels"])) return null;
+    const known = Object.entries(layout["panels"]).every(
+      ([id, panel]) =>
+        (PANELS as readonly string[]).includes(id) &&
+        isRecord(panel) &&
+        panel["contentComponent"] === id,
+    );
+    if (!known) return null;
+    const rest = { ...layout };
+    delete rest["popoutGroups"];
+    return rest;
   } catch {
     return null;
   }
@@ -120,8 +189,8 @@ export function saveLayout(
 
 /**
  * Restores the stored layout, or builds the default when there is none or it cannot be read
- * (device storage is an edge: anything dockview refuses counts as none). Panels the stored
- * layout does not name are hidden on purpose and stay hidden; unknown ones are dropped.
+ * (anything dockview refuses counts as none). Panels the stored layout does not name were
+ * hidden on purpose and stay hidden.
  */
 export function restoreLayout(
   api: DockviewApi,
@@ -131,9 +200,6 @@ export function restoreLayout(
   if (stored !== null) {
     try {
       api.fromJSON(stored as Parameters<DockviewApi["fromJSON"]>[0]);
-      for (const panel of [...api.panels])
-        if (!(PANELS as readonly string[]).includes(panel.id))
-          panel.api.close();
       // Titles follow the language, not the stored layout.
       for (const panel of api.panels)
         panel.api.setTitle(titles[panel.id as PanelId]);

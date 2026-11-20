@@ -2,6 +2,8 @@ import { IconButton, Menu } from "@dungeon-manager/ui";
 import {
   DockviewReact,
   type DockviewApi,
+  type DockviewMessages,
+  type DockviewTheme,
   type DockviewReadyEvent,
   type IDockviewPanelProps,
 } from "dockview-react";
@@ -44,6 +46,7 @@ import {
   PANELS,
   SlotHost,
   buildDefaultLayout,
+  hidePanel,
   readLayout,
   restoreLayout,
   saveLayout,
@@ -68,6 +71,12 @@ import {
   saveWorkspace,
   type Workspace,
 } from "./workspace.js";
+
+/** The panels' look comes from the design tokens; the colour scheme follows the app's theme. */
+const PANEL_THEME: DockviewTheme = {
+  name: "dungeon-manager",
+  className: "dm-dockview-theme",
+};
 
 /** The app command that shows or hides each panel (View menu). */
 const PANEL_COMMAND = {
@@ -272,6 +281,22 @@ export function DmShell({
     }),
     [slots, hosts],
   );
+  // What dockview says to screen readers and names its tab buttons with, in the DM's language.
+  // The keyboard-docking messages belong to an enterprise module this app does not use.
+  const panelMessages = useMemo<Partial<DockviewMessages>>(
+    () => ({
+      panelOpened: (title) => t("shell.panelMessages.opened", { title }),
+      panelClosed: (title) => t("shell.panelMessages.closed", { title }),
+      groupMaximized: (title) => t("shell.panelMessages.maximized", { title }),
+      groupRestored: (title) => t("shell.panelMessages.restored", { title }),
+      groupFloated: (title) => t("shell.panelMessages.floated", { title }),
+      groupDocked: (title) => t("shell.panelMessages.docked", { title }),
+      groupPoppedOut: (title) => t("shell.panelMessages.poppedOut", { title }),
+      closeTab: (title) => t("shell.panelMessages.close", { title }),
+      closeTabPlain: () => t("shell.panelMessages.closePlain"),
+    }),
+    [t],
+  );
   const titles = useMemo<Record<PanelId, string>>(
     () => ({
       data: t("shell.panels.data"),
@@ -291,7 +316,13 @@ export function DmShell({
       if (api.panels.length > 0) saveLayout(storage, api.toJSON());
     };
     const update = () => {
-      setShown(new Set(api.panels.map((panel) => panel.id as PanelId)));
+      const ids = api.panels.map((panel) => panel.id as PanelId);
+      // Only a real change rebuilds the menus (a reset fires many events).
+      setShown((current) =>
+        current.size === ids.length && ids.every((id) => current.has(id))
+          ? current
+          : new Set(ids),
+      );
       persist();
     };
     update();
@@ -315,18 +346,14 @@ export function DmShell({
         showPanel(panels, id, titles[id]);
         return;
       }
-      // Hiding a panel would drop focus inside it to <body>; keep it in the title bar instead.
-      const host = {
-        data: hosts.dataPanel,
-        map: hosts.canvas,
-        browser: hosts.browser,
-        details: hosts.details,
-      }[id];
+      // Hiding a panel would drop focus inside it (also its tab or the map's dock) to <body>;
+      // keep it in the title bar instead.
       const active = document.activeElement;
-      if (active && host.contains(active)) panelButton.current?.focus();
-      panel.api.close();
+      if (active && panel.group.element.contains(active))
+        panelButton.current?.focus();
+      hidePanel(panels, id);
     },
-    [panels, titles, hosts],
+    [panels, titles],
   );
   const resetLayout = useCallback(() => {
     if (panels) buildDefaultLayout(panels, titles);
@@ -723,8 +750,9 @@ export function DmShell({
               className="dm-panels"
               components={PANEL_COMPONENTS}
               onReady={onPanelsReady}
-              // Its built-in announcements are English; translated ones follow with T-172b.
-              announcements={false}
+              // Our own theme class carries the design tokens (both themes, ADR-0015).
+              theme={PANEL_THEME}
+              messages={panelMessages}
             />
           </div>
           {createPortal(

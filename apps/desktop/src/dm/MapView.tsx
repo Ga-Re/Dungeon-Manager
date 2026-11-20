@@ -129,7 +129,9 @@ export function MapView({
   const fogOptionsNow = useRef(fogOptions);
   fogOptionsNow.current = fogOptions;
 
-  // The view follows the size of its box.
+  // The view follows the size of its box. A box of no size is a hidden map panel (T-172a): the
+  // view keeps its last size, so the renderer, the loaded map and the camera survive until the
+  // panel shows again.
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -138,6 +140,7 @@ export function MapView({
         width: element.clientWidth,
         height: element.clientHeight,
       };
+      if (measured.width <= 0 || measured.height <= 0) return;
       sizeNow.current = measured;
       setSize(measured);
     };
