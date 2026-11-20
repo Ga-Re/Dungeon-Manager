@@ -165,7 +165,7 @@ The DM window has five workspaces, each with its own ribbon tabs and documents (
 - **Default: the DM moves tokens digitally.** Fast input: tap token, tap target cell; keyboard shortcuts on desktop; move the whole party at once
 - Players may optionally move their own token via the companion (see 2.4)
 - **Grid mode per scene** (DM decision, 2026-11-20): "always on the grid", "free, on the grid in combat" or "always free"; new scenes take the campaign's default. Applies to all tokens alike; the DM can hold Alt to place a token freely at any time
-- **Combat switch:** the DM starts and ends combat with its own switch, independent of the initiative tracker. When combat starts, every token snaps (animated) to the nearest free cell, as one undoable step; only one token may stand on a cell, and a larger token claims every cell of its footprint. During combat a token dropped on an occupied cell goes to the nearest free one
+- **Combat switch:** the DM starts and ends combat with its own switch, independent of the initiative tracker. When combat starts, every token snaps (animated) to the nearest free cell, as one undoable step; only one token may stand on a cell (up to four Tiny ones may share it), and a larger token claims every cell of its footprint. During combat a token dropped on an occupied cell goes to the nearest free one
 
 ### 5.1 Optional: camera detection of players and enemies
 
