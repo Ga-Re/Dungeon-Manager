@@ -115,6 +115,8 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134b, T-118d, T-171, T-172, T-174, T-223, T-114, T-180a, T-106, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+
 ### T-101 Schema v1 and migrations framework
 
 - **Status:** done · **Depends on:** T-003 · **Refs:** ARCHITECTURE §5–6, ADR-0005
@@ -173,8 +175,8 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-118d Add and rename levels
 
-- **Status:** todo · **Depends on:** T-118c · **Refs:** SPEC §3.1, ADR-0012
-- DM decision (2026-11-20): the DM adds a level (name, optionally its own image or video of the map's size) and renames levels from the "Ebene" group; deleting waits for the sidecar files (T-134), as fog, tokens and released levels refer to level ids.
+- **Status:** todo · **Depends on:** T-118c, T-134 · **Refs:** SPEC §3.1, ADR-0012
+- DM decision (2026-11-20): the DM adds a level (name, optionally its own image or video of the map's size) and renames levels from the "Ebene" group; deleting waits for the sidecar files (T-134), as fog, tokens and released levels refer to level ids. Moved after T-134 (DM, 2026-11-20): levels are added to the map's sidecar, not to `scene.map`.
 - **Acceptance criteria**
   - [ ] Add a level with or without its own file; a file of another size is refused with an actionable message (component + E2E test)
   - [ ] Rename a level; the new name reaches the TV's projection only for released levels
@@ -364,7 +366,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-107 Tokens: create, place, move
 
-- **Status:** todo · **Depends on:** T-102b, T-106 · **Refs:** SPEC 5
+- **Status:** todo · **Depends on:** T-102b, T-106, T-172, T-174, T-180a · **Refs:** SPEC 5
 - Tokens with D&D size categories; tap-token-tap-cell, drag, keyboard shortcuts, group move; snapping.
 - **Acceptance criteria**
   - [ ] All move modes covered by component/E2E tests
@@ -429,7 +431,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-111 Initiative tracker
 
-- **Status:** todo · **Depends on:** T-102b · **Refs:** SPEC 11
+- **Status:** todo · **Depends on:** T-102b, T-172 · **Refs:** SPEC 11
 - Order, rounds, active turn (highlight on TV), delay/ready, quick entry.
 - **Acceptance criteria**
   - [ ] Reducer tests for all initiative commands
@@ -446,7 +448,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-113 Blackout button and DM preview of the player view
 
-- **Status:** todo · **Depends on:** T-105b
+- **Status:** todo · **Depends on:** T-105b, T-172
 - Instant black/pause image in the player window; small live preview of the player view in the DM window as a floating HUD panel (ARCHITECTURE §15).
 - **Acceptance criteria**
   - [ ] Blackout reachable by button and keyboard shortcut; E2E test
@@ -466,8 +468,8 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-114 Autosave and crash recovery
 
-- **Status:** todo · **Depends on:** T-103b, T-102b
-- Periodic and on-change save of scene state; recovery on next start.
+- **Status:** todo · **Depends on:** T-103b, T-102b, T-174, T-223
+- Periodic and on-change save of scene state; recovery on next start. With document tabs (T-223), every open document (scene, map, asset, creature) is saved and recovered.
 - **Acceptance criteria**
   - [ ] Killing the app mid-session loses at most the last few seconds (E2E test with forced kill)
 
@@ -783,14 +785,22 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Scene schema v2: migration `map → { asset, overrides, legacyMap }`, storage seeds missing sidecars from `legacyMap`; differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v1 fixtures)
   - [ ] `resolveMap` applies overrides and reports orphaned ones (unit tests ≥ 80 %)
   - [ ] A level still used by scenes cannot be deleted, only archived; fog, tokens and released levels stay resolvable
-  - [ ] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open
   - [ ] `SessionState` carries the resolved map, `projectForViewer` takes it as input, and the existing projection property tests still pass
-  - [ ] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (regression test); the catalog ignores sidecars and maps sidecar conflict copies back to their original
-- **Notes:** From the DM planning interview (2026-11-18). ADR-0012 accepted by the DM (2026-11-18), incl. "global edits reach the live scene only after confirmation".
+  - [ ] Sidecars are never served to companions or the player window: `dmlib` keeps refusing `*.dm.json` (regression test)
+- **Notes:** From the DM planning interview (2026-11-18). ADR-0012 accepted by the DM (2026-11-18), incl. "global edits reach the live scene only after confirmation". Split 2026-11-20: the live-scene confirmation and the catalog's handling of sidecars moved to T-134b. Tasks that depend on "T-134" need both parts.
+
+### T-134b Sidecars: live-scene confirmation and catalog
+
+- **Status:** todo · **Depends on:** T-134 · **Refs:** ADR-0012
+- A global edit (e.g. a new level) reaches the scene live on the TV only after the DM confirms; the catalog skips sidecars.
+- **Acceptance criteria**
+  - [ ] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open
+  - [ ] The catalog ignores sidecars and maps sidecar conflict copies back to their original (once T-124 builds the catalog, its tests cover this)
+- **Notes:** Split from T-134 (2026-11-20).
 
 ### T-168 Animated fog effects per map
 
-- **Status:** todo · **Depends on:** T-134, T-136a, T-160a · **Refs:** SPEC §4, ARCHITECTURE §8, §11
+- **Status:** todo · **Depends on:** T-134, T-136a, T-160a, T-105d, T-127 · **Refs:** SPEC §4, ARCHITECTURE §8, §11
 - The fog of a map can carry an animated effect: drifting mist, snow flurry, smoke and ash, darkness (first set – DM decision, 2026-11-19). Set on the map (sidecar, T-134) and adjustable during a session (session override); shown on the TV, previewed in the DM window. GPU shaders, no per-frame CPU work.
 - **Acceptance criteria**
   - [ ] Effect and strength stored in the map sidecar and overridable per session (schema + storage tests)
@@ -926,9 +936,19 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] A large import shows progress and can be cancelled without leaving half-copied files
 - **Notes:** From the workspace deepening with the DM (2026-11-20).
 
+### T-180a Creature schema and token reference
+
+- **Status:** todo · **Depends on:** T-134 · **Refs:** SPEC §5, §2.5
+- The zod schema for global creatures (5e core, own fields, size with grid footprint and pivot, senses, look) and how a token refers to its creature, so that T-107 builds tokens on it and no token data has to be migrated later. Per-session state (HP, conditions) stays in the scene.
+- **Acceptance criteria**
+  - [ ] Creature schema with storage round trip and migration hook (schema + storage tests ≥ 80 %)
+  - [ ] Tokens refer to a creature by id; a missing creature shows a placeholder token
+  - [ ] The grid footprint covers T-233's rule: one token per cell, up to four Tiny ones share a cell
+- **Notes:** Split from T-180 (DM, 2026-11-20). A new file format: the schema is agreed with the DM before implementing.
+
 ### T-180 Creature library: player characters and creatures
 
-- **Status:** todo · **Depends on:** T-107, T-172 · **Refs:** SPEC §2.5, §5, §11
+- **Status:** todo · **Depends on:** T-107, T-172, T-180a · **Refs:** SPEC §2.5, §5, §11
 - Global creatures (DM decision: player characters too, campaigns refer to them). Values follow a D&D 5e core that the DM can extend with own fields: HP with dice formula, AC, initiative modifier, speeds, size with grid footprint and pivot, senses (sight, darkvision) for vision; actions, spells and tactics go into a Markdown note. The DM maintains the player characters' values (players keep paper sheets). Look per creature: a round token with ring or a cut-out top-down figure; token picture and portrait. Per-session state (HP, conditions) stays in the scene/session state.
 - **Acceptance criteria**
   - [ ] Create and edit a creature; a token placed from it carries its values (component + E2E test)
