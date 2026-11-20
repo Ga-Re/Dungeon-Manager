@@ -807,14 +807,22 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-134d Scene schema v3; the DM window plays the resolved map
 
-- **Status:** todo · **Depends on:** T-134c · **Refs:** ADR-0012, ARCHITECTURE §6, §8
-- Scene schema v3: the scene's map becomes `{ kind, asset, overrides }`; grid and levels move to the map's sidecar. The DM window loads the sidecar with the scene and works on `resolveMap`'s result (levels, grid, rendering, TV); `embeddedMap` goes away; new maps and map changes write the sidecar; orphaned overrides and `legacyMap` show a hint to the DM.
+- **Status:** done · **Depends on:** T-134c · **Refs:** ADR-0012, ARCHITECTURE §6, §8
+- Scene schema v3: the scene's map becomes `{ kind, asset, overrides }`; grid and levels move to the map's sidecar. The DM window loads the sidecar with the scene and works on `resolveMap`'s result (levels, grid, rendering, TV); `embeddedMap` is gone; new maps and map changes write the sidecar; a sidecar that is not available, a scene playing its own copy (`legacyMap`) and orphaned overrides show a hint to the DM.
 - **Acceptance criteria**
-  - [ ] Scene schema v3: migration `map → { kind, asset, overrides, legacyMap }`; opening a scene seeds a missing sidecar from `legacyMap` (`adoptLegacyMap`); differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures)
-  - [ ] A map without sidecar shows with defaults; the first edit creates the sidecar
-  - [ ] Only a missing sidecar is seeded; a placeholder or broken one is never overwritten (test)
-  - [ ] Opening, playing and the TV use the resolved map (component + E2E tests)
-- **Notes:** Split from T-134 (2026-11-20). From the T-134 review: undo/redo snapshots hold whole `SessionState`s; undo must restore the scene only and re-attach the current resolved map, so a global edit is never undone by a scene undo (T-134b too).
+  - [x] Scene schema v3: migration `map → { kind, asset, overrides, legacyMap }`; opening a scene seeds a missing sidecar from `legacyMap` (`settleLegacyMap`); differing grids/levels of several scenes keep `legacyMap` with a DM hint (tests with real v2 fixtures; schema, storage and component tests)
+  - [x] A missing sidecar yields defaults (one level with the fixed id `level-1`); the first write creates it – today a new scene's map and a map change (`ensureMapData`), later the map edits of T-106/T-118d
+  - [x] Only a missing sidecar is seeded; a placeholder or broken one is never overwritten, and its map is not shown (tests)
+  - [x] Opening, playing and the TV use the resolved map (component + E2E tests)
+- **Notes:** Split from T-134 (2026-11-20). Undo restores scenes only and plays them on the current map data (`useSceneSession`). From the review: a missing sidecar counts as not available (not as defaults) while the scene refers to levels other than `level-1`, as it has most likely not synced yet. The details panel shows grid and levels for the open scene only (they belong to the map). ADR-0012 still names scene version 2 and `map → { asset, overrides }`: it is version 3 (T-119 took version 2) and keeps `kind` – a dated note for the DM to add, as accepted ADRs are not edited by the agent. Adopting or discarding a differing `legacyMap` follows in T-235. "Reset grid" in the map change now applies to a new map without data of its own; a map's calibration is never reset by a scene (ADR-0012) – T-121 revisits the map change.
+
+### T-235 Adopt or discard a scene's own map copy
+
+- **Status:** todo · **Depends on:** T-134d · **Refs:** ADR-0012
+- A version 2 scene whose grid or levels differ from its map's sidecar keeps them as `legacyMap` and shows a hint (T-134d). The DM adopts them (they become the map's data for every scene, after confirming) or discards them (the scene uses the map's data).
+- **Acceptance criteria**
+  - [ ] Both choices from the hint, with a confirmation before a global change; the scene then has no `legacyMap` (component test)
+- **Notes:** From T-134d (2026-11-20). Only for libraries with several scenes of the same map from before scene version 3.
 
 ### T-134b Sidecars: live-scene confirmation and catalog
 

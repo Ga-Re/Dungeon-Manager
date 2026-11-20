@@ -1,5 +1,12 @@
-import type { Grid, Level, Sidecar } from "@dungeon-manager/schema";
+import type {
+  Grid,
+  LegacyMap,
+  Level,
+  Scene,
+  Sidecar,
+} from "@dungeon-manager/schema";
 import { findConflictCopies, type ConflictCopy } from "./conflicts.js";
+import { loadSidecar, saveSidecar } from "./documents.js";
 import type { FileSystem } from "./fs.js";
 import { SIDECAR_SUFFIX } from "./layout.js";
 
@@ -18,12 +25,6 @@ export async function listSidecarConflicts(
   return findConflictCopies(names).filter((conflict) =>
     conflict.original.endsWith(SIDECAR_SUFFIX),
   );
-}
-
-/** The grid and levels a version 2 scene embedded, before they moved to the sidecar. */
-export interface LegacyMap {
-  readonly grid: Grid;
-  readonly levels: readonly Level[];
 }
 
 /** What becomes of a version 2 scene's embedded map data (ADR-0012 migration). */
@@ -85,4 +86,40 @@ export function adoptLegacyMap(
   return sameGrid(grid, legacy.grid) && sameLevels
     ? { kind: "fits" }
     : { kind: "differs" };
+}
+
+/** The scene without its version 2 copy of grid and levels, once the sidecar holds them. */
+export function withoutLegacyMap(scene: Scene): Scene {
+  if (!scene.map?.legacyMap) return scene;
+  const reference = { ...scene.map };
+  delete reference.legacyMap;
+  return { ...scene, map: reference };
+}
+
+/**
+ * Moves a scene's `legacyMap` (its version 2 copy of grid and levels) into its map's sidecar
+ * where `adoptLegacyMap` allows it (ADR-0012).
+ * @returns `settled` when the sidecar holds the data now (the caller drops the copy with
+ *   `withoutLegacyMap` and saves the scene), `differs` when the DM has to decide, `unavailable`
+ *   when the sidecar is not downloaded yet or broken (left alone, to try again later); `none`
+ *   without a copy. @throws when writing the sidecar fails
+ */
+export async function settleLegacyMap(
+  fs: FileSystem,
+  scene: Scene,
+): Promise<"settled" | "differs" | "unavailable" | "none"> {
+  const map = scene.map;
+  if (!map?.legacyMap) return "none";
+  const loaded = await loadSidecar(fs, map.asset.path);
+  if (loaded.status !== "ok" && loaded.status !== "missing")
+    return "unavailable";
+  const adoption = adoptLegacyMap(
+    loaded.status === "ok" ? loaded.value : null,
+    map.legacyMap,
+    map.asset.hash,
+  );
+  if (adoption.kind === "differs") return "differs";
+  if (adoption.kind === "seed")
+    await saveSidecar(fs, map.asset.path, adoption.sidecar);
+  return "settled";
 }

@@ -5,6 +5,7 @@
 // state (T-117).
 import type {
   Combatant,
+  MapData,
   Token,
   TokenSize,
   Visibility,
@@ -20,6 +21,7 @@ import {
   type Viewer,
 } from "./index.js";
 import {
+  caveMap,
   ctx,
   state as base,
   sessionOf,
@@ -165,8 +167,20 @@ function build(spec: Spec): SessionState {
   const defaults = Object.fromEntries(
     Object.entries(spec.defaults).filter(([, value]) => value !== undefined),
   );
-  const map = base.scene.map;
-  if (!map) throw new Error("sample scene needs a map");
+  const mapData: MapData = {
+    ...caveMap,
+    // The cellar has its own image, so a leaked level asset can be searched for.
+    levels: caveMap.levels.map((level) =>
+      level.id === "cellar"
+        ? { ...level, asset: { path: "maps/secret-cellar.png", hash } }
+        : level,
+    ),
+    grid: {
+      cellSizePx: CELL,
+      offsetXPx: spec.offset.x * CELL,
+      offsetYPx: spec.offset.y * CELL,
+    },
+  };
   const files = {
     campaign: {
       ...base.campaign,
@@ -175,20 +189,6 @@ function build(spec: Spec): SessionState {
     },
     scene: {
       ...base.scene,
-      map: {
-        ...map,
-        // The cellar has its own image, so a leaked level asset can be searched for.
-        levels: map.levels.map((level) =>
-          level.id === "cellar"
-            ? { ...level, asset: { path: "maps/secret-cellar.png", hash } }
-            : level,
-        ),
-        grid: {
-          cellSizePx: CELL,
-          offsetXPx: spec.offset.x * CELL,
-          offsetYPx: spec.offset.y * CELL,
-        },
-      },
       tokens,
       ...(spec.table && { table: spec.table }),
       initiative:
@@ -202,7 +202,7 @@ function build(spec: Spec): SessionState {
           : null,
     },
   };
-  const start: SessionState = sessionOf(files.scene, files.campaign);
+  const start: SessionState = sessionOf(files.scene, files.campaign, mapData);
   return spec.reveals.reduce((current, r) => {
     const result = apply(
       current,

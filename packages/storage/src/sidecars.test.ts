@@ -1,4 +1,4 @@
-import type { Sidecar } from "@dungeon-manager/schema";
+import type { Scene, Sidecar } from "@dungeon-manager/schema";
 import { describe, expect, test } from "vitest";
 import {
   adoptLegacyMap,
@@ -7,7 +7,9 @@ import {
   listSidecarConflicts,
   loadSidecar,
   saveSidecar,
+  settleLegacyMap,
   sidecarFile,
+  withoutLegacyMap,
 } from "./index.js";
 
 // Sidecar files next to library files (ADR-0012, T-134c).
@@ -228,5 +230,70 @@ describe("adopting a version 2 scene's map (ADR-0012 migration)", () => {
         hash,
       ),
     ).toEqual({ kind: "differs" });
+  });
+});
+
+describe("settling a scene's legacy map when it opens (T-134d)", () => {
+  const asset = { path: "library/maps/turm.png", hash };
+  const legacyScene: Scene = {
+    schemaVersion: 3,
+    id: "turm",
+    name: "Turm",
+    map: {
+      kind: "image",
+      asset,
+      overrides: {},
+      legacyMap: { grid, levels: [{ id: "ground", name: "Erdgeschoss" }] },
+    },
+    tokens: [],
+    fog: { levels: {} },
+    initiative: null,
+  };
+
+  test("the first scene of a map seeds its sidecar", async () => {
+    const fs = createMemoryFileSystem();
+    expect(await settleLegacyMap(fs, legacyScene)).toBe("settled");
+    expect(await loadSidecar(fs, asset.path)).toEqual({
+      status: "ok",
+      value: sidecar,
+    });
+    expect(withoutLegacyMap(legacyScene).map).toEqual({
+      kind: "image",
+      asset,
+      overrides: {},
+    });
+  });
+
+  test("a scene that fits the sidecar is settled; one that differs is the DM's to decide", async () => {
+    const fs = createMemoryFileSystem();
+    await saveSidecar(fs, asset.path, sidecar);
+    expect(await settleLegacyMap(fs, legacyScene)).toBe("settled");
+    const renamed: Scene = {
+      ...legacyScene,
+      map: {
+        kind: "image",
+        asset,
+        overrides: {},
+        legacyMap: { grid, levels: [{ id: "ground", name: "Taverne" }] },
+      },
+    };
+    expect(await settleLegacyMap(fs, renamed)).toBe("differs");
+    expect(await loadSidecar(fs, asset.path)).toMatchObject({
+      value: sidecar,
+    });
+  });
+
+  test("a sidecar not downloaded yet is never seeded over", async () => {
+    const fs = createMemoryFileSystem({
+      "library/maps/turm.png.dm.json": { placeholder: true },
+    });
+    expect(await settleLegacyMap(fs, legacyScene)).toBe("unavailable");
+    expect(fs.files().has("library/maps/turm.png.dm.json")).toBe(false);
+  });
+
+  test("scenes without a legacy map are left as they are", async () => {
+    const plain: Scene = { ...legacyScene, map: null };
+    expect(await settleLegacyMap(createMemoryFileSystem(), plain)).toBe("none");
+    expect(withoutLegacyMap(plain)).toBe(plain);
   });
 });

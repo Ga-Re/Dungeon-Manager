@@ -1,3 +1,4 @@
+import type { ResolvedMap } from "@dungeon-manager/core";
 import type {
   AssetRef,
   Campaign,
@@ -37,7 +38,6 @@ import {
   loadCampaign,
   loadScene,
   loadSession,
-  newMap,
   ownNotePath,
   readNote,
   saveCampaign,
@@ -224,6 +224,7 @@ export function CampaignPanel({
   // The open scene as edited (fog, map), for its part of the tree.
   const [live, setLive] = useState<{
     readonly scene: Scene;
+    readonly map: ResolvedMap | null;
     readonly revealed: readonly Polygon[];
   } | null>(null);
   const [notice, setNotice] = useState("");
@@ -452,9 +453,8 @@ export function CampaignPanel({
         id: newId(),
         name: sceneName,
         parentSceneId: parent?.sceneId,
-        map:
-          // The level id only has to be unique within this scene.
-          map && newMap(map, { id: newId(), name: t("campaign.defaultLevel") }),
+        // A map without data of its own starts with this level (ADR-0012).
+        map: map && { asset: map, levelName: t("campaign.defaultLevel") },
       });
       const problem = target
         ? await changeSession(target, (session) => addScene(session, scene.id))
@@ -1096,14 +1096,13 @@ export function CampaignPanel({
           service={service}
           slug={slug}
           scene={openScene}
-          newId={newId}
           subScenes={{
             direct: hierarchy.childrenOf(openScene.id),
             all: hierarchy.descendantsOf(openScene.id),
             parentSceneId: hierarchy.parentOf(openScene.id),
           }}
-          onSceneChange={(scene, revealed) => {
-            setLive({ scene, revealed });
+          onSceneChange={(scene, map, revealed) => {
+            setLive({ scene, map, revealed });
           }}
           onChanged={(scene) => {
             setOpenScene(scene);

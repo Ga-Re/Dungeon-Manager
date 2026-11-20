@@ -7,7 +7,12 @@ import {
   deleteScene,
   reparentScene,
   listScenes,
+  DEFAULT_LEVEL_ID,
+  loadSidecar,
+  MapDataUnavailableError,
+  mapDataForChange,
   mapKind,
+  saveSidecar,
   withMap,
   isValidSlug,
   loadCampaign,
@@ -92,7 +97,7 @@ describe("createScene", () => {
       name: " Eingang ",
     });
     expect(scene).toEqual({
-      schemaVersion: 2,
+      schemaVersion: 3,
       id: "s-1",
       name: "Eingang",
       map: null,
@@ -106,31 +111,88 @@ describe("createScene", () => {
     });
   });
 
-  test("can start with a map, which is validated", async () => {
+  test("can start with a map, which is validated; a map without data gets its sidecar", async () => {
     const fs = createMemoryFileSystem();
-    const map = {
-      kind: "image" as const,
-      asset: {
-        path: "library/maps/cave.webp",
-        hash: `sha256:${"a".repeat(64)}`,
-      },
-      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-      levels: [{ id: "level-1", name: "Erdgeschoss" }],
+    const asset = {
+      path: "library/maps/cave.webp",
+      hash: `sha256:${"a".repeat(64)}`,
     };
     const scene = await createScene(fs, "mine", {
       id: "s-2",
       name: "Höhle",
-      map,
+      map: { asset, levelName: "Erdgeschoss" },
     });
-    expect(scene.map).toEqual(map);
+    expect(scene.map).toEqual({ kind: "image", asset, overrides: {} });
+    expect(await loadSidecar(fs, asset.path)).toEqual({
+      status: "ok",
+      value: {
+        schemaVersion: 1,
+        original: { hash: asset.hash },
+        map: {
+          grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+          // The id the DM window plays a map without data with, so its fog still fits.
+          levels: [{ id: DEFAULT_LEVEL_ID, name: "Erdgeschoss" }],
+          rooms: [],
+        },
+      },
+    });
     await expect(
       createScene(fs, "mine", {
         id: "s-3",
         name: "Kaputt",
-        map: { ...map, asset: { path: "../x.webp", hash: "nope" } },
+        map: {
+          asset: { path: "../x.webp", hash: "nope" },
+          levelName: "Erdgeschoss",
+        },
       }),
     ).rejects.toThrow();
     expect(fs.files().has("campaigns/mine/scenes/s-3.json")).toBe(false);
+  });
+
+  test("a map that already has data keeps it: it is calibrated once for every scene", async () => {
+    const asset = {
+      path: "library/maps/cave.webp",
+      hash: `sha256:${"a".repeat(64)}`,
+    };
+    const calibrated = {
+      grid: { cellSizePx: 70, offsetXPx: 5, offsetYPx: 0 },
+      levels: [{ id: "ground", name: "Höhle" }],
+      rooms: [],
+    };
+    const fs = createMemoryFileSystem();
+    await saveSidecar(fs, asset.path, {
+      schemaVersion: 1,
+      original: { hash: asset.hash },
+      map: calibrated,
+    });
+    await createScene(fs, "mine", {
+      id: "s-2",
+      name: "Höhle 2",
+      map: { asset, levelName: "Neu" },
+    });
+    expect(await loadSidecar(fs, asset.path)).toMatchObject({
+      value: { map: calibrated },
+    });
+  });
+
+  test("a map whose sidecar is not downloaded yet gets no scene, and its sidecar stays", async () => {
+    const fs = createMemoryFileSystem({
+      "library/maps/cave.webp.dm.json": { placeholder: true },
+    });
+    await expect(
+      createScene(fs, "mine", {
+        id: "s-2",
+        name: "Höhle",
+        map: {
+          asset: {
+            path: "library/maps/cave.webp",
+            hash: `sha256:${"a".repeat(64)}`,
+          },
+          levelName: "L",
+        },
+      }),
+    ).rejects.toThrow(MapDataUnavailableError);
+    expect(fs.files().has("campaigns/mine/scenes/s-2.json")).toBe(false);
   });
 
   test("rejects an empty name", async () => {
@@ -146,59 +208,56 @@ describe("withMap", () => {
     hash: `sha256:${"c".repeat(64)}`,
   };
 
-  test("gives a scene without a map a single-level image map", () => {
-    expect(
-      withMap(
-        {
-          schemaVersion: 2,
-          id: "s",
-          name: "S",
-          map: null,
-          tokens: [],
-          fog: { levels: {} },
-          initiative: null,
-        },
-        asset,
-        { id: "level-1", name: "Erdgeschoss" },
-      ).map,
-    ).toEqual({
-      kind: "image",
-      asset,
-      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-      levels: [{ id: "level-1", name: "Erdgeschoss" }],
-    });
-  });
-
-  test("replaces only the image of an existing map, which becomes an image map", () => {
-    const map = {
-      kind: "video" as const,
-      asset: {
-        path: "library/maps/old.webp",
-        hash: `sha256:${"a".repeat(64)}`,
-        extra: "dropped",
-      },
-      grid: { cellSizePx: 72, offsetXPx: 3, offsetYPx: 4 },
-      levels: [
-        { id: "ground", name: "Unten" },
-        { id: "top", name: "Oben" },
-      ],
-    };
-    const scene = {
-      schemaVersion: 2 as const,
+  test("refers to the new map and drops the old map's overrides", () => {
+    const scene: Scene = {
+      schemaVersion: 3,
       id: "s",
       name: "S",
-      map,
+      map: {
+        kind: "video",
+        asset: { path: "library/maps/old.mp4", hash: asset.hash },
+        overrides: { hall: { hidden: true } },
+      },
       tokens: [],
       fog: { levels: {} },
       initiative: null,
     };
-    expect(withMap(scene, asset, { id: "unused", name: "unused" }).map).toEqual(
-      {
-        ...map,
-        kind: "image",
-        asset: { path: asset.path, hash: asset.hash },
-      },
-    );
+    expect(withMap(scene, { ...asset, extra: "dropped" }).map).toEqual({
+      kind: "image",
+      asset,
+      overrides: {},
+    });
+  });
+});
+
+describe("mapDataForChange", () => {
+  const level = "Neu";
+  const current = {
+    grid: { cellSizePx: 72, offsetXPx: 3, offsetYPx: 4 },
+    levels: [
+      { id: "ground", name: "Unten" },
+      { id: "top", name: "Oben" },
+    ],
+    rooms: [],
+  };
+
+  test("a new map takes the old map's grid and levels, so fog and tokens fit", () => {
+    expect(mapDataForChange(current, level)).toEqual(current);
+  });
+
+  test("resetting the grid keeps the levels", () => {
+    expect(mapDataForChange(current, level, { grid: true })).toEqual({
+      ...current,
+      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+    });
+  });
+
+  test("without an old map the new one gets a single level", () => {
+    expect(mapDataForChange(null, level)).toEqual({
+      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+      levels: [{ id: DEFAULT_LEVEL_ID, name: "Neu" }],
+      rooms: [],
+    });
   });
 });
 
@@ -216,7 +275,7 @@ describe("withMap with resets", () => {
     holes: [],
   };
   const scene: Scene = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     id: "s",
     name: "S",
     map: {
@@ -225,8 +284,7 @@ describe("withMap with resets", () => {
         path: "library/maps/old.webp",
         hash: `sha256:${"a".repeat(64)}`,
       },
-      grid: { cellSizePx: 72, offsetXPx: 3, offsetYPx: 4 },
-      levels: [{ id: "ground", name: "Unten" }],
+      overrides: {},
     },
     tokens: [
       {
@@ -254,29 +312,20 @@ describe("withMap with resets", () => {
       ],
     },
   };
-  const level = { id: "unused", name: "unused" };
-
   test("keeps everything by default", () => {
-    const changed = withMap(scene, asset, level);
+    const changed = withMap(scene, asset);
     expect(changed.fog).toEqual(scene.fog);
     expect(changed.tokens).toEqual(scene.tokens);
-    expect(changed.map?.grid).toEqual(scene.map?.grid);
   });
 
-  test("resets fog and grid on request, keeping levels", () => {
-    const changed = withMap(scene, asset, level, { fog: true, grid: true });
+  test("resets fog on request", () => {
+    const changed = withMap(scene, asset, { fog: true, grid: true });
     expect(changed.fog).toEqual({ levels: {} });
-    expect(changed.map?.grid).toEqual({
-      cellSizePx: 100,
-      offsetXPx: 0,
-      offsetYPx: 0,
-    });
-    expect(changed.map?.levels).toEqual(scene.map?.levels);
     expect(changed.tokens).toEqual(scene.tokens);
   });
 
   test("removing tokens also removes their initiative entries", () => {
-    const changed = withMap(scene, asset, level, { tokens: true });
+    const changed = withMap(scene, asset, { tokens: true });
     expect(changed.tokens).toEqual([]);
     expect(changed.initiative).toMatchObject({
       round: 2,
@@ -298,7 +347,7 @@ describe("withMap with resets", () => {
         ),
       },
     };
-    const emptied = withMap(onlyTokens, asset, level, {
+    const emptied = withMap(onlyTokens, asset, {
       tokens: true,
       fog: true,
       grid: true,
@@ -310,13 +359,13 @@ describe("withMap with resets", () => {
       combatants: [],
     });
     expect(() => sceneSchema.parse(emptied)).not.toThrow();
-    const noInitiative = withMap({ ...scene, initiative: null }, asset, level, {
+    const noInitiative = withMap({ ...scene, initiative: null }, asset, {
       tokens: true,
     });
     expect(noInitiative.initiative).toBeNull();
     expect(() => sceneSchema.parse(noInitiative)).not.toThrow();
     expect(() =>
-      sceneSchema.parse(withMap(scene, asset, level, { tokens: true })),
+      sceneSchema.parse(withMap(scene, asset, { tokens: true })),
     ).not.toThrow();
   });
 });
@@ -354,7 +403,7 @@ describe("mapKind", () => {
 
   test("a scene changed to a video map gets kind video", () => {
     const scene = {
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       id: "s",
       name: "S",
       map: null,
@@ -366,9 +415,7 @@ describe("mapKind", () => {
       path: "library/maps/fluss.mp4",
       hash: `sha256:${"d".repeat(64)}`,
     };
-    expect(withMap(scene, asset, { id: "l", name: "L" }).map?.kind).toBe(
-      "video",
-    );
+    expect(withMap(scene, asset).map?.kind).toBe("video");
   });
 });
 

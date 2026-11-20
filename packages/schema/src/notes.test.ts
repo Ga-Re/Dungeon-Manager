@@ -44,7 +44,7 @@ describe("note links (T-161)", () => {
       visibilityDefaults: {},
     };
     const scene = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       id: "s",
       name: "Höhle",
       map: null,

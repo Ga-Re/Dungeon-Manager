@@ -263,7 +263,7 @@ function isTokenVisible(
   if (!released.has(token.levelId)) return false;
   if (ownedBy(token, viewer)) return true;
   if (visibilityOf(state, "token", token) === "hidden") return false;
-  const { map } = state.scene;
+  const { map } = state;
   if (!map) return false;
   const span = CELLS_PER_SIDE[token.size];
   const cell = map.grid.cellSizePx;

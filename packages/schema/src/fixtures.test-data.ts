@@ -4,7 +4,8 @@ import type {
   Combatant,
   FogState,
   InitiativeState,
-  MapSpec,
+  LegacyMap,
+  SceneMap,
   Player,
   Scene,
   Token,
@@ -32,9 +33,8 @@ export const campaign: Campaign = {
 
 const hash = `sha256:${"a".repeat(64)}`;
 
-export const map: MapSpec = {
-  kind: "video",
-  asset: { path: "library/maps/cave.mp4", hash },
+/** A version 2 scene's own copy of its map's grid and levels (now in the sidecar). */
+export const legacyMap: LegacyMap = {
   grid: { cellSizePx: 140, offsetXPx: 12, offsetYPx: 0 },
   levels: [
     { id: "level-1", name: "Erdgeschoss" },
@@ -105,11 +105,18 @@ export const initiative: InitiativeState = {
   combatants: [combatant, playerCharacter],
 };
 
+/** A version 3 scene's reference to `map`; its grid and levels live in the sidecar. */
+export const sceneMap: SceneMap = {
+  kind: "video",
+  asset: { path: "library/maps/cave.mp4", hash },
+  overrides: {},
+};
+
 export const scene: Scene = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   id: "scene-1",
   name: "Mineneingang",
-  map,
+  map: sceneMap,
   tokens: [token],
   fog,
   initiative,

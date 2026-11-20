@@ -23,7 +23,7 @@ const campaign = JSON.stringify({
 
 // A hidden token: the TV must get the scene without it.
 const scene: Scene = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   id: "s",
   name: "Höhle",
   map: null,
@@ -53,8 +53,34 @@ function fakeFeed() {
   return { feed, shown };
 }
 
-function renderScene(files: Record<string, string>, opened: Scene = scene) {
-  const library = fakeLibraryService("/lib", files);
+const hash = `sha256:${"a".repeat(64)}`;
+const HOEHLE = "library/maps/hoehle.png";
+/** The cave map's sidecar: its grid and its one level (ADR-0012). */
+const hoehleSidecar = JSON.stringify({
+  schemaVersion: 1,
+  original: { hash },
+  map: {
+    grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+    levels: [{ id: "ground", name: "Erdgeschoss" }],
+    rooms: [],
+  },
+});
+
+/** A scene with the cave map, for tests outside the block that defines `mapped`. */
+const mappedScene: Scene = {
+  ...scene,
+  tokens: [],
+  map: { kind: "image", asset: { path: HOEHLE, hash }, overrides: {} },
+};
+
+function renderScene(
+  files: Record<string, string | { readonly placeholder: true }>,
+  opened: Scene = scene,
+) {
+  const library = fakeLibraryService("/lib", {
+    [`${HOEHLE}.dm.json`]: hoehleSidecar,
+    ...files,
+  });
   const tv = fakeFeed();
   const maps = fakeMapService(() =>
     Promise.resolve({ width: 1000, height: 500 } as unknown as MapImage),
@@ -67,7 +93,6 @@ function renderScene(files: Record<string, string>, opened: Scene = scene) {
             service={library.service}
             slug="mine"
             scene={opened}
-            newId={() => "id"}
             onChanged={() => undefined}
             onDeleted={() => undefined}
             onClose={() => undefined}
@@ -132,15 +157,7 @@ describe("editing the fog", () => {
   const mapped: Scene = {
     ...scene,
     tokens: [],
-    map: {
-      kind: "image",
-      asset: {
-        path: "library/maps/hoehle.png",
-        hash: `sha256:${"a".repeat(64)}`,
-      },
-      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-      levels: [{ id: "ground", name: "Erdgeschoss" }],
-    },
+    map: { kind: "image", asset: { path: HOEHLE, hash }, overrides: {} },
   };
   const savedFog = (files: ReadonlyMap<string, string>) =>
     (JSON.parse(files.get("campaigns/mine/scenes/s.json") ?? "{}") as Scene)
@@ -286,6 +303,7 @@ describe("editing the fog", () => {
     const library = fakeLibraryService("/lib", {
       "campaigns/mine/campaign.json": campaign,
       "campaigns/mine/scenes/s.json": JSON.stringify(mapped),
+      [`${HOEHLE}.dm.json`]: hoehleSidecar,
     });
     const tv = fakeFeed();
     const maps = fakeMapService(() =>
@@ -320,5 +338,156 @@ describe("editing the fog", () => {
       "disabled",
       false,
     );
+  });
+});
+
+describe("the map's data (ADR-0012, T-134d)", () => {
+  test("a version 2 scene moves its grid and levels into the map's sidecar on opening", async () => {
+    const legacy: Scene = {
+      ...scene,
+      tokens: [],
+      map: {
+        kind: "image",
+        asset: { path: "library/maps/alt.png", hash },
+        overrides: {},
+        legacyMap: {
+          grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },
+          levels: [{ id: "old", name: "Alte Ebene" }],
+        },
+      },
+    };
+    const { library, tv } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      legacy,
+    );
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+        ),
+      ).toMatchObject({ map: { overrides: {} } });
+    });
+    const saved = JSON.parse(
+      library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+    ) as Scene;
+    expect(saved.map?.legacyMap).toBeUndefined();
+    expect(
+      JSON.parse(
+        library.fs.files().get("library/maps/alt.png.dm.json") ?? "{}",
+      ),
+    ).toMatchObject({
+      map: { grid: { cellSizePx: 70 }, levels: [{ id: "old" }] },
+    });
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.map?.currentLevelId).toBe("old");
+    });
+  });
+
+  test("a map whose data is not downloaded yet shows nothing and says so", async () => {
+    const { tv } = renderScene(
+      {
+        "campaigns/mine/campaign.json": campaign,
+        [`${HOEHLE}.dm.json`]: { placeholder: true },
+      },
+      mappedScene,
+    );
+    expect(
+      await screen.findByText(/noch nicht heruntergeladen oder beschädigt/),
+    ).toBeTruthy();
+    await waitFor(() => {
+      expect(tv.shown.at(-1)).toMatchObject({ id: "s", map: null });
+    });
+    expect(
+      screen.queryByRole("button", { name: "Alles aufdecken" }),
+    ).toBeNull();
+  });
+});
+
+describe("hints about the map's data (T-134d)", () => {
+  const files = { "campaigns/mine/campaign.json": campaign };
+
+  test("a scene whose own copy differs from the map's data plays its copy and says so", async () => {
+    const differing: Scene = {
+      ...mappedScene,
+      map: {
+        kind: "image",
+        asset: { path: HOEHLE, hash },
+        overrides: {},
+        legacyMap: {
+          grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+          levels: [{ id: "ground", name: "Taverne" }],
+        },
+      },
+    };
+    const { tv } = renderScene(files, differing);
+    expect(
+      await screen.findByText(/eigenes Raster oder eigene Ebenen/),
+    ).toBeTruthy();
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.map?.levels).toEqual([
+        { id: "ground", name: "Taverne" },
+      ]);
+    });
+  });
+
+  test("a map without data plays one default level, which a map change keeps", async () => {
+    const plain: Scene = {
+      ...mappedScene,
+      map: {
+        kind: "image",
+        asset: { path: "library/maps/leer.png", hash },
+        overrides: {},
+      },
+    };
+    const { tv, library } = renderScene(files, plain);
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.map?.currentLevelId).toBe("level-1");
+    });
+    library.service.importMap.mockResolvedValue({
+      path: "library/maps/neu.png",
+      hash,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Karte übernehmen" }),
+    );
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          library.fs.files().get("library/maps/neu.png.dm.json") ?? "{}",
+        ),
+      ).toMatchObject({ map: { levels: [{ id: "level-1" }] } });
+    });
+  });
+
+  test("a missing sidecar of a map whose scene uses other levels counts as not synced yet", async () => {
+    const used: Scene = {
+      ...mappedScene,
+      map: {
+        kind: "image",
+        asset: { path: "library/maps/leer.png", hash },
+        overrides: {},
+      },
+      fog: { levels: { cellar: { revealed: [], remembered: [] } } },
+    };
+    renderScene(files, used);
+    expect(
+      await screen.findByText(/noch nicht heruntergeladen oder beschädigt/),
+    ).toBeTruthy();
+  });
+
+  test("overrides of elements the map no longer has are pointed out", async () => {
+    const orphaned: Scene = {
+      ...mappedScene,
+      map: {
+        kind: "image",
+        asset: { path: HOEHLE, hash },
+        overrides: { "gone-room": { hidden: true } },
+      },
+    };
+    renderScene(files, orphaned);
+    expect(
+      await screen.findByText(/einem Element, das die Karte nicht mehr hat/),
+    ).toBeTruthy();
   });
 });

@@ -177,11 +177,17 @@ describe("CampaignPanel", () => {
     const saved = JSON.parse(
       library.fs.files().get("campaigns/mine/scenes/new-1.json") ?? "{}",
     ) as { map: unknown };
-    expect(saved.map).toEqual({
-      kind: "image",
-      asset,
-      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-      levels: [{ id: "new-2", name: "Erdgeschoss" }],
+    expect(saved.map).toEqual({ kind: "image", asset, overrides: {} });
+    // Grid and levels belong to the map (ADR-0012).
+    expect(
+      JSON.parse(
+        library.fs.files().get("library/maps/hoehle.webp.dm.json") ?? "{}",
+      ),
+    ).toMatchObject({
+      map: {
+        grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+        levels: [{ id: "level-1", name: "Erdgeschoss" }],
+      },
     });
   });
 
@@ -236,7 +242,7 @@ describe("CampaignPanel", () => {
       JSON.parse(
         library.fs.files().get("campaigns/mine/scenes/a.json") ?? "{}",
       ) as {
-        map: { asset: unknown; levels: unknown; grid: unknown };
+        map: { asset: unknown };
         fog: unknown;
       };
 
@@ -263,11 +269,16 @@ describe("CampaignPanel", () => {
     expect(await screen.findByText("Karte: neu.webp")).toBeTruthy();
     expect(saved().map.asset).toEqual(asset);
     expect(saved().fog).toEqual({ levels: {} });
-    expect(saved().map.levels).toEqual([{ id: "ground", name: "Unten" }]);
-    expect(saved().map.grid).toEqual({
-      cellSizePx: 70,
-      offsetXPx: 0,
-      offsetYPx: 0,
+    // The new map has no data yet: it takes the old map's grid and levels (ADR-0012).
+    expect(
+      JSON.parse(
+        library.fs.files().get("library/maps/neu.webp.dm.json") ?? "{}",
+      ),
+    ).toMatchObject({
+      map: {
+        grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },
+        levels: [{ id: "ground", name: "Unten" }],
+      },
     });
   });
 
@@ -505,7 +516,8 @@ describe("CampaignPanel", () => {
 
     await openScene("Höhle");
     expect(details().getByText("Höhle")).toBeTruthy();
-    expect(details().getByText("70 px pro Feld")).toBeTruthy();
+    // Grid and levels come from the map's data, loaded once the scene is open (ADR-0012).
+    expect(await details().findByText("70 px pro Feld")).toBeTruthy();
     expect(details().getByText("Geöffnet")).toBeTruthy();
 
     fireEvent.click(

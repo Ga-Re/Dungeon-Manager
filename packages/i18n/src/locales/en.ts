@@ -148,6 +148,18 @@ export const en: Messages = {
       apply: "Use this map",
     },
     closeScene: "Close scene",
+    mapData: {
+      notReadable:
+        "This map's data is not downloaded yet or damaged. Try again once your sync service has loaded the file.",
+      unavailable:
+        "This map's data (grid, levels) is not downloaded yet or damaged. The map appears as soon as it can be read.",
+      legacy:
+        "This scene has its own grid or levels that differ from the map's data. It uses its own for now.",
+      orphaned_one:
+        "One adjustment of this scene applies to an element the map no longer has.",
+      orphaned_other:
+        "{{count}} adjustments of this scene apply to elements the map no longer has.",
+    },
     scene: {
       notAvailable: "{{id}} (not downloaded yet)",
       invalid: "{{id}} (cannot be read)",

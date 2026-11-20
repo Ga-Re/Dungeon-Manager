@@ -1,6 +1,6 @@
 // The level switcher (T-118c): the DM works on any level and shows it on the TV separately.
 import type { MapImage } from "@dungeon-manager/renderer";
-import type { Scene, ViewerScene } from "@dungeon-manager/schema";
+import type { Level, Scene, ViewerScene } from "@dungeon-manager/schema";
 import { createI18n } from "@dungeon-manager/ui";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
@@ -23,31 +23,45 @@ const campaign = JSON.stringify({
 const hash = `sha256:${"a".repeat(64)}`;
 
 /** A tower: the ground floor shows the map's image, the cellar its own. */
+const towerLevels: readonly Level[] = [
+  { id: "ground", name: "Erdgeschoss" },
+  {
+    id: "cellar",
+    name: "Keller",
+    asset: { path: "library/maps/keller.png", hash },
+  },
+];
+
 const tower: Scene = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   id: "s",
   name: "Turm",
   map: {
     kind: "image",
     asset: { path: "library/maps/turm.png", hash },
-    grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
-    levels: [
-      { id: "ground", name: "Erdgeschoss" },
-      {
-        id: "cellar",
-        name: "Keller",
-        asset: { path: "library/maps/keller.png", hash },
-      },
-    ],
+    overrides: {},
   },
   tokens: [],
   fog: { levels: {} },
   initiative: null,
 };
 
-function renderScene(opened: Scene) {
+/** The tower's sidecar: grid and levels belong to the map (ADR-0012). */
+const sidecarOf = (levels: readonly Level[]) =>
+  JSON.stringify({
+    schemaVersion: 1,
+    original: { hash },
+    map: {
+      grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
+      levels,
+      rooms: [],
+    },
+  });
+
+function renderScene(opened: Scene, levels: readonly Level[] = towerLevels) {
   const library = fakeLibraryService("/lib", {
     "campaigns/mine/campaign.json": campaign,
+    "library/maps/turm.png.dm.json": sidecarOf(levels),
   });
   const shown: (ViewerScene | null)[] = [];
   const feed: PlayerFeedSender = {
@@ -73,7 +87,6 @@ function renderScene(opened: Scene) {
             service={library.service}
             slug="mine"
             scene={opened}
-            newId={() => "id"}
             onChanged={() => undefined}
             onDeleted={() => undefined}
             onClose={() => undefined}
@@ -118,9 +131,7 @@ const showOnTv = () => screen.getByRole("button", { name: "Auf TV zeigen" });
 
 describe("level switcher", () => {
   test("is hidden while the map has one level", async () => {
-    const map = tower.map;
-    if (!map) throw new Error("the tower has a map");
-    renderScene({ ...tower, map: { ...map, levels: map.levels.slice(0, 1) } });
+    renderScene(tower, towerLevels.slice(0, 1));
     await screen.findByRole("button", { name: "Alles aufdecken" });
     expect(screen.queryByRole("button", { name: "Auf TV zeigen" })).toBeNull();
   });

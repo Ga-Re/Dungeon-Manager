@@ -3,17 +3,23 @@ import {
   SCENE_VERSION,
   SESSION_VERSION,
   type AssetRef,
-  type MapSpec,
+  type Grid,
+  type MapData,
+  type MapKind,
   type Scene,
+  type SceneMap,
+  type SidecarLevel,
   type Session,
 } from "@dungeon-manager/schema";
 import {
   listSessions,
   loadScene,
   loadSession,
+  loadSidecar,
   saveCampaign,
   saveScene,
   saveSession,
+  saveSidecar,
 } from "./documents.js";
 import type { FileSystem } from "./fs.js";
 import {
@@ -81,8 +87,10 @@ export async function createCampaign(
 }
 
 /**
- * Creates and saves a scene, empty or with a map; no tokens, fog or initiative yet.
- * @returns the saved scene. @throws on an empty name or an invalid map
+ * Creates and saves a scene, empty or with a map; no tokens, fog or initiative yet. A map
+ * without map data in its sidecar gets a placeholder grid and one level (`ensureMapData`).
+ * @returns the saved scene. @throws on an empty name, an invalid map or a map whose sidecar is
+ *   not available
  */
 export async function createScene(
   fs: FileSystem,
@@ -90,17 +98,23 @@ export async function createScene(
   scene: {
     readonly id: string;
     readonly name: string;
-    readonly map?: MapSpec | null;
+    /** `levelName`: the translated name of the first level of a map without data. */
+    readonly map?: {
+      readonly asset: AssetRef;
+      readonly levelName: string;
+    } | null;
     /** Makes it a sub-scene of this scene (T-152). */
     readonly parentSceneId?: string | undefined;
   },
 ): Promise<Scene> {
   if (scene.name.trim() === "") throw new Error("A scene needs a name");
+  if (scene.map)
+    await ensureMapData(fs, scene.map.asset, newMapData(scene.map.levelName));
   const created: Scene = {
     schemaVersion: SCENE_VERSION,
     id: scene.id,
     name: scene.name.trim(),
-    map: scene.map ?? null,
+    map: scene.map ? sceneMapOf(scene.map.asset) : null,
     tokens: [],
     fog: { levels: {} },
     initiative: null,
@@ -114,7 +128,10 @@ export async function createScene(
 export interface MapReset {
   /** Cover the whole map again (fog is stored in map pixels). */
   readonly fog?: boolean;
-  /** Back to the placeholder grid, to be calibrated again. */
+  /**
+   * Back to the placeholder grid, to be calibrated again – for a map that has no map data yet
+   * (`mapDataForChange`); a map's own calibration is never reset by a scene (ADR-0012).
+   */
   readonly grid?: boolean;
   /** Remove the tokens, and initiative entries tied to them. */
   readonly tokens?: boolean;
@@ -124,31 +141,44 @@ export interface MapReset {
 const placeholderGrid = () => ({ cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 });
 
 /**
- * The scene with `asset` as its map image. An existing map keeps its levels, and by default its
- * grid, fog and tokens (right for a corrected version of the same map); `reset` clears what no
- * longer fits. A scene without a map gets a single-level map (`newMap`).
+ * The scene with `asset` as its map. Its fog and tokens are kept by default (right for a
+ * corrected version of the same map); `reset` clears what no longer fits. Overrides referred to
+ * the old map's elements and are dropped. The new map's data comes from `mapDataForChange`.
  */
 export function withMap(
   scene: Scene,
   asset: AssetRef,
-  newLevel: { readonly id: string; readonly name: string },
   reset: MapReset = {},
 ): Scene {
-  const map: MapSpec = scene.map
-    ? {
-        ...scene.map,
-        kind: mapKind(asset.path),
-        asset: { path: asset.path, hash: asset.hash },
-        ...(reset.grid === true && { grid: placeholderGrid() }),
-      }
-    : newMap(asset, newLevel);
-  const changed: Scene = { ...scene, map };
+  const changed: Scene = { ...scene, map: sceneMapOf(asset) };
   if (reset.fog === true) changed.fog = { ...scene.fog, levels: {} };
   if (reset.tokens === true) {
     changed.tokens = [];
     changed.initiative = withoutTokenCombatants(scene.initiative);
   }
   return changed;
+}
+
+/**
+ * The map data a new map starts with when a scene changes to it: the old map's levels and, unless
+ * `reset.grid`, its grid – so fog and tokens fit a corrected version of the same map – or a
+ * single new level without an old map. `current` is the old map as the scene played it, defaults
+ * included. Used only if the new map has no data yet.
+ */
+export function mapDataForChange(
+  current: {
+    readonly grid: Grid;
+    readonly levels: readonly SidecarLevel[];
+  } | null,
+  levelName: string,
+  reset: MapReset = {},
+): MapData {
+  if (!current) return newMapData(levelName);
+  return {
+    grid: reset.grid === true ? placeholderGrid() : current.grid,
+    levels: [...current.levels],
+    rooms: [],
+  };
 }
 
 /** The initiative without combatants that stood for a token (their token is gone). */
@@ -184,24 +214,67 @@ function withoutTokenCombatants(
 }
 
 /** Video maps (ADR-0010) by file extension; the import checks the content when copying. */
-export function mapKind(path: string): MapSpec["kind"] {
+export function mapKind(path: string): MapKind {
   return /\.(mp4|webm)$/i.test(path) ? "video" : "image";
 }
 
-/**
- * A single-level map (image or video, by file type) with a placeholder grid (100 px per cell)
- * until it is calibrated (T-106).
- */
-export function newMap(
-  asset: AssetRef,
-  level: { readonly id: string; readonly name: string },
-): MapSpec {
+/** A scene's reference to a map file (scene version 3): image or video by file type. */
+export function sceneMapOf(asset: AssetRef): SceneMap {
   return {
     kind: mapKind(asset.path),
     asset: { path: asset.path, hash: asset.hash },
-    grid: placeholderGrid(),
-    levels: [{ id: level.id, name: level.name }],
+    overrides: {},
   };
+}
+
+/**
+ * The id of the single level of a map without data. Fixed, so fog and tokens on a map played with
+ * defaults still fit once its sidecar is written.
+ */
+export const DEFAULT_LEVEL_ID = "level-1";
+
+/**
+ * A map's data before it is calibrated (T-106): 100 px per cell and a single level, the same the
+ * DM window plays for a map without data (`DEFAULT_LEVEL_ID`).
+ */
+export function newMapData(levelName: string): MapData {
+  return {
+    grid: placeholderGrid(),
+    levels: [{ id: DEFAULT_LEVEL_ID, name: levelName }],
+    rooms: [],
+  };
+}
+
+/** A map's sidecar is not downloaded yet, unreadable or broken, so its data cannot be used. */
+export class MapDataUnavailableError extends Error {
+  constructor(readonly assetPath: string) {
+    super(`The map data of ${assetPath} is not available`);
+    this.name = "MapDataUnavailableError";
+  }
+}
+
+/**
+ * Makes sure a map file has map data in its sidecar (ADR-0012): a missing sidecar, or one without
+ * map data, gets `data`; existing map data is kept, so a map is calibrated once for every scene.
+ * @returns the map data in effect. @throws when the sidecar is not downloaded yet, unreadable or
+ *   broken – it is never overwritten
+ */
+export async function ensureMapData(
+  fs: FileSystem,
+  asset: AssetRef,
+  data: MapData,
+): Promise<MapData> {
+  const loaded = await loadSidecar(fs, asset.path);
+  if (loaded.status === "ok" && loaded.value.map) return loaded.value.map;
+  if (loaded.status !== "ok" && loaded.status !== "missing")
+    throw new MapDataUnavailableError(asset.path);
+  await saveSidecar(fs, asset.path, {
+    ...(loaded.status === "ok"
+      ? loaded.value
+      : { schemaVersion: 1, original: { hash: asset.hash } }),
+    map: data,
+  });
+  return data;
 }
 
 /**
