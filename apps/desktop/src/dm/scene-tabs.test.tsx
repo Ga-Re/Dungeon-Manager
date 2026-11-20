@@ -162,6 +162,13 @@ describe("scene tabs (T-223a)", () => {
     await waitFor(() => {
       expect(document.activeElement).toBe(tab("Gruft"));
     });
+    // Closing a tab that is not shown: the keyboard goes to the shown one.
+    await openScene("Eingang");
+    fireEvent.click(tab("Gruft"));
+    fireEvent.click(screen.getByRole("button", { name: "Eingang schließen" }));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(tab("Gruft"));
+    });
   });
 
   test("a scene is not deleted while one of its sub-scenes is open in another tab", async () => {

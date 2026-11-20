@@ -251,8 +251,16 @@ export function CampaignPanel({
   const focusShownTab = useRef(false);
   /** Takes tabs away; a neighbour shows, and the TV goes dark if its scene went. */
   const closeScenes = (sceneIds: readonly string[]) => {
-    focusShownTab.current = true;
+    if (activeSceneId !== null && !sceneIds.includes(activeSceneId))
+      // The shown tab stays: the keyboard goes to it (the closed tab's ✕ is gone).
+      setTabFocus(activeSceneId);
+    else focusShownTab.current = true;
     setTabs((current) => closeSceneTabs(current, sceneIds));
+    setSaveStates((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([id]) => !sceneIds.includes(id)),
+      ),
+    );
   };
   useEffect(() => {
     // The tree shows the shown scene's live state; another one's is stale.
