@@ -1,4 +1,5 @@
 import {
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -285,9 +286,10 @@ describe("WelcomeDialog", () => {
         .map((each) => each.textContent);
 
     test("with the TV's scene back on the TV after a clean end", async () => {
+      const storage = remembered();
       const { onTv } = renderWelcome(
         fakeLibraryService("/lib", LIBRARY),
-        remembered(),
+        storage,
       );
       fireEvent.click(
         await within(dialog()).findByRole("button", {
@@ -300,6 +302,11 @@ describe("WelcomeDialog", () => {
       expect(tabNames()).toEqual(["Eingang(auf dem TV)", "Zwergenhalle"]);
       await waitFor(() => {
         expect(onTv()).toBe("Eingang");
+      });
+      // Another scene sent to the TV is what the next start puts there.
+      fireEvent.click(screen.getByRole("button", { name: "Szene auf den TV" }));
+      await waitFor(() => {
+        expect(readRecent(storage)[0]).toMatchObject({ tvSceneId: "b" });
       });
     });
 
@@ -328,8 +335,22 @@ describe("WelcomeDialog", () => {
         expect(readRecent(storage)[0]).toMatchObject({
           openSceneIds: ["b"],
           activeSceneId: "b",
+          tvSceneId: null,
         });
       });
+
+      // A clean end with the TV still dark: the next start keeps it dark.
+      cleanup();
+      const next = renderWelcome(fakeLibraryService("/lib", LIBRARY), storage);
+      fireEvent.click(
+        await within(dialog()).findByRole("button", {
+          name: /Die verlorene Mine/,
+        }),
+      );
+      expect(
+        await screen.findByText("Geöffnete Szene: Zwergenhalle"),
+      ).toBeTruthy();
+      expect(next.onTv()).toBeNull();
     });
   });
 });

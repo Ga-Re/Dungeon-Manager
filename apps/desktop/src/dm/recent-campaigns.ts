@@ -15,6 +15,8 @@ export interface RecentCampaign {
   readonly openSceneIds?: readonly string[];
   /** The tab shown last (T-114a). */
   readonly activeSceneId?: string | null;
+  /** The scene on the TV at the end, `null` if it was dark (T-114a); `sceneId` before that. */
+  readonly tvSceneId?: string | null;
   /** When it was last opened (ISO 8601). */
   readonly openedAt: string;
 }
@@ -50,7 +52,8 @@ function isRecent(value: unknown): value is RecentCampaign {
       (Array.isArray(entry["openSceneIds"]) &&
         entry["openSceneIds"].every(isText))) &&
     (entry["activeSceneId"] === undefined ||
-      isTextOrNull(entry["activeSceneId"]))
+      isTextOrNull(entry["activeSceneId"])) &&
+    (entry["tvSceneId"] === undefined || isTextOrNull(entry["tvSceneId"]))
   );
 }
 
@@ -94,6 +97,9 @@ export function recordCampaign(
     ...(previous?.openSceneIds && { openSceneIds: previous.openSceneIds }),
     ...(previous?.activeSceneId !== undefined && {
       activeSceneId: previous.activeSceneId,
+    }),
+    ...(previous?.tvSceneId !== undefined && {
+      tvSceneId: previous.tvSceneId,
     }),
     openedAt: now.toISOString(),
   };
@@ -142,7 +148,11 @@ export function recentIn(
 export function recordTabs(
   list: readonly RecentCampaign[],
   campaign: CampaignRef,
-  tabs: { readonly open: readonly string[]; readonly active: string | null },
+  tabs: {
+    readonly open: readonly string[];
+    readonly active: string | null;
+    readonly tv: string | null;
+  },
   now: Date,
 ): RecentCampaign[] {
   return list.map((entry) =>
@@ -151,6 +161,7 @@ export function recordTabs(
           ...entry,
           openSceneIds: tabs.open,
           activeSceneId: tabs.active,
+          tvSceneId: tabs.tv,
           openedAt: now.toISOString(),
         }
       : entry,

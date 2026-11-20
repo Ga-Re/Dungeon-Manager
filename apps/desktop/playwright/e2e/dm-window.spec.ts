@@ -1022,6 +1022,10 @@ test("after a crash the scene tabs come back and the TV stays dark until the DM 
   await expect(tabIn(next)).toContainText("auf dem TV");
 
   // A clean restart puts the TV's scene back on the TV.
+  // Remembered (an effect after the render) before the window closes.
+  await expect
+    .poll(() => next.evaluate(() => localStorage.getItem("dm.recentCampaigns")))
+    .toContain('"tvSceneId":"e2e-scene"');
   await next.reload();
   await next
     .getByRole("dialog", { name: "Willkommen" })

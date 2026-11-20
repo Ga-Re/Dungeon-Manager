@@ -131,7 +131,7 @@ describe("recent campaigns", () => {
     let list = recordTabs(
       [krypta],
       { root: "/lib", slug: "krypta" },
-      { open: ["a", "b"], active: "b" },
+      { open: ["a", "b"], active: "b", tv: null },
       at(1),
     );
     expect(list[0]).toMatchObject({

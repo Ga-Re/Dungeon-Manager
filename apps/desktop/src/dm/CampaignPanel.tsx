@@ -209,6 +209,8 @@ export function CampaignPanel({
   readonly onTabsChange?: (tabs: {
     readonly open: readonly string[];
     readonly active: string | null;
+    /** On the TV; `null` while it is dark, so a dark TV is not lit by the next start. */
+    readonly tv: string | null;
   }) => void;
   /** Told about each scene that goes on the TV, e.g. to reopen it on the next start. */
   readonly onSceneOpen?: (scene: { id: string; name: string }) => void;
@@ -586,13 +588,12 @@ export function CampaignPanel({
     const remembered = pendingTabs.current;
     if (!remembered || !scenes || !sessionsSettled) return;
     pendingTabs.current = null;
-    const restored = restoreSceneTabs(
-      scenes.flatMap((each) => (each.scene ? [each.scene] : [])),
-      remembered,
-    );
-    const sceneId = restored.active;
-    if (sceneId === null) return;
-    setTabs(restored);
+    const readable = scenes.flatMap((each) => (each.scene ? [each.scene] : []));
+    // Merged into what is open already (the DM may have opened a scene meanwhile).
+    setTabs((current) => restoreSceneTabs(current, readable, remembered));
+    const sceneId = remembered.active ?? remembered.open.at(-1) ?? null;
+    if (sceneId === null || !readable.some((each) => each.id === sceneId))
+      return;
     const slot =
       scenePlaces(sceneHierarchy(scenes), scenes, sessions ?? [], sceneId)[0] ??
       "unsorted";
@@ -615,8 +616,9 @@ export function CampaignPanel({
     tabsChanged.current?.({
       open: openIds === "" ? [] : openIds.split("\n"),
       active: activeSceneId,
+      tv: tvSceneId,
     });
-  }, [openIds, activeSceneId]);
+  }, [openIds, activeSceneId, tvSceneId]);
 
   const sceneOpened = useRef(onSceneOpen);
   useEffect(() => {

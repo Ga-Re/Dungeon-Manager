@@ -485,6 +485,15 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Killing the app mid-session brings back the open tabs, with the TV dark (E2E test with a forced kill: the device storage as at the kill, nothing run on the way out)
 - **Notes:** Split from T-114 (2026-11-20). The tabs are kept per campaign with the recent campaigns (device storage, additive fields). A marker in device storage (`dm.sessionRunning`) is set at start and removed on `pagehide`/`beforeunload`; still set at the next start means the session was killed. If a platform does not fire those events on closing, every start counts as after a crash – the TV then just stays dark, the safe side.
 
+### T-238 Check the clean end of a session in the Tauri app
+
+- **Status:** todo · **Depends on:** T-114a · **Refs:** T-114a
+- T-114a tells a crash from a clean end by a marker cleared on `pagehide`/`beforeunload`. Whether WKWebView/WebView2 fire them when the DM window closes or on Cmd+Q is unverified; if not, every start counts as after a crash (the TV stays dark until the DM sends a scene – the safe side).
+- **Acceptance criteria**
+  - [ ] The DM checks in the real app: close the window (and Cmd+Q), start again – the TV's scene comes back on the TV
+  - [ ] If it does not: a close hook clears the marker (Tauri window close / Rust exit); the needed permission change goes to the DM first
+- **Notes:** From the T-114a review (2026-11-20); DM decision: merge T-114a with the safe fallback and check later.
+
 ### T-114b Rescue copy when a save fails
 
 - **Status:** todo · **Depends on:** T-114a · **Refs:** ARCHITECTURE §5

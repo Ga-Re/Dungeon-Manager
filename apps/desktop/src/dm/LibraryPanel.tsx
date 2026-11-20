@@ -279,7 +279,9 @@ export function LibraryPanel({
             tabs: {
               open,
               active: entry?.activeSceneId ?? sceneId,
-              tv: afterCrash ? null : sceneId,
+              // A TV dark at the end stays dark; entries from before only know `sceneId`.
+              tv: entry?.tvSceneId !== undefined ? entry.tvSceneId : sceneId,
+              afterCrash,
             },
           }
         : null,
