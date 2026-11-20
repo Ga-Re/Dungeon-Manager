@@ -94,7 +94,10 @@ describe("WelcomeDialog", () => {
         name: "Willkommen beim Dungeon Manager",
       }),
     ).toBeTruthy();
-    expect(document.activeElement).toBe(choose);
+    // Focus moves in an effect after the step appears (T-169: never checked synchronously).
+    await waitFor(() => {
+      expect(document.activeElement).toBe(choose);
+    });
 
     fireEvent.click(choose);
     const field = await within(dialog()).findByRole("textbox", {
@@ -103,7 +106,9 @@ describe("WelcomeDialog", () => {
     expect(
       within(dialog()).getByRole("heading", { name: "Erste Kampagne anlegen" }),
     ).toBeTruthy();
-    expect(document.activeElement).toBe(field);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(field);
+    });
 
     fireEvent.change(field, { target: { value: "Neue Welt" } });
     fireEvent.click(
@@ -173,9 +178,11 @@ describe("WelcomeDialog", () => {
     );
 
     expect(within(dialog()).queryByText("Alte Kampagne")).toBeNull();
-    expect(document.activeElement).toBe(
-      within(dialog()).getByRole("heading", { name: "Zuletzt bearbeitet" }),
-    );
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(dialog()).getByRole("heading", { name: "Zuletzt bearbeitet" }),
+      );
+    });
     expect(readRecent(storage).map((each) => each.slug)).toEqual(["mine"]);
   });
 
@@ -192,9 +199,13 @@ describe("WelcomeDialog", () => {
       name: "Andere Kampagne öffnen …",
     });
     fireEvent.click(other);
-    expect(document.activeElement).toBe(
-      within(dialog()).getByRole("heading", { name: "Andere Kampagne öffnen" }),
-    );
+    await waitFor(() => {
+      expect(document.activeElement).toBe(
+        within(dialog()).getByRole("heading", {
+          name: "Andere Kampagne öffnen",
+        }),
+      );
+    });
     fireEvent.click(
       within(dialog()).getByRole("button", { name: "Die verlorene Mine" }),
     );
