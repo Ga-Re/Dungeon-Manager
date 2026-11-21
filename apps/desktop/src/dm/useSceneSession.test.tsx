@@ -1061,7 +1061,7 @@ describe("editing the fog", () => {
           library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
         ) as Scene
       ).initiative?.combatants[0];
-    fireEvent.click(await enabled("Trefferpunkte von Goblin"));
+    fireEvent.click(await enabled(/^Trefferpunkte von Goblin/));
     fireEvent.change(screen.getByLabelText("Aktuell"), {
       target: { value: "7" },
     });
@@ -1073,7 +1073,7 @@ describe("editing the fog", () => {
       expect(goblin()?.hp).toEqual({ current: 7, max: 7, temp: 0 });
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Trefferpunkte von Goblin" }),
+      screen.getByRole("button", { name: /^Trefferpunkte von Goblin/ }),
     );
     fireEvent.change(screen.getByLabelText("Betrag"), {
       target: { value: "3" },
@@ -1098,6 +1098,23 @@ describe("editing the fog", () => {
       ]);
     });
     expect(screen.getByText("Vergiftet (2)")).toBeTruthy();
+    // Temporary HP and removing reach the file too.
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Trefferpunkte von Goblin/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Temporäre TP"), {
+      target: { value: "3" },
+    });
+    fireEvent.submit(screen.getByLabelText("Temporäre TP"));
+    await waitFor(() => {
+      expect(goblin()?.hp?.temp).toBe(3);
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Vergiftet von Goblin entfernen" }),
+    );
+    await waitFor(() => {
+      expect(goblin()?.conditions).toEqual([]);
+    });
   });
 
   test("undo keys are left to text fields", async () => {
@@ -1119,7 +1136,7 @@ describe("editing the fog", () => {
     field.remove();
   });
 
-  const enabled = async (name: string) => {
+  const enabled = async (name: string | RegExp) => {
     const button = await screen.findByRole("button", { name });
     await waitFor(() => {
       expect(button).toHaveProperty("disabled", false);

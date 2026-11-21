@@ -1576,3 +1576,8 @@ button.dm-welcome-campaign:hover {
   display: flex;
   gap: var(--dm-space-1);
 }
+
+.dm-initiative-hp-form {
+  display: grid;
+  gap: var(--dm-space-3);
+}

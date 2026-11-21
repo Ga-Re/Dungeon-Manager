@@ -3,6 +3,7 @@ import type { Combatant } from "@dungeon-manager/schema";
 import { IconButton, Popover } from "@dungeon-manager/ui";
 import { Plus, X } from "lucide-react";
 import {
+  useEffect,
   useId,
   useRef,
   useState,
@@ -59,6 +60,11 @@ export function CombatantStatus({
     setOpen(null);
     back?.focus();
   };
+  const hpText = hp
+    ? hp.temp > 0
+      ? t("initiative.hp.withTemp", hp)
+      : t("initiative.hp.value", hp)
+    : t("initiative.hp.none");
   const conditionName = (type: string) =>
     (CONDITIONS as readonly string[]).includes(type)
       ? t(`initiative.conditions.${type as (typeof CONDITIONS)[number]}`)
@@ -69,18 +75,15 @@ export function CombatantStatus({
         ref={hpButton}
         type="button"
         className="dm-initiative-hp"
-        aria-label={t("initiative.hp.label", { name })}
+        // The name says what the button shows, so screen readers and voice control get the HP.
+        aria-label={t("initiative.hp.labelWithValue", { name, value: hpText })}
         aria-expanded={open === "hp"}
         disabled={busy}
         onClick={() => {
           setOpen((current) => (current === "hp" ? null : "hp"));
         }}
       >
-        {hp
-          ? hp.temp > 0
-            ? t("initiative.hp.withTemp", hp)
-            : t("initiative.hp.value", hp)
-          : t("initiative.hp.none")}
+        {hpText}
       </button>
       <Popover
         open={open === "hp"}
@@ -102,33 +105,38 @@ export function CombatantStatus({
           />
         )}
       </Popover>
-      <ul className="dm-initiative-conditions">
-        {conditions.map((condition) => (
-          <li key={condition.type} className="dm-initiative-condition">
-            {condition.remainingRounds === undefined
-              ? conditionName(condition.type)
-              : t("initiative.conditionRounds", {
-                  name: conditionName(condition.type),
-                  rounds: condition.remainingRounds,
+      {conditions.length > 0 && (
+        <ul className="dm-initiative-conditions">
+          {conditions.map((condition, index) => (
+            <li
+              key={`${condition.type}-${String(index)}`}
+              className="dm-initiative-condition"
+            >
+              {condition.remainingRounds === undefined
+                ? conditionName(condition.type)
+                : t("initiative.conditionRounds", {
+                    name: conditionName(condition.type),
+                    rounds: condition.remainingRounds,
+                  })}
+              <IconButton
+                icon={<X />}
+                label={t("initiative.removeCondition", {
+                  condition: conditionName(condition.type),
+                  name,
                 })}
-            <IconButton
-              icon={<X />}
-              label={t("initiative.removeCondition", {
-                condition: conditionName(condition.type),
-                name,
-              })}
-              disabled={busy}
-              onClick={() => {
-                onCommand({
-                  type: "condition.remove",
-                  combatantId: id,
-                  conditionType: condition.type,
-                });
-              }}
-            />
-          </li>
-        ))}
-      </ul>
+                disabled={busy}
+                onClick={() => {
+                  onCommand({
+                    type: "condition.remove",
+                    combatantId: id,
+                    conditionType: condition.type,
+                  });
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
       <IconButton
         ref={conditionButton}
         icon={<Plus />}
@@ -171,7 +179,7 @@ export function CombatantStatus({
 
 /**
  * HP in place (T-112b): damage or healing by an amount, temporary HP, and the current and
- * maximum HP (which start tracking a combatant without them).
+ * maximum HP (which start tracking a combatant without them). The first field has the focus.
  */
 function HpForm({
   hp,
@@ -184,20 +192,37 @@ function HpForm({
 }) {
   const { t } = useTranslation();
   const id = useId();
+  const first = useRef<HTMLInputElement>(null);
   const [amount, setAmount] = useState("");
   const [temp, setTemp] = useState(hp ? String(hp.temp) : "0");
   const [current, setCurrent] = useState(hp ? String(hp.current) : "");
   const [max, setMax] = useState(hp ? String(hp.max) : "");
+  useEffect(() => {
+    first.current?.focus();
+  }, []);
   const change = (sign: 1 | -1) => {
     const value = wholeNumber(amount);
     if (value === null || value <= 0) return;
     onCommand({ type: "hp.change", combatantId, amount: sign * value });
   };
+  const setTempHp = (event: SyntheticEvent) => {
+    event.preventDefault();
+    const value = wholeNumber(temp);
+    if (value !== null && value >= 0)
+      onCommand({ type: "hp.setTemp", combatantId, temp: value });
+  };
   const setHp = (event: SyntheticEvent) => {
     event.preventDefault();
     const nextCurrent = wholeNumber(current);
     const nextMax = wholeNumber(max);
-    if (nextCurrent === null || nextMax === null) return;
+    // As core: whole numbers, at least 0 current and 1 maximum.
+    if (
+      nextCurrent === null ||
+      nextMax === null ||
+      nextCurrent < 0 ||
+      nextMax < 1
+    )
+      return;
     onCommand({
       type: "hp.set",
       combatantId,
@@ -210,13 +235,17 @@ function HpForm({
     label: string,
     value: string,
     onChange: (text: string) => void,
+    min: number,
+    focus = false,
   ): ReactNode => (
     <label htmlFor={`${id}-${key}`}>
       {label}
       <input
+        ref={focus ? first : undefined}
         id={`${id}-${key}`}
         type="number"
-        min={0}
+        min={min}
+        step={1}
         value={value}
         onChange={(event) => {
           onChange(event.target.value);
@@ -225,44 +254,54 @@ function HpForm({
     </label>
   );
   return (
-    <div className="dm-initiative-form">
+    <div className="dm-initiative-hp-form">
       {hp && (
         <>
-          {field("amount", t("initiative.hp.amount"), amount, setAmount)}
-          <div className="dm-initiative-form-actions">
-            <button
-              type="button"
-              onClick={() => {
-                change(-1);
-              }}
-            >
-              {t("initiative.hp.damage")}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                change(1);
-              }}
-            >
-              {t("initiative.hp.heal")}
-            </button>
+          <div className="dm-initiative-form">
+            {field(
+              "amount",
+              t("initiative.hp.amount"),
+              amount,
+              setAmount,
+              1,
+              true,
+            )}
+            <p className="dm-settings-hint">{t("initiative.hp.amountHint")}</p>
+            <div className="dm-initiative-form-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  change(-1);
+                }}
+              >
+                {t("initiative.hp.damage")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  change(1);
+                }}
+              >
+                {t("initiative.hp.heal")}
+              </button>
+            </div>
           </div>
-          {field("temp", t("initiative.hp.temp"), temp, setTemp)}
-          <button
-            type="button"
-            onClick={() => {
-              const value = wholeNumber(temp);
-              if (value !== null && value >= 0)
-                onCommand({ type: "hp.setTemp", combatantId, temp: value });
-            }}
-          >
-            {t("initiative.hp.setTemp")}
-          </button>
+          <form className="dm-initiative-form" onSubmit={setTempHp}>
+            {field("temp", t("initiative.hp.temp"), temp, setTemp, 0)}
+            <button type="submit">{t("initiative.hp.setTemp")}</button>
+          </form>
         </>
       )}
       <form className="dm-initiative-form" onSubmit={setHp}>
-        {field("current", t("initiative.hp.current"), current, setCurrent)}
-        {field("max", t("initiative.hp.max"), max, setMax)}
+        {field(
+          "current",
+          t("initiative.hp.current"),
+          current,
+          setCurrent,
+          0,
+          !hp,
+        )}
+        {field("max", t("initiative.hp.max"), max, setMax, 1)}
         <button type="submit">
           {hp ? t("initiative.hp.correct") : t("initiative.hp.track")}
         </button>
@@ -283,6 +322,10 @@ function ConditionForm({
   const id = useId();
   const [type, setType] = useState<string>(CONDITIONS[0]);
   const [rounds, setRounds] = useState("");
+  const select = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    select.current?.focus();
+  }, []);
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
     const value = wholeNumber(rounds);
@@ -294,6 +337,7 @@ function ConditionForm({
       <label htmlFor={`${id}-type`}>
         {t("initiative.condition")}
         <select
+          ref={select}
           id={`${id}-type`}
           value={type}
           onChange={(event) => {

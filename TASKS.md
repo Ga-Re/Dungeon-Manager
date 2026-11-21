@@ -421,6 +421,14 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Tiny tokens on a cell are never drawn over a free Tiny token's disc (unit test)
 - **Notes:** From the T-242 review (2026-11-21).
 
+### T-244 Exhaustion levels
+
+- **Status:** todo · **Depends on:** T-112b · **Refs:** SPEC 11
+- 5e exhaustion has levels (1–6) with growing effects; T-112b treats it as a plain condition (with or without rounds). Track its level on the combatant and show it in the Initiative panel.
+- **Acceptance criteria**
+  - [ ] Exhaustion is set and changed by level (component test)
+- **Notes:** From the T-112b review (2026-11-21).
+
 ### T-106c Move the TV's view
 
 - **Status:** done · **Depends on:** T-106a · **Refs:** SPEC 2.2

@@ -34,7 +34,7 @@ describe("CombatantStatus", () => {
   test("shows HP with temporary ones and the conditions with their rounds", () => {
     renderStatus(goblin);
     expect(
-      screen.getByRole("button", { name: "Trefferpunkte von Goblin" })
+      screen.getByRole("button", { name: /^Trefferpunkte von Goblin/ })
         .textContent,
     ).toBe("5/7 TP (+2)");
     expect(
@@ -48,7 +48,7 @@ describe("CombatantStatus", () => {
     const onCommand = renderStatus(goblin);
     const open = () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "Trefferpunkte von Goblin" }),
+        screen.getByRole("button", { name: /^Trefferpunkte von Goblin/ }),
       );
     };
     open();
@@ -96,7 +96,7 @@ describe("CombatantStatus", () => {
       conditions: [],
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Trefferpunkte von Goblin" }),
+      screen.getByRole("button", { name: /^Trefferpunkte von Goblin/ }),
     );
     expect(screen.queryByRole("button", { name: "Schaden" })).toBeNull();
     fireEvent.change(screen.getByLabelText("Aktuell"), {
@@ -152,5 +152,65 @@ describe("CombatantStatus", () => {
       combatantId: "goblin",
       conditionType: "poisoned",
     });
+  });
+
+  test("HP are corrected; without temporary HP or HP at all the button says so", () => {
+    const onCommand = renderStatus({
+      ...goblin,
+      hp: { current: 5, max: 7, temp: 0 },
+    });
+    const button = screen.getByRole("button", {
+      name: "Trefferpunkte von Goblin: 5/7 TP",
+    });
+    fireEvent.click(button);
+    // The amount has the focus.
+    expect(document.activeElement).toBe(screen.getByLabelText("Betrag"));
+    fireEvent.change(screen.getByLabelText("Maximum"), {
+      target: { value: "0" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Übernehmen" }));
+    // A maximum of 0 is refused before it is sent.
+    expect(onCommand).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Maximum"), {
+      target: { value: "9" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Übernehmen" }));
+    expect(onCommand).toHaveBeenCalledExactlyOnceWith({
+      type: "hp.set",
+      combatantId: "goblin",
+      current: 5,
+      max: 9,
+    });
+    // Focus is back on the HP button.
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: /^Trefferpunkte von Goblin/ }),
+    );
+  });
+
+  test("temporary HP are set with Enter; without HP the button says they are not tracked", () => {
+    const onCommand = renderStatus(goblin);
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Trefferpunkte von Goblin/ }),
+    );
+    const temp = screen.getByLabelText("Temporäre TP");
+    fireEvent.change(temp, { target: { value: "4" } });
+    fireEvent.submit(temp);
+    expect(onCommand).toHaveBeenCalledExactlyOnceWith({
+      type: "hp.setTemp",
+      combatantId: "goblin",
+      temp: 4,
+    });
+  });
+});
+
+describe("CombatantStatus without HP", () => {
+  test("says HP are not tracked and shows no empty condition list", () => {
+    renderStatus({ ...goblin, hp: undefined, conditions: [] });
+    expect(
+      screen.getByRole("button", {
+        name: "Trefferpunkte von Goblin: TP nicht verfolgt",
+      }),
+    ).toBeTruthy();
+    expect(document.querySelector(".dm-initiative-conditions")).toBeNull();
   });
 });
