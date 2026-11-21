@@ -9,6 +9,7 @@ export function fakeRenderer(cameras: Camera[] = []) {
     setVideo: vi.fn<Renderer["setVideo"]>(),
     setFog: vi.fn<Renderer["setFog"]>(),
     setGrid: vi.fn<Renderer["setGrid"]>(),
+    setTokens: vi.fn<Renderer["setTokens"]>(),
     setCamera: vi.fn((camera: Camera) => {
       cameras.push(camera);
     }),

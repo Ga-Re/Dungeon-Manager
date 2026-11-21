@@ -1,4 +1,9 @@
-import type { Footprint, GridCell, TokenSize } from "@dungeon-manager/schema";
+import type {
+  Footprint,
+  Grid,
+  GridCell,
+  TokenSize,
+} from "@dungeon-manager/schema";
 
 // The cells a token covers on the grid (T-180a) and whether it may stand somewhere (T-233, SPEC
 // §5): one token per cell; up to four Tiny ones share a cell; a larger token claims every cell
@@ -57,19 +62,121 @@ export interface Occupant {
   readonly footprint: GridFootprint;
 }
 
+/** How much of each cell `others` take (T-233's load: a Tiny token a quarter, others all). */
+function cellLoads(others: readonly Occupant[]): Map<string, number> {
+  const load = new Map<string, number>();
+  for (const other of others)
+    for (const cell of occupiedCells(other.position, other.footprint))
+      load.set(key(cell), (load.get(key(cell)) ?? 0) + other.footprint.share);
+  return load;
+}
+
+const key = (cell: GridCell) => `${String(cell.col)},${String(cell.row)}`;
+
+const fits = (
+  load: ReadonlyMap<string, number>,
+  position: GridCell,
+  footprint: GridFootprint,
+) =>
+  // Shares are quarters or wholes: compared with a small tolerance, never exactly.
+  occupiedCells(position, footprint).every(
+    (cell) => (load.get(key(cell)) ?? 0) + footprint.share <= 1 + 1e-9,
+  );
+
 /** Whether a token with `footprint` may stand at `position` next to `others` (T-233). */
 export function canOccupy(
   others: readonly Occupant[],
   position: GridCell,
   footprint: GridFootprint,
 ): boolean {
-  const load = new Map<string, number>();
-  const key = (cell: GridCell) => `${String(cell.col)},${String(cell.row)}`;
-  for (const other of others)
-    for (const cell of occupiedCells(other.position, other.footprint))
-      load.set(key(cell), (load.get(key(cell)) ?? 0) + other.footprint.share);
-  // Shares are quarters or wholes: compared with a small tolerance, never exactly.
-  return occupiedCells(position, footprint).every(
-    (cell) => (load.get(key(cell)) ?? 0) + footprint.share <= 1 + 1e-9,
-  );
+  return fits(cellLoads(others), position, footprint);
+}
+
+/**
+ * The free cell nearest to `wanted` where a token with `footprint` fits completely inside the
+ * map (`bounds` in cells); `null` if none (T-107a, and T-233's snap). Nearest by rings of cells
+ * around it (the grid distance of D&D 5e); within a ring, the closest in a straight line.
+ */
+export function nearestFreeCell(
+  wanted: GridCell,
+  footprint: GridFootprint,
+  others: readonly Occupant[],
+  bounds: CellBounds,
+): GridCell | null {
+  const minCol = bounds.firstCol ?? 0;
+  const minRow = bounds.firstRow ?? 0;
+  const maxCol = bounds.cols - footprint.cols;
+  const maxRow = bounds.rows - footprint.rows;
+  if (maxCol < minCol || maxRow < minRow) return null;
+  const start = {
+    col: Math.min(Math.max(wanted.col, minCol), maxCol),
+    row: Math.min(Math.max(wanted.row, minRow), maxRow),
+  };
+  // The loads once, not for every candidate.
+  const load = cellLoads(others);
+  const reach = Math.max(maxCol, maxRow);
+  for (let ring = 0; ring <= reach; ring++) {
+    // Only the ring's edge: its top and bottom rows, then its left and right columns.
+    const edge: GridCell[] = [];
+    for (let col = start.col - ring; col <= start.col + ring; col++) {
+      edge.push({ col, row: start.row - ring });
+      if (ring > 0) edge.push({ col, row: start.row + ring });
+    }
+    for (let row = start.row - ring + 1; row <= start.row + ring - 1; row++) {
+      edge.push({ col: start.col - ring, row });
+      edge.push({ col: start.col + ring, row });
+    }
+    const free = edge.filter(
+      ({ col, row }) =>
+        col >= minCol &&
+        row >= minRow &&
+        col <= maxCol &&
+        row <= maxRow &&
+        fits(load, { col, row }, footprint),
+    );
+    const distance = ({ col, row }: GridCell) =>
+      Math.hypot(col - start.col, row - start.row);
+    const [best] = free.sort((a, b) => distance(a) - distance(b));
+    if (best) return best;
+  }
+  return null;
+}
+
+/**
+ * Whole cells of a map, as grid coordinates: `firstCol`/`firstRow` up to (not including)
+ * `cols`/`rows`. Cells are counted from the grid's offset; a cell cut by the map's edge is not
+ * one (a token there would hang off the map).
+ */
+export interface CellBounds {
+  readonly firstCol?: number;
+  readonly firstRow?: number;
+  readonly cols: number;
+  readonly rows: number;
+}
+
+/** The whole cells of a map of `size` map pixels on `grid` (T-107a). */
+export function gridBounds(
+  size: { readonly width: number; readonly height: number },
+  grid: Grid,
+): Required<CellBounds> {
+  const cell = grid.cellSizePx;
+  if (!(cell > 0)) return { firstCol: 0, firstRow: 0, cols: 0, rows: 0 };
+  return {
+    // Grid cells are never negative (the scene file allows none).
+    firstCol: Math.max(0, Math.ceil(-grid.offsetXPx / cell)),
+    firstRow: Math.max(0, Math.ceil(-grid.offsetYPx / cell)),
+    cols: Math.floor((size.width - grid.offsetXPx) / cell),
+    rows: Math.floor((size.height - grid.offsetYPx) / cell),
+  };
+}
+
+/** The cell in the middle of `bounds` for a footprint (where new tokens go first). */
+export function middleCell(
+  bounds: Required<CellBounds>,
+  footprint: GridFootprint,
+): GridCell {
+  return {
+    col: Math.floor((bounds.firstCol + bounds.cols - footprint.cols) / 2),
+    row: Math.floor((bounds.firstRow + bounds.rows - footprint.rows) / 2),
+  };
 }

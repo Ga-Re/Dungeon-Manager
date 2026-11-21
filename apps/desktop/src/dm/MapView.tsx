@@ -9,6 +9,7 @@ import {
   type Point,
   type Renderer,
   type Size,
+  type TokenShape,
 } from "@dungeon-manager/renderer";
 import {
   createContext,
@@ -62,6 +63,8 @@ type Drawing =
     }
   | { readonly kind: "brush"; readonly points: readonly Point[] };
 
+const NO_TOKENS: readonly TokenShape[] = [];
+
 /** A map with zoom (wheel, +/−), pan (drag, arrow keys), rotation and "fit" (DM window). */
 export function MapView({
   path,
@@ -78,6 +81,7 @@ export function MapView({
   onMapSize,
   grid = null,
   tvFrame = null,
+  tokens = NO_TOKENS,
 }: {
   readonly path: string;
   /** Video maps play in a `<video>` under the canvas (ADR-0010). */
@@ -101,6 +105,8 @@ export function MapView({
   readonly onMapSize?: (size: Size) => void;
   /** The map's grid (sidecar calibration); its lines can be shown in this view (T-106b). */
   readonly grid?: GridCalibration | null;
+  /** The tokens on the level shown, in map pixels (T-107a). */
+  readonly tokens?: readonly TokenShape[];
   /** The calibrated TV's view on this map (T-106c): shown as a frame the DM moves. */
   readonly tvFrame?: {
     readonly area: Size;
@@ -199,6 +205,7 @@ export function MapView({
         view.resize(current);
         view.setFog(fogNow.current, fogOptionsNow.current);
         view.setGrid(gridNow.current);
+        view.setTokens(tokensNow.current);
         let imageSize: Size;
         if (loaded instanceof HTMLVideoElement) {
           canvas.before(loaded);
@@ -253,6 +260,12 @@ export function MapView({
   useEffect(() => {
     if (camera) renderer.current?.setCamera(camera);
   }, [camera]);
+
+  const tokensNow = useRef(tokens);
+  tokensNow.current = tokens;
+  useEffect(() => {
+    renderer.current?.setTokens(tokens);
+  }, [tokens]);
 
   const gridCell = grid?.cellSizePx;
   const gridX = grid?.offsetXPx;

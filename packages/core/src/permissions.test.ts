@@ -21,6 +21,17 @@ const owned: SessionState = {
 
 const everyCommand: Command[] = [
   { type: "token.move", tokenId: "token-aria", to: { col: 3, row: 3 } },
+  {
+    type: "token.add",
+    token: {
+      id: "token-new",
+      name: "Neu",
+      size: "medium",
+      position: { col: 3, row: 3 },
+      levelId: "ground",
+    },
+  },
+  { type: "token.remove", tokenId: "token-aria" },
   { type: "fog.reveal", levelId: "ground", area: square(0, 0, 10) },
   {
     type: "fog.hide",

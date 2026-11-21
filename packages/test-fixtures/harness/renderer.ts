@@ -306,7 +306,10 @@ async function main() {
   // "-grid" (T-106b): the fixture map's grid lines, 100 px cells shifted by half a cell to the
   // right, so the test shows that offsets are followed.
   const withGrid = scenario.includes("grid");
-  const base = scenario.replace(/^grid-?|-grid/, "");
+  // "-tokens" (T-107a): placeholder tokens of every kind – a name, two words with a number, a
+  // large one, a Tiny one, one without a visible name – one of them in the fog.
+  const withTokens = scenario.includes("tokens");
+  const base = scenario.replace(/^(grid|tokens)-?|-(grid|tokens)/, "");
   // The player view always gets its fog with (never after) the map.
   const fog = fogFor(base);
   if (fog)
@@ -317,6 +320,16 @@ async function main() {
   renderer.setMap(drawFixtureMap());
   if (withGrid)
     renderer.setGrid({ cellSizePx: 100, offsetXPx: 50, offsetYPx: 0 });
+  if (withTokens)
+    renderer.setTokens([
+      { id: "aria", name: "Aria", x: 200, y: 200, width: 100, height: 100 },
+      { id: "g12", name: "Goblin 12", x: 300, y: 200, width: 100, height: 100 },
+      { id: "ogre", name: "Oger", x: 1100, y: 200, width: 200, height: 200 },
+      { id: "rat", name: "Ratte", x: 225, y: 325, width: 50, height: 50 },
+      { id: "unnamed", x: 400, y: 300, width: 100, height: 100 },
+      // In the fog of the player scenarios: covered there.
+      { id: "hidden", name: "Späher", x: 700, y: 600, width: 100, height: 100 },
+    ]);
   renderer.setCamera(
     cameraFor(
       base.replace(/^(player-nested|player|dm-fog)-?/, "").replace("soft", ""),

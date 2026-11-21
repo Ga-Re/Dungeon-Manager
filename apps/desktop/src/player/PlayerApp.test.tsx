@@ -196,6 +196,41 @@ describe("PlayerApp", () => {
     });
   });
 
+  test("draws the projected tokens of the level on the TV, none without a scene (T-107a)", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const scene = {
+      ...sceneWith("library/maps/a.png"),
+      tokens: [
+        {
+          id: "t1",
+          name: "Aria",
+          size: "medium" as const,
+          position: { col: 1, row: 0 },
+          levelId: "ground",
+        },
+        {
+          id: "t2",
+          size: "medium" as const,
+          position: { col: 3, row: 0 },
+          levelId: "cellar",
+        },
+      ],
+    };
+    feed.send({ v: 1, scene, rotation: 0 });
+    await waitFor(() => {
+      expect(maps.view.setTokens).toHaveBeenLastCalledWith([
+        { id: "t1", name: "Aria", x: 100, y: 0, width: 100, height: 100 },
+      ]);
+    });
+    feed.send({ v: 1, scene: null, rotation: 0 });
+    await waitFor(() => {
+      expect(maps.view.setTokens).toHaveBeenLastCalledWith([]);
+    });
+  });
+
   test("removes the old map at once when the scene changes or closes", async () => {
     const { maps, feed } = renderPlayer();
     await waitFor(() => {
