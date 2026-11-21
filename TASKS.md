@@ -391,11 +391,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-240 Fix strokeArea for a self-crossing stroke (flaky property test)
 
-- **Status:** todo · **Depends on:** – · **Refs:** T-108b
+- **Status:** done · **Depends on:** – · **Refs:** T-108b
 - The property "every stroke point lies inside" in `packages/core/src/shapes.test.ts` fails now and then: fast-check finds `[[[-176,0],[-144,12],[184,22],[311,-270],[-136,-254],[347,422],[0,-95]],7]` (seed -443103766), so CI can fail at random.
 - **Acceptance criteria**
-  - [ ] The counterexample is a regression test and passes; the property stays as it is (not weakened)
-- **Notes:** Found by the reviewer subagent during T-233a (2026-11-21).
+  - [x] The counterexample is a regression test and passes; the property stays as it is (not weakened)
+- **Notes:** Found by the reviewer subagent during T-233a (2026-11-21). Cause: on the finest snap grid polyclip-ts silently returned one polygon without the stroke's start; `strokeArea` now only takes a result that contains every point of the stroke and otherwise tries the next, coarser grid (a 1/256 step added).
 
 ### T-241 Custom creature footprints in combat's snap and token placement
 

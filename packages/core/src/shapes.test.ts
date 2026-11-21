@@ -193,6 +193,23 @@ describe("strokeArea", () => {
       expect(stroke && isInside([stroke], [x, y])).toBe(true);
   });
 
+  test("a self-crossing stroke keeps its start (T-240: polyclip silently dropped it)", () => {
+    // Found by fast-check (seed -443103766): the finest grid lost the first two points.
+    const points: [number, number][] = [
+      [-176, 0],
+      [-144, 12],
+      [184, 22],
+      [311, -270],
+      [-136, -254],
+      [347, 422],
+      [0, -95],
+    ];
+    const stroke = strokeArea(points, 7);
+    expect(stroke).not.toBeNull();
+    for (const [x, y] of points)
+      expect(stroke && isInside([stroke], [x, y])).toBe(true);
+  });
+
   test("property: every stroke point lies inside, and points far away do not", () => {
     const point = fc.tuple(
       fc.integer({ min: -500, max: 500 }),
