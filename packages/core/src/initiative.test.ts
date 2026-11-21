@@ -556,14 +556,14 @@ describe("HP and conditions (T-112a)", () => {
     current = run(
       current,
       { type: "hp.setTemp", combatantId: "goblin", temp: 3 },
-      { type: "hp.change", combatantId: "goblin", amount: -5 },
+      { type: "hp.change", combatantId: "goblin", amount: -2 },
       { type: "hp.set", combatantId: "goblin", current: 4, max: 9 },
     );
-    // Temporary HP stay when HP are corrected.
+    // The hit of 2 took 2 of the 3 temporary HP; the one left stays when HP are corrected.
     expect(combatant(current, "goblin")?.hp).toEqual({
       current: 4,
       max: 9,
-      temp: 0,
+      temp: 1,
     });
     for (const [currentHp, max] of [
       [-1, 7],
@@ -584,5 +584,36 @@ describe("HP and conditions (T-112a)", () => {
         ctx,
       ),
     ).toEqual({ ok: false, reason: "noInitiative" });
+  });
+
+  test("conditions before the start stay; removing the last one in a round counts once", () => {
+    const poisoned = {
+      type: "condition.add" as const,
+      combatantId: "goblin",
+      condition: { type: "poisoned ", remainingRounds: 2 },
+    };
+    let current = run(
+      state,
+      { type: "initiative.addMany", combatants: two },
+      poisoned,
+      { type: "initiative.start", bounds },
+    );
+    // Stored without spaces; the start (round 0 → 1) counts nothing.
+    expect(combatant(current, "goblin")?.conditions).toEqual([
+      { type: "poisoned", remainingRounds: 2 },
+    ]);
+    // Goblin's turn; removing aria first, then the active last one wraps into round 2.
+    current = run(
+      current,
+      { type: "initiative.add", combatant: fighter("rat", 1) },
+      { type: "initiative.next" },
+      { type: "initiative.next" },
+    );
+    expect(active(current)).toBe("rat");
+    current = run(current, { type: "initiative.remove", combatantId: "rat" });
+    expect(current.scene.initiative?.round).toBe(2);
+    expect(combatant(current, "goblin")?.conditions).toEqual([
+      { type: "poisoned", remainingRounds: 1 },
+    ]);
   });
 });

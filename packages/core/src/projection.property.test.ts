@@ -457,6 +457,38 @@ const command: fc.Arbitrary<Command> = fc.oneof(
   { arbitrary: move, weight: 4 },
   { arbitrary: tokenAdded, weight: 2 },
   { arbitrary: tokenRemoved, weight: 1 },
+  // HP and conditions (T-112a): hp.set reports HP like a hit; conditions change the state only.
+  {
+    arbitrary: fc
+      .record({
+        i: index,
+        current: fc.integer({ min: 0, max: 20 }),
+        max: fc.integer({ min: 1, max: 20 }),
+      })
+      .map(({ i, current, max }): Command => ({
+        type: "hp.set",
+        combatantId: `fighter-${String(i)}`,
+        current,
+        max,
+      })),
+    weight: 1,
+  },
+  {
+    arbitrary: fc
+      .record({
+        i: index,
+        rounds: fc.option(fc.integer({ min: 1, max: 3 }), { nil: undefined }),
+      })
+      .map(({ i, rounds }): Command => ({
+        type: "condition.add",
+        combatantId: `fighter-${String(i)}`,
+        condition: {
+          type: "poisoned",
+          ...(rounds !== undefined && { remainingRounds: rounds }),
+        },
+      })),
+    weight: 1,
+  },
   // Combat's snap moves hidden tokens too: their new cells must not leak (T-233).
   {
     arbitrary: fc.constantFrom<Command>(

@@ -602,6 +602,7 @@ function applyChange(state: SessionState, command: Command): Change {
         current < 0
       )
         return "invalidAmount";
+      // HP above the maximum stay possible, as with healing (e.g. after a lowered maximum).
       return updateCombatant(state, command.combatantId, (combatant) => ({
         combatant: {
           ...combatant,
@@ -625,14 +626,14 @@ function applyChange(state: SessionState, command: Command): Change {
         (rounds !== undefined && (!Number.isInteger(rounds) || rounds <= 0))
       )
         return "invalidAmount";
+      // Kept without surrounding spaces, so "poisoned " replaces "poisoned".
+      const added = { ...condition, type: condition.type.trim() };
       return updateCombatant(state, command.combatantId, (combatant) => ({
         combatant: {
           ...combatant,
           conditions: [
-            ...combatant.conditions.filter(
-              (each) => each.type !== condition.type,
-            ),
-            condition,
+            ...combatant.conditions.filter((each) => each.type !== added.type),
+            added,
           ],
         },
         events: [{ type: "initiative.changed" }],
