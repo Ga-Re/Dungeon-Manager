@@ -29,7 +29,7 @@ import {
   type MapReset,
   withMap,
 } from "@dungeon-manager/storage";
-import { IconButton, Popover, RibbonGroup } from "@dungeon-manager/ui";
+import { IconButton, Menu, Popover, RibbonGroup } from "@dungeon-manager/ui";
 import { EyeOff, ImagePlus, Swords, Trash2, Tv, UserPlus } from "lucide-react";
 import {
   useContext,
@@ -81,6 +81,8 @@ const rectangle = (size: Size): Polygon => ({
 /** One shared empty list, so an unrevealed level does not rebuild the fog on every render. */
 const NOTHING_REVEALED: readonly Polygon[] = [];
 const NOTHING_SELECTED: ReadonlySet<string> = new Set();
+/** The grid modes a scene can have (T-233d), in the Raster menu's order. */
+const GRID_MODES = ["grid", "gridInCombat", "free"] as const;
 
 /** Undo/redo keys, unless the DM is typing in a field (where they edit the text). */
 function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
@@ -341,7 +343,21 @@ export function OpenScenePanel({
           gridBounds(mapSize, map.grid),
         )
       : { col: 0, row: 0 };
-  const moveTokens = (ids: readonly string[], shift: GridCell) => {
+  // How tokens move (T-233d): the scene's grid mode, else the campaign's, else free outside
+  // combat and on cells in it.
+  const gridMode = scene.gridMode ?? session.campaignGridMode ?? "gridInCombat";
+  // What "as the campaign" means right now, for the Raster menu.
+  const asCampaign = t("gridMode.asCampaign", {
+    mode: t(`gridMode.modes.${session.campaignGridMode ?? "gridInCombat"}`),
+  });
+  const movesFreely =
+    gridMode === "free" ||
+    (gridMode === "gridInCombat" && scene.combat !== true);
+  const moveTokens = (
+    ids: readonly string[],
+    shift: GridCell,
+    free = false,
+  ) => {
     const moving = scene.tokens.filter((token) => ids.includes(token.id));
     const clamped = clampShift(ids, shift);
     if (moving.length === 0 || (clamped.col === 0 && clamped.row === 0)) return;
@@ -357,6 +373,8 @@ export function OpenScenePanel({
       // Onto cells, never an occupied one (T-233c): a taken cell sends a token to the nearest
       // free one.
       ...(map && mapSize && { bounds: gridBounds(mapSize, map.grid) }),
+      // Placed as they are, pushed off others just far enough (T-233d).
+      ...(free && { free: true }),
     });
     if (!moved) setError(t("token.notMoved"));
   };
@@ -371,6 +389,7 @@ export function OpenScenePanel({
         selected,
         onSelect: setSelection,
         onMove: moveTokens,
+        free: movesFreely,
         clampShift,
         onDelete: deleteTokens,
       };
@@ -740,6 +759,38 @@ export function OpenScenePanel({
               editLevels((data) => renameLevel(data, levelId, name))
             }
           />
+        )}
+        {/* The scene's grid mode (T-233d): how tokens move, in and out of combat. */}
+        {map && (
+          <RibbonGroup caption={t("gridMode.group")}>
+            <Menu
+              label={
+                scene.gridMode === undefined
+                  ? asCampaign
+                  : t(`gridMode.modes.${scene.gridMode}`)
+              }
+              menuLabel={t("gridMode.pick")}
+              items={[
+                {
+                  id: "campaign",
+                  label: asCampaign,
+                  checked: scene.gridMode === undefined,
+                },
+                ...GRID_MODES.map((mode) => ({
+                  id: mode,
+                  label: t(`gridMode.modes.${mode}`),
+                  checked: scene.gridMode === mode,
+                })),
+              ]}
+              onSelect={(id) => {
+                if (busy) return;
+                session.run({
+                  type: "scene.setGridMode",
+                  gridMode: GRID_MODES.find((mode) => mode === id) ?? null,
+                });
+              }}
+            />
+          </RibbonGroup>
         )}
         {/* Combat (T-233b): in play only; starting it snaps every token onto a free cell. */}
         {inGame && map && mapSize && (

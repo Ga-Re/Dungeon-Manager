@@ -336,6 +336,8 @@ describe("editing the fog", () => {
   test("the DM selects tokens on the map, moves them as one step, hides them on the TV and deletes them (T-107b)", async () => {
     const twoTokens: Scene = {
       ...mapped,
+      // On the grid: moves go by whole cells.
+      gridMode: "grid",
       tokens: [
         {
           id: "goblin",
@@ -532,6 +534,7 @@ describe("editing the fog", () => {
   test("a token moved onto another goes to the nearest free cell (T-233c)", async () => {
     const two: Scene = {
       ...mapped,
+      gridMode: "grid",
       tokens: [
         {
           id: "goblin",
@@ -576,6 +579,137 @@ describe("editing the fog", () => {
         ),
       ).toBe(1);
     });
+  });
+
+  test("tokens move freely outside combat by default, on cells in combat or on the grid (T-233d)", async () => {
+    const one: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "goblin",
+          name: "Goblin",
+          size: "medium",
+          position: { col: 1, row: 1 },
+          levelId: "ground",
+        },
+      ],
+    };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      one,
+    );
+    const saved = () =>
+      JSON.parse(
+        library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+      ) as Scene;
+    const map = await screen.findByRole("application", { name: /Höhle/ });
+    await enabled("Alles aufdecken");
+    // Screen pixels are map pixels; a drag 1.4 cells right of the Goblin's centre.
+    const drag = (fromX: number, toX: number) => {
+      fireEvent.pointerDown(map, {
+        clientX: fromX,
+        clientY: 150,
+        pointerId: 1,
+      });
+      fireEvent.pointerMove(map, {
+        clientX: fromX + 20,
+        clientY: 150,
+        pointerId: 1,
+      });
+      fireEvent.pointerMove(map, { clientX: toX, clientY: 150, pointerId: 1 });
+      fireEvent.pointerUp(map, { clientX: toX, clientY: 150, pointerId: 1 });
+    };
+    drag(150, 290);
+    await waitFor(() => {
+      expect(saved().tokens[0]?.position).toEqual({ col: 2.4, row: 1 });
+    });
+
+    // "Immer Raster": the next drag ends on a whole cell.
+    fireEvent.click(screen.getByRole("button", { name: /Wie Kampagne/ }));
+    fireEvent.click(
+      screen.getByRole("menuitemradio", { name: "Immer Raster" }),
+    );
+    await waitFor(() => {
+      expect(saved().gridMode).toBe("grid");
+    });
+    drag(290, 400);
+    await waitFor(() => {
+      expect(saved().tokens[0]?.position).toEqual({ col: 3, row: 1 });
+    });
+  });
+
+  test('in combat tokens move onto cells by default, freely with Alt or in "Immer frei" (T-233d)', async () => {
+    const one: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "goblin",
+          name: "Goblin",
+          size: "medium",
+          position: { col: 1, row: 1 },
+          levelId: "ground",
+        },
+      ],
+    };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      one,
+    );
+    const saved = () =>
+      JSON.parse(
+        library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+      ) as Scene;
+    const map = await screen.findByRole("application", { name: /Höhle/ });
+    fireEvent.click(await enabled("Kampf"));
+    await waitFor(() => {
+      expect(saved().combat).toBe(true);
+    });
+    // Screen pixels are map pixels; the Goblin's centre is at (150, 150).
+    const drag = (fromX: number, toX: number, altKey = false) => {
+      fireEvent.pointerDown(map, {
+        clientX: fromX,
+        clientY: 150,
+        pointerId: 1,
+        altKey,
+      });
+      fireEvent.pointerMove(map, {
+        clientX: fromX + 20,
+        clientY: 150,
+        pointerId: 1,
+        altKey,
+      });
+      fireEvent.pointerMove(map, {
+        clientX: toX,
+        clientY: 150,
+        pointerId: 1,
+        altKey,
+      });
+      fireEvent.pointerUp(map, {
+        clientX: toX,
+        clientY: 150,
+        pointerId: 1,
+        altKey,
+      });
+    };
+    // 1.4 cells: onto a whole cell in combat.
+    drag(150, 290);
+    await waitFor(() => {
+      expect(saved().tokens[0]?.position).toEqual({ col: 2, row: 1 });
+    });
+    // Alt held: freely, even in combat.
+    drag(250, 380, true);
+    await waitFor(() => {
+      expect(saved().tokens[0]?.position).toEqual({ col: 3.3, row: 1 });
+    });
+    // "Immer frei": freely in combat too.
+    fireEvent.click(screen.getByRole("button", { name: /Wie Kampagne/ }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Immer frei" }));
+    // 0.6 cells: on the grid this would end on cell 4.
+    drag(380, 440);
+    await waitFor(() => {
+      expect(saved().tokens[0]?.position).toEqual({ col: 3.9, row: 1 });
+    });
+    expect(saved().gridMode).toBe("free");
   });
 
   test("undo keys are left to text fields", async () => {

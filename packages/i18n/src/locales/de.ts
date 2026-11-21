@@ -255,7 +255,7 @@ export const de = {
   },
   mapView: {
     label: "Karte der Szene „{{name}}“",
-    help: "Mausrad oder + und − zoomen, ziehen oder Pfeiltasten verschieben, R dreht, 0 passt die Karte ein. Ein Token anklicken wählt es aus, mit Umschalt mehrere; ausgewählte Tokens ziehen, mit den Pfeiltasten feldweise bewegen, Entf löscht sie, Escape hebt die Auswahl auf. Mit Touch: Token antippen, dann das Zielfeld.",
+    help: "Mausrad oder + und − zoomen, ziehen oder Pfeiltasten verschieben, R dreht, 0 passt die Karte ein. Ein Token anklicken wählt es aus, mit Umschalt mehrere; ausgewählte Tokens ziehen, mit den Pfeiltasten feldweise bewegen, Entf löscht sie, Escape hebt die Auswahl auf. Mit Touch: Token antippen, dann das Zielfeld. Mit gehaltener Alt-Taste setzt Ziehen oder Antippen frei statt auf das Raster.",
     loading: "Karte wird geladen …",
     error:
       "Die Karte konnte nicht geladen werden. Ist die Datei noch in der Bibliothek und heruntergeladen?",
@@ -267,6 +267,16 @@ export const de = {
     tvFrame:
       "Ausschnitt des TVs – am Rand ziehen oder mit den Pfeiltasten verschieben",
     tvFrameRole: "verschiebbarer Rahmen",
+  },
+  gridMode: {
+    group: "Raster",
+    pick: "Wie Tokens sich bewegen",
+    asCampaign: "Wie Kampagne ({{mode}})",
+    modes: {
+      grid: "Immer Raster",
+      gridInCombat: "Frei, im Kampf Raster",
+      free: "Immer frei",
+    },
   },
   combat: {
     group: "Kampf",
