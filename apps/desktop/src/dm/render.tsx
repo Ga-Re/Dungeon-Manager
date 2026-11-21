@@ -28,6 +28,11 @@ export interface DmWindowServices {
   readonly newId: () => string;
   /** The native menu bar; the E2E harness has none and shows the menu button. */
   readonly appMenu?: AppMenuService;
+  /**
+   * Whether the previous session was killed or crashed, as the platform knows it (T-238: the
+   * desktop backend's marker file). Without it (E2E harness), a marker in device storage is used.
+   */
+  readonly previousSessionCrashed?: () => Promise<boolean>;
 }
 
 /** Renders the DM window into `#root`. */
@@ -41,30 +46,49 @@ export function renderDmWindow(services: DmWindowServices): void {
   applyUiScale(readUiScale(deviceStorage()), documentRoot);
   const root = document.getElementById("root");
   if (!root) throw new Error("#root is missing");
-  // Once per window, outside React (StrictMode would run an initialiser twice): a session
-  // still marked as running was killed or crashed (T-114a).
+  const mount = (afterCrash: boolean) => {
+    createRoot(root).render(
+      <StrictMode>
+        <I18nextProvider i18n={i18n}>
+          <PlayerFeedContext value={services.playerFeed}>
+            <MapViewContext value={services.mapViewService}>
+              <DmApp
+                displayService={services.displayService}
+                libraryService={services.libraryService}
+                newId={services.newId}
+                appMenu={services.appMenu}
+                afterCrash={afterCrash}
+              />
+            </MapViewContext>
+          </PlayerFeedContext>
+        </I18nextProvider>
+      </StrictMode>,
+    );
+  };
+
+  // Once per window, outside React (StrictMode would run an initialiser twice).
+  const { previousSessionCrashed } = services;
+  if (previousSessionCrashed) {
+    previousSessionCrashed()
+      .then(mount, (error: unknown) => {
+        // Not known: like after a crash, the TV stays dark until the DM sends a scene.
+        console.error(
+          "Whether the last session ended cleanly is unknown.",
+          error,
+        );
+        mount(true);
+      })
+      .catch((error: unknown) => {
+        console.error("The DM window could not be set up.", error);
+      });
+    return;
+  }
+  // Without the backend: a marker in device storage, cleared when the page goes (T-114a).
   const afterCrash = startSession(deviceStorage());
   const endClean = () => {
     endSession(deviceStorage());
   };
   window.addEventListener("pagehide", endClean);
   window.addEventListener("beforeunload", endClean);
-
-  createRoot(root).render(
-    <StrictMode>
-      <I18nextProvider i18n={i18n}>
-        <PlayerFeedContext value={services.playerFeed}>
-          <MapViewContext value={services.mapViewService}>
-            <DmApp
-              displayService={services.displayService}
-              libraryService={services.libraryService}
-              newId={services.newId}
-              appMenu={services.appMenu}
-              afterCrash={afterCrash}
-            />
-          </MapViewContext>
-        </PlayerFeedContext>
-      </I18nextProvider>
-    </StrictMode>,
-  );
+  mount(afterCrash);
 }

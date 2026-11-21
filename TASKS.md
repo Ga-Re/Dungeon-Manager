@@ -516,14 +516,14 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Killing the app mid-session brings back the open tabs, with the TV dark (E2E test with a forced kill: the device storage as at the kill, nothing run on the way out)
 - **Notes:** Split from T-114 (2026-11-20). The tabs are kept per campaign with the recent campaigns (device storage, additive fields). A marker in device storage (`dm.sessionRunning`) is set at start and removed on `pagehide`/`beforeunload`; still set at the next start means the session was killed. If a platform does not fire those events on closing, every start counts as after a crash – the TV then just stays dark, the safe side.
 
-### T-238 Check the clean end of a session in the Tauri app
+### T-238 Tell a clean end from a crash in the Tauri app
 
-- **Status:** todo · **Depends on:** T-114a · **Refs:** T-114a
-- T-114a tells a crash from a clean end by a marker cleared on `pagehide`/`beforeunload`. Whether WKWebView/WebView2 fire them when the DM window closes or on Cmd+Q is unverified; if not, every start counts as after a crash (the TV stays dark until the DM sends a scene – the safe side).
+- **Status:** done · **Depends on:** T-114a · **Refs:** T-114a
+- The DM confirmed (2026-11-21): in the Tauri app every start counted as after a crash (the webview fires no `pagehide`/`beforeunload` on closing), so the TV stayed dark until "Szene auf den TV". DM decision (2026-11-21): the desktop backend keeps the marker.
 - **Acceptance criteria**
-  - [ ] The DM checks in the real app: close the window (and Cmd+Q), start again – the TV's scene comes back on the TV
-  - [ ] If it does not: a close hook clears the marker (Tauri window close / Rust exit); the needed permission change goes to the DM first
-- **Notes:** From the T-114a review (2026-11-20); DM decision: merge T-114a with the safe fallback and check later.
+  - [x] The backend creates a marker file in the OS app-data directory at start and removes it on exit (closing the DM window, Cmd+Q); the DM window asks `session_previous_crashed` (Rust unit tests, adapter test)
+  - [ ] Manual check by the DM: close the app, start it again – the TV's scene comes back on the TV; after a forced quit it stays dark
+- **Notes:** A new command for the DM window only (`allow-session-previous-crashed` in `capabilities/dm.json`), carrying no library data. If the backend cannot answer, the start counts as after a crash (TV dark). The E2E harness, without a backend, keeps T-114a's marker in device storage.
 
 ### T-114b Rescue copy when a save fails
 

@@ -6,11 +6,12 @@ mod commands;
 mod import;
 mod library;
 mod protocol;
+mod session;
 mod settings;
 
 use commands::{ChangeSubscriber, DM_WINDOW, LibraryState};
 use tauri::webview::PageLoadEvent;
-use tauri::{Emitter, Manager, WindowEvent};
+use tauri::{Emitter, Manager, RunEvent, WindowEvent};
 
 /// Label of the player window (created from the DM window, `tauri-displays.ts`).
 pub(crate) const PLAYER_WINDOW: &str = "player";
@@ -24,6 +25,14 @@ pub fn run() {
         .manage(ChangeSubscriber::default())
         .setup(|app| {
             commands::open_saved_library(app.handle());
+            // Whether the last session ended cleanly (T-238); the DM window asks for it.
+            let previous_crashed = app
+                .path()
+                .app_data_dir()
+                .map(|directory| session::start(&directory))
+                // Not known: like after a crash, the TV stays dark until the DM sends a scene.
+                .unwrap_or(true);
+            app.manage(session::SessionState { previous_crashed });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -37,6 +46,7 @@ pub fn run() {
             commands::library_make_directory,
             commands::library_import_map,
             commands::library_move_to_trash,
+            commands::session_previous_crashed,
         ])
         .on_page_load(|webview, payload| {
             // The DM window resends what the TV should show once the player window has (re)loaded;
@@ -53,6 +63,14 @@ pub fn run() {
                 window.app_handle().exit(0);
             }
         })
-        .run(tauri::generate_context!())
-        .expect("failed to start the Tauri application");
+        .build(tauri::generate_context!())
+        .expect("failed to start the Tauri application")
+        .run(|app, event| {
+            // Closing the DM window and quitting (Cmd+Q) both end here: a clean end (T-238).
+            if let RunEvent::Exit = event
+                && let Ok(directory) = app.path().app_data_dir()
+            {
+                session::end(&directory);
+            }
+        });
 }

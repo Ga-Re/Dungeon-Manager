@@ -12,6 +12,7 @@ fn main() {
         "library_make_directory",
         "library_import_map",
         "library_move_to_trash",
+        "session_previous_crashed",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("failed to run the Tauri build script");
