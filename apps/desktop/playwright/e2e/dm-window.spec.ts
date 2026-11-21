@@ -809,10 +809,11 @@ test("a folded panel stays folded on the next start and unfolds when alone in it
   ).toBeVisible();
   await page.keyboard.press("Escape");
 
-  // Without Eigenschaften and Initiative below it, Browser has the column: unfolded, nothing
+  // Without Eigenschaften, TV-Vorschau and Initiative below it, Browser has the column: unfolded, nothing
   // to fold, and choosing it anyway announces nothing.
   await page.getByRole("button", { name: "Eigenschaften ausblenden" }).click();
   await page.getByRole("button", { name: "Initiative ausblenden" }).click();
+  await page.getByRole("button", { name: "TV-Vorschau ausblenden" }).click();
   await expect.poll(height).toBeGreaterThan(200);
   await menu.click();
   await expect(

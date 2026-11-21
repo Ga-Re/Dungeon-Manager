@@ -4,6 +4,7 @@ import { I18nextProvider } from "react-i18next";
 import { createI18n } from "@dungeon-manager/ui";
 import { createTauriMapViewService } from "../platform/tauri-map-images.js";
 import { createTauriPlayerFeedReceiver } from "../platform/tauri-player-feed.js";
+import "../player-view.css";
 import "../player.css";
 import { PlayerApp } from "./PlayerApp.js";
 

@@ -28,6 +28,11 @@ export interface PlayerFeedSender {
   ): void;
   /** The TV black at once, or back (T-113a). */
   blackout(on: boolean): void;
+  /**
+   * Calls `listener` with every message the TV gets, at once with the latest (T-113b: the DM
+   * window's preview shows exactly that). Returns a function that stops it.
+   */
+  watch(listener: (message: PlayerViewMessage) => void): () => void;
 }
 
 /** Player side: calls `listener` with every valid message; invalid ones are dropped. */
@@ -54,8 +59,10 @@ export function createPlayerFeedSender(
   let grid = false;
   let viewCenter: { readonly x: number; readonly y: number } | null = null;
   let black = false;
+  let latest: PlayerViewMessage | null = null;
+  const watchers = new Set<(message: PlayerViewMessage) => void>();
   const publish = () => {
-    send({
+    latest = {
       v: PLAYER_VIEW_VERSION,
       scene,
       rotation,
@@ -64,7 +71,9 @@ export function createPlayerFeedSender(
       ...(grid && { showGrid: true as const }),
       ...(viewCenter && { viewCenter: { x: viewCenter.x, y: viewCenter.y } }),
       ...(black && { blackout: true as const }),
-    });
+    };
+    send(latest);
+    for (const watcher of watchers) watcher(latest);
   };
   onPlayerReady(publish);
   return {
@@ -100,6 +109,13 @@ export function createPlayerFeedSender(
     blackout(on) {
       black = on;
       publish();
+    },
+    watch(listener) {
+      watchers.add(listener);
+      if (latest) listener(latest);
+      return () => {
+        watchers.delete(listener);
+      };
     },
   };
 }

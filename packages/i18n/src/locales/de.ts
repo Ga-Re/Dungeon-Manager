@@ -573,6 +573,7 @@ export const de = {
       browser: "Browser",
       details: "Eigenschaften",
       initiative: "Initiative",
+      preview: "TV-Vorschau",
     },
     workspace: {
       label: "Arbeitsbereich",
@@ -688,6 +689,7 @@ export const de = {
     notShown:
       "Die Szene kann nicht auf dem TV gezeigt werden (ist die Kampagnendatei lesbar?). Der TV bleibt schwarz.",
     windowTitle: "Spieleransicht",
+    preview: "Vorschau der Spieleransicht",
     initiative: {
       label: "Initiative",
       round: "Runde {{round}}",

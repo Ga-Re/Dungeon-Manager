@@ -125,3 +125,20 @@ test("blacks the TV out and back (T-113a)", () => {
   feed.blackout(false);
   expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0 });
 });
+
+test("tells watchers every message the TV gets, the latest at once (T-113b)", () => {
+  const sent: PlayerViewMessage[] = [];
+  const feed = createPlayerFeedSender(
+    (message) => sent.push(message),
+    () => undefined,
+  );
+  feed.showGrid(true);
+  const watched: PlayerViewMessage[] = [];
+  const stop = feed.watch((message) => watched.push(message));
+  expect(watched).toEqual([sent.at(-1)]);
+  feed.blackout(true);
+  expect(watched.at(-1)).toBe(sent.at(-1));
+  stop();
+  feed.blackout(false);
+  expect(watched).toHaveLength(2);
+});

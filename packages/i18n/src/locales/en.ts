@@ -565,6 +565,7 @@ export const en: Messages = {
       browser: "Browser",
       details: "Properties",
       initiative: "Initiative",
+      preview: "TV preview",
     },
     workspace: {
       label: "Workspace",
@@ -680,6 +681,7 @@ export const en: Messages = {
     notShown:
       "The scene cannot be shown on the TV (is the campaign file readable?). The TV stays black.",
     windowTitle: "Player view",
+    preview: "Preview of the player view",
     initiative: {
       label: "Initiative",
       round: "Round {{round}}",

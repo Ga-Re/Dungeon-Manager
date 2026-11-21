@@ -76,6 +76,7 @@ function renderScene(opened: Scene, levels: readonly Level[] = towerLevels) {
     showGrid: vi.fn(),
     setViewCenter: vi.fn(),
     blackout: vi.fn(),
+    watch: () => () => undefined,
   };
   // The cellar's own image has another size than the tower's map.
   const maps = fakeMapService((path) =>

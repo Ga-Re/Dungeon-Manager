@@ -12,6 +12,7 @@ export const PANELS = [
   "browser",
   "details",
   "initiative",
+  "preview",
 ] as const;
 export type PanelId = (typeof PANELS)[number];
 
@@ -40,7 +41,7 @@ function placeOf(
 ):
   | {
       readonly referencePanel: string;
-      readonly direction: "left" | "right" | "above" | "below";
+      readonly direction: "left" | "right" | "above" | "below" | "within";
     }
   | undefined {
   const has = (other: PanelId) => api.getPanel(other) !== undefined;
@@ -70,6 +71,16 @@ function placeOf(
       return has("data")
         ? { referencePanel: "data", direction: "right" }
         : undefined;
+    // T-113b: a tab next to Eigenschaften (DM decision 2026-11-21).
+    case "preview":
+      if (has("details"))
+        return { referencePanel: "details", direction: "within" };
+      if (has("browser"))
+        return { referencePanel: "browser", direction: "below" };
+      if (has("map")) return { referencePanel: "map", direction: "right" };
+      return has("data")
+        ? { referencePanel: "data", direction: "right" }
+        : undefined;
     // T-111b: at the bottom of the right column.
     case "initiative":
       if (has("details"))
@@ -89,6 +100,7 @@ const WIDTH_REM: Partial<Record<PanelId, number>> = {
   browser: SIDE_WIDTH_REM,
   details: SIDE_WIDTH_REM,
   initiative: SIDE_WIDTH_REM,
+  preview: SIDE_WIDTH_REM,
 };
 
 /**
@@ -179,6 +191,14 @@ export function buildDefaultLayout(
     title: titles.initiative,
     position: { referencePanel: "details", direction: "below" },
   });
+  // The TV preview as a tab next to Eigenschaften, which stays the one shown.
+  api.addPanel({
+    id: "preview",
+    component: "preview",
+    title: titles.preview,
+    position: { referencePanel: "details", direction: "within" },
+  });
+  api.getPanel("details")?.api.setActive();
   api.getPanel("data")?.group.api.setSize({
     width: remToPixels(DATA_WIDTH_REM),
   });

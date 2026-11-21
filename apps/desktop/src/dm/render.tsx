@@ -12,6 +12,7 @@ import type { AppMenuService } from "../platform/app-menu.js";
 import "@dungeon-manager/ui/styles/tokens.css";
 import "@dungeon-manager/ui/styles/components.css";
 import "../dm.css";
+import "../player-view.css";
 import { DmApp } from "./DmApp.js";
 import { endSession, startSession } from "./crash-marker.js";
 import { MapViewContext } from "./MapView.js";

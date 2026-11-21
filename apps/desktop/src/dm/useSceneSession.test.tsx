@@ -63,6 +63,7 @@ function fakeFeed() {
     showGrid: vi.fn(),
     setViewCenter,
     blackout: vi.fn(),
+    watch: () => () => undefined,
   };
   return { feed, shown, setViewCenter };
 }

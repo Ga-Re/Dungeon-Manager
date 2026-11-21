@@ -11,6 +11,7 @@ export type ShellSlot =
   | "browser"
   | "details"
   | "initiative"
+  | "preview"
   | "dataPanel"
   | "settings"
   | "settingsTv"

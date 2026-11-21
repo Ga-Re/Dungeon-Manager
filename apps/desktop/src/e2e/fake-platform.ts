@@ -13,7 +13,10 @@ import {
 import type { DisplayService } from "../platform/displays.js";
 import type { LibraryService } from "../platform/library.js";
 import type { MapViewService } from "../platform/map-images.js";
-import type { PlayerFeedSender } from "../platform/player-feed.js";
+import {
+  createPlayerFeedSender,
+  type PlayerFeedSender,
+} from "../platform/player-feed.js";
 
 /** A 120×60 gold PNG for the harness's note image (made by hand, no third-party content). */
 const WAPPEN_PNG = Uint8Array.from(
@@ -213,20 +216,13 @@ function drawMap(path: string): HTMLCanvasElement {
  * The TV's feed (T-233b): what the TV was last sent is noted on the page, so E2E tests can check
  * what reaches the players without a second window.
  */
-export const e2ePlayerFeed: PlayerFeedSender = {
-  show(scene) {
-    document.body.dataset["e2eTv"] = JSON.stringify(scene);
+export const e2ePlayerFeed: PlayerFeedSender = createPlayerFeedSender(
+  (message) => {
+    document.body.dataset["e2eTv"] = JSON.stringify(message.scene);
+    document.body.dataset["e2eBlackout"] = String(message.blackout === true);
   },
-  rotate: () => undefined,
-  rotation: 0,
-  calibrate: () => undefined,
-  showCheckSquare: () => undefined,
-  showGrid: () => undefined,
-  setViewCenter: () => undefined,
-  blackout(on) {
-    document.body.dataset["e2eBlackout"] = String(on);
-  },
-};
+  () => undefined,
+);
 
 export const e2eMapView: MapViewService = {
   loadImage: (path) => Promise.resolve(drawMap(path)),
