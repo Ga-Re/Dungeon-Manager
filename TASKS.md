@@ -389,6 +389,22 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] No webview menu on a right click in the DM window outside text fields and on the TV (component/E2E test)
 - **Notes:** From the DM (2026-11-20): noticed the "reload"/"inspect element" menu; taken into the list only.
 
+### T-240 Fix strokeArea for a self-crossing stroke (flaky property test)
+
+- **Status:** todo · **Depends on:** – · **Refs:** T-108b
+- The property "every stroke point lies inside" in `packages/core/src/shapes.test.ts` fails now and then: fast-check finds `[[[-176,0],[-144,12],[184,22],[311,-270],[-136,-254],[347,422],[0,-95]],7]` (seed -443103766), so CI can fail at random.
+- **Acceptance criteria**
+  - [ ] The counterexample is a regression test and passes; the property stays as it is (not weakened)
+- **Notes:** Found by the reviewer subagent during T-233a (2026-11-21).
+
+### T-241 Custom creature footprints in combat's snap and token placement
+
+- **Status:** todo · **Depends on:** T-233a, T-180 · **Refs:** ADR-0018
+- `combat.start` and new-token placement use the 5e size's footprint only; a creature's own footprint (e.g. a 2 × 4 wagon) is ignored until creature data reaches the session.
+- **Acceptance criteria**
+  - [ ] A token whose creature has a custom footprint claims all of it when snapping and placing (unit test)
+- **Notes:** From the T-233a review (2026-11-21).
+
 ### T-106c Move the TV's view
 
 - **Status:** done · **Depends on:** T-106a · **Refs:** SPEC 2.2
@@ -440,7 +456,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Free moves outside combat and snapped moves in combat, per grid mode, with Alt override (component tests)
   - [ ] Combat on/off and the snap reach the TV (E2E)
-- **Notes:** DM request (2026-11-20). DM decision (2026-11-20): up to four Tiny tokens may share a cell, as in 5e. Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist.
+- **Notes:** DM request (2026-11-20). DM decision (2026-11-20): up to four Tiny tokens may share a cell, as in 5e. Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist. From the T-233a review: occupancy (`Occupant`, `occupiedCells`, new-token placement) assumes whole cells, but `TokenPosition` and `GridCell` are the same TypeScript type – free tokens must count as occupying the cells they cover (round or floor in one place, or a branded `GridCell`). Open for the DM: hidden tokens take part in the snap and in occupancy, so a visible token pushed off a cell that looks empty tells the players something stands there; decide whether hidden tokens should block visible ones.
 
 ### T-108a Fog: rectangle reveal/hide, undo, live on the TV
 

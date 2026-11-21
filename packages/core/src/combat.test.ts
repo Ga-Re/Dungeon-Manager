@@ -87,9 +87,12 @@ describe("combat.start", () => {
       (each) => `${String(each.position.col)},${String(each.position.row)}`,
     );
     expect(positions.filter((cell) => cell === "4,4")).toHaveLength(4);
-    // The ogre covers 2 × 2 cells, none of them the rats' cells.
+    // The ogre covers 2 × 2 cells, none of them the rats' cell.
     const ogre = result.state.scene.tokens.at(-1)?.position;
-    expect(ogre).not.toEqual({ col: 4, row: 4 });
+    if (!ogre) throw new Error("no ogre");
+    const coversRats =
+      ogre.col <= 4 && 4 < ogre.col + 2 && ogre.row <= 4 && 4 < ogre.row + 2;
+    expect(coversRats).toBe(false);
   });
 
   test("levels never share space", () => {
@@ -143,6 +146,19 @@ describe("combat.start", () => {
     expect(
       projectForViewer(ended.state, { kind: "table" }).combat,
     ).toBeUndefined();
+  });
+
+  test("starting a running combat with every token on its cell changes nothing", () => {
+    const running = ok(
+      apply(
+        withTokens(token("a", 2.4, 2)),
+        { type: "combat.start", bounds },
+        ctx,
+      ),
+    ).state;
+    const again = ok(apply(running, { type: "combat.start", bounds }, ctx));
+    expect(again.state).toBe(running);
+    expect(again.events).toEqual([]);
   });
 
   test("ending no combat changes nothing", () => {

@@ -212,6 +212,9 @@ function applyChange(state: SessionState, command: Command): Change {
           ? [{ token: each, to }]
           : [];
       });
+      // Started again with every token on its cell: nothing changes, no undo step.
+      if (scene.combat === true && moves.length === 0)
+        return { state, events: [] };
       const movedTo = new Map(moves.map(({ token, to }) => [token.id, to]));
       return {
         state: withScene(state, {
