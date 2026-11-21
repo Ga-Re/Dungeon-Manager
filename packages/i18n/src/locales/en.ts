@@ -626,5 +626,10 @@ export const en: Messages = {
     notShown:
       "The scene cannot be shown on the TV (is the campaign file readable?). The TV stays black.",
     windowTitle: "Player view",
+    initiative: {
+      label: "Initiative",
+      round: "Round {{round}}",
+      unknown: "Unknown",
+    },
   },
 };

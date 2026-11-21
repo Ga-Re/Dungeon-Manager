@@ -42,6 +42,8 @@ export function tokenShapes(
   levelId: string,
   selected: ReadonlySet<string> = NONE,
   defaults: VisibilityRules = NO_DEFAULTS,
+  /** The token whose turn it is (T-111c): drawn with a bright ring. */
+  activeTokenId: string | null = null,
 ): TokenShape[] {
   const cell = grid.cellSizePx;
   const onLevel = tokens.filter((token) => token.levelId === levelId);
@@ -81,6 +83,7 @@ export function tokenShapes(
       // Only when set: the TV's tokens carry neither.
       ...(selected.has(token.id) && { selected: true }),
       ...(tokenVisibility(defaults, token) === "hidden" && { hidden: true }),
+      ...(token.id === activeTokenId && { active: true }),
     };
   });
 }

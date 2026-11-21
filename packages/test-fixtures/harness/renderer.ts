@@ -360,6 +360,8 @@ async function main() {
     scenario.endsWith("selected") ? ["aria", "ogre"] : [],
   );
   const hidden = new Set(scenario.endsWith("selected") ? ["g12"] : []);
+  // "player-tokens-active" (T-111c): the Ogre's turn, its token shining on the TV.
+  const active = new Set(scenario.endsWith("active") ? ["ogre"] : []);
   const base = scenario.replace(/^(grid|tokens)-?|-(grid|tokens)/, "");
   // The player view always gets its fog with (never after) the map.
   const fog = fogFor(base);
@@ -399,6 +401,7 @@ async function main() {
         ...token,
         ...(selected.has(token.id) && { selected: true }),
         ...(hidden.has(token.id) && { hidden: true }),
+        ...(active.has(token.id) && { active: true }),
       })),
     );
   renderer.setCamera(

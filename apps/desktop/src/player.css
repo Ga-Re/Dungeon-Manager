@@ -35,3 +35,72 @@ body {
 .player-check-square[hidden] {
   display: none;
 }
+
+/*
+ * The initiative bar (T-111c): along the players' top edge, turned with the TV's view (the
+ * frame takes the screen as the players see it). Large and high-contrast: read across a table.
+ */
+.player-initiative-frame {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100vw;
+  height: 100vh;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.player-initiative-frame[data-rotation="90"],
+.player-initiative-frame[data-rotation="270"] {
+  width: 100vh;
+  height: 100vw;
+}
+
+.player-initiative-frame[data-rotation="90"] {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.player-initiative-frame[data-rotation="180"] {
+  transform: translate(-50%, -50%) rotate(180deg);
+}
+
+.player-initiative-frame[data-rotation="270"] {
+  transform: translate(-50%, -50%) rotate(270deg);
+}
+
+.player-initiative {
+  display: flex;
+  align-items: center;
+  gap: 1.5vmin;
+  padding: 1vmin 2vmin;
+  background: rgb(0 0 0 / 70%);
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  font-size: 2.4vmin;
+}
+
+.player-initiative-round {
+  color: #cfcfcf;
+}
+
+.player-initiative-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1vmin;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player-initiative-entry {
+  padding: 0.4vmin 1.2vmin;
+  border: 0.3vmin solid transparent;
+  border-radius: 0.6vmin;
+}
+
+/* The turn: the same bright yellow as the active token's ring. */
+.player-initiative-entry[aria-current="true"] {
+  border-color: #fff2a8;
+  color: #fff2a8;
+  font-weight: 600;
+}

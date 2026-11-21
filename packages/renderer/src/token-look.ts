@@ -23,6 +23,9 @@ export const TOKEN_RING = "#e8d3a3";
 /** The ring around a selected token in the DM window (T-107b): the accent, bright on any map. */
 export const TOKEN_SELECTED_RING = "#ffb627";
 
+/** The ring of the token whose turn it is (T-111c), on the TV and in the DM window. */
+export const TOKEN_ACTIVE_RING = "#fff2a8";
+
 /** How long a moved token glides to its new place, in milliseconds (T-233b). */
 export const TOKEN_GLIDE_MS = 250;
 
