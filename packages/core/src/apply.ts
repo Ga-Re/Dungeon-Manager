@@ -494,6 +494,45 @@ function applyChange(state: SessionState, command: Command): Change {
         events: [{ type: "initiative.changed" }],
       };
     }
+    case "initiative.setValue": {
+      const initiative = state.scene.initiative;
+      if (!initiative) return "noInitiative";
+      if (!Number.isFinite(command.initiative)) return "invalidAmount";
+      const combatant = initiative.combatants.find(
+        (each) => each.id === command.combatantId,
+      );
+      if (!combatant) return "unknownCombatant";
+      if (combatant.initiative === command.initiative)
+        return { state, events: [] };
+      // Taken out and put back in by the ranking rule; its markers and the turn stay.
+      const without = withInitiative(state, {
+        ...initiative,
+        order: initiative.order.filter((id) => id !== combatant.id),
+        combatants: initiative.combatants.filter(
+          (each) => each.id !== combatant.id,
+        ),
+      });
+      const placed = addCombatant(without, {
+        ...combatant,
+        initiative: command.initiative,
+      });
+      if (typeof placed === "string") return placed;
+      const placedInitiative = placed.state.scene.initiative;
+      if (!placedInitiative) return "noInitiative";
+      return {
+        state: withInitiative(placed.state, {
+          ...placedInitiative,
+          combatants: placedInitiative.combatants.map((each) =>
+            each.id === combatant.id
+              ? { ...combatant, initiative: command.initiative }
+              : each,
+          ),
+          activeCombatantId: initiative.activeCombatantId,
+          round: initiative.round,
+        }),
+        events: [{ type: "initiative.changed" }],
+      };
+    }
     case "initiative.move": {
       const initiative = state.scene.initiative;
       if (!initiative) return "noInitiative";

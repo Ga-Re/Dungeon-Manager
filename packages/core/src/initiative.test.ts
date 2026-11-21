@@ -319,4 +319,42 @@ describe("initiative commands", () => {
       [],
     );
   });
+
+  test("setValue places a combatant anew by its new initiative; turn and markers stay", () => {
+    const fighting = run(
+      state,
+      { type: "initiative.addMany", combatants: four },
+      { type: "initiative.start", bounds },
+      { type: "initiative.ready", combatantId: "ogre", ready: true },
+    );
+    const raised = run(fighting, {
+      type: "initiative.setValue",
+      combatantId: "ogre",
+      initiative: 13,
+    });
+    expect(order(raised)).toEqual(["lair", "ogre", "aria", "goblin"]);
+    expect(combatant(raised, "ogre")).toMatchObject({
+      initiative: 13,
+      ready: true,
+    });
+    expect(active(raised)).toBe("lair");
+    expect(
+      run(raised, {
+        type: "initiative.setValue",
+        combatantId: "ogre",
+        initiative: 13,
+      }),
+    ).toBe(raised);
+    expect(
+      apply(
+        raised,
+        {
+          type: "initiative.setValue",
+          combatantId: "ogre",
+          initiative: Number.NaN,
+        },
+        ctx,
+      ),
+    ).toEqual({ ok: false, reason: "invalidAmount" });
+  });
 });

@@ -337,7 +337,7 @@ describe("DmShell", () => {
       return screen.getByRole("menuitemcheckbox", { name });
     };
 
-    it("starts with the default layout: Daten, Karte, Browser, Eigenschaften", () => {
+    it("starts with the default layout: Daten, Karte, Browser, Eigenschaften, Initiative", () => {
       setup();
       fireEvent.click(screen.getByRole("button", { name: "Menü" }));
       expect(
@@ -349,6 +349,7 @@ describe("DmShell", () => {
         ["Karte", "true"],
         ["Browser", "true"],
         ["Eigenschaften", "true"],
+        ["Initiative", "true"],
       ]);
     });
 

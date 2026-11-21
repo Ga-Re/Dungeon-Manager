@@ -1,6 +1,8 @@
 import {
   addLevel,
   clampGroupShift,
+  rollInitiative,
+  type Command,
   tokenVisibility,
   gridBounds,
   gridFootprint,
@@ -64,6 +66,7 @@ import { softEdgeWidth } from "../fog-settings.js";
 import { FogLookContext } from "./shell/fog-look.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
 import { NewTokenForm } from "./NewTokenForm.js";
+import { InitiativePanel } from "./InitiativePanel.js";
 import { tokenShapes } from "../token-shapes.js";
 import { TvViewContext } from "./tv-view-context.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
@@ -141,6 +144,7 @@ export function OpenScenePanel({
   onSaveState,
   tabs,
   campaignGridMode,
+  random = Math.random,
 }: {
   readonly service: LibraryService;
   readonly slug: string;
@@ -181,6 +185,8 @@ export function OpenScenePanel({
   readonly tabs?: ((busy: boolean) => ReactNode) | undefined;
   /** The campaign's grid mode, as read now (T-233e): scenes "as the campaign" follow it. */
   readonly campaignGridMode?: GridMode | undefined;
+  /** Dice for the initiative (T-111b); tests pass a fixed one. */
+  readonly random?: () => number;
 }) {
   const { t } = useTranslation();
   const fogLook = useContext(FogLookContext);
@@ -382,6 +388,36 @@ export function OpenScenePanel({
       ...(free && { free: true }),
     });
     if (!moved) setError(t("token.notMoved"));
+  };
+  // The initiative (T-111b): selected tokens not in it yet join it; creatures roll d20 + bonus
+  // (0 until creature data reaches this window, T-180), a player's character carries its
+  // player, who wins ties.
+  const inInitiative = new Set(
+    (scene.initiative?.combatants ?? []).flatMap((each) =>
+      each.tokenId === undefined ? [] : [each.tokenId],
+    ),
+  );
+  const toAdd = selectedTokens.filter((token) => !inInitiative.has(token.id));
+  const addSelectedToInitiative = () => {
+    if (toAdd.length === 0) return;
+    const added = session.run({
+      type: "initiative.addMany",
+      combatants: toAdd.map((token) => ({
+        id: newId(),
+        name: token.name,
+        tokenId: token.id,
+        initiative: rollInitiative(0, random),
+        initiativeBonus: 0,
+        ...(token.ownerPlayerId !== undefined && {
+          playerId: token.ownerPlayerId,
+        }),
+        conditions: [],
+      })),
+    });
+    if (!added) setError(t("initiative.notApplied"));
+  };
+  const initiativeCommand = (command: Command) => {
+    if (!session.run(command)) setError(t("initiative.notApplied"));
   };
   const deleteTokens = (ids: readonly string[]) => {
     if (ids.length === 0) return;
@@ -882,6 +918,26 @@ export function OpenScenePanel({
             />
           </RibbonGroup>
         )}
+      </ShellPortal>
+      {/* The Initiative panel shows the scene the DM works on (T-111b). */}
+      <ShellPortal slot="initiative">
+        <InitiativePanel
+          initiative={scene.initiative}
+          canAddSelected={toAdd.length > 0}
+          busy={busy}
+          onAddSelected={addSelectedToInitiative}
+          onStart={() => {
+            if (!map || !mapSize) return;
+            if (
+              !session.run({
+                type: "initiative.start",
+                bounds: gridBounds(mapSize, map.grid),
+              })
+            )
+              setError(t("initiative.noRoom"));
+          }}
+          onCommand={initiativeCommand}
+        />
       </ShellPortal>
       <ShellPortal slot="notices">
         {notOnTv && <p role="alert">{t("player.notShown")}</p>}

@@ -6,7 +6,13 @@ import { useLayoutEffect, useRef } from "react";
 // storage, like the theme.
 
 /** The panels, in the View menu's order. */
-export const PANELS = ["data", "map", "browser", "details"] as const;
+export const PANELS = [
+  "data",
+  "map",
+  "browser",
+  "details",
+  "initiative",
+] as const;
 export type PanelId = (typeof PANELS)[number];
 
 const STORAGE_KEY = "dm.layout";
@@ -39,8 +45,10 @@ function placeOf(
   | undefined {
   const has = (other: PanelId) => api.getPanel(other) !== undefined;
   // Left to right as in the default layout: Daten, Karte, then Browser over Eigenschaften.
-  const left = (["map", "browser", "details"] as const).find(has);
-  const right = (["browser", "details", "map", "data"] as const).find(has);
+  const left = (["map", "browser", "details", "initiative"] as const).find(has);
+  const right = (
+    ["browser", "details", "initiative", "map", "data"] as const
+  ).find(has);
   switch (id) {
     case "data":
       return left && { referencePanel: left, direction: "left" };
@@ -61,6 +69,16 @@ function placeOf(
       return has("data")
         ? { referencePanel: "data", direction: "right" }
         : undefined;
+    // T-111b: at the bottom of the right column.
+    case "initiative":
+      if (has("details"))
+        return { referencePanel: "details", direction: "below" };
+      if (has("browser"))
+        return { referencePanel: "browser", direction: "below" };
+      if (has("map")) return { referencePanel: "map", direction: "right" };
+      return has("data")
+        ? { referencePanel: "data", direction: "right" }
+        : undefined;
   }
 }
 
@@ -69,6 +87,7 @@ const WIDTH_REM: Partial<Record<PanelId, number>> = {
   data: DATA_WIDTH_REM,
   browser: SIDE_WIDTH_REM,
   details: SIDE_WIDTH_REM,
+  initiative: SIDE_WIDTH_REM,
 };
 
 /**
@@ -125,7 +144,10 @@ function keepSideWidths(api: DockviewApi, id: PanelId): () => void {
   };
 }
 
-/** The default layout: Daten left, the map in the middle, Browser over Eigenschaften right. */
+/**
+ * The default layout: Daten left, the map in the middle, Browser over Eigenschaften over
+ * Initiative right.
+ */
 export function buildDefaultLayout(
   api: DockviewApi,
   titles: Readonly<Record<PanelId, string>>,
@@ -149,6 +171,12 @@ export function buildDefaultLayout(
     component: "details",
     title: titles.details,
     position: { referencePanel: "browser", direction: "below" },
+  });
+  api.addPanel({
+    id: "initiative",
+    component: "initiative",
+    title: titles.initiative,
+    position: { referencePanel: "details", direction: "below" },
   });
   api.getPanel("data")?.group.api.setSize({
     width: remToPixels(DATA_WIDTH_REM),
