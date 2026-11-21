@@ -66,6 +66,7 @@ const everyCommand: Command[] = [
     bounds: { firstCol: 0, firstRow: 0, cols: 10, rows: 10 },
   },
   { type: "combat.end" },
+  { type: "scene.setGridMode", gridMode: "free" },
 ];
 
 describe("canApply", () => {

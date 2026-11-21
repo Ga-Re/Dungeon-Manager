@@ -1,5 +1,6 @@
 import type {
   Combatant,
+  GridMode,
   Polygon,
   TokenPosition,
   Token,
@@ -23,7 +24,8 @@ export type Command =
   /**
    * Moves several tokens at once, as one step (T-107b: a selection, a group). With `bounds` (the
    * map's whole cells) they go onto cells, a token whose cell is taken onto the nearest free one
-   * (T-233c); rejected if one finds no room.
+   * (T-233c); with `free` too they stay where they are put, pushed just far enough off others
+   * (T-233d). Rejected if one finds no room.
    */
   | {
       readonly type: "token.moveMany";
@@ -32,7 +34,10 @@ export type Command =
         readonly to: TokenPosition;
       }[];
       readonly bounds?: Required<CellBounds>;
+      readonly free?: boolean;
     }
+  /** The scene's grid mode (T-233d); `null`: as the campaign's. */
+  | { readonly type: "scene.setGridMode"; readonly gridMode: GridMode | null }
   | {
       readonly type: "token.move";
       readonly tokenId: string;
@@ -103,6 +108,7 @@ export type DomainEvent = { readonly at: number } & (
       readonly levelId: string;
     }
   | { readonly type: "combat.changed"; readonly combat: boolean }
+  | { readonly type: "gridMode.changed"; readonly gridMode: GridMode | null }
   | { readonly type: "fog.revealed"; readonly levelId: string }
   | { readonly type: "fog.hidden"; readonly levelId: string }
   | { readonly type: "level.shown"; readonly levelId: string }

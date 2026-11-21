@@ -637,11 +637,16 @@ describe("MapView tokens (T-107b)", () => {
       ids: readonly string[],
       shift: { col: number; row: number },
     ) => { col: number; row: number },
+    free = false,
   ) {
     const fake = fakeMapService(() => Promise.resolve(image));
     const onMove =
       vi.fn<
-        (ids: readonly string[], shift: { col: number; row: number }) => void
+        (
+          ids: readonly string[],
+          shift: { col: number; row: number },
+          free: boolean,
+        ) => void
       >();
     const onDelete = vi.fn<(ids: readonly string[]) => void>();
     const onSelect = vi.fn<(ids: ReadonlySet<string>) => void>();
@@ -658,6 +663,7 @@ describe("MapView tokens (T-107b)", () => {
         },
         onMove,
         onDelete,
+        free,
         ...(clampShift && { clampShift }),
       },
     });
@@ -714,10 +720,11 @@ describe("MapView tokens (T-107b)", () => {
     // The preview follows the pointer at once, it never glides.
     expect(view.fake.view.setTokens.mock.lastCall?.[1]).toEqual({ glide: 0 });
     fireEvent.pointerUp(area(), { clientX: 245, clientY: 155, pointerId: 1 });
-    expect(view.onMove).toHaveBeenCalledExactlyOnceWith(["ogre", "goblin"], {
-      col: 2,
-      row: 1,
-    });
+    expect(view.onMove).toHaveBeenCalledExactlyOnceWith(
+      ["ogre", "goblin"],
+      { col: 2, row: 1 },
+      false,
+    );
     // Dragging is no panning.
     expect(view.fake.camera()).toEqual({
       centerX: 800,
@@ -744,10 +751,11 @@ describe("MapView tokens (T-107b)", () => {
     expect(view.selected()).toEqual(["goblin"]);
     // Cell (6, 5): screen 325, 275.
     click({ clientX: 325, clientY: 275 }, { pointerType: "touch" });
-    expect(view.onMove).toHaveBeenCalledExactlyOnceWith(["goblin"], {
-      col: 4,
-      row: 3,
-    });
+    expect(view.onMove).toHaveBeenCalledExactlyOnceWith(
+      ["goblin"],
+      { col: 4, row: 3 },
+      false,
+    );
     // Tapping the only selected token again lets it go.
     click(onGoblin, { pointerType: "touch" });
     expect(view.selected()).toEqual([]);
@@ -757,10 +765,11 @@ describe("MapView tokens (T-107b)", () => {
     const view = renderTokens(new Set(["goblin", "ogre"]));
     await ready(view.fake);
     fireEvent.keyDown(area(), { key: "ArrowLeft" });
-    expect(view.onMove).toHaveBeenLastCalledWith(["goblin", "ogre"], {
-      col: -1,
-      row: 0,
-    });
+    expect(view.onMove).toHaveBeenLastCalledWith(
+      ["goblin", "ogre"],
+      { col: -1, row: 0 },
+      false,
+    );
     // Shift + arrow still pans.
     fireEvent.keyDown(area(), { key: "ArrowLeft", shiftKey: true });
     expect(view.onMove).toHaveBeenCalledTimes(1);
@@ -806,9 +815,54 @@ describe("MapView tokens (T-107b)", () => {
     fireEvent.pointerUp(area(), { clientX: 125, clientY: 300, pointerId: 2 });
     expect(view.onMove).not.toHaveBeenCalled();
     fireEvent.pointerUp(area(), { clientX: 275, clientY: 125, pointerId: 1 });
-    expect(view.onMove).toHaveBeenCalledExactlyOnceWith(["goblin"], {
-      col: 1,
-      row: 0,
+    expect(view.onMove).toHaveBeenCalledExactlyOnceWith(
+      ["goblin"],
+      { col: 1, row: 0 },
+      false,
+    );
+  });
+
+  test("moving freely: a drag keeps its exact distance, a tap centres the token on it (T-233d)", async () => {
+    const view = renderTokens(new Set(), undefined, true);
+    await ready(view.fake);
+    fireEvent.pointerDown(area(), { ...onGoblin, pointerId: 1 });
+    // 2.4 cells right and 0.6 down: kept as they are.
+    fireEvent.pointerMove(area(), { clientX: 245, clientY: 155, pointerId: 1 });
+    fireEvent.pointerUp(area(), { clientX: 245, clientY: 155, pointerId: 1 });
+    expect(view.onMove).toHaveBeenLastCalledWith(
+      ["goblin"],
+      { col: 2.4, row: 0.6 },
+      true,
+    );
+    // Touch: the selected Goblin goes with its centre onto the tapped point.
+    click({ clientX: 330, clientY: 280 }, { pointerType: "touch" });
+    expect(view.onMove).toHaveBeenLastCalledWith(
+      ["goblin"],
+      { col: 4.1, row: 3.1 },
+      true,
+    );
+  });
+
+  test("on the grid, Alt held places freely anyway (T-233d)", async () => {
+    const view = renderTokens();
+    await ready(view.fake);
+    fireEvent.pointerDown(area(), { ...onGoblin, pointerId: 1, altKey: true });
+    fireEvent.pointerMove(area(), {
+      clientX: 245,
+      clientY: 155,
+      pointerId: 1,
+      altKey: true,
     });
+    fireEvent.pointerUp(area(), {
+      clientX: 245,
+      clientY: 155,
+      pointerId: 1,
+      altKey: true,
+    });
+    expect(view.onMove).toHaveBeenLastCalledWith(
+      ["goblin"],
+      { col: 2.4, row: 0.6 },
+      true,
+    );
   });
 });

@@ -1147,6 +1147,9 @@ test("the DM drags a token by mouse, moves it with the keys and deletes it (T-10
   await page.getByRole("button", { name: "Token anlegen …" }).click();
   await page.getByLabel("Name").fill("Goblin");
   await page.getByRole("button", { name: "Anlegen", exact: true }).click();
+  // On the grid: moves go by whole cells (T-233d; outside combat they are free by default).
+  await page.getByRole("button", { name: /Wie Kampagne/ }).click();
+  await page.getByRole("menuitemradio", { name: "Immer Raster" }).click();
 
   interface Drawn {
     readonly x: number;

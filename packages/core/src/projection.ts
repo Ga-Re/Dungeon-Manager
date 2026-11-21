@@ -176,6 +176,7 @@ export function projectEvents(
       case "token.removed":
       case "visibility.changed":
       case "combat.changed":
+      case "gridMode.changed":
       case "initiative.combatantRemoved":
         return null;
     }

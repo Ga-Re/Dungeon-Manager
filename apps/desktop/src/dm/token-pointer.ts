@@ -29,13 +29,38 @@ export function tokenAt(
   return null;
 }
 
-/** The whole cells between two map points: a drag snaps to cells (T-107b). */
-export function dragCells(start: Point, end: Point, grid: Grid): GridCell {
+/**
+ * The cells between two map points: a drag snaps to whole cells (T-107b), or with `free` keeps
+ * the exact distance, to a thousandth of a cell (T-233d).
+ */
+export function dragCells(
+  start: Point,
+  end: Point,
+  grid: Grid,
+  free = false,
+): GridCell {
   const cell = grid.cellSizePx;
+  const round = free
+    ? (value: number) => Math.round(value * 1000) / 1000
+    : Math.round;
   // `+ 0` turns -0 into 0, so an unmoved drag equals { col: 0, row: 0 }.
   return {
-    col: Math.round((end.x - start.x) / cell) + 0,
-    row: Math.round((end.y - start.y) / cell) + 0,
+    col: round((end.x - start.x) / cell) + 0,
+    row: round((end.y - start.y) / cell) + 0,
+  };
+}
+
+/** The shift that centres `token` on the tapped `point`, placed freely (T-233d). */
+export function tapFreeShift(
+  token: TokenShape,
+  point: Point,
+  grid: Grid,
+): GridCell {
+  const cell = grid.cellSizePx;
+  const round = (value: number) => Math.round(value * 1000) / 1000 + 0;
+  return {
+    col: round((point.x - (token.x + token.width / 2)) / cell),
+    row: round((point.y - (token.y + token.height / 2)) / cell),
   };
 }
 

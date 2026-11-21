@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -466,14 +466,22 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Tiny tokens arrange by count; Small ones are drawn smaller (unit + visual tests)
 - **Notes:** DM feedback and decisions (2026-11-21): tokens could be dropped onto occupied cells; dropping there goes to the nearest free cell (not back), also outside combat; Small drawn at ~75 %; Tiny ones arrange by how many share a cell. Split from T-233c by the agent.
 
-### T-233d Grid mode setting and free movement
+### T-233d Free movement and the scene's grid mode
 
-- **Status:** todo · **Depends on:** T-233c · **Refs:** SPEC §2.4, §5
-- Each scene has a grid mode: "always on the grid", "free, on the grid in combat" or "always free"; scenes without one take the campaign's default. It applies to all tokens (player characters and creatures); holding Alt places a token freely at any time. Free tokens never overlap others: a token dropped onto another is pushed just far enough away (DM decision, 2026-11-21).
+- **Status:** in-progress · **Depends on:** T-233c · **Refs:** SPEC §2.4, §5
+- Each scene has a grid mode, chosen in the Szene ribbon: "as the campaign", "always on the grid", "free, on the grid in combat" or "always free"; it applies to all tokens (player characters and creatures). Holding Alt places a token freely at any time. Free tokens never overlap others: a token dropped onto another is pushed just far enough away (DM decision, 2026-11-21).
 - **Acceptance criteria**
   - [ ] Free moves outside combat and snapped moves in combat, per grid mode, with Alt override (component tests)
-  - [ ] Free tokens never overlap (unit test)
-- **Notes:** DM request (2026-11-20). DM decision (2026-11-21): the scene's mode is chosen in the Szene ribbon (with "as the campaign"), the campaign default in the settings dialog. Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist. From the T-233c review: the DM window passes the map's cells as `bounds` with every move, which snaps a free token on its next move – with free movement `bounds` must depend on the grid mode, combat and Alt.
+  - [ ] Free tokens never overlap (unit + property tests)
+- **Notes:** DM request (2026-11-20); DM decisions (2026-11-21). Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist. From the T-233c review: `bounds` with every move snaps a free token on its next move – with free movement the placement depends on the grid mode, combat and Alt. Split from T-233d (agent, 2026-11-21): the campaign default is T-233e.
+
+### T-233e The campaign's default grid mode in the settings
+
+- **Status:** todo · **Depends on:** T-233d · **Refs:** SPEC §2.4
+- The settings dialog sets the campaign's default grid mode (`campaign.gridMode`, T-233a), used by scenes "as the campaign"; an open scene follows a change at once.
+- **Acceptance criteria**
+  - [ ] Changing the default in the settings changes how an open scene "as the campaign" moves tokens (component test)
+- **Notes:** DM decision (2026-11-21): the campaign default lives in the settings dialog. Needs the open scene to follow campaign changes (today it reads the campaign once).
 
 ### T-108a Fog: rectangle reveal/hide, undo, live on the TV
 

@@ -40,7 +40,13 @@ import {
   type FogShape,
 } from "./fog-shapes.js";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
-import { arrowStep, dragCells, tapShift, tokenAt } from "./token-pointer.js";
+import {
+  arrowStep,
+  dragCells,
+  tapFreeShift,
+  tapShift,
+  tokenAt,
+} from "./token-pointer.js";
 
 /** Provided once in `main.tsx`, so panels deep in the tree can show maps. */
 export const MapViewContext = createContext<MapViewService | null>(null);
@@ -79,8 +85,20 @@ const TAP_PX = 6;
 export interface TokenControl {
   readonly selected: ReadonlySet<string>;
   readonly onSelect: (ids: ReadonlySet<string>) => void;
-  /** Moves tokens by whole cells: a drag, a tap on a cell, an arrow key. */
-  readonly onMove: (ids: readonly string[], shift: GridCell) => void;
+  /**
+   * Whether tokens move freely now (T-233d: the scene's grid mode and combat); Alt held moves
+   * them freely anyway.
+   */
+  readonly free?: boolean;
+  /**
+   * Moves tokens: a drag, a tap on a cell, an arrow key. `free`: placed as they are, else onto
+   * whole cells.
+   */
+  readonly onMove: (
+    ids: readonly string[],
+    shift: GridCell,
+    free: boolean,
+  ) => void;
   /** The part of `shift` the tokens can make (e.g. kept on the map), for the drag's preview. */
   readonly clampShift?: (ids: readonly string[], shift: GridCell) => GridCell;
   readonly onDelete: (ids: readonly string[]) => void;
@@ -99,6 +117,8 @@ interface TokenPress {
   readonly start: Point;
   moved: boolean;
   shift: GridCell;
+  /** Freely, as decided by the last pointer event (Alt may change during a drag). */
+  free: boolean;
 }
 
 /** A map with zoom (wheel, +/−), pan (drag, arrow keys), rotation and "fit" (DM window). */
@@ -468,6 +488,7 @@ export function MapView({
       start: mapPoint,
       moved: false,
       shift: { col: 0, row: 0 },
+      free: tokenControl.free === true || event.altKey,
     };
     return true;
   };
@@ -497,9 +518,12 @@ export function MapView({
         (token) => token.id === anchorId.current && selected.has(token.id),
       ) ?? tokens.find((token) => selected.has(token.id));
     if (!anchor) return;
-    const shift = tapShift(anchor, mapPoint, grid);
+    const free = tokenControl.free === true || event.altKey;
+    const shift = free
+      ? tapFreeShift(anchor, mapPoint, grid)
+      : tapShift(anchor, mapPoint, grid);
     if (shift.col !== 0 || shift.row !== 0)
-      tokenControl.onMove([...selected], shift);
+      tokenControl.onMove([...selected], shift, free);
   };
 
   const onPointerDown = (event: PointerEvent) => {
@@ -533,7 +557,8 @@ export function MapView({
       press.moved = true;
       const mapPoint = onMapPoint(point);
       if (!mapPoint) return;
-      const wanted = dragCells(press.start, mapPoint, grid);
+      press.free = tokenControl?.free === true || event.altKey;
+      const wanted = dragCells(press.start, mapPoint, grid, press.free);
       const shift = tokenControl?.clampShift?.(press.ids, wanted) ?? wanted;
       if (shift.col === press.shift.col && shift.row === press.shift.row)
         return;
@@ -576,7 +601,7 @@ export function MapView({
       setDragShift(null);
       if (press.moved) {
         if (press.shift.col !== 0 || press.shift.row !== 0)
-          tokenControl?.onMove(press.ids, press.shift);
+          tokenControl?.onMove(press.ids, press.shift, press.free);
       } else if (press.wasSelected) clickSelected(press);
       return;
     }
@@ -642,7 +667,7 @@ export function MapView({
           : null;
       if (step) {
         event.preventDefault();
-        tokenControl.onMove(ids, step);
+        tokenControl.onMove(ids, step, tokenControl.free === true);
         return;
       }
     }

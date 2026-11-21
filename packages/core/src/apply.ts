@@ -8,7 +8,9 @@ import type {
   TokenPosition,
 } from "@dungeon-manager/schema";
 import {
+  discRadius,
   gridFootprint,
+  placeFree,
   placeOnCells,
   snapToCells,
   type CellBounds,
@@ -105,7 +107,9 @@ function applyChange(state: SessionState, command: Command): Change {
       }
       if (!state.map) return "noMap";
       if (command.bounds) {
-        const placed = onCells(state, moved, command.bounds);
+        const placed = command.free
+          ? freely(state, moved, command.bounds)
+          : onCells(state, moved, command.bounds);
         if (!placed) return "noFreeCell";
         for (const [id, cell] of placed) moved.set(id, cell);
       }
@@ -275,6 +279,17 @@ function applyChange(state: SessionState, command: Command): Change {
         events: [{ type: "combat.changed", combat: false }],
       };
     }
+    case "scene.setGridMode": {
+      if ((scene.gridMode ?? null) === command.gridMode)
+        return { state, events: [] };
+      const changed: Scene = { ...scene };
+      if (command.gridMode === null) delete changed.gridMode;
+      else changed.gridMode = command.gridMode;
+      return {
+        state: { ...state, scene: changed },
+        events: [{ type: "gridMode.changed", gridMode: command.gridMode }],
+      };
+    }
     case "visibility.setTokens": {
       if (command.tokenIds.length === 0) return "unknownToken";
       let current = state;
@@ -407,6 +422,56 @@ function onCells(
     );
     if (!cells) return null;
     for (const [id, cell] of cells) result.set(id, cell);
+  }
+  return result;
+}
+
+/**
+ * Where tokens moved freely to `wanted` end up (T-233d), level by level: never overlapping
+ * another token's disc, with the same rule for what the table sees as `onCells`.
+ */
+function freely(
+  state: SessionState,
+  wanted: ReadonlyMap<string, TokenPosition>,
+  bounds: Required<CellBounds>,
+): Map<string, TokenPosition> | null {
+  const result = new Map<string, TokenPosition>();
+  const { tokens } = state.scene;
+  const shape = (token: Token) => {
+    const footprint = gridFootprint(token.size);
+    return { footprint, radius: discRadius(token.size, footprint) };
+  };
+  for (const levelId of new Set(tokens.map((each) => each.levelId))) {
+    const onLevel = tokens.filter((each) => each.levelId === levelId);
+    const moving = onLevel.flatMap((each) => {
+      const to = wanted.get(each.id);
+      if (!to) return [];
+      return [
+        {
+          id: each.id,
+          wanted: to,
+          from: each.position,
+          ...shape(each),
+          seen:
+            seenByTable(state, each) ||
+            seenByTable(state, { ...each, position: to }),
+        },
+      ];
+    });
+    if (moving.length === 0) continue;
+    const placed = placeFree(
+      moving,
+      onLevel
+        .filter((each) => !wanted.has(each.id))
+        .map((each) => ({
+          position: each.position,
+          ...shape(each),
+          seen: seenByTable(state, each),
+        })),
+      bounds,
+    );
+    if (!placed) return null;
+    for (const [id, position] of placed) result.set(id, position);
   }
   return result;
 }

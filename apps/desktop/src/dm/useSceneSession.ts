@@ -12,6 +12,7 @@ import {
 } from "@dungeon-manager/core";
 import type {
   Campaign,
+  GridMode,
   MapData,
   Scene,
   VisibilityRules,
@@ -74,6 +75,8 @@ export interface SceneSession {
   readonly notOnTv: boolean;
   /** The campaign's visibility defaults (`{}` until it is read): what a token without its own follows. */
   readonly visibilityDefaults: VisibilityRules;
+  /** The campaign's grid mode for scenes without their own (T-233d); `undefined` until read. */
+  readonly campaignGridMode: GridMode | undefined;
   /** Saving the last change failed (it stays in memory; the next change or `retrySave` retries). */
   readonly saveFailed: boolean;
   /** A write is queued or in flight, so the file does not have the latest change yet. */
@@ -299,6 +302,7 @@ export function useSceneSession(
     canRedo: campaign !== null && history.future.length > 0,
     notOnTv,
     visibilityDefaults: campaign?.visibilityDefaults ?? NO_DEFAULTS,
+    campaignGridMode: campaign?.gridMode,
     saveFailed,
     saving: pendingWrites > 0,
     retrySave() {
