@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-session-previous-crashed"
+description = "Enables the session_previous_crashed command without any pre-configured scope."
+commands.allow = ["session_previous_crashed"]
+
+[[permission]]
+identifier = "deny-session-previous-crashed"
+description = "Denies the session_previous_crashed command without any pre-configured scope."
+commands.deny = ["session_previous_crashed"]

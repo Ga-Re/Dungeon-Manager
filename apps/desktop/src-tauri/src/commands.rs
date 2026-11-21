@@ -175,6 +175,17 @@ pub fn library_subscribe(
     Ok(())
 }
 
+/// Whether the previous session of the app was killed or crashed (T-238): the DM window keeps
+/// the TV dark then until the DM sends a scene. Carries no library data.
+#[tauri::command]
+pub fn session_previous_crashed(
+    window: WebviewWindow,
+    state: State<crate::session::SessionState>,
+) -> Result<bool, LibraryError> {
+    require_dm(&window)?;
+    Ok(state.previous_crashed)
+}
+
 /// The open library's folder, for display.
 #[tauri::command]
 pub fn library_root(

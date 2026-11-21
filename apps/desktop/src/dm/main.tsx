@@ -6,6 +6,7 @@ import { createTauriLibraryService } from "../platform/tauri-library.js";
 import { createTauriAppMenu } from "../platform/tauri-app-menu.js";
 import { createTauriMapViewService } from "../platform/tauri-map-images.js";
 import { createTauriPlayerFeedSender } from "../platform/tauri-player-feed.js";
+import { tauriPreviousSessionCrashed } from "../platform/tauri-session.js";
 import { renderDmWindow } from "./render.js";
 
 // SPIKE (T-007): `pnpm spike:desktop` opens the performance spike instead of the player view.
@@ -22,4 +23,5 @@ renderDmWindow({
   playerFeed: createTauriPlayerFeedSender(),
   // Lowercase UUIDs: opaque, unique, and safe as file names on every OS.
   newId: () => crypto.randomUUID(),
+  previousSessionCrashed: tauriPreviousSessionCrashed,
 });
