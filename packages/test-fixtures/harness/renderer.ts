@@ -321,8 +321,8 @@ async function glideScenario(canvas: HTMLCanvasElement) {
 /**
  * "tiles" (T-127): the fixture map drawn as one texture and in 256-px tiles (as a map beyond the
  * GPU's texture limit is), fitted and zoomed in on a tile corner; the largest difference of any
- * channel goes to `data-tiles-max-diff`. Tiles sample with their own coordinates, so a level or
- * two may differ on edges; a seam would differ by far more.
+ * channel goes to `data-tiles-max-diff`. Tiles sample with their own coordinates, so thin lines may
+ * differ a few levels when scaled down; a seam differs by far more (see the visual test).
  */
 async function tilesScenario(canvas: HTMLCanvasElement) {
   const fitted = cameraFor("fit");
@@ -354,16 +354,27 @@ async function tilesScenario(canvas: HTMLCanvasElement) {
   const whole = await draw();
   const tiled = await draw(256);
   let maxDiff = 0;
+  const where: string[] = [];
   whole.forEach((shot, index) => {
     const other = tiled[index];
     if (!other || other.length !== shot.length) {
       maxDiff = 255;
       return;
     }
-    for (let i = 0; i < shot.length; i++)
-      maxDiff = Math.max(maxDiff, Math.abs((shot[i] ?? 0) - (other[i] ?? 0)));
+    for (let i = 0; i < shot.length; i++) {
+      const diff = Math.abs((shot[i] ?? 0) - (other[i] ?? 0));
+      if (diff > 2 && where.length < 20) {
+        const pixel = Math.floor(i / 4);
+        where.push(
+          `${String(index)}:${String(pixel % view.width)},${String(Math.floor(pixel / view.width))}=${String(diff)}`,
+        );
+      }
+      maxDiff = Math.max(maxDiff, diff);
+    }
   });
   document.body.dataset["tilesMaxDiff"] = String(maxDiff);
+  // Where it differs by more than 2 (camera index: x,y = difference), for a failing run.
+  document.body.dataset["tilesDiffAt"] = where.join(" ");
 }
 
 async function main() {

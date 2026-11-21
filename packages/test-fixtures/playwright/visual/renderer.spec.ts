@@ -12,15 +12,20 @@ for (const scenario of ["fit", "zoomed", "rotated"]) {
 }
 
 // A map larger than the texture limit (T-127) is drawn in tiles: fitted and zoomed in on a tile
-// corner, it differs from one texture by at most two levels per channel (sampling within each
-// tile); a seam would differ by far more.
+// corner, it looks like one texture. Tiles sample with their own coordinates, so thin lines of the
+// map may differ slightly when it is scaled down (measured: 8–9 of 255 at most); seams – tiles
+// without their neighbours' edge pixels – differ by about 49. The bound sits clearly between.
+const TILES_MAX_DIFF = 12;
 test("map in tiles looks like one texture", async ({ page }) => {
   await page.goto(`${fixturePage("renderer.html")}#tiles`);
   await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
   const maxDiff = Number(
     await page.locator("body").getAttribute("data-tiles-max-diff"),
   );
-  expect(maxDiff).toBeLessThanOrEqual(2);
+  expect(
+    maxDiff,
+    (await page.locator("body").getAttribute("data-tiles-diff-at")) ?? "",
+  ).toBeLessThanOrEqual(TILES_MAX_DIFF);
 });
 
 // Fog (T-105b, T-108a): opaque for players, also rotated and for nested or touching areas;
