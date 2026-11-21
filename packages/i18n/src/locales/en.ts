@@ -300,6 +300,8 @@ export const en: Messages = {
     remove: "Remove {{name}}",
     playerRolls: "Enter the players' rolls …",
     enterRolls: "Enter",
+    rollsHint:
+      "Characters without a token of their own stay hidden on the TV until you release them.",
     noPlayers: "The campaign has no players yet.",
     newEntry: "Add an entry …",
     entryName: "Name",

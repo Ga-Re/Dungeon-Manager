@@ -302,6 +302,8 @@ export const de = {
     remove: "{{name}} entfernen",
     playerRolls: "Spielerwürfe eintragen …",
     enterRolls: "Eintragen",
+    rollsHint:
+      "Charaktere ohne eigenes Token bleiben auf dem TV verborgen, bis du sie freigibst.",
     noPlayers: "Die Kampagne hat noch keine Spieler.",
     newEntry: "Eintrag hinzufügen …",
     entryName: "Name",

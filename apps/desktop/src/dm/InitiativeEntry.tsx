@@ -76,6 +76,7 @@ export function PlayerRollsForm({
           />
         </label>
       ))}
+      <p className="dm-settings-hint">{t("initiative.rollsHint")}</p>
       <button type="submit">{t("initiative.enterRolls")}</button>
     </form>
   );
@@ -103,25 +104,29 @@ export function FreeEntryForm({
   };
   return (
     <form className="dm-initiative-form" onSubmit={submit}>
-      <label htmlFor={`${id}-name`}>{t("initiative.entryName")}</label>
-      <input
-        ref={field}
-        id={`${id}-name`}
-        value={name}
-        maxLength={60}
-        onChange={(event) => {
-          setName(event.target.value);
-        }}
-      />
-      <label htmlFor={`${id}-value`}>{t("initiative.entryValue")}</label>
-      <input
-        id={`${id}-value`}
-        type="number"
-        value={value}
-        onChange={(event) => {
-          setValue(event.target.value);
-        }}
-      />
+      <label htmlFor={`${id}-name`}>
+        {t("initiative.entryName")}
+        <input
+          ref={field}
+          id={`${id}-name`}
+          value={name}
+          maxLength={60}
+          onChange={(event) => {
+            setName(event.target.value);
+          }}
+        />
+      </label>
+      <label htmlFor={`${id}-value`}>
+        {t("initiative.entryValue")}
+        <input
+          id={`${id}-value`}
+          type="number"
+          value={value}
+          onChange={(event) => {
+            setValue(event.target.value);
+          }}
+        />
+      </label>
       <p className="dm-settings-hint">{t("initiative.entryHint")}</p>
       <button type="submit">{t("initiative.addEntry")}</button>
     </form>

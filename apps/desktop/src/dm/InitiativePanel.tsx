@@ -86,7 +86,7 @@ export function InitiativePanel({
           disabled={busy || !canAddSelected}
           onClick={onAddSelected}
         />
-        <span className="dm-initiative-anchor">
+        <span>
           <IconButton
             ref={rollsButton}
             icon={<Users />}
@@ -112,12 +112,14 @@ export function InitiativePanel({
                 onEnter={(rolls) => {
                   onPlayerRolls(rolls);
                   setForm(null);
+                  // Keyboard only: focus goes back to the button, not lost with the form.
+                  rollsButton.current?.focus();
                 }}
               />
             )}
           </Popover>
         </span>
-        <span className="dm-initiative-anchor">
+        <span>
           <IconButton
             ref={entryButton}
             icon={<Plus />}
@@ -142,6 +144,7 @@ export function InitiativePanel({
                 onAdd={(name, value) => {
                   onAddEntry(name, value);
                   setForm(null);
+                  entryButton.current?.focus();
                 }}
               />
             )}
@@ -196,6 +199,9 @@ export function InitiativePanel({
                 data-dragging={dragged === id || undefined}
                 onDragStart={(event) => {
                   event.dataTransfer.effectAllowed = "move";
+                  // Some WebKit builds start no drag without data; a type of our own, so the id
+                  // never drops into a text field.
+                  event.dataTransfer.setData("application/x-dm-combatant", id);
                   setDragged(id);
                 }}
                 onDragOver={(event) => {

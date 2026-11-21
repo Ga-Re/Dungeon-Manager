@@ -937,6 +937,15 @@ describe("editing the fog", () => {
         { name: "Max", initiative: 9, playerId: "p2", tokenId: undefined },
       ]);
     });
+    // Both joined as one step: one undo takes both back, redo brings them again.
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    await waitFor(() => {
+      expect(saved()).toHaveLength(0);
+    });
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true, shiftKey: true });
+    await waitFor(() => {
+      expect(saved()).toHaveLength(2);
+    });
     // Entered again: Aria's value changes, nobody joins twice.
     fireEvent.click(
       screen.getByRole("button", { name: "Spielerwürfe eintragen …" }),
@@ -965,6 +974,69 @@ describe("editing the fog", () => {
     await waitFor(() => {
       expect(saved().map((each) => each.name)).toContain("Hort-Aktion");
     });
+  });
+
+  test("a character in the order through its player's token is found by the quick entry (T-111d)", async () => {
+    const fighting: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "aria",
+          name: "Aria",
+          size: "medium",
+          position: { col: 4, row: 1 },
+          levelId: "ground",
+          ownerPlayerId: "p1",
+        },
+      ],
+      initiative: {
+        round: 0,
+        activeCombatantId: null,
+        order: ["c-aria"],
+        // Joined before the token got its player: no playerId yet.
+        combatants: [
+          {
+            id: "c-aria",
+            name: "Aria",
+            tokenId: "aria",
+            initiative: 3,
+            conditions: [],
+          },
+        ],
+      },
+    };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      fighting,
+      null,
+      null,
+      undefined,
+      [{ id: "p1", name: "Gabi", characterName: "Aria" }],
+    );
+    fireEvent.click(await enabled("Spielerwürfe eintragen …"));
+    const field = screen.getByLabelText("Aria");
+    expect((field as HTMLInputElement).value).toBe("3");
+    fireEvent.change(field, { target: { value: "17" } });
+    fireEvent.submit(field);
+    await waitFor(() => {
+      const combatants =
+        (
+          JSON.parse(
+            library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+          ) as Scene
+        ).initiative?.combatants ?? [];
+      expect(combatants).toEqual([
+        expect.objectContaining({
+          id: "c-aria",
+          initiative: 17,
+          playerId: "p1",
+        }),
+      ]);
+    });
+    // Focus is back on the button, not lost with the form.
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Spielerwürfe eintragen …" }),
+    );
   });
 
   test("undo keys are left to text fields", async () => {
