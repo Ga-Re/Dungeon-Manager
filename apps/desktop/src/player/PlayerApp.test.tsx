@@ -274,6 +274,100 @@ describe("PlayerApp", () => {
     });
   });
 
+  test("the active token shines and the initiative bar lists what players may see (T-111c)", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const scene: ViewerScene = {
+      ...sceneWith("library/maps/a.png"),
+      tokens: [
+        {
+          id: "t-aria",
+          name: "Aria",
+          size: "medium",
+          position: { col: 1, row: 0 },
+          levelId: "ground",
+        },
+      ],
+      initiative: {
+        round: 2,
+        activeCombatantId: "aria",
+        // The projection already left out what players may not see; a name may be withheld.
+        combatants: [
+          { id: "aria", name: "Aria", tokenId: "t-aria" },
+          { id: "shadow" },
+        ],
+      },
+    };
+    feed.send({ v: 1, scene, rotation: 90 });
+    await waitFor(() => {
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([
+        expect.objectContaining({ id: "t-aria", active: true }),
+      ]);
+    });
+    const bar = screen.getByRole("region", { name: "Initiative" });
+    expect(bar.textContent).toContain("Runde 2");
+    const entries = bar.querySelectorAll("li");
+    expect([...entries].map((entry) => entry.textContent)).toEqual([
+      "Aria",
+      "Unbekannt",
+    ]);
+    expect(entries[0]?.getAttribute("aria-current")).toBe("true");
+    // It turns with the TV's view.
+    expect(
+      bar.closest(".player-initiative-frame")?.getAttribute("data-rotation"),
+    ).toBe("90");
+
+    // No turn shown (the active one hidden by the projection), no entries: no ring, no bar.
+    feed.send({
+      v: 1,
+      scene: {
+        ...scene,
+        initiative: { round: 2, activeCombatantId: null, combatants: [] },
+      },
+      rotation: 0,
+    });
+    await waitFor(() => {
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([
+        expect.not.objectContaining({ active: true }),
+      ]);
+    });
+    expect(screen.queryByRole("region", { name: "Initiative" })).toBeNull();
+    // The active one without a token: no ring either.
+    feed.send({
+      v: 1,
+      scene: {
+        ...scene,
+        initiative: {
+          round: 2,
+          activeCombatantId: "lair",
+          combatants: [{ id: "lair", name: "Hort" }],
+        },
+      },
+      rotation: 0,
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("region", { name: "Initiative" })).toBeTruthy();
+    });
+    expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([
+      expect.not.objectContaining({ active: true }),
+    ]);
+
+    // Before the first turn, and without an initiative, there is no bar.
+    feed.send({
+      v: 1,
+      scene: {
+        ...scene,
+        initiative: { round: 0, activeCombatantId: null, combatants: [] },
+      },
+      rotation: 0,
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("region", { name: "Initiative" })).toBeNull();
+    });
+  });
+
   test("removes the old map at once when the scene changes or closes", async () => {
     const { maps, feed } = renderPlayer();
     await waitFor(() => {

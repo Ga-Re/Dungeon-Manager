@@ -634,6 +634,11 @@ export const de = {
     notShown:
       "Die Szene kann nicht auf dem TV gezeigt werden (ist die Kampagnendatei lesbar?). Der TV bleibt schwarz.",
     windowTitle: "Spieleransicht",
+    initiative: {
+      label: "Initiative",
+      round: "Runde {{round}}",
+      unknown: "Unbekannt",
+    },
   },
 };
 

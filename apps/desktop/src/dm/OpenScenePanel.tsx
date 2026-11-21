@@ -300,14 +300,26 @@ export function OpenScenePanel({
       (token) => tokenVisibility(defaults, token) === "hidden",
     );
 
+  // The token whose turn it is (T-111c): marked as on the TV.
+  const activeTokenId =
+    scene.initiative?.combatants.find(
+      (each) => each.id === scene.initiative?.activeCombatantId,
+    )?.tokenId ?? null;
   // New tokens (T-107a): on the free cell nearest the map's middle, on the level the DM works on.
   const newTokenButton = useRef<HTMLButtonElement>(null);
   const tokens = useMemo(
     () =>
       map && levelId !== undefined
-        ? tokenShapes(scene.tokens, map.grid, levelId, selected, defaults)
+        ? tokenShapes(
+            scene.tokens,
+            map.grid,
+            levelId,
+            selected,
+            defaults,
+            activeTokenId,
+          )
         : [],
-    [scene.tokens, map, levelId, selected, defaults],
+    [scene.tokens, map, levelId, selected, defaults, activeTokenId],
   );
   const [creatingToken, setCreatingToken] = useState(false);
   const addToken = (name: string, size: TokenSize): boolean => {

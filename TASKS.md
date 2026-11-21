@@ -562,11 +562,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-111c Initiative on the TV
 
-- **Status:** todo · **Depends on:** T-111a · **Refs:** SPEC 11
+- **Status:** done · **Depends on:** T-111a · **Refs:** SPEC 11
 - The active combatant's token is highlighted on the TV; an initiative bar at the TV's edge lists the combatants by the visibility rules (hidden ones left out, names by their visibility), the active one marked.
 - **Acceptance criteria**
-  - [ ] Active token highlighted in player window (screenshot)
-  - [ ] The bar shows only what players may see (projection tests)
+  - [x] Active token highlighted in player window (screenshot)
+  - [x] The bar shows only what players may see (projection tests)
+- **Notes:** The bar shows from the first turn on (round ≥ 1), along the players' top edge and turned with the TV's view; names withheld by visibility show as "Unbekannt". The DM window marks the active token the same way.
 
 ### T-112 HP and conditions
 

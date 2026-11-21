@@ -12,6 +12,7 @@ import {
   UniformGroup,
 } from "pixi.js";
 import {
+  TOKEN_ACTIVE_RING,
   TOKEN_HIDDEN_ALPHA,
   TOKEN_RING,
   TOKEN_SELECTED_RING,
@@ -79,6 +80,8 @@ export interface TokenShape {
   readonly selected?: boolean | undefined;
   /** Hidden from the players (T-107b): the DM window draws it faded. */
   readonly hidden?: boolean | undefined;
+  /** Its turn in the initiative (T-111c): drawn with a bright ring, on the TV too. */
+  readonly active?: boolean | undefined;
 }
 
 /** A map's grid, in map pixels (the sidecar's calibration), and how its lines look. */
@@ -230,6 +233,15 @@ export async function createRenderer(
         .fill(tokenColor(token.id))
         .stroke({ width: radius * 0.08, color: TOKEN_RING }),
     );
+    // The turn's token: a bright ring outside its own, with a dark edge on any map.
+    if (token.active === true)
+      view.addChild(
+        new Graphics()
+          .circle(0, 0, radius * 1.08)
+          .stroke({ width: radius * 0.2, color: "#000000", alpha: 0.6 })
+          .circle(0, 0, radius * 1.08)
+          .stroke({ width: radius * 0.12, color: TOKEN_ACTIVE_RING }),
+      );
     if (token.selected === true)
       view.addChild(
         new Graphics()
@@ -271,6 +283,7 @@ export async function createRenderer(
         token.height,
         token.selected === true,
         token.hidden === true,
+        token.active === true,
       ]);
       let built = builtTokens.get(token.id);
       // Where it is shown now, mid-glide too: a new glide starts from there.

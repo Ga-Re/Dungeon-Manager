@@ -6,8 +6,10 @@ import {
   type Renderer,
   type Size,
 } from "@dungeon-manager/renderer";
-import { useEffect, useRef } from "react";
+import type { ViewerScene } from "@dungeon-manager/schema";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { InitiativeBar } from "./InitiativeBar.js";
 import { levelMedia } from "../level-media.js";
 import { tokenShapes } from "../token-shapes.js";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
@@ -47,6 +49,11 @@ export function PlayerApp({
 }) {
   const { t } = useTranslation();
   const host = useRef<HTMLElement>(null);
+  // The initiative bar (T-111c): the projected initiative and how the TV is turned.
+  const [bar, setBar] = useState<{
+    readonly initiative: NonNullable<ViewerScene["initiative"]>;
+    readonly rotation: number;
+  } | null>(null);
 
   useEffect(() => {
     const element = host.current;
@@ -149,6 +156,13 @@ export function PlayerApp({
         JSON.stringify(message?.scene?.map?.grid) ===
         JSON.stringify(next.scene?.map?.grid);
       message = next;
+      const initiative = next.scene?.initiative;
+      setBar(
+        // Nothing to list, nothing shown: an empty bar would only say "something acts".
+        initiative && initiative.round > 0 && initiative.combatants.length > 0
+          ? { initiative, rotation: next.rotation }
+          : null,
+      );
       const view = renderer;
       if (!view) return;
       const map = next.scene?.map ?? null;
@@ -156,9 +170,21 @@ export function PlayerApp({
       // Grid lines only when the DM switched them on for the TV (T-106b); under the fog.
       view.setGrid(map && next.showGrid === true ? map.grid : null);
       // The projected tokens of the level on the TV (T-107a), under the fog too.
+      // The token whose turn it is shines (T-111c).
+      const activeId = next.scene?.initiative?.activeCombatantId;
+      const activeTokenId =
+        next.scene?.initiative?.combatants.find((each) => each.id === activeId)
+          ?.tokenId ?? null;
       view.setTokens(
         map && next.scene
-          ? tokenShapes(next.scene.tokens, map.grid, map.currentLevelId)
+          ? tokenShapes(
+              next.scene.tokens,
+              map.grid,
+              map.currentLevelId,
+              undefined,
+              undefined,
+              activeTokenId,
+            )
           : [],
         // Moves on the shown level glide (T-233b: combat's snap); a new scene appears at once.
         { glide: sameScene && sameGrid ? TOKEN_GLIDE_MS : 0 },
@@ -257,11 +283,16 @@ export function PlayerApp({
   }, [feed, maps, storage]);
 
   return (
-    <main
-      ref={host}
-      id="player-view"
-      className="player"
-      aria-label={t("player.windowTitle")}
-    />
+    <>
+      <main
+        ref={host}
+        id="player-view"
+        className="player"
+        aria-label={t("player.windowTitle")}
+      />
+      {bar && (
+        <InitiativeBar initiative={bar.initiative} rotation={bar.rotation} />
+      )}
+    </>
   );
 }

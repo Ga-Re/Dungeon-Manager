@@ -61,13 +61,14 @@ for (const scenario of ["grid", "grid-zoomed", "grid-rotated", "player-grid"]) {
 
 // Tokens (T-107a): placeholder discs with initials and a ring; under the fog on the TV. Selected
 // and hidden ones in the DM window, zoomed in: initials stay sharp (T-107b). A token half-way
-// through its glide to a new place (T-233b).
+// through its glide to a new place (T-233b). The token whose turn it is shines on the TV (T-111c).
 for (const scenario of [
   "tokens",
   "tokens-rotated",
   "player-tokens",
   "tokens-selected",
   "tokens-glide",
+  "player-tokens-active",
 ]) {
   test(`tokens: ${scenario}`, async ({ page }) => {
     await page.goto(`${fixturePage("renderer.html")}#${scenario}`);

@@ -121,4 +121,20 @@ describe("token shapes", () => {
       },
     );
   });
+
+  it("mark the token whose turn it is (T-111c)", () => {
+    expect(
+      tokenShapes(
+        [token("a", "medium"), token("b", "medium")],
+        grid,
+        "ground",
+        undefined,
+        undefined,
+        "b",
+      ).map(({ id, active }) => ({ id, active })),
+    ).toEqual([
+      { id: "a", active: undefined },
+      { id: "b", active: true },
+    ]);
+  });
 });
