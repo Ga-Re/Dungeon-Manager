@@ -1,6 +1,6 @@
 import { IconButton, RibbonGroup } from "@dungeon-manager/ui";
 import { MonitorUp, RefreshCw, RotateCwSquare } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DisplayError,
@@ -15,6 +15,7 @@ import { DmShell } from "./shell/DmShell.js";
 import { ShellPortal } from "./shell/slots.js";
 import { deviceStorage } from "./shell/theme.js";
 import { TvCalibration } from "./TvCalibration.js";
+import { TvViewContext, type TvView } from "./tv-view-context.js";
 import {
   calibrationKey,
   cellInches,
@@ -98,6 +99,18 @@ export function DmApp({
         : { inchPx: tvInchPx, cellInches: cellInches(cellSize) },
     );
   }, [playerFeed, tvInchPx, cellSize]);
+  // The calibrated TV for the DM's map (T-106c): its view shows there as a frame to move.
+  const tvView = useMemo<TvView | null>(
+    () =>
+      tvDisplay && tvInchPx !== null
+        ? {
+            display: { width: tvDisplay.width, height: tvDisplay.height },
+            pxPerCell: tvInchPx * cellInches(cellSize),
+            rotation,
+          }
+        : null,
+    [tvDisplay, tvInchPx, cellSize, rotation],
+  );
 
   // Players sit around the table; the TV view turns in quarter steps (SPEC 2.2).
   const rotateTv = () => {
@@ -179,13 +192,15 @@ export function DmApp({
     <main>
       <h1 className="visually-hidden">{t("dm.heading")}</h1>
       <DmShell storage={storage} root={root} appMenu={appMenu}>
-        <LibraryPanel
-          service={libraryService}
-          newId={newId}
-          welcome={welcome}
-          storage={storage}
-          afterCrash={afterCrash}
-        />
+        <TvViewContext value={tvView}>
+          <LibraryPanel
+            service={libraryService}
+            newId={newId}
+            welcome={welcome}
+            storage={storage}
+            afterCrash={afterCrash}
+          />
+        </TvViewContext>
         <ShellPortal slot="ribbonDisplay">
           <RibbonGroup
             caption={t("shell.groups.playerView")}

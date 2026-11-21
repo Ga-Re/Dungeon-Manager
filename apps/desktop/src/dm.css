@@ -54,6 +54,42 @@ label {
   stroke-dasharray: 6 4;
 }
 
+/* The calibrated TV's view (T-106c): a frame the DM drags or moves with the arrow keys. */
+.map-view-tv-frame {
+  position: absolute;
+  inset: 0;
+  z-index: var(--dm-z-overlay);
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.map-view-tv-frame-line {
+  fill: none;
+  stroke: var(--dm-accent);
+  stroke-width: 2;
+  stroke-dasharray: 8 4;
+}
+
+/* A wide transparent border to grab; the inside is left to the map. */
+.map-view-tv-frame-handle {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+}
+
+.map-view-tv-frame[data-movable="true"] .map-view-tv-frame-handle {
+  pointer-events: stroke;
+  cursor: move;
+}
+
+.map-view-tv-frame-handle:focus-visible {
+  outline: none;
+  stroke: var(--dm-focus);
+  stroke-width: 3;
+}
+
 .map-view-preview-reveal {
   fill: var(--dm-overlay-reveal-fill);
 }

@@ -69,6 +69,21 @@ describe("parsePlayerViewMessage", () => {
     ).toBeNull();
   });
 
+  test("carries where the calibrated view centres, strictly (T-106c)", () => {
+    const viewCenter = { x: 300, y: 200 };
+    expect(
+      parsePlayerViewMessage({ v: 1, scene: null, rotation: 0, viewCenter }),
+    ).toEqual({ v: 1, scene: null, rotation: 0, viewCenter });
+    expect(
+      parsePlayerViewMessage({
+        v: 1,
+        scene: null,
+        rotation: 0,
+        viewCenter: { x: 1, y: 2, z: 3 },
+      }),
+    ).toBeNull();
+  });
+
   test("accepts a projected scene, or none, with a rotation", () => {
     const message = { v: PLAYER_VIEW_VERSION, scene, rotation: 90 };
     expect(parsePlayerViewMessage(message)).toEqual(message);

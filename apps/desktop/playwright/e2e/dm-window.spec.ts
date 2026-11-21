@@ -1079,3 +1079,60 @@ test("changes whose save failed survive a forced kill and are restored on the ne
   ).toContainText("1 Bereich aufgedeckt");
   await next.context().close();
 });
+
+test("the calibrated TV's view is a frame the DM moves by its border; the inside still pans the map (T-106c)", async ({
+  page,
+}) => {
+  // The 4K "Tisch-TV" of the harness, calibrated: 400 px per inch, so its view is small enough
+  // to lie on the map.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "dm.displayCalibration",
+      JSON.stringify({
+        version: 2,
+        displays: { "Tisch-TV|3840x2160": { inchPx: 400 } },
+      }),
+    );
+  });
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Spieleransicht öffnen" }).click();
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+
+  const frame = page.getByRole("button", { name: /Ausschnitt des TVs/ });
+  await expect(frame).toBeAttached();
+  const corners = async () =>
+    ((await frame.getAttribute("points")) ?? "")
+      .split(" ")
+      .map((pair) => pair.split(",").map(Number) as [number, number]);
+  const box = await page.locator(".map-view-tv-frame").boundingBox();
+  if (!box) throw new Error("frame not laid out");
+  const fit = page.getByRole("button", { name: "Einpassen" });
+  const at = ([x, y]: [number, number]) => ({ x: box.x + x, y: box.y + y });
+  const drag = async (from: { x: number; y: number }, dx: number) => {
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + dx / 2, from.y, { steps: 3 });
+    await page.mouse.move(from.x + dx, from.y, { steps: 3 });
+    await page.mouse.up();
+  };
+  const start = await corners();
+  const [topLeft, , , bottomLeft] = start;
+  if (!topLeft || !bottomLeft) throw new Error("no frame corners");
+
+  // Inside the frame: the DM's own view pans; after "Einpassen" the frame is where it was.
+  const middle = start.reduce<[number, number]>(
+    ([x, y], [cx, cy]) => [x + cx / 4, y + cy / 4] as [number, number],
+    [0, 0],
+  );
+  await drag(at(middle), 80);
+  await fit.click();
+  await expect.poll(corners).toEqual(start);
+
+  // By its border: the TV's view moves; it stays moved after "Einpassen".
+  await drag(at([topLeft[0], (topLeft[1] + bottomLeft[1]) / 2]), 80);
+  await fit.click();
+  await expect
+    .poll(async () => (await corners())[0]?.[0] ?? 0)
+    .toBeGreaterThan(topLeft[0] + 20);
+});

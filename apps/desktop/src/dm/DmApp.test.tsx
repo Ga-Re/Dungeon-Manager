@@ -199,6 +199,7 @@ describe("DmApp", () => {
             calibrate: vi.fn(),
             showCheckSquare: vi.fn(),
             showGrid,
+            setViewCenter: vi.fn(),
           }}
         >
           <DmApp
@@ -229,6 +230,7 @@ describe("DmApp", () => {
             calibrate: vi.fn(),
             showCheckSquare: vi.fn(),
             showGrid: vi.fn(),
+            setViewCenter: vi.fn(),
           }}
         >
           <DmApp
@@ -262,6 +264,7 @@ describe("DmApp", () => {
             calibrate,
             showCheckSquare,
             showGrid: vi.fn(),
+            setViewCenter: vi.fn(),
           }}
         >
           <DmApp
