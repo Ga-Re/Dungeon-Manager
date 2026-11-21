@@ -70,7 +70,9 @@ export function tokenShapes(
   for (const token of onLevel)
     if (token.size === "tiny" && onWholeCell(token.position)) {
       const key = `${String(token.position.col)},${String(token.position.row)}`;
-      sharing.set(key, [...(sharing.get(key) ?? []), token.id]);
+      const together = sharing.get(key);
+      if (together) together.push(token.id);
+      else sharing.set(key, [token.id]);
     }
   return onLevel.map((token) => {
     const footprint = gridFootprint(token.size);

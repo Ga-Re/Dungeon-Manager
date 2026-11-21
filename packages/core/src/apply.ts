@@ -109,6 +109,14 @@ function applyChange(state: SessionState, command: Command): Change {
         if (!placed) return "noFreeCell";
         for (const [id, cell] of placed) moved.set(id, cell);
       }
+      // Tokens that end where they stood (e.g. pushed back by an occupied cell) did not move;
+      // if none moved, nothing changes and no undo step is recorded.
+      for (const each of scene.tokens) {
+        const to = moved.get(each.id);
+        if (to && to.col === each.position.col && to.row === each.position.row)
+          moved.delete(each.id);
+      }
+      if (moved.size === 0) return { state, events: [] };
       return {
         state: withScene(state, {
           tokens: scene.tokens.map((each) => {
@@ -377,6 +385,7 @@ function onCells(
         {
           id: each.id,
           wanted: cell,
+          from: each.position,
           footprint: gridFootprint(each.size),
           seen:
             seenByTable(state, each) ||

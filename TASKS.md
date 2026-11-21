@@ -459,11 +459,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-233c Occupied cells, Tiny arrangement, Small size
 
-- **Status:** in-progress · **Depends on:** T-233b · **Refs:** SPEC §2.4, §5
+- **Status:** done · **Depends on:** T-233b · **Refs:** SPEC §2.4, §5
 - A token moved onto an occupied cell (drag, tap, keys, a group) goes to the nearest free one, in and out of combat; one token per cell, up to four Tiny ones, large footprints whole. Tiny tokens sharing a cell arrange themselves by count (one in the middle, two side by side, three in a triangle, four in the quarters). Small tokens are drawn at about 75 % of a cell; they still occupy a whole cell.
 - **Acceptance criteria**
-  - [ ] Moves never end on an occupied cell; tokens the table does not see never redirect one it sees (unit tests)
-  - [ ] Tiny tokens arrange by count; Small ones are drawn smaller (unit + visual tests)
+  - [x] Moves never end on an occupied cell; tokens the table does not see never redirect one it sees, so a seen token may end on an unseen one's cell (unit + property tests)
+  - [x] Tiny tokens arrange by count; Small ones are drawn smaller (unit + visual tests)
 - **Notes:** DM feedback and decisions (2026-11-21): tokens could be dropped onto occupied cells; dropping there goes to the nearest free cell (not back), also outside combat; Small drawn at ~75 %; Tiny ones arrange by how many share a cell. Split from T-233c by the agent.
 
 ### T-233d Grid mode setting and free movement
@@ -473,7 +473,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Free moves outside combat and snapped moves in combat, per grid mode, with Alt override (component tests)
   - [ ] Free tokens never overlap (unit test)
-- **Notes:** DM request (2026-11-20). DM decision (2026-11-21): the scene's mode is chosen in the Szene ribbon (with "as the campaign"), the campaign default in the settings dialog. Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist.
+- **Notes:** DM request (2026-11-20). DM decision (2026-11-21): the scene's mode is chosen in the Szene ribbon (with "as the campaign"), the campaign default in the settings dialog. Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist. From the T-233c review: the DM window passes the map's cells as `bounds` with every move, which snaps a free token on its next move – with free movement `bounds` must depend on the grid mode, combat and Alt.
 
 ### T-108a Fog: rectangle reveal/hide, undo, live on the TV
 

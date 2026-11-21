@@ -112,6 +112,8 @@ export function nearestFreeCell(
   footprint: GridFootprint,
   others: readonly Occupant[],
   bounds: CellBounds,
+  /** Among equally near cells, the one nearest to this wins (T-233c: where a token came from). */
+  prefer?: TokenPosition,
 ): GridCell | null {
   const minCol = bounds.firstCol ?? 0;
   const minRow = bounds.firstRow ?? 0;
@@ -146,7 +148,11 @@ export function nearestFreeCell(
     );
     const distance = ({ col, row }: GridCell) =>
       Math.hypot(col - start.col, row - start.row);
-    const [best] = free.sort((a, b) => distance(a) - distance(b));
+    const toPreferred = ({ col, row }: GridCell) =>
+      prefer ? Math.hypot(col - prefer.col, row - prefer.row) : 0;
+    const [best] = free.sort(
+      (a, b) => distance(a) - distance(b) || toPreferred(a) - toPreferred(b),
+    );
     if (best) return best;
   }
   return null;
@@ -293,11 +299,16 @@ interface Placing {
  * on the free cell nearest to it – never on an occupied one (up to four Tiny tokens share a
  * cell, a large token claims its footprint). Tokens the table sees go first, in the given order,
  * and only among tokens it sees: an unseen token never redirects a seen one, which would give
- * it away (DM decision, 2026-11-21). Unseen ones then fit around everything. `null` when one
- * finds no room.
+ * it away (DM decision, 2026-11-21). Unseen ones then fit around everything; a seen token may
+ * so end up on an unseen one's cell. `null` when one finds no room.
  */
 export function placeOnCells<T extends string>(
-  moving: readonly (Placing & { readonly id: T; readonly wanted: GridCell })[],
+  moving: readonly (Placing & {
+    readonly id: T;
+    readonly wanted: GridCell;
+    /** Where it stands now: of equally near free cells, the one nearest to it wins. */
+    readonly from?: TokenPosition;
+  })[],
   standing: readonly (Placing & { readonly position: TokenPosition })[],
   bounds: Required<CellBounds>,
 ): Map<T, GridCell> | null {
@@ -308,9 +319,21 @@ export function placeOnCells<T extends string>(
     token: (typeof moving)[number],
     blockers: readonly Occupant[],
   ): boolean => {
-    const cell = canOccupy(blockers, token.wanted, token.footprint)
-      ? token.wanted
-      : nearestFreeCell(token.wanted, token.footprint, blockers, bounds);
+    const inside =
+      token.wanted.col >= bounds.firstCol &&
+      token.wanted.row >= bounds.firstRow &&
+      token.wanted.col + token.footprint.cols <= bounds.cols &&
+      token.wanted.row + token.footprint.rows <= bounds.rows;
+    const cell =
+      inside && canOccupy(blockers, token.wanted, token.footprint)
+        ? token.wanted
+        : nearestFreeCell(
+            token.wanted,
+            token.footprint,
+            blockers,
+            bounds,
+            token.from,
+          );
     if (!cell) return false;
     const occupant = { position: cell, footprint: token.footprint };
     if (token.seen) placedSeen.push(occupant);
