@@ -354,7 +354,7 @@ describe("tokens in fog in combat's snap (T-233b review)", () => {
 });
 
 describe("free tokens as occupants (T-233b)", () => {
-  test("count as standing on their nearest cell", () => {
+  test("take every cell their disc reaches into (T-242: here 2–3 × 1–2)", () => {
     const cell = snapToCells(
       [
         {
@@ -371,8 +371,8 @@ describe("free tokens as occupants (T-233b)", () => {
         },
       ],
     )?.get("new");
-    // (2, 2) is taken by the free token's nearest cell; the first free one in the ring above.
-    expect(cell).toEqual({ col: 2, row: 1 });
+    // Its disc (centre 2.8, 2.1) takes cells 2–3 × 1–2; the nearest free one is below.
+    expect(cell).toEqual({ col: 2, row: 3 });
   });
 });
 

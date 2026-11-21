@@ -407,11 +407,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-242 Grid moves next to free tokens
 
-- **Status:** todo · **Depends on:** T-233d · **Refs:** SPEC §2.4
+- **Status:** done · **Depends on:** T-233d · **Refs:** SPEC §2.4
 - On the grid a free token counts as standing on its nearest cell (T-233c), so a token moved onto the cell beside a free one may overlap its disc (e.g. a Medium at col 2.4 and one moved onto cell 3). Decide with the DM whether grid moves should also keep clear of free tokens' discs (e.g. a cell counts as taken when a free disc reaches into it).
 - **Acceptance criteria**
-  - [ ] The DM's choice is implemented and covered by unit tests
-- **Notes:** From the T-233d review (2026-11-21).
+  - [x] A grid cell a free token's disc reaches into noticeably counts as taken (unit tests)
+- **Notes:** From the T-233d review (2026-11-21). DM decision (2026-11-21): a cell counts as taken when a free disc reaches into it noticeably; tokens never overlap, a grid move goes a cell further.
 
 ### T-106c Move the TV's view
 
@@ -577,6 +577,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Conditions expire automatically at the right turn (tests)
 - **Notes:** From the T-111a review: "act now" restarts the turn of the combatant it interrupted (a second `initiative.turnStarted` in the same round) – conditions that count turns must not count it twice.
+- DM decisions (2026-11-21): HP show in the Initiative panel only (no bar on tokens, in the DM window or on the TV); conditions with a duration count down together at the end of each round (a new round starts) and go at 0 – so "act now" never counts twice.
 
 ### T-113 Blackout button and DM preview of the player view
 
