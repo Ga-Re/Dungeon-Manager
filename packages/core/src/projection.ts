@@ -177,6 +177,7 @@ export function projectEvents(
       case "visibility.changed":
       case "combat.changed":
       case "gridMode.changed":
+      case "initiative.changed":
       case "initiative.combatantRemoved":
         return null;
     }

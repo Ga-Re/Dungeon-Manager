@@ -129,6 +129,15 @@ export const combatantSchema = z.looseObject({
    */
   visibility: visibilityRulesSchema.optional(),
   initiative: z.number(),
+  /**
+   * T-111 (DM decision 2026-11-21, additive): the bonus rolled with (it breaks ties), the player
+   * whose character this is (players go before creatures on a tie), and the turn's markers:
+   * delayed (skipped until it acts) and ready (an action held until its next turn).
+   */
+  initiativeBonus: z.number().optional(),
+  playerId: idSchema.optional(),
+  delayed: z.boolean().optional(),
+  ready: z.boolean().optional(),
   hp: z
     .looseObject({
       current: z.number().int(),

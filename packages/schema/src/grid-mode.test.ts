@@ -43,3 +43,36 @@ describe("grid mode and combat (T-233)", () => {
     );
   });
 });
+
+describe("initiative markers on a combatant (T-111)", () => {
+  it("are optional, so older scene files stay valid, and are kept", () => {
+    const combatant = {
+      id: "goblin",
+      name: "Goblin",
+      initiative: 14,
+      conditions: [],
+    };
+    const initiative = {
+      round: 1,
+      activeCombatantId: "goblin",
+      order: ["goblin"],
+      combatants: [combatant],
+    };
+    expect(sceneSchema.parse({ ...scene, initiative }).initiative).toEqual(
+      initiative,
+    );
+    const marked = {
+      ...combatant,
+      initiativeBonus: 2,
+      playerId: "p1",
+      delayed: true,
+      ready: true,
+    };
+    expect(
+      sceneSchema.parse({
+        ...scene,
+        initiative: { ...initiative, combatants: [marked] },
+      }).initiative?.combatants[0],
+    ).toEqual(marked);
+  });
+});

@@ -82,6 +82,34 @@ export type Command =
   /** Ends the combat; tokens stay where they are. */
   | { readonly type: "combat.end" }
   | { readonly type: "initiative.add"; readonly combatant: Combatant }
+  /** Adds several combatants as one step (T-111: selected tokens, the players' quick entry). */
+  | {
+      readonly type: "initiative.addMany";
+      readonly combatants: readonly Combatant[];
+    }
+  /**
+   * Starts the initiative (T-111): combat starts too – tokens snap onto cells inside `bounds` –
+   * and the first combatant's turn begins in round 1. One step.
+   */
+  | { readonly type: "initiative.start"; readonly bounds: Required<CellBounds> }
+  /** Ends the combat: the initiative is cleared and combat ends, as one step. */
+  | { readonly type: "initiative.end" }
+  /** The active combatant delays: it is skipped until it acts again (`initiative.actNow`). */
+  | { readonly type: "initiative.delay"; readonly combatantId: string }
+  /** A delayed combatant acts now: it moves before the active one and its turn starts. */
+  | { readonly type: "initiative.actNow"; readonly combatantId: string }
+  /** Marks a held action, until the combatant's next turn starts. */
+  | {
+      readonly type: "initiative.ready";
+      readonly combatantId: string;
+      readonly ready: boolean;
+    }
+  /** Moves a combatant to `index` in turn order (reordering by hand). */
+  | {
+      readonly type: "initiative.move";
+      readonly combatantId: string;
+      readonly index: number;
+    }
   | { readonly type: "initiative.remove"; readonly combatantId: string }
   /** Ends the current turn; starts round 1 if combat has not started. */
   | { readonly type: "initiative.next" }
@@ -120,6 +148,8 @@ export type DomainEvent = { readonly at: number } & (
       readonly visibility: Visibility | null;
     }
   | { readonly type: "initiative.combatantAdded"; readonly combatantId: string }
+  /** The order or a marker changed, or the initiative ended (T-111). */
+  | { readonly type: "initiative.changed" }
   | {
       readonly type: "initiative.combatantRemoved";
       readonly combatantId: string;
@@ -151,4 +181,6 @@ export type RejectionReason =
   | "invalidAmount"
   | "invalidArea"
   | "invalidCell"
-  | "noFreeCell";
+  | "noFreeCell"
+  | "notActive"
+  | "notDelayed";
