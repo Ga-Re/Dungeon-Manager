@@ -5,11 +5,13 @@ import {
   Graphics,
   Mesh,
   MeshGeometry,
+  Rectangle,
   Shader,
   Sprite,
   Text,
   Texture,
   UniformGroup,
+  WebGLRenderer,
 } from "pixi.js";
 import {
   TOKEN_ACTIVE_RING,
@@ -23,6 +25,7 @@ import {
 import type { Camera, Size } from "./camera.js";
 import { disposeFog } from "./fog-dispose.js";
 import { easeOut, fadeProgress } from "./fog-fade.js";
+import { mapTiles } from "./map-tiles.js";
 import {
   coarseSpreadOrder,
   FRONT,
@@ -64,6 +67,11 @@ export interface RendererOptions {
   readonly background?: string;
   /** Milliseconds for fog animations; tests freeze it for screenshots mid-spread. */
   readonly now?: () => number;
+  /**
+   * The largest texture side to use (T-127); the GPU's own limit by default. Tests set a small
+   * one to draw a map in tiles.
+   */
+  readonly maxTextureSize?: number;
 }
 
 /** A token as the renderer draws it (T-107a): where, how big, and what it shows. */
@@ -184,6 +192,13 @@ export async function createRenderer(
   });
 
   app.renderer.background.alpha = 1;
+  // The GPU's texture limit (T-127): larger maps are drawn in tiles.
+  const maxTextureSize =
+    options.maxTextureSize ??
+    (app.renderer instanceof WebGLRenderer
+      ? Number(app.renderer.gl.getParameter(app.renderer.gl.MAX_TEXTURE_SIZE))
+      : // WebGPU (not the preference): a size every GPU takes.
+        4096);
 
   const world = new Container();
   app.stage.addChild(world);
@@ -332,7 +347,9 @@ export async function createRenderer(
   // What the drawn lines were built from: an equal request (the player view gets the whole
   // state with every message) keeps them instead of rebuilding.
   let gridBuiltFrom: string | null = null;
-  let map: Sprite | null = null;
+  // The map: one sprite, or a container of tiles for a map larger than the texture limit (T-127).
+  let map: Container | null = null;
+  let mapImageSize: Size | null = null;
   let fog: Container | null = null;
   // The last fog asked for: rebuilt when the map changes, as soft edges follow the map's size.
   let fogInput: {
@@ -546,18 +563,16 @@ export async function createRenderer(
       }
       if (map) {
         world.removeChild(map);
-        map.destroy({ texture: true, textureSource: true });
+        map.destroy({ children: true, texture: true, textureSource: true });
         map = null;
+        mapImageSize = null;
       }
       if (image) {
-        map = new Sprite(Texture.from(image, true));
+        map = mapSprites(image, maxTextureSize);
+        mapImageSize = { width: image.width, height: image.height };
         world.addChildAt(map, 0);
       }
-      mapSize = map
-        ? { width: map.width, height: map.height }
-        : video
-          ? videoSize
-          : null;
+      mapSize = mapImageSize ? mapImageSize : video ? videoSize : null;
       // A new map never fades: its fog is there at once, also if the map's size and fog are
       // the same as before (a running fade must not freeze half-way).
       dropFade();
@@ -933,4 +948,67 @@ function drawFog(
   const layer = drawHardFog(revealed, opacity);
   layer.addChild(soft);
   return layer;
+}
+
+/** Pixels a tile carries from its neighbours, so scaled sampling at its edge sees the real map. */
+const TILE_PAD = 2;
+
+/**
+ * The map as sprites (T-127): one for an image within the texture limit, else one per tile. Each
+ * tile is cut from the image on a canvas of its own with `TILE_PAD` pixels of its neighbours
+ * around it, and shows only its own part: when the map is scaled, the GPU samples across a tile's
+ * edge into those pixels, so no seams appear. Nothing is scaled when cutting.
+ */
+function mapSprites(image: MapImage, maxTextureSize: number): Container {
+  if (Math.max(image.width, image.height) <= maxTextureSize)
+    return new Sprite(Texture.from(image, true));
+  // Room for the pixels each tile carries from its neighbours.
+  const tiles = mapTiles(
+    image.width,
+    image.height,
+    maxTextureSize - 2 * TILE_PAD,
+  );
+  const container = new Container();
+  try {
+    for (const tile of tiles) {
+      const left = Math.max(0, tile.x - TILE_PAD);
+      const top = Math.max(0, tile.y - TILE_PAD);
+      const right = Math.min(image.width, tile.x + tile.width + TILE_PAD);
+      const bottom = Math.min(image.height, tile.y + tile.height + TILE_PAD);
+      const canvas = document.createElement("canvas");
+      canvas.width = right - left;
+      canvas.height = bottom - top;
+      const context = canvas.getContext("2d");
+      if (!context)
+        throw new Error("A map tile could not be drawn (no 2D canvas).");
+      context.drawImage(
+        image,
+        left,
+        top,
+        canvas.width,
+        canvas.height,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+      const texture = new Texture({
+        source: Texture.from(canvas, true).source,
+        frame: new Rectangle(
+          tile.x - left,
+          tile.y - top,
+          tile.width,
+          tile.height,
+        ),
+      });
+      const sprite = new Sprite(texture);
+      sprite.position.set(tile.x, tile.y);
+      container.addChild(sprite);
+    }
+  } catch (error) {
+    // Tiles made so far would otherwise keep their textures.
+    container.destroy({ children: true, texture: true, textureSource: true });
+    throw error;
+  }
+  return container;
 }

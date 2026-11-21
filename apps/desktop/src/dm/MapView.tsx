@@ -299,7 +299,14 @@ export function MapView({
           view.setVideo(loaded);
           imageSize = { width: loaded.videoWidth, height: loaded.videoHeight };
         } else {
-          view.setMap(loaded);
+          try {
+            view.setMap(loaded);
+          } catch (error) {
+            // E.g. a tile of a map beyond the texture limit could not be made (T-127).
+            console.error("The map could not be drawn.", error);
+            setLoad("error");
+            return;
+          }
           imageSize = { width: loaded.width, height: loaded.height };
         }
         setMapSize(imageSize);
