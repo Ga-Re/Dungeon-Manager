@@ -347,7 +347,14 @@ async function main() {
     document.body.dataset["ready"] = "true";
     return;
   }
-  const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
+  // "-tiled" (T-127): a texture limit of 256 px draws the map in tiles; it must look the same.
+  const tiled = scenario.endsWith("-tiled");
+  const renderer = await createRenderer({
+    canvas,
+    size: view,
+    resolution: 1,
+    ...(tiled && { maxTextureSize: 256 }),
+  });
   // "-grid" (T-106b): the fixture map's grid lines, 100 px cells shifted by half a cell to the
   // right, so the test shows that offsets are followed.
   const withGrid = scenario.includes("grid");
@@ -362,7 +369,9 @@ async function main() {
   const hidden = new Set(scenario.endsWith("selected") ? ["g12"] : []);
   // "player-tokens-active" (T-111c): the Ogre's turn, its token shining on the TV.
   const active = new Set(scenario.endsWith("active") ? ["ogre"] : []);
-  const base = scenario.replace(/^(grid|tokens)-?|-(grid|tokens)/, "");
+  const base = scenario
+    .replace(/-tiled$/, "")
+    .replace(/^(grid|tokens)-?|-(grid|tokens)/, "");
   // The player view always gets its fog with (never after) the map.
   const fog = fogFor(base);
   if (fog)

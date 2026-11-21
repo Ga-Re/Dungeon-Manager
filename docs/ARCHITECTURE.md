@@ -239,6 +239,8 @@ Layer order (bottom → top): map (image/video) → grid → assets → light/vi
 
 ---
 
+Maps larger than the GPU's texture limit (T-127): the renderer reads `MAX_TEXTURE_SIZE` (8192 px on many integrated GPUs) and draws a larger image map as tiles that each fit, cut from the image on canvases and placed edge to edge; a map within the limit stays one texture. Video maps are a `<video>` element under the canvas (ADR-0010) and have no such limit.
+
 ## 9. Lighting
 
 - Drivers behind one interface in Rust: `LightDriver { discover, set_state, play_effect }`.

@@ -11,6 +11,17 @@ for (const scenario of ["fit", "zoomed", "rotated"]) {
   });
 }
 
+// A map larger than the texture limit (T-127), drawn in tiles of 256 px: exactly as one texture.
+for (const scenario of ["fit", "player"]) {
+  test(`map in tiles: ${scenario}`, async ({ page }) => {
+    await page.goto(`${fixturePage("renderer.html")}#${scenario}-tiled`);
+    await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
+    await expect(page).toHaveScreenshot(
+      scenario === "fit" ? "dm-fit.png" : "player.png",
+    );
+  });
+}
+
 // Fog (T-105b, T-108a): opaque for players, also rotated and for nested or touching areas;
 // see-through for the DM.
 for (const scenario of [

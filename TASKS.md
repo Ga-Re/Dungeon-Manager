@@ -342,11 +342,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-127 Maps larger than the GPU texture limit
 
-- **Status:** todo · **Depends on:** T-105a · **Refs:** ARCHITECTURE §8, §11
+- **Status:** done · **Depends on:** T-105a · **Refs:** ARCHITECTURE §8, §11
 - Battle maps often exceed `MAX_TEXTURE_SIZE` (8192 px on many integrated GPUs). Detect it and either split the map into tiles or show a clear error instead of a black map.
 - **Acceptance criteria**
-  - [ ] A map larger than the texture limit is shown correctly (tiled) or with an actionable message
-- **Notes:** From the T-105a review.
+  - [x] A map larger than the texture limit is shown correctly (tiled) or with an actionable message
+- **Notes:** From the T-105a review. Done by tiling (T-127): the renderer reads the GPU's `MAX_TEXTURE_SIZE` and draws a larger image map in tiles cut on canvases; video maps lie under the canvas as an element (ADR-0010) and have no texture limit.
 
 ### T-128 Keep video maps in sync between DM window and TV
 
