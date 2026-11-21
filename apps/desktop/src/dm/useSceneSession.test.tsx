@@ -1,5 +1,5 @@
 import type { MapImage } from "@dungeon-manager/renderer";
-import type { Scene, ViewerScene } from "@dungeon-manager/schema";
+import type { GridMode, Scene, ViewerScene } from "@dungeon-manager/schema";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
@@ -86,6 +86,7 @@ function renderScene(
   opened: Scene = scene,
   rescue: SceneRescue | null = null,
   tvView: TvView | null = null,
+  campaignGridMode?: GridMode,
 ) {
   const library = fakeLibraryService("/lib", {
     [`${HOEHLE}.dm.json`]: hoehleSidecar,
@@ -112,6 +113,7 @@ function renderScene(
                   onChanged={() => undefined}
                   onDeleted={() => undefined}
                   onClose={() => undefined}
+                  campaignGridMode={campaignGridMode}
                 />
               </MapViewContext>
             </TvViewContext>
@@ -635,6 +637,44 @@ describe("editing the fog", () => {
     drag(290, 400);
     await waitFor(() => {
       expect(saved().tokens[0]?.position).toEqual({ col: 3, row: 1 });
+    });
+  });
+
+  test('a scene "as the campaign" moves on cells when the campaign says "Immer Raster" (T-233e)', async () => {
+    const one: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "goblin",
+          name: "Goblin",
+          size: "medium",
+          position: { col: 1, row: 1 },
+          levelId: "ground",
+        },
+      ],
+    };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      one,
+      null,
+      null,
+      "grid",
+    );
+    const map = await screen.findByRole("application", { name: /Höhle/ });
+    await enabled("Alles aufdecken");
+    expect(
+      screen.getByRole("button", { name: "Wie Kampagne (Immer Raster)" }),
+    ).toBeTruthy();
+    // 1.4 cells outside combat: free by default, but on cells as the campaign says.
+    fireEvent.pointerDown(map, { clientX: 150, clientY: 150, pointerId: 1 });
+    fireEvent.pointerMove(map, { clientX: 170, clientY: 150, pointerId: 1 });
+    fireEvent.pointerMove(map, { clientX: 290, clientY: 150, pointerId: 1 });
+    fireEvent.pointerUp(map, { clientX: 290, clientY: 150, pointerId: 1 });
+    await waitFor(() => {
+      const saved = JSON.parse(
+        library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+      ) as Scene;
+      expect(saved.tokens[0]?.position).toEqual({ col: 2, row: 1 });
     });
   });
 

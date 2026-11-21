@@ -11,9 +11,11 @@ import {
   type ResolvedMap,
 } from "@dungeon-manager/core";
 import { viewArea, type Point, type Size } from "@dungeon-manager/renderer";
+import { gridModeSchema } from "@dungeon-manager/schema";
 import type {
   AssetRef,
   GridCell,
+  GridMode,
   Polygon,
   Scene,
   TokenSize,
@@ -82,7 +84,7 @@ const rectangle = (size: Size): Polygon => ({
 const NOTHING_REVEALED: readonly Polygon[] = [];
 const NOTHING_SELECTED: ReadonlySet<string> = new Set();
 /** The grid modes a scene can have (T-233d), in the Raster menu's order. */
-const GRID_MODES = ["grid", "gridInCombat", "free"] as const;
+const GRID_MODES = gridModeSchema.options;
 
 /** Undo/redo keys, unless the DM is typing in a field (where they edit the text). */
 function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
@@ -138,6 +140,7 @@ export function OpenScenePanel({
   onShowOnTv,
   onSaveState,
   tabs,
+  campaignGridMode,
 }: {
   readonly service: LibraryService;
   readonly slug: string;
@@ -176,6 +179,8 @@ export function OpenScenePanel({
     | undefined;
   /** The open scenes' tabs for the title bar; `busy`: this scene must not close now. */
   readonly tabs?: ((busy: boolean) => ReactNode) | undefined;
+  /** The campaign's grid mode, as read now (T-233e): scenes "as the campaign" follow it. */
+  readonly campaignGridMode?: GridMode | undefined;
 }) {
   const { t } = useTranslation();
   const fogLook = useContext(FogLookContext);
@@ -345,10 +350,10 @@ export function OpenScenePanel({
       : { col: 0, row: 0 };
   // How tokens move (T-233d): the scene's grid mode, else the campaign's, else free outside
   // combat and on cells in it.
-  const gridMode = scene.gridMode ?? session.campaignGridMode ?? "gridInCombat";
+  const gridMode = scene.gridMode ?? campaignGridMode ?? "gridInCombat";
   // What "as the campaign" means right now, for the Raster menu.
   const asCampaign = t("gridMode.asCampaign", {
-    mode: t(`gridMode.modes.${session.campaignGridMode ?? "gridInCombat"}`),
+    mode: t(`gridMode.modes.${campaignGridMode ?? "gridInCombat"}`),
   });
   const movesFreely =
     gridMode === "free" ||

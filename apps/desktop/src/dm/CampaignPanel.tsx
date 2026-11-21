@@ -2,6 +2,7 @@ import type { ResolvedMap } from "@dungeon-manager/core";
 import type {
   AssetRef,
   Campaign,
+  GridMode,
   Player,
   Polygon,
   Scene,
@@ -106,6 +107,10 @@ import {
   type SceneSlot,
 } from "./tree-ids.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
+import { gridModeSchema } from "@dungeon-manager/schema";
+
+/** The grid modes (T-233d), in the order the settings list them. */
+const GRID_MODES = gridModeSchema.options;
 
 type Loaded<T> =
   | { readonly status: "loading" }
@@ -349,6 +354,21 @@ export function CampaignPanel({
     (path) => path === `campaigns/${slug}/campaign.json`,
     () => void readCampaign(),
   );
+  // The campaign's default grid mode (T-233e): written into its file, read back at once, so
+  // open scenes "as the campaign" follow it.
+  const saveGridMode = async (gridMode: GridMode) => {
+    try {
+      const loaded = await loadCampaign(service.fs, slug);
+      if (loaded.status !== "ok") {
+        setNotice(t("library.campaign.invalid", { slug }));
+        return;
+      }
+      await saveCampaign(service.fs, slug, { ...loaded.value, gridMode });
+      await readCampaign();
+    } catch (error) {
+      setNotice(`${t("gridMode.notSaved")} ${describeLibraryError(t, error)}`);
+    }
+  };
 
   // The inspected note's text, read as it is (T-161b); re-read when that file changes.
   const inspectedNote = (() => {
@@ -1133,6 +1153,32 @@ export function CampaignPanel({
       >
         {contextDialog && dialogContent(contextDialog)}
       </Popover>
+      {/* The campaign's own settings (T-233e), in the settings dialog. */}
+      <ShellPortal slot="settingsCampaign">
+        <fieldset className="dm-settings-group">
+          <legend>{t("gridMode.campaignDefault")}</legend>
+          <select
+            aria-label={t("gridMode.campaignDefault")}
+            value={campaignFile?.gridMode ?? "gridInCombat"}
+            disabled={!campaignFile}
+            onChange={(event) => {
+              const gridMode = GRID_MODES.find(
+                (mode) => mode === event.target.value,
+              );
+              if (gridMode) void saveGridMode(gridMode);
+            }}
+          >
+            {GRID_MODES.map((mode) => (
+              <option key={mode} value={mode}>
+                {t(`gridMode.modes.${mode}`)}
+              </option>
+            ))}
+          </select>
+          <p className="dm-settings-hint">
+            {t("gridMode.campaignDefaultHint")}
+          </p>
+        </fieldset>
+      </ShellPortal>
       <ShellPortal slot="ribbonScene">
         <RibbonGroup caption={t("shell.groups.create")}>
           <IconButton
@@ -1189,6 +1235,7 @@ export function CampaignPanel({
           service={service}
           slug={slug}
           scene={each}
+          campaignGridMode={campaignFile?.gridMode}
           newId={newId}
           active={each.id === activeSceneId}
           onTv={each.id === tvSceneId}

@@ -13,6 +13,7 @@ export type ShellSlot =
   | "dataPanel"
   | "settings"
   | "settingsTv"
+  | "settingsCampaign"
   | "notices"
   | "dock";
 
