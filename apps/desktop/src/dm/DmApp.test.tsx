@@ -285,6 +285,10 @@ describe("DmApp", () => {
     expect(blackout).toHaveBeenLastCalledWith(false);
     fireEvent.keyDown(window, { key: "." });
     expect(blackout).toHaveBeenLastCalledWith(true);
+    // Held down: the repeats change nothing.
+    const before = blackout.mock.calls.length;
+    fireEvent.keyDown(window, { key: ".", repeat: true });
+    expect(blackout.mock.calls.length).toBe(before);
     // A "." typed into a field is just a dot.
     const field = document.createElement("input");
     document.body.appendChild(field);

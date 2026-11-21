@@ -50,8 +50,6 @@ export function PlayerApp({
   const { t } = useTranslation();
   const host = useRef<HTMLElement>(null);
   // The initiative bar (T-111c): the projected initiative and how the TV is turned.
-  // Blackout (T-113a): black over everything, the scene stays loaded beneath.
-  const [black, setBlack] = useState(false);
   const [bar, setBar] = useState<{
     readonly initiative: NonNullable<ViewerScene["initiative"]>;
     readonly rotation: number;
@@ -84,6 +82,13 @@ export function PlayerApp({
     mark("none");
 
     // A square of a known number of pixels for the DM to measure (T-106d).
+    // Blackout (T-113a): black over everything – the body's last child, above the initiative bar
+    // too – while the scene stays loaded beneath. Set at once, not through React's next render.
+    const blackout = document.createElement("div");
+    blackout.className = "player-blackout";
+    blackout.dataset["testid"] = "blackout";
+    blackout.hidden = true;
+    document.body.appendChild(blackout);
     const checkSquare = document.createElement("div");
     checkSquare.className = "player-check-square";
     // Black until the first message (fail closed): no square before the DM asks for one.
@@ -158,7 +163,8 @@ export function PlayerApp({
         JSON.stringify(message?.scene?.map?.grid) ===
         JSON.stringify(next.scene?.map?.grid);
       message = next;
-      setBlack(next.blackout === true);
+      // First of all, before anything is drawn: a reloaded TV never shows a frame of the scene.
+      blackout.hidden = next.blackout !== true;
       const initiative = next.scene?.initiative;
       setBar(
         // Nothing to list, nothing shown: an empty bar would only say "something acts".
@@ -281,6 +287,7 @@ export function PlayerApp({
       });
       canvas.remove();
       checkSquare.remove();
+      blackout.remove();
       releaseVideo(video);
     };
   }, [feed, maps, storage]);
@@ -296,7 +303,6 @@ export function PlayerApp({
       {bar && (
         <InitiativeBar initiative={bar.initiative} rotation={bar.rotation} />
       )}
-      {black && <div className="player-blackout" data-testid="blackout" />}
     </>
   );
 }

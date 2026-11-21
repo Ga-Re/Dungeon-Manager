@@ -117,3 +117,7 @@ body {
   z-index: 1;
   background: #000;
 }
+
+.player-blackout[hidden] {
+  display: none;
+}

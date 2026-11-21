@@ -84,7 +84,14 @@ export function DmApp({
   useEffect(() => {
     if (!playerFeed) return;
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "." || event.ctrlKey || event.metaKey || event.altKey)
+      // Held down, it would flicker the TV on every repeat.
+      if (
+        event.key !== "." ||
+        event.repeat ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey
+      )
         return;
       // Typing a "." into a field is typing, not a blackout.
       const target = event.target;

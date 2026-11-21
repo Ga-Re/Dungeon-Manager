@@ -368,10 +368,17 @@ describe("PlayerApp", () => {
     });
   });
 
-  test("blackout covers everything and lifts again (T-113a)", async () => {
-    const { feed } = renderPlayer();
+  test("blackout is set before anything is drawn and lifts again (T-113a)", async () => {
+    const { feed, maps } = renderPlayer();
     await waitFor(() => {
       expect(feed.subscribed()).toBe(true);
+    });
+    const overlay = () =>
+      document.querySelector<HTMLElement>(".player-blackout");
+    // When the tokens are drawn, the black is already up: no frame of the scene shows.
+    let blackWhenDrawn: boolean | undefined;
+    maps.view.setTokens.mockImplementation(() => {
+      blackWhenDrawn = overlay()?.hidden === false;
     });
     feed.send({
       v: 1,
@@ -380,11 +387,14 @@ describe("PlayerApp", () => {
       blackout: true,
     });
     await waitFor(() => {
-      expect(screen.getByTestId("blackout")).toBeTruthy();
+      expect(overlay()?.hidden).toBe(false);
     });
+    expect(blackWhenDrawn).toBe(true);
+    // Above everything: the body's last child, outside the player view and its bar.
+    expect(document.body.lastElementChild).toBe(overlay());
     feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
     await waitFor(() => {
-      expect(screen.queryByTestId("blackout")).toBeNull();
+      expect(overlay()?.hidden).toBe(true);
     });
   });
 
