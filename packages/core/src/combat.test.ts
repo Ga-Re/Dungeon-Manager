@@ -6,7 +6,9 @@ import {
   createHistory,
   execute,
   gridFootprint,
+  placeOnCells,
   projectForViewer,
+  seenByTable,
   snapToCells,
   undo,
   type ApplyResult,
@@ -371,5 +373,247 @@ describe("free tokens as occupants (T-233b)", () => {
     )?.get("new");
     // (2, 2) is taken by the free token's nearest cell; the first free one in the ring above.
     expect(cell).toEqual({ col: 2, row: 1 });
+  });
+});
+
+describe("moves onto occupied cells (T-233c)", () => {
+  test("a token moved onto another goes to the nearest free cell; without bounds as asked", () => {
+    const start = withTokens(token("a", 2, 2), token("b", 5, 5));
+    const onTop = { tokenId: "a", to: { col: 5, row: 5 } };
+    const placed = ok(
+      apply(start, { type: "token.moveMany", moves: [onTop], bounds }, ctx),
+    );
+    const a = placed.state.scene.tokens[0]?.position;
+    expect(a).not.toEqual({ col: 5, row: 5 });
+    expect(
+      Math.max(Math.abs((a?.col ?? 0) - 5), Math.abs((a?.row ?? 0) - 5)),
+    ).toBe(1);
+    expect(placed.events[0]).toMatchObject({ type: "token.moved", to: a });
+    // Without bounds (no map size known) the move is taken as it is.
+    const raw = ok(
+      apply(start, { type: "token.moveMany", moves: [onTop] }, ctx),
+    );
+    expect(raw.state.scene.tokens[0]?.position).toEqual({ col: 5, row: 5 });
+  });
+
+  test("a group keeps its formation where there is room", () => {
+    const result = ok(
+      apply(
+        withTokens(token("a", 1, 1), token("b", 2, 1)),
+        {
+          type: "token.moveMany",
+          moves: [
+            { tokenId: "a", to: { col: 2, row: 1 } },
+            { tokenId: "b", to: { col: 3, row: 1 } },
+          ],
+          bounds,
+        },
+        ctx,
+      ),
+    );
+    expect(result.state.scene.tokens.map((each) => each.position)).toEqual([
+      { col: 2, row: 1 },
+      { col: 3, row: 1 },
+    ]);
+  });
+
+  test("a token the table does not see never redirects one it sees", () => {
+    const start = revealed(
+      withTokens(
+        { ...token("lurker", 5, 5), visibility: { token: "hidden" } },
+        token("hero", 2, 2),
+      ),
+    );
+    const result = ok(
+      apply(
+        start,
+        {
+          type: "token.moveMany",
+          moves: [{ tokenId: "hero", to: { col: 5, row: 5 } }],
+          bounds,
+        },
+        ctx,
+      ),
+    );
+    expect(result.state.scene.tokens[1]?.position).toEqual({ col: 5, row: 5 });
+  });
+});
+
+describe("moves onto occupied cells (property, T-233c)", () => {
+  test("after any group move no cell holds more than one token's worth", () => {
+    const sizes = ["tiny", "small", "medium", "large"] as const;
+    fc.assert(
+      fc.property(
+        fc.array(fc.constantFrom(...sizes), { minLength: 1, maxLength: 10 }),
+        fc.array(
+          fc.record({
+            index: fc.nat(),
+            col: fc.integer({ min: 0, max: 9 }),
+            row: fc.integer({ min: 0, max: 7 }),
+          }),
+          { minLength: 1, maxLength: 5 },
+        ),
+        (tokenSizes, wanted) => {
+          // A start without overlaps: combat's snap places them.
+          const started = apply(
+            withTokens(
+              ...tokenSizes.map((size, index) =>
+                token(`t${String(index)}`, 0, 0, size),
+              ),
+            ),
+            { type: "combat.start", bounds },
+            ctx,
+          );
+          if (!started.ok) return;
+          const moves = [
+            ...new Map(
+              wanted.map((each) => [
+                `t${String(each.index % tokenSizes.length)}`,
+                { col: each.col, row: each.row },
+              ]),
+            ),
+          ].map(([tokenId, to]) => ({ tokenId, to }));
+          const moved = apply(
+            started.state,
+            { type: "token.moveMany", moves, bounds },
+            ctx,
+          );
+          if (!moved.ok) return;
+          const load = new Map<string, number>();
+          for (const each of moved.state.scene.tokens) {
+            const footprint = gridFootprint(each.size);
+            for (let r = 0; r < footprint.rows; r++)
+              for (let c = 0; c < footprint.cols; c++) {
+                const key = `${String(each.position.col + c)},${String(each.position.row + r)}`;
+                load.set(key, (load.get(key) ?? 0) + footprint.share);
+              }
+          }
+          for (const value of load.values())
+            expect(value).toBeLessThanOrEqual(1 + 1e-9);
+        },
+      ),
+    );
+  });
+});
+
+describe("moves: seen where it stands or where it goes (T-233c review)", () => {
+  // Cells up to col 3, row 3 are revealed (their centres lie in it); the rest is fog.
+  const half = (start: ReturnType<typeof withTokens>) =>
+    revealed(start, square(0, 0, 440));
+  const move = (tokenId: string, col: number, row: number) => ({
+    type: "token.moveMany" as const,
+    moves: [{ tokenId, to: { col, row } }],
+    bounds,
+  });
+
+  test("a token coming out of the fog is not redirected by an unseen one where it arrives", () => {
+    const start = half(
+      withTokens(
+        { ...token("lurker", 2, 2), visibility: { token: "hidden" } },
+        token("hero", 6, 6),
+      ),
+    );
+    const result = ok(apply(start, move("hero", 2, 2), ctx));
+    expect(result.state.scene.tokens[1]?.position).toEqual({ col: 2, row: 2 });
+  });
+
+  test("a seen token going into the fog is not redirected by an unseen one there", () => {
+    const start = half(withTokens(token("monster", 6, 6), token("hero", 1, 1)));
+    const result = ok(apply(start, move("hero", 6, 6), ctx));
+    expect(result.state.scene.tokens[1]?.position).toEqual({ col: 6, row: 6 });
+  });
+
+  test("of equally near free cells the one nearest to where it came from wins", () => {
+    const start = withTokens(token("a", 3, 3), token("b", 5, 3));
+    const result = ok(apply(start, move("a", 5, 3), ctx));
+    expect(result.state.scene.tokens[0]?.position).toEqual({ col: 4, row: 3 });
+  });
+
+  test("a move that ends where it began changes nothing, and records no step", () => {
+    const start = withTokens(token("a", 4, 3), token("b", 5, 3));
+    const result = ok(apply(start, move("a", 5, 3), ctx));
+    expect(result.state).toBe(start);
+    expect(result.events).toEqual([]);
+  });
+
+  test("a wanted cell off the map's edge is not taken", () => {
+    const cell = placeOnCells(
+      [
+        {
+          id: "ogre",
+          wanted: { col: 9, row: 7 },
+          footprint: gridFootprint("large"),
+          seen: true,
+        },
+      ],
+      [],
+      bounds,
+    )?.get("ogre");
+    expect(cell).toEqual({ col: 8, row: 6 });
+  });
+
+  test("property: with fog and hidden tokens, no cell holds more than one seen token's worth", () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.record({
+            size: fc.constantFrom("tiny", "medium", "large"),
+            hidden: fc.boolean(),
+          }),
+          { minLength: 1, maxLength: 10 },
+        ),
+        fc.array(
+          fc.record({
+            index: fc.nat(),
+            col: fc.integer({ min: 0, max: 9 }),
+            row: fc.integer({ min: 0, max: 7 }),
+          }),
+          { minLength: 1, maxLength: 5 },
+        ),
+        (specs, wanted) => {
+          const started = apply(
+            half(
+              withTokens(
+                ...specs.map((spec, index) => ({
+                  ...token(`t${String(index)}`, 0, 0, spec.size),
+                  ...(spec.hidden && {
+                    visibility: { token: "hidden" as const },
+                  }),
+                })),
+              ),
+            ),
+            { type: "combat.start", bounds },
+            ctx,
+          );
+          if (!started.ok) return;
+          const moves = [
+            ...new Map(
+              wanted.map((each) => [
+                `t${String(each.index % specs.length)}`,
+                { col: each.col, row: each.row },
+              ]),
+            ),
+          ].map(([tokenId, to]) => ({ tokenId, to }));
+          const moved = apply(
+            started.state,
+            { type: "token.moveMany", moves, bounds },
+            ctx,
+          );
+          if (!moved.ok) return;
+          const load = new Map<string, number>();
+          for (const each of moved.state.scene.tokens) {
+            if (!seenByTable(moved.state, each)) continue;
+            const footprint = gridFootprint(each.size);
+            for (let r = 0; r < footprint.rows; r++)
+              for (let c = 0; c < footprint.cols; c++) {
+                const key = `${String(each.position.col + c)},${String(each.position.row + r)}`;
+                load.set(key, (load.get(key) ?? 0) + footprint.share);
+              }
+          }
+          for (const value of load.values())
+            expect(value).toBeLessThanOrEqual(1 + 1e-9);
+        },
+      ),
+    );
   });
 });

@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -457,13 +457,23 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Hidden tokens never push a visible one aside (unit test)
 - **Notes:** Split from T-233b (agent, 2026-11-21). DM decision (2026-11-21): hidden tokens do not block visible ones – nothing is given away; a visible token may end up on a hidden one's cell. Read as "what the table sees" (T-233b review): a token in fog counts like a hidden one, as its push would give it away just the same. From the T-233a review: occupancy assumed whole cells, but `TokenPosition` and `GridCell` share one TypeScript type.
 
-### T-233c Grid mode setting and free movement
+### T-233c Occupied cells, Tiny arrangement, Small size
 
-- **Status:** todo · **Depends on:** T-233b · **Refs:** SPEC §2.4, §5
-- Each scene has a grid mode: "always on the grid", "free, on the grid in combat" or "always free"; scenes without one take the campaign's default. It applies to all tokens (player characters and creatures); holding Alt places a token freely at any time. During combat, a token dropped on an occupied cell goes to the nearest free one.
+- **Status:** done · **Depends on:** T-233b · **Refs:** SPEC §2.4, §5
+- A token moved onto an occupied cell (drag, tap, keys, a group) goes to the nearest free one, in and out of combat; one token per cell, up to four Tiny ones, large footprints whole. Tiny tokens sharing a cell arrange themselves by count (one in the middle, two side by side, three in a triangle, four in the quarters). Small tokens are drawn at about 75 % of a cell; they still occupy a whole cell.
+- **Acceptance criteria**
+  - [x] Moves never end on an occupied cell; tokens the table does not see never redirect one it sees, so a seen token may end on an unseen one's cell (unit + property tests)
+  - [x] Tiny tokens arrange by count; Small ones are drawn smaller (unit + visual tests)
+- **Notes:** DM feedback and decisions (2026-11-21): tokens could be dropped onto occupied cells; dropping there goes to the nearest free cell (not back), also outside combat; Small drawn at ~75 %; Tiny ones arrange by how many share a cell. Split from T-233c by the agent.
+
+### T-233d Grid mode setting and free movement
+
+- **Status:** todo · **Depends on:** T-233c · **Refs:** SPEC §2.4, §5
+- Each scene has a grid mode: "always on the grid", "free, on the grid in combat" or "always free"; scenes without one take the campaign's default. It applies to all tokens (player characters and creatures); holding Alt places a token freely at any time. Free tokens never overlap others: a token dropped onto another is pushed just far enough away (DM decision, 2026-11-21).
 - **Acceptance criteria**
   - [ ] Free moves outside combat and snapped moves in combat, per grid mode, with Alt override (component tests)
-- **Notes:** DM request (2026-11-20). DM decision (2026-11-21): the scene's mode is chosen in the Szene ribbon (with "as the campaign"), the campaign default in the settings dialog. Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist.
+  - [ ] Free tokens never overlap (unit test)
+- **Notes:** DM request (2026-11-20). DM decision (2026-11-21): the scene's mode is chosen in the Szene ribbon (with "as the campaign"), the campaign default in the settings dialog. Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist. From the T-233c review: the DM window passes the map's cells as `bounds` with every move, which snaps a free token on its next move – with free movement `bounds` must depend on the grid mode, combat and Alt.
 
 ### T-108a Fog: rectangle reveal/hide, undo, live on the TV
 

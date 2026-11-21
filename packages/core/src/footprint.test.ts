@@ -7,6 +7,7 @@ import {
   middleCell,
   nearestFreeCell,
   occupiedCells,
+  placeOnCells,
 } from "./footprint.js";
 
 // The grid footprint of tokens (T-180a) and T-233's rule: one token per cell, up to four Tiny
@@ -261,5 +262,103 @@ describe("clampGroupShift (T-107b)", () => {
       col: -3,
       row: 0,
     });
+  });
+});
+
+describe("placeOnCells (T-233c)", () => {
+  const bounds = { firstCol: 0, firstRow: 0, cols: 10, rows: 8 };
+  const medium = gridFootprint("medium");
+  const tiny = gridFootprint("tiny");
+  const large = gridFootprint("large");
+  const seen = true;
+
+  test("keeps a free wanted cell", () => {
+    expect(
+      placeOnCells(
+        [{ id: "a", wanted: { col: 3, row: 3 }, footprint: medium, seen }],
+        [{ position: { col: 5, row: 5 }, footprint: medium, seen }],
+        bounds,
+      )?.get("a"),
+    ).toEqual({ col: 3, row: 3 });
+  });
+
+  test("never ends on an occupied cell: the nearest free one instead", () => {
+    const cell = placeOnCells(
+      [{ id: "a", wanted: { col: 3, row: 3 }, footprint: medium, seen }],
+      [{ position: { col: 3, row: 3 }, footprint: medium, seen }],
+      bounds,
+    )?.get("a");
+    expect(cell).not.toEqual({ col: 3, row: 3 });
+    expect(
+      Math.max(Math.abs((cell?.col ?? 0) - 3), Math.abs((cell?.row ?? 0) - 3)),
+    ).toBe(1);
+  });
+
+  test("a large token's footprint counts whole, also against a moving group", () => {
+    const cells = placeOnCells(
+      [
+        { id: "ogre", wanted: { col: 2, row: 2 }, footprint: large, seen },
+        { id: "rat", wanted: { col: 3, row: 3 }, footprint: medium, seen },
+      ],
+      [],
+      bounds,
+    );
+    expect(cells?.get("ogre")).toEqual({ col: 2, row: 2 });
+    expect(cells?.get("rat")).not.toEqual({ col: 3, row: 3 });
+  });
+
+  test("four Tiny tokens share a cell, a fifth goes next door", () => {
+    const rats = [1, 2, 3, 4, 5].map((n) => ({
+      id: `rat-${String(n)}`,
+      wanted: { col: 4, row: 4 },
+      footprint: tiny,
+      seen,
+    }));
+    const cells = placeOnCells(rats, [], bounds);
+    const onIt = [...(cells?.values() ?? [])].filter(
+      (cell) => cell.col === 4 && cell.row === 4,
+    );
+    expect(onIt).toHaveLength(4);
+  });
+
+  test("a token the table does not see never redirects one it sees", () => {
+    const cells = placeOnCells(
+      [
+        { id: "hero", wanted: { col: 3, row: 3 }, footprint: medium, seen },
+        {
+          id: "lurker",
+          wanted: { col: 6, row: 6 },
+          footprint: medium,
+          seen: false,
+        },
+      ],
+      [{ position: { col: 3, row: 3 }, footprint: medium, seen: false }],
+      bounds,
+    );
+    expect(cells?.get("hero")).toEqual({ col: 3, row: 3 });
+    // An unseen one moving onto a seen one is redirected.
+    const unseen = placeOnCells(
+      [
+        {
+          id: "lurker",
+          wanted: { col: 5, row: 5 },
+          footprint: medium,
+          seen: false,
+        },
+      ],
+      [{ position: { col: 5, row: 5 }, footprint: medium, seen }],
+      bounds,
+    );
+    expect(unseen?.get("lurker")).not.toEqual({ col: 5, row: 5 });
+  });
+
+  test("null when a token finds no room", () => {
+    expect(
+      placeOnCells(
+        [{ id: "a", wanted: { col: 0, row: 0 }, footprint: medium, seen }],
+        [{ position: { col: 0, row: 0 }, footprint: medium, seen }],
+        { firstCol: 0, firstRow: 0, cols: 1, rows: 1 },
+      ),
+    ).toBeNull();
   });
 });

@@ -529,6 +529,55 @@ describe("editing the fog", () => {
     ).toBe("false");
   });
 
+  test("a token moved onto another goes to the nearest free cell (T-233c)", async () => {
+    const two: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "goblin",
+          name: "Goblin",
+          size: "medium",
+          position: { col: 1, row: 1 },
+          levelId: "ground",
+        },
+        {
+          id: "aria",
+          name: "Aria",
+          size: "medium",
+          position: { col: 3, row: 1 },
+          levelId: "ground",
+        },
+      ],
+    };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      two,
+    );
+    const map = await screen.findByRole("application", { name: /Höhle/ });
+    await enabled("Alles aufdecken");
+    // The Goblin dragged two cells right, onto Aria (screen pixels are map pixels).
+    fireEvent.pointerDown(map, { clientX: 150, clientY: 150, pointerId: 1 });
+    fireEvent.pointerMove(map, { clientX: 250, clientY: 150, pointerId: 1 });
+    fireEvent.pointerMove(map, { clientX: 350, clientY: 150, pointerId: 1 });
+    fireEvent.pointerUp(map, { clientX: 350, clientY: 150, pointerId: 1 });
+    await waitFor(() => {
+      const saved = (
+        JSON.parse(
+          library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+        ) as Scene
+      ).tokens;
+      const goblin = saved[0]?.position;
+      expect(goblin).toBeDefined();
+      expect(goblin).not.toEqual({ col: 3, row: 1 });
+      expect(
+        Math.max(
+          Math.abs((goblin?.col ?? 0) - 3),
+          Math.abs((goblin?.row ?? 0) - 1),
+        ),
+      ).toBe(1);
+    });
+  });
+
   test("undo keys are left to text fields", async () => {
     const { tv } = renderScene(
       { "campaigns/mine/campaign.json": campaign },

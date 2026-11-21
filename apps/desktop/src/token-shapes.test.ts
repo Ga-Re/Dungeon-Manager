@@ -6,7 +6,7 @@ import { tokenShapes } from "./token-shapes.js";
 const grid = { cellSizePx: 100, offsetXPx: 10, offsetYPx: 20 };
 const token = (
   id: string,
-  size: "tiny" | "medium" | "large",
+  size: "tiny" | "small" | "medium" | "large",
   levelId = "ground",
 ) => ({
   id,
@@ -82,5 +82,43 @@ describe("token shapes", () => {
       { id: "a", hidden: true },
       { id: "f", hidden: undefined },
     ]);
+  });
+
+  it("arrange Tiny tokens sharing a cell by count (T-233c)", () => {
+    const rat = (id: string) => token(id, "tiny");
+    const centres = (count: number) =>
+      tokenShapes(
+        ["a", "b", "c", "d"].slice(0, count).map(rat),
+        grid,
+        "ground",
+      ).map((shape) => [shape.x + shape.width / 2, shape.y + shape.height / 2]);
+    // The cell (2, 1) spans x 210–310, y 120–220.
+    expect(centres(1)).toEqual([[260, 170]]);
+    expect(centres(2)).toEqual([
+      [235, 170],
+      [285, 170],
+    ]);
+    expect(centres(3)).toEqual([
+      [235, 145],
+      [285, 145],
+      [260, 195],
+    ]);
+    expect(centres(4)).toEqual([
+      [235, 145],
+      [285, 145],
+      [235, 195],
+      [285, 195],
+    ]);
+  });
+
+  it("draw a Small token at 75 % of its cell, centred (T-233c)", () => {
+    expect(tokenShapes([token("s", "small")], grid, "ground")[0]).toMatchObject(
+      {
+        x: 222.5,
+        y: 132.5,
+        width: 75,
+        height: 75,
+      },
+    );
   });
 });

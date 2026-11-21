@@ -354,6 +354,9 @@ export function OpenScenePanel({
           row: token.position.row + clamped.row,
         },
       })),
+      // Onto cells, never an occupied one (T-233c): a taken cell sends a token to the nearest
+      // free one.
+      ...(map && mapSize && { bounds: gridBounds(mapSize, map.grid) }),
     });
     if (!moved) setError(t("token.notMoved"));
   };
