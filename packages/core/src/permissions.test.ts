@@ -61,6 +61,11 @@ const everyCommand: Command[] = [
   { type: "hp.change", combatantId: "goblin", amount: -1 },
   { type: "hp.setTemp", combatantId: "goblin", temp: 2 },
   { type: "level.show", levelId: "cellar" },
+  {
+    type: "combat.start",
+    bounds: { firstCol: 0, firstRow: 0, cols: 10, rows: 10 },
+  },
+  { type: "combat.end" },
 ];
 
 describe("canApply", () => {

@@ -2,6 +2,7 @@ import type {
   Footprint,
   Grid,
   GridCell,
+  TokenPosition,
   TokenSize,
 } from "@dungeon-manager/schema";
 
@@ -197,7 +198,8 @@ export function clampGroupShift(
   const axis = (
     wanted: number,
     first: number,
-    count: number,
+    // Exclusive, like `CellBounds`.
+    end: number,
     start: (each: (typeof group)[number]) => number,
     size: (each: (typeof group)[number]) => number,
   ) => {
@@ -205,10 +207,7 @@ export function clampGroupShift(
     let highest = Infinity;
     for (const each of group) {
       lowest = Math.max(lowest, Math.min(0, first - start(each)));
-      highest = Math.min(
-        highest,
-        Math.max(0, first + count - size(each) - start(each)),
-      );
+      highest = Math.min(highest, Math.max(0, end - size(each) - start(each)));
     }
     return Math.min(highest, Math.max(lowest, wanted));
   };
@@ -228,4 +227,45 @@ export function clampGroupShift(
       (each) => each.footprint.rows,
     ),
   };
+}
+
+/**
+ * Combat's snap (T-233): a whole cell for each token inside `bounds`, no two on one cell (up to
+ * four Tiny ones share one), large footprints whole. The token nearest to a cell goes first and
+ * takes the free cell nearest to where it stands; `null` when one finds no room.
+ */
+export function snapToCells<T extends string>(
+  tokens: readonly {
+    readonly id: T;
+    readonly position: TokenPosition;
+    readonly footprint: GridFootprint;
+  }[],
+  bounds: Required<CellBounds>,
+): Map<T, GridCell> | null {
+  const offCell = (position: TokenPosition) =>
+    Math.hypot(
+      position.col - Math.round(position.col),
+      position.row - Math.round(position.row),
+    );
+  // Stable: equally near tokens keep their order (the scene's).
+  const order = [...tokens].sort(
+    (a, b) => offCell(a.position) - offCell(b.position),
+  );
+  const placed: Occupant[] = [];
+  const cells = new Map<T, GridCell>();
+  for (const token of order) {
+    const cell = nearestFreeCell(
+      {
+        col: Math.round(token.position.col),
+        row: Math.round(token.position.row),
+      },
+      token.footprint,
+      placed,
+      bounds,
+    );
+    if (!cell) return null;
+    placed.push({ position: cell, footprint: token.footprint });
+    cells.set(token.id, cell);
+  }
+  return cells;
 }

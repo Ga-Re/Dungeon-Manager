@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   assetRefSchema,
-  gridCellSchema,
+  tokenPositionSchema,
   idSchema,
   polygonSchema,
 } from "./common.js";
@@ -24,7 +24,7 @@ export const viewerTokenSchema = z.strictObject({
   /** Absent when the name is not visible to this viewer. */
   name: z.string().min(1).optional(),
   size: tokenSizeSchema,
-  position: gridCellSchema.strict(),
+  position: tokenPositionSchema.strict(),
   levelId: idSchema,
   image: assetRefSchema.strict().optional(),
 });
@@ -99,6 +99,8 @@ export const viewerSceneSchema = z.strictObject({
   tokens: z.array(viewerTokenSchema),
   /** Absent when the initiative tracker is not visible or there is no combat. */
   initiative: viewerInitiativeSchema.optional(),
+  /** Set while a combat runs (T-233): tokens stand on cells, the TV may show the grid. */
+  combat: z.literal(true).optional(),
 });
 
 const viewerEventBase = { at: z.number() };
@@ -128,7 +130,7 @@ export const viewerEventSchema = z.union([
     ...viewerEventBase,
     type: z.literal("token.moved"),
     tokenId: idSchema,
-    to: gridCellSchema.strict(),
+    to: tokenPositionSchema.strict(),
     levelId: idSchema,
   }),
   z.strictObject({

@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -424,16 +424,23 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] All move modes covered by component/E2E tests
   - [x] Invisible-in-player-view tokens supported
 
-### T-233 Free movement outside combat, grid in combat
+### T-233a Grid mode, combat and the combat snap: data and core
 
-- **Status:** todo · **Depends on:** T-107b · **Refs:** SPEC §2.4, §5
-- Each scene has a grid mode: "always on the grid", "free, on the grid in combat" or "always free"; new scenes take the campaign's default. It applies to all tokens (player characters and creatures); holding Alt places a token freely at any time.
-- A combat switch in the play ribbon (the Game-Orchestrator once T-171 builds it), independent of the initiative tracker, starts and ends combat. On start, every token on the level snaps (animated) to the nearest free cell in one undoable command: one token per cell (up to four Tiny tokens may share one), a larger token claims its whole footprint, and walls are respected once they exist. During combat, a token dropped on an occupied cell goes to the nearest free one. Ending combat leaves the tokens where they are.
+- **Status:** done · **Depends on:** T-107b · **Refs:** SPEC §2.4, §5, ARCHITECTURE §5
+- Split from T-233 (agent, 2026-11-21: well over 400 lines in one PR). Schema: fractional token positions, `gridMode` on scenes and campaigns, `combat` in the scene; the TV's projection carries `combat`. Core: `combat.start` snaps every token to a free cell in one undoable command, `combat.end`.
 - **Acceptance criteria**
-  - [ ] Core: snap-on-combat-start assigns each token a free cell, nearest first, no two tokens share a cell except up to four Tiny ones, large footprints included; one undo restores all positions (unit + property tests)
+  - [x] Core: snap-on-combat-start assigns each token a free cell, nearest first, no two tokens share a cell except up to four Tiny ones, large footprints included; one undo restores all positions (unit + property tests)
+- **Notes:** DM decisions (2026-11-21): a free position is stored as fractional `col`/`row` (cells, independent of the image resolution; old files stay valid, older app versions reject fractional positions); the grid mode is an optional scene field with a campaign default (fallback "gridInCombat"); combat is an optional `combat` field in the scene's game state, so it survives a restart. All additive, no schema version bump. Fixed on the way: `clampGroupShift` (T-107b) treated `CellBounds.cols` as a count, not as the exclusive end.
+
+### T-233b Free movement outside combat, grid in combat: UI and TV
+
+- **Status:** todo · **Depends on:** T-233a · **Refs:** SPEC §2.4, §5
+- Each scene has a grid mode: "always on the grid", "free, on the grid in combat" or "always free"; scenes without one take the campaign's default. It applies to all tokens (player characters and creatures); holding Alt places a token freely at any time.
+- A combat switch in the play ribbon (Game-Orchestrator), independent of the initiative tracker, starts and ends combat (`combat.start`/`combat.end` from T-233a). On start the tokens snap animated. During combat, a token dropped on an occupied cell goes to the nearest free one. Ending combat leaves the tokens where they are. Where the DM sets the scene's grid mode and the campaign default (scene properties, campaign settings) is part of this task.
+- **Acceptance criteria**
   - [ ] Free moves outside combat and snapped moves in combat, per grid mode, with Alt override (component tests)
   - [ ] Combat on/off and the snap reach the TV (E2E)
-- **Notes:** DM request (2026-11-20). The grid mode belongs to the scene's start state (Atlas), the combat switch to its game state (ADR-0017). Both are new scene fields and a campaign default: schema change reviewed with the DM. DM decision (2026-11-20): up to four Tiny tokens may share a cell, as in 5e. Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is.
+- **Notes:** DM request (2026-11-20). DM decision (2026-11-20): up to four Tiny tokens may share a cell, as in 5e. Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist.
 
 ### T-108a Fog: rectangle reveal/hide, undo, live on the TV
 

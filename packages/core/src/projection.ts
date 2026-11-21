@@ -86,6 +86,7 @@ export function projectForViewer(
     ),
     tokens: visibleTokens.map((token) => projectToken(state, token, viewer)),
     ...projectInitiative(state, viewer, visibleTokenIds),
+    ...(state.scene.combat === true && { combat: true as const }),
   };
   return viewerSceneSchema.parse(projected);
 }
@@ -169,10 +170,12 @@ export function projectEvents(
           return { ...base, hpState: approximateHp(event.current, max) };
         return null;
       }
-      // Tokens appear and go in the projected view itself; the players' log names neither.
+      // Tokens appear and go in the projected view itself, combat shows in it too (T-233); the
+      // players' log names none of them.
       case "token.added":
       case "token.removed":
       case "visibility.changed":
+      case "combat.changed":
       case "initiative.combatantRemoved":
         return null;
     }

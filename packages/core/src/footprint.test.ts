@@ -237,6 +237,20 @@ describe("clampGroupShift (T-107b)", () => {
     });
   });
 
+  test("respects a grid whose first whole cell is not 0 (cols is an end, not a count)", () => {
+    const shifted = { firstCol: 1, firstRow: 1, cols: 10, rows: 8 };
+    const single = [{ position: { col: 5, row: 5 }, footprint: one }];
+    // Last whole cells: col 9, row 7.
+    expect(clampGroupShift(single, { col: 20, row: 20 }, shifted)).toEqual({
+      col: 4,
+      row: 2,
+    });
+    expect(clampGroupShift(single, { col: -20, row: -20 }, shifted)).toEqual({
+      col: -4,
+      row: -4,
+    });
+  });
+
   test("never moves a token already off the map further out", () => {
     const outside = [{ position: { col: 12, row: 0 }, footprint: one }];
     expect(clampGroupShift(outside, { col: 1, row: 0 }, bounds)).toEqual({

@@ -608,9 +608,10 @@ describe("invalid input never corrupts the scene", () => {
     },
   );
 
+  // Fractional positions are free placement (T-233), not an error.
   test.each([
     { col: -1, row: 0 },
-    { col: 1.5, row: 0 },
+    { col: Infinity, row: 0 },
     { col: Number.NaN, row: 0 },
   ])("rejects moving a token to %j", (to) => {
     expect(
