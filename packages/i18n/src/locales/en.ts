@@ -254,7 +254,7 @@ export const en: Messages = {
   },
   mapView: {
     label: "Map of the scene “{{name}}”",
-    help: "Mouse wheel or + and − zoom, drag or arrow keys pan, R rotates, 0 fits the map.",
+    help: "Mouse wheel or + and − zoom, drag or arrow keys pan, R rotates, 0 fits the map. Click a token to select it, Shift-click for several; drag selected tokens, move them cell by cell with the arrow keys, Delete removes them, Escape clears the selection. On touch: tap a token, then its target cell.",
     loading: "Loading map …",
     error:
       "The map could not be loaded. Is the file still in the library and downloaded?",
@@ -274,6 +274,9 @@ export const en: Messages = {
     create: "Create",
     noFreeCell: "No cell is free on this level.",
     notCreated: "The token could not be created.",
+    hideOnTv: "Hide on the TV",
+    delete: "Delete",
+    notMoved: "The tokens could not be moved.",
     sizes: {
       tiny: "Tiny",
       small: "Small",

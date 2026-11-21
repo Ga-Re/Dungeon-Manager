@@ -174,8 +174,8 @@ export const e2eMapView: MapViewService = {
   loadImage: (path) => Promise.resolve(drawMap(path)),
   loadVideo: () =>
     Promise.reject(new Error("The E2E harness has no video maps.")),
-  // The real renderer; its camera is noted on the page so E2E tests can check the view's
-  // transform (zoom, fit) without reading pixels.
+  // The real renderer; its camera and tokens are noted on the page so E2E tests can check the
+  // view's transform (zoom, fit) and where tokens are drawn without reading pixels.
   createRenderer: async (canvas, size) => {
     const renderer = await createRenderer({
       canvas,
@@ -187,6 +187,10 @@ export const e2eMapView: MapViewService = {
       setCamera(camera) {
         document.body.dataset["e2eCamera"] = JSON.stringify(camera);
         renderer.setCamera(camera);
+      },
+      setTokens(tokens) {
+        document.body.dataset["e2eTokens"] = JSON.stringify(tokens);
+        renderer.setTokens(tokens);
       },
     };
   },

@@ -180,3 +180,52 @@ export function middleCell(
     row: Math.floor((bounds.firstRow + bounds.rows - footprint.rows) / 2),
   };
 }
+
+/**
+ * `delta` cut down so every token of a group, each at `position` with its footprint, stays on
+ * the whole cells of `bounds` (T-107b: a group dragged against the map's edge stops there,
+ * keeping its formation). A group already partly off the map is not moved further out.
+ */
+export function clampGroupShift(
+  group: readonly {
+    readonly position: GridCell;
+    readonly footprint: GridFootprint;
+  }[],
+  delta: GridCell,
+  bounds: Required<CellBounds>,
+): GridCell {
+  const axis = (
+    wanted: number,
+    first: number,
+    count: number,
+    start: (each: (typeof group)[number]) => number,
+    size: (each: (typeof group)[number]) => number,
+  ) => {
+    let lowest = -Infinity;
+    let highest = Infinity;
+    for (const each of group) {
+      lowest = Math.max(lowest, Math.min(0, first - start(each)));
+      highest = Math.min(
+        highest,
+        Math.max(0, first + count - size(each) - start(each)),
+      );
+    }
+    return Math.min(highest, Math.max(lowest, wanted));
+  };
+  return {
+    col: axis(
+      delta.col,
+      bounds.firstCol,
+      bounds.cols,
+      (each) => each.position.col,
+      (each) => each.footprint.cols,
+    ),
+    row: axis(
+      delta.row,
+      bounds.firstRow,
+      bounds.rows,
+      (each) => each.position.row,
+      (each) => each.footprint.rows,
+    ),
+  };
+}

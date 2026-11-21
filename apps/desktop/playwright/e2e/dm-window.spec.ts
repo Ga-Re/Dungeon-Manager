@@ -1136,3 +1136,73 @@ test("the calibrated TV's view is a frame the DM moves by its border; the inside
     .poll(async () => (await corners())[0]?.[0] ?? 0)
     .toBeGreaterThan(topLeft[0] + 20);
 });
+
+test("the DM drags a token by mouse, moves it with the keys and deletes it (T-107b)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Szene" }).click();
+  await page.getByRole("button", { name: "Token anlegen …" }).click();
+  await page.getByLabel("Name").fill("Goblin");
+  await page.getByRole("button", { name: "Anlegen", exact: true }).click();
+
+  interface Drawn {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+    readonly selected?: boolean;
+  }
+  // What the real renderer was last asked to draw, and with which camera (see fake-platform).
+  const drawn = () =>
+    page.evaluate(
+      () => JSON.parse(document.body.dataset["e2eTokens"] ?? "[]") as Drawn[],
+    );
+  await expect.poll(async () => (await drawn()).length).toBe(1);
+  const [token] = await drawn();
+  if (!token) throw new Error("no token drawn");
+  const camera = await page.evaluate(
+    () =>
+      JSON.parse(document.body.dataset["e2eCamera"] ?? "{}") as {
+        centerX: number;
+        centerY: number;
+        zoom: number;
+      },
+  );
+  const box = await page.locator(".map-view-canvas canvas").boundingBox();
+  if (!box) throw new Error("map not laid out");
+  // The view is not rotated: map pixels to page pixels.
+  const onPage = (x: number, y: number) => ({
+    x: box.x + box.width / 2 + (x - camera.centerX) * camera.zoom,
+    y: box.y + box.height / 2 + (y - camera.centerY) * camera.zoom,
+  });
+  const centre = onPage(token.x + token.width / 2, token.y + token.height / 2);
+  const cell = token.width;
+
+  // Dragged two cells left: it snaps to them and is selected.
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.mouse.move(centre.x - cell * camera.zoom, centre.y, { steps: 4 });
+  await page.mouse.move(centre.x - 2.2 * cell * camera.zoom, centre.y, {
+    steps: 4,
+  });
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await drawn())[0])
+    .toMatchObject({ x: token.x - 2 * cell, y: token.y, selected: true });
+
+  // The arrow keys move the selection a cell, Delete removes it.
+  await page.keyboard.press("ArrowDown");
+  await expect
+    .poll(async () => (await drawn())[0])
+    .toMatchObject({ x: token.x - 2 * cell, y: token.y + cell });
+  await page.keyboard.press("Delete");
+  await expect.poll(async () => (await drawn()).length).toBe(0);
+  // Undone, it is back where it was.
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect
+    .poll(async () => (await drawn())[0])
+    .toMatchObject({ x: token.x - 2 * cell, y: token.y + cell });
+});

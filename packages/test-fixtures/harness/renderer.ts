@@ -4,6 +4,7 @@
 import {
   createRenderer,
   fitCamera,
+  mapToScreen,
   rotateBy,
   zoomAt,
   type Camera,
@@ -20,6 +21,14 @@ function cameraFor(scenario: string): Camera {
       return zoomAt(fitted, 3, { x: 500, y: 240 }, view);
     case "rotated":
       return fitCamera(FIXTURE_MAP, view, rotateBy(fitted, 90).rotation);
+    case "selected":
+      // Zoomed in close on Aria, so its initials must stay sharp (T-107b).
+      return zoomAt(
+        fitted,
+        5,
+        mapToScreen(fitted, view, { x: 300, y: 250 }),
+        view,
+      );
     default:
       return fitted;
   }
@@ -309,6 +318,12 @@ async function main() {
   // "-tokens" (T-107a): placeholder tokens of every kind – a name, two words with a number, a
   // large one, a Tiny one, one without a visible name – one of them in the fog.
   const withTokens = scenario.includes("tokens");
+  // "tokens-selected" (T-107b): the DM window's look – Aria and the Ogre selected, Goblin 12
+  // hidden from the players (faded).
+  const selected = new Set(
+    scenario.endsWith("selected") ? ["aria", "ogre"] : [],
+  );
+  const hidden = new Set(scenario.endsWith("selected") ? ["g12"] : []);
   const base = scenario.replace(/^(grid|tokens)-?|-(grid|tokens)/, "");
   // The player view always gets its fog with (never after) the map.
   const fog = fogFor(base);
@@ -321,15 +336,35 @@ async function main() {
   if (withGrid)
     renderer.setGrid({ cellSizePx: 100, offsetXPx: 50, offsetYPx: 0 });
   if (withTokens)
-    renderer.setTokens([
-      { id: "aria", name: "Aria", x: 200, y: 200, width: 100, height: 100 },
-      { id: "g12", name: "Goblin 12", x: 300, y: 200, width: 100, height: 100 },
-      { id: "ogre", name: "Oger", x: 1100, y: 200, width: 200, height: 200 },
-      { id: "rat", name: "Ratte", x: 225, y: 325, width: 50, height: 50 },
-      { id: "unnamed", x: 400, y: 300, width: 100, height: 100 },
-      // In the fog of the player scenarios: covered there.
-      { id: "hidden", name: "Späher", x: 700, y: 600, width: 100, height: 100 },
-    ]);
+    renderer.setTokens(
+      [
+        { id: "aria", name: "Aria", x: 200, y: 200, width: 100, height: 100 },
+        {
+          id: "g12",
+          name: "Goblin 12",
+          x: 300,
+          y: 200,
+          width: 100,
+          height: 100,
+        },
+        { id: "ogre", name: "Oger", x: 1100, y: 200, width: 200, height: 200 },
+        { id: "rat", name: "Ratte", x: 225, y: 325, width: 50, height: 50 },
+        { id: "unnamed", x: 400, y: 300, width: 100, height: 100 },
+        // In the fog of the player scenarios: covered there.
+        {
+          id: "hidden",
+          name: "Späher",
+          x: 700,
+          y: 600,
+          width: 100,
+          height: 100,
+        },
+      ].map((token) => ({
+        ...token,
+        ...(selected.has(token.id) && { selected: true }),
+        ...(hidden.has(token.id) && { hidden: true }),
+      })),
+    );
   renderer.setCamera(
     cameraFor(
       base.replace(/^(player-nested|player|dm-fog)-?/, "").replace("soft", ""),

@@ -20,6 +20,25 @@ export const TOKEN_COLORS = [
 /** The ring around a token. */
 export const TOKEN_RING = "#e8d3a3";
 
+/** The ring around a selected token in the DM window (T-107b): the accent, bright on any map. */
+export const TOKEN_SELECTED_RING = "#ffb627";
+
+/** How opaque the DM window draws a token hidden from the players (T-107b). */
+export const TOKEN_HIDDEN_ALPHA = 0.45;
+
+/**
+ * The resolution token labels are rasterised at for a camera `zoom` on an output of
+ * `outputResolution` (T-107b): the next power of two at or above their product, from 1 to 8, so
+ * initials stay sharp when zoomed in and are re-rasterised only on a doubling, not every step.
+ */
+export function labelResolution(
+  zoom: number,
+  outputResolution: number,
+): number {
+  const wanted = Math.max(1, zoom * outputResolution);
+  return Math.min(8, 2 ** Math.ceil(Math.log2(wanted)));
+}
+
 /** A colour for `id`, the same on every device and every start (a small string hash). */
 export function tokenColor(id: string): string {
   let hash = 0;

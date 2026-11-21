@@ -607,3 +607,173 @@ describe("MapView", () => {
     expect(onArea).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("MapView tokens (T-107b)", () => {
+  // The 1600 × 800 map fills the 800 × 400 view at zoom 0.5: a 100 px cell is 50 screen px.
+  const grid = { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 };
+  const goblin = {
+    id: "goblin",
+    name: "Goblin",
+    x: 200,
+    y: 200,
+    width: 100,
+    height: 100,
+  };
+  const ogre = {
+    id: "ogre",
+    name: "Oger",
+    x: 600,
+    y: 200,
+    width: 200,
+    height: 200,
+  };
+  // Screen points: the goblin's centre, the ogre's centre, an empty cell.
+  const onGoblin = { clientX: 125, clientY: 125 };
+  const onOgre = { clientX: 350, clientY: 150 };
+
+  function renderTokens(initial: ReadonlySet<string> = new Set()) {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onMove =
+      vi.fn<
+        (ids: readonly string[], shift: { col: number; row: number }) => void
+      >();
+    const onDelete = vi.fn<(ids: readonly string[]) => void>();
+    const onSelect = vi.fn<(ids: ReadonlySet<string>) => void>();
+    let selected = initial;
+    const props = (): Partial<ComponentProps<typeof MapView>> => ({
+      grid,
+      tokens: [goblin, ogre],
+      tokenControl: {
+        selected,
+        onSelect: (ids) => {
+          onSelect(ids);
+          selected = ids;
+          result.rerender(tree(fake.service, undefined, props()));
+        },
+        onMove,
+        onDelete,
+      },
+    });
+    const result = render(tree(fake.service, undefined, props()));
+    return {
+      fake,
+      onMove,
+      onDelete,
+      onSelect,
+      selected: () => [...selected].sort(),
+    };
+  }
+  const ready = async (fake: ReturnType<typeof fakeMapService>) => {
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+  };
+  const click = (at: { clientX: number; clientY: number }, extra = {}) => {
+    fireEvent.pointerDown(area(), { ...at, pointerId: 1, ...extra });
+    fireEvent.pointerUp(area(), { ...at, pointerId: 1, ...extra });
+  };
+
+  test("a click selects a token, Shift adds one, a click on empty map clears the selection", async () => {
+    const view = renderTokens();
+    await ready(view.fake);
+    click(onGoblin, { pointerType: "mouse" });
+    expect(view.selected()).toEqual(["goblin"]);
+    click(onOgre, { pointerType: "mouse", shiftKey: true });
+    expect(view.selected()).toEqual(["goblin", "ogre"]);
+    // Shift-click on a selected one takes it out again.
+    click(onOgre, { pointerType: "mouse", shiftKey: true });
+    expect(view.selected()).toEqual(["goblin"]);
+    click({ clientX: 700, clientY: 350 }, { pointerType: "mouse" });
+    expect(view.selected()).toEqual([]);
+    expect(view.onMove).not.toHaveBeenCalled();
+  });
+
+  test("dragging a token moves the selection by whole cells, shown while dragging", async () => {
+    const view = renderTokens(new Set(["ogre"]));
+    await ready(view.fake);
+    fireEvent.pointerDown(area(), {
+      ...onGoblin,
+      pointerId: 1,
+      shiftKey: true,
+    });
+    // 2.4 cells right and 0.6 down (50 screen px per cell) snap to 2 and 1.
+    fireEvent.pointerMove(area(), { clientX: 245, clientY: 155, pointerId: 1 });
+    await waitFor(() => {
+      expect(view.fake.view.setTokens).toHaveBeenLastCalledWith([
+        { ...goblin, x: 400, y: 300 },
+        { ...ogre, x: 800, y: 300 },
+      ]);
+    });
+    fireEvent.pointerUp(area(), { clientX: 245, clientY: 155, pointerId: 1 });
+    expect(view.onMove).toHaveBeenCalledExactlyOnceWith(["ogre", "goblin"], {
+      col: 2,
+      row: 1,
+    });
+    // Dragging is no panning.
+    expect(view.fake.camera()).toEqual({
+      centerX: 800,
+      centerY: 400,
+      zoom: 0.5,
+      rotation: 0,
+    });
+  });
+
+  test("a drag that ends on its own cell moves nothing", async () => {
+    const view = renderTokens();
+    await ready(view.fake);
+    fireEvent.pointerDown(area(), { ...onGoblin, pointerId: 1 });
+    fireEvent.pointerMove(area(), { clientX: 140, clientY: 125, pointerId: 1 });
+    fireEvent.pointerUp(area(), { clientX: 140, clientY: 125, pointerId: 1 });
+    expect(view.onMove).not.toHaveBeenCalled();
+    expect(view.selected()).toEqual(["goblin"]);
+  });
+
+  test("with touch: tap a token, then tap the cell it goes to", async () => {
+    const view = renderTokens();
+    await ready(view.fake);
+    click(onGoblin, { pointerType: "touch" });
+    expect(view.selected()).toEqual(["goblin"]);
+    // Cell (6, 5): screen 325, 275.
+    click({ clientX: 325, clientY: 275 }, { pointerType: "touch" });
+    expect(view.onMove).toHaveBeenCalledExactlyOnceWith(["goblin"], {
+      col: 4,
+      row: 3,
+    });
+    // Tapping the only selected token again lets it go.
+    click(onGoblin, { pointerType: "touch" });
+    expect(view.selected()).toEqual([]);
+  });
+
+  test("arrow keys move the selection by a cell, Delete removes it, Escape lets it go", async () => {
+    const view = renderTokens(new Set(["goblin", "ogre"]));
+    await ready(view.fake);
+    fireEvent.keyDown(area(), { key: "ArrowLeft" });
+    expect(view.onMove).toHaveBeenLastCalledWith(["goblin", "ogre"], {
+      col: -1,
+      row: 0,
+    });
+    // Shift + arrow still pans.
+    fireEvent.keyDown(area(), { key: "ArrowLeft", shiftKey: true });
+    expect(view.onMove).toHaveBeenCalledTimes(1);
+    expect(view.fake.camera()?.centerX).toBeLessThan(800);
+    fireEvent.keyDown(area(), { key: "Delete" });
+    expect(view.onDelete).toHaveBeenCalledExactlyOnceWith(["goblin", "ogre"]);
+    fireEvent.keyDown(area(), { key: "Escape" });
+    expect(view.selected()).toEqual([]);
+    // Without a selection the arrows pan again.
+    fireEvent.keyDown(area(), { key: "ArrowUp" });
+    expect(view.onMove).toHaveBeenCalledTimes(1);
+  });
+
+  test("dragging empty map still pans", async () => {
+    const view = renderTokens(new Set(["goblin"]));
+    await ready(view.fake);
+    fireEvent.pointerDown(area(), { clientX: 700, clientY: 350, pointerId: 1 });
+    fireEvent.pointerMove(area(), { clientX: 650, clientY: 350, pointerId: 1 });
+    fireEvent.pointerUp(area(), { clientX: 650, clientY: 350, pointerId: 1 });
+    expect(view.fake.camera()?.centerX).toBeGreaterThan(800);
+    // A pan is no click: the selection stays.
+    expect(view.selected()).toEqual(["goblin"]);
+    expect(view.onMove).not.toHaveBeenCalled();
+  });
+});

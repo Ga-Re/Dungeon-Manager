@@ -11,7 +11,14 @@ import {
   Texture,
   UniformGroup,
 } from "pixi.js";
-import { TOKEN_RING, tokenColor, tokenInitials } from "./token-look.js";
+import {
+  TOKEN_HIDDEN_ALPHA,
+  TOKEN_RING,
+  TOKEN_SELECTED_RING,
+  labelResolution,
+  tokenColor,
+  tokenInitials,
+} from "./token-look.js";
 import type { Camera, Size } from "./camera.js";
 import { disposeFog } from "./fog-dispose.js";
 import { easeOut, fadeProgress } from "./fog-fade.js";
@@ -68,6 +75,10 @@ export interface TokenShape {
   readonly y: number;
   readonly width: number;
   readonly height: number;
+  /** Selected in the DM window (T-107b): drawn with a selection ring. */
+  readonly selected?: boolean | undefined;
+  /** Hidden from the players (T-107b): the DM window draws it faded. */
+  readonly hidden?: boolean | undefined;
 }
 
 /** A map's grid, in map pixels (the sidecar's calibration), and how its lines look. */
@@ -133,7 +144,8 @@ export interface Renderer {
   setGrid(grid: GridLines | null): void;
   /**
    * Draws tokens (T-107a) over the map and grid, under the fog: a token in fog stays covered
-   * on the TV. Replaces the tokens drawn before.
+   * on the TV. Replaces the tokens drawn before; a token that only moved keeps what was built
+   * for it (T-107b), so dragging one rebuilds nothing.
    */
   setTokens(tokens: readonly TokenShape[]): void;
   setCamera(camera: Camera): void;
@@ -178,40 +190,81 @@ export async function createRenderer(
   // Tokens (T-107a): above the grid, below the fog.
   const tokenLayer = new Container();
   world.addChild(tokenLayer);
-  let tokensBuiltFrom: string | null = null;
-  const drawTokens = (tokens: readonly TokenShape[]) => {
-    const key = JSON.stringify(tokens);
-    if (key === tokensBuiltFrom) return;
-    tokensBuiltFrom = key;
-    for (const child of tokenLayer.removeChildren())
-      child.destroy({ children: true, context: true, style: true });
-    for (const token of tokens) {
-      const radius = Math.min(token.width, token.height) / 2;
-      const centerX = token.x + token.width / 2;
-      const centerY = token.y + token.height / 2;
-      // A little inside its footprint, so neighbours never touch.
-      const disc = new Graphics()
-        .circle(centerX, centerY, radius * 0.9)
+  // Per token id: what its look was built from, and the container drawn at its centre.
+  const builtTokens = new Map<
+    string,
+    { look: string; view: Container; label: Text | null }
+  >();
+  // Labels are rasterised for the current zoom, so initials stay sharp when the DM zooms in.
+  let tokenLabelResolution = labelResolution(1, options.resolution ?? 1);
+  const buildToken = (token: TokenShape) => {
+    const radius = Math.min(token.width, token.height) / 2;
+    const view = new Container();
+    // A little inside its footprint, so neighbours never touch.
+    view.addChild(
+      new Graphics()
+        .circle(0, 0, radius * 0.9)
         .fill(tokenColor(token.id))
-        .stroke({ width: radius * 0.08, color: TOKEN_RING });
-      tokenLayer.addChild(disc);
-      const initials = tokenInitials(token.name);
-      if (initials !== "") {
-        const label = new Text({
-          text: initials,
-          style: {
-            fill: "#ffffff",
-            fontFamily: "system-ui, sans-serif",
-            fontWeight: "600",
-            fontSize: radius * (initials.length > 2 ? 0.55 : 0.8),
-          },
-          resolution: 2,
-        });
-        label.anchor.set(0.5);
-        label.position.set(centerX, centerY);
-        tokenLayer.addChild(label);
-      }
+        .stroke({ width: radius * 0.08, color: TOKEN_RING }),
+    );
+    if (token.selected === true)
+      view.addChild(
+        new Graphics()
+          .circle(0, 0, radius * 1.02)
+          .stroke({ width: radius * 0.1, color: TOKEN_SELECTED_RING }),
+      );
+    const initials = tokenInitials(token.name);
+    let label: Text | null = null;
+    if (initials !== "") {
+      label = new Text({
+        text: initials,
+        style: {
+          fill: "#ffffff",
+          fontFamily: "system-ui, sans-serif",
+          fontWeight: "600",
+          fontSize: radius * (initials.length > 2 ? 0.55 : 0.8),
+        },
+        resolution: tokenLabelResolution,
+      });
+      label.anchor.set(0.5);
+      view.addChild(label);
     }
+    view.alpha = token.hidden === true ? TOKEN_HIDDEN_ALPHA : 1;
+    return { view, label };
+  };
+  const drawTokens = (tokens: readonly TokenShape[]) => {
+    const wanted = new Set(tokens.map((token) => token.id));
+    for (const [id, built] of builtTokens)
+      if (!wanted.has(id)) {
+        tokenLayer.removeChild(built.view);
+        built.view.destroy({ children: true, context: true, style: true });
+        builtTokens.delete(id);
+      }
+    tokens.forEach((token, index) => {
+      const look = JSON.stringify([
+        token.name,
+        token.width,
+        token.height,
+        token.selected === true,
+        token.hidden === true,
+      ]);
+      let built = builtTokens.get(token.id);
+      if (built?.look !== look) {
+        if (built) {
+          tokenLayer.removeChild(built.view);
+          built.view.destroy({ children: true, context: true, style: true });
+        }
+        built = { look, ...buildToken(token) };
+        builtTokens.set(token.id, built);
+        tokenLayer.addChild(built.view);
+      }
+      built.view.position.set(
+        token.x + token.width / 2,
+        token.y + token.height / 2,
+      );
+      // The order given is the drawing order (later tokens on top).
+      tokenLayer.setChildIndex(built.view, index);
+    });
   };
   // What the drawn lines were built from: an equal request (the player view gets the whole
   // state with every message) keeps them instead of rebuilding.
@@ -497,6 +550,12 @@ export async function createRenderer(
     },
     setCamera(next) {
       camera = next;
+      const resolution = labelResolution(next.zoom, options.resolution ?? 1);
+      if (resolution !== tokenLabelResolution) {
+        tokenLabelResolution = resolution;
+        for (const built of builtTokens.values())
+          if (built.label) built.label.resolution = resolution;
+      }
       requestDraw();
     },
     resize(next) {

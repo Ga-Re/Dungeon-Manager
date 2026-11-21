@@ -449,7 +449,7 @@ const tokenAdded = fc
   }));
 const tokenRemoved = index.map((i): Command => ({
   type: "token.remove",
-  tokenId: `secret-token-${String(i)}`,
+  tokenIds: [`secret-token-${String(i)}`],
 }));
 
 // Moves weigh most: a leak in them needs a token to pass through fog within one sequence.
@@ -457,6 +457,44 @@ const command: fc.Arbitrary<Command> = fc.oneof(
   { arbitrary: move, weight: 4 },
   { arbitrary: tokenAdded, weight: 2 },
   { arbitrary: tokenRemoved, weight: 1 },
+  {
+    arbitrary: fc
+      .uniqueArray(index, { minLength: 1, maxLength: 3 })
+      .chain((indexes) =>
+        fc.tuple(
+          ...indexes.map((i) =>
+            fc.record({
+              tokenId: fc.constant(`secret-token-${String(i)}`),
+              to: fc.record({
+                col: fc.integer({ min: 0, max: 9 }),
+                row: fc.integer({ min: 0, max: 9 }),
+              }),
+            }),
+          ),
+        ),
+      )
+      .map((moves): Command => ({ type: "token.moveMany", moves })),
+    weight: 2,
+  },
+  {
+    arbitrary: fc
+      .uniqueArray(index, { minLength: 1, maxLength: 3 })
+      .chain((indexes) =>
+        fc.record({
+          visibility: fc.constantFrom("hidden" as const, null),
+          tokenIds: fc.constant(
+            indexes.map((i) => `secret-token-${String(i)}`),
+          ),
+        }),
+      )
+      .map(({ tokenIds, visibility }): Command => ({
+        type: "visibility.setTokens",
+        tokenIds,
+        elementType: "token",
+        visibility,
+      })),
+    weight: 2,
+  },
   { arbitrary: added, weight: 2 },
   fc.record({ type: fc.constant("fog.reveal" as const), levelId: level, area }),
   fc.record({

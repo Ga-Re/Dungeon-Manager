@@ -15,12 +15,17 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
-import type { Grid as GridCalibration, Polygon } from "@dungeon-manager/schema";
+import type {
+  Grid as GridCalibration,
+  GridCell,
+  Polygon,
+} from "@dungeon-manager/schema";
 import { IconButton } from "@dungeon-manager/ui";
 import { Grid3x3, RotateCw, Scan, ZoomIn, ZoomOut } from "lucide-react";
 import { ShellPortal } from "./shell/slots.js";
@@ -34,6 +39,7 @@ import {
   type FogShape,
 } from "./fog-shapes.js";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
+import { arrowStep, dragCells, tapShift, tokenAt } from "./token-pointer.js";
 
 /** Provided once in `main.tsx`, so panels deep in the tree can show maps. */
 export const MapViewContext = createContext<MapViewService | null>(null);
@@ -64,6 +70,31 @@ type Drawing =
   | { readonly kind: "brush"; readonly points: readonly Point[] };
 
 const NO_TOKENS: readonly TokenShape[] = [];
+const NOTHING_SELECTED: ReadonlySet<string> = new Set();
+/** A press that moves less than this (screen pixels) is a click or tap, not a drag. */
+const TAP_PX = 6;
+
+/** Selecting and moving tokens on the map (T-107b), with the pan tool. */
+export interface TokenControl {
+  readonly selected: ReadonlySet<string>;
+  readonly onSelect: (ids: ReadonlySet<string>) => void;
+  /** Moves tokens by whole cells: a drag, a tap on a cell, an arrow key. */
+  readonly onMove: (ids: readonly string[], shift: GridCell) => void;
+  readonly onDelete: (ids: readonly string[]) => void;
+}
+
+/** A press on a token: dragging moves the selection, a click changes it. */
+interface TokenPress {
+  readonly ids: readonly string[];
+  readonly token: TokenShape;
+  readonly wasSelected: boolean;
+  readonly additive: boolean;
+  /** Where it began, on screen and on the map. */
+  readonly downAt: Point;
+  readonly start: Point;
+  moved: boolean;
+  shift: GridCell;
+}
 
 /** A map with zoom (wheel, +/−), pan (drag, arrow keys), rotation and "fit" (DM window). */
 export function MapView({
@@ -82,6 +113,7 @@ export function MapView({
   grid = null,
   tvFrame = null,
   tokens = NO_TOKENS,
+  tokenControl = null,
 }: {
   readonly path: string;
   /** Video maps play in a `<video>` under the canvas (ADR-0010). */
@@ -107,6 +139,8 @@ export function MapView({
   readonly grid?: GridCalibration | null;
   /** The tokens on the level shown, in map pixels (T-107a). */
   readonly tokens?: readonly TokenShape[];
+  /** Selecting and moving tokens (T-107b); without it tokens do not react to the pointer. */
+  readonly tokenControl?: TokenControl | null;
   /** The calibrated TV's view on this map (T-106c): shown as a frame the DM moves. */
   readonly tvFrame?: {
     readonly area: Size;
@@ -136,6 +170,31 @@ export function MapView({
   // the size it paints (T-170).
   const [pointer, setPointer] = useState<Point | null>(null);
   const brushing = tool !== "pan" && shape === "brush";
+  const tokenPress = useRef<TokenPress | null>(null);
+  // A press on empty map: a tap (no drag) clears the selection, or with touch moves it there.
+  const emptyPress = useRef<Point | null>(null);
+  // The token pressed last: a tap on a cell moves the selection so that it lands there.
+  const anchorId = useRef<string | null>(null);
+  // The selection's shift while it is dragged, drawn before it is applied.
+  const [dragShift, setDragShift] = useState<{
+    readonly ids: readonly string[];
+    readonly shift: GridCell;
+  } | null>(null);
+  const selected = tokenControl?.selected ?? NOTHING_SELECTED;
+  const shownTokens = useMemo(() => {
+    const cell = grid?.cellSizePx;
+    if (!dragShift || cell === undefined) return tokens;
+    const ids = new Set(dragShift.ids);
+    return tokens.map((token) =>
+      ids.has(token.id)
+        ? {
+            ...token,
+            x: token.x + dragShift.shift.col * cell,
+            y: token.y + dragShift.shift.row * cell,
+          }
+        : token,
+    );
+  }, [tokens, dragShift, grid?.cellSizePx]);
 
   // Switching tools drops a half-drawn shape.
   useEffect(() => {
@@ -261,11 +320,11 @@ export function MapView({
     if (camera) renderer.current?.setCamera(camera);
   }, [camera]);
 
-  const tokensNow = useRef(tokens);
-  tokensNow.current = tokens;
+  const tokensNow = useRef(shownTokens);
+  tokensNow.current = shownTokens;
   useEffect(() => {
-    renderer.current?.setTokens(tokens);
-  }, [tokens]);
+    renderer.current?.setTokens(shownTokens);
+  }, [shownTokens]);
 
   const gridCell = grid?.cellSizePx;
   const gridX = grid?.offsetXPx;
@@ -362,6 +421,67 @@ export function MapView({
     setCorners([...corners, [mapped.x, mapped.y]]);
   };
 
+  const onMapPoint = (point: Point) => {
+    const view = sizeNow.current;
+    return camera && view ? screenToMap(camera, view, point) : null;
+  };
+  // A press on a token with the pan tool: selects it (Shift: adds it) and may start a drag.
+  const pressToken = (event: PointerEvent, point: Point): boolean => {
+    const mapPoint = onMapPoint(point);
+    if (!tokenControl || !grid || !mapPoint) return false;
+    const token = tokenAt(tokens, mapPoint);
+    if (!token) return false;
+    const wasSelected = selected.has(token.id);
+    const additive = event.shiftKey;
+    let ids = selected;
+    if (!wasSelected) {
+      ids = additive ? new Set([...selected, token.id]) : new Set([token.id]);
+      tokenControl.onSelect(ids);
+    }
+    anchorId.current = token.id;
+    tokenPress.current = {
+      ids: [...ids],
+      token,
+      wasSelected,
+      additive,
+      downAt: point,
+      start: mapPoint,
+      moved: false,
+      shift: { col: 0, row: 0 },
+    };
+    return true;
+  };
+  // A click on a token that was selected already: Shift takes it out, a click on the only one
+  // clears the selection, else it alone stays selected.
+  const clickSelected = (press: TokenPress) => {
+    if (!tokenControl) return;
+    const id = press.token.id;
+    if (press.additive)
+      tokenControl.onSelect(
+        new Set([...selected].filter((each) => each !== id)),
+      );
+    else if (selected.size === 1) tokenControl.onSelect(NOTHING_SELECTED);
+    else tokenControl.onSelect(new Set([id]));
+  };
+  // A tap on empty map: with touch or a pen the selection moves there (tap token, tap cell);
+  // a mouse click clears it.
+  const tapEmpty = (event: PointerEvent) => {
+    if (!tokenControl || selected.size === 0) return;
+    const mapPoint = onMapPoint(local(event));
+    if (event.pointerType === "mouse" || !grid || !mapPoint) {
+      tokenControl.onSelect(NOTHING_SELECTED);
+      return;
+    }
+    const anchor =
+      tokens.find(
+        (token) => token.id === anchorId.current && selected.has(token.id),
+      ) ?? tokens.find((token) => selected.has(token.id));
+    if (!anchor) return;
+    const shift = tapShift(anchor, mapPoint, grid);
+    if (shift.col !== 0 || shift.row !== 0)
+      tokenControl.onMove([...selected], shift);
+  };
+
   const onPointerDown = (event: PointerEvent) => {
     // Primary button only (touch and pen report it too); the others stay free for menus.
     if (event.button !== 0) return;
@@ -371,13 +491,40 @@ export function MapView({
       return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
-    if (tool === "pan") drag.current = { x: event.clientX, y: event.clientY };
-    else if (shape === "brush") setDrawing({ kind: "brush", points: [point] });
+    if (tool === "pan" && pressToken(event, point)) return;
+    if (tool === "pan") {
+      drag.current = { x: event.clientX, y: event.clientY };
+      emptyPress.current = point;
+    } else if (shape === "brush")
+      setDrawing({ kind: "brush", points: [point] });
     else if (shape !== "polygon")
       setDrawing({ kind: "drag", shape, start: point, end: point });
   };
   const onPointerMove = (event: PointerEvent) => {
     const point = local(event);
+    const press = tokenPress.current;
+    if (press && grid) {
+      if (
+        !press.moved &&
+        Math.hypot(point.x - press.downAt.x, point.y - press.downAt.y) <= TAP_PX
+      )
+        return;
+      press.moved = true;
+      const mapPoint = onMapPoint(point);
+      if (!mapPoint) return;
+      const shift = dragCells(press.start, mapPoint, grid);
+      if (shift.col === press.shift.col && shift.row === press.shift.row)
+        return;
+      press.shift = shift;
+      setDragShift({ ids: press.ids, shift });
+      return;
+    }
+    const pressedAt = emptyPress.current;
+    if (
+      pressedAt &&
+      Math.hypot(point.x - pressedAt.x, point.y - pressedAt.y) > TAP_PX
+    )
+      emptyPress.current = null;
     // Touch has no hover: the outline would only sit under the finger.
     if (brushing && event.pointerType !== "touch") setPointer(point);
     if (drawing?.kind === "drag") {
@@ -399,7 +546,19 @@ export function MapView({
       }),
     );
   };
-  const onPointerUp = () => {
+  const onPointerUp = (event: PointerEvent) => {
+    const press = tokenPress.current;
+    tokenPress.current = null;
+    if (press) {
+      setDragShift(null);
+      if (press.moved) {
+        if (press.shift.col !== 0 || press.shift.row !== 0)
+          tokenControl?.onMove(press.ids, press.shift);
+      } else if (press.wasSelected) clickSelected(press);
+      return;
+    }
+    if (emptyPress.current) tapEmpty(event);
+    emptyPress.current = null;
     drag.current = null;
     const done = drawing;
     setDrawing(null);
@@ -416,6 +575,9 @@ export function MapView({
       );
   };
   const onPointerCancel = () => {
+    tokenPress.current = null;
+    emptyPress.current = null;
+    setDragShift(null);
     drag.current = null;
     setDrawing(null);
   };
@@ -438,6 +600,29 @@ export function MapView({
     }
     // Ctrl/Cmd + "+", "−", "0" belong to the browser and the OS.
     if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (tokenControl && selected.size > 0 && tool === "pan") {
+      const ids = [...selected];
+      if (event.key === "Escape") {
+        tokenControl.onSelect(NOTHING_SELECTED);
+        return;
+      }
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        tokenControl.onDelete(ids);
+        return;
+      }
+      const view = sizeNow.current;
+      // Shift + arrow keys still pan.
+      const step =
+        camera && view && !event.shiftKey
+          ? arrowStep(event.key, camera, view)
+          : null;
+      if (step) {
+        event.preventDefault();
+        tokenControl.onMove(ids, step);
+        return;
+      }
+    }
     const actions: Record<string, (current: Camera, view: Size) => Camera> = {
       "+": (current, view) => zoomAt(current, KEY_ZOOM, centre(view), view),
       "=": (current, view) => zoomAt(current, KEY_ZOOM, centre(view), view),

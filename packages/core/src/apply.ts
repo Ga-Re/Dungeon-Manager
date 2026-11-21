@@ -69,13 +69,56 @@ function applyChange(state: SessionState, command: Command): Change {
       };
     }
     case "token.remove": {
-      if (!scene.tokens.some((each) => each.id === command.tokenId))
+      const ids = new Set(command.tokenIds);
+      if (
+        ids.size === 0 ||
+        [...ids].some((id) => !scene.tokens.some((each) => each.id === id))
+      )
         return "unknownToken";
       return {
         state: withScene(state, {
-          tokens: scene.tokens.filter((each) => each.id !== command.tokenId),
+          tokens: scene.tokens.filter((each) => !ids.has(each.id)),
         }),
-        events: [{ type: "token.removed", tokenId: command.tokenId }],
+        events: [...ids].map((tokenId) => ({
+          type: "token.removed" as const,
+          tokenId,
+        })),
+      };
+    }
+    case "token.moveMany": {
+      const { moves } = command;
+      if (moves.length === 0) return "unknownToken";
+      if (new Set(moves.map((move) => move.tokenId)).size !== moves.length)
+        return "unknownToken";
+      const moved = new Map<string, GridCell>();
+      for (const move of moves) {
+        if (!scene.tokens.some((each) => each.id === move.tokenId))
+          return "unknownToken";
+        if (!isCell(move.to)) return "invalidCell";
+        moved.set(move.tokenId, move.to);
+      }
+      if (!state.map) return "noMap";
+      return {
+        state: withScene(state, {
+          tokens: scene.tokens.map((each) => {
+            const to = moved.get(each.id);
+            return to ? { ...each, position: to } : each;
+          }),
+        }),
+        events: scene.tokens.flatMap((each) => {
+          const to = moved.get(each.id);
+          return to
+            ? [
+                {
+                  type: "token.moved" as const,
+                  tokenId: each.id,
+                  from: each.position,
+                  to,
+                  levelId: each.levelId,
+                },
+              ]
+            : [];
+        }),
       };
     }
     case "token.move": {
@@ -143,6 +186,23 @@ function applyChange(state: SessionState, command: Command): Change {
         }),
         events: [{ type: "level.shown", levelId: command.levelId }],
       };
+    }
+    case "visibility.setTokens": {
+      if (command.tokenIds.length === 0) return "unknownToken";
+      let current = state;
+      const events: DomainEventBody[] = [];
+      for (const tokenId of command.tokenIds) {
+        const change = applyChange(current, {
+          type: "visibility.set",
+          target: { kind: "token", tokenId },
+          elementType: command.elementType,
+          visibility: command.visibility,
+        });
+        if (typeof change === "string") return change;
+        current = change.state;
+        events.push(...change.events);
+      }
+      return { state: current, events };
     }
     case "visibility.set": {
       const { target, elementType, visibility } = command;

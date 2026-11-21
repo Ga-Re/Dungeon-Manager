@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   canOccupy,
+  clampGroupShift,
   gridBounds,
   gridFootprint,
   middleCell,
@@ -203,6 +204,47 @@ describe("whole cells of a map (T-107a review)", () => {
     expect(middleCell(bounds, medium)).toEqual({ col: 5, row: 2 });
     expect(nearestFreeCell({ col: 0, row: 0 }, medium, [], bounds)).toEqual({
       col: 1,
+      row: 0,
+    });
+  });
+});
+
+describe("clampGroupShift (T-107b)", () => {
+  const bounds = { firstCol: 0, firstRow: 0, cols: 10, rows: 8 };
+  const one = { cols: 1, rows: 1, share: 1 };
+  const large = { cols: 2, rows: 2, share: 1 };
+  const group = [
+    { position: { col: 2, row: 2 }, footprint: one },
+    { position: { col: 4, row: 3 }, footprint: large },
+  ];
+
+  test("keeps a shift that stays on the map", () => {
+    expect(clampGroupShift(group, { col: 3, row: -2 }, bounds)).toEqual({
+      col: 3,
+      row: -2,
+    });
+  });
+
+  test("stops the whole group at the map's edges, keeping its formation", () => {
+    // The large token's right column may reach col 9: 4 + 2 + 4 - 1.
+    expect(clampGroupShift(group, { col: 20, row: 20 }, bounds)).toEqual({
+      col: 4,
+      row: 3,
+    });
+    expect(clampGroupShift(group, { col: -20, row: -20 }, bounds)).toEqual({
+      col: -2,
+      row: -2,
+    });
+  });
+
+  test("never moves a token already off the map further out", () => {
+    const outside = [{ position: { col: 12, row: 0 }, footprint: one }];
+    expect(clampGroupShift(outside, { col: 1, row: 0 }, bounds)).toEqual({
+      col: 0,
+      row: 0,
+    });
+    expect(clampGroupShift(outside, { col: -3, row: 0 }, bounds)).toEqual({
+      col: -3,
       row: 0,
     });
   });

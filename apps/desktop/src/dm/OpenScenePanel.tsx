@@ -1,5 +1,6 @@
 import {
   addLevel,
+  clampGroupShift,
   gridBounds,
   gridFootprint,
   middleCell,
@@ -11,6 +12,7 @@ import {
 import { viewArea, type Point, type Size } from "@dungeon-manager/renderer";
 import type {
   AssetRef,
+  GridCell,
   Polygon,
   Scene,
   TokenSize,
@@ -27,7 +29,7 @@ import {
   withMap,
 } from "@dungeon-manager/storage";
 import { IconButton, Popover, RibbonGroup } from "@dungeon-manager/ui";
-import { ImagePlus, Trash2, Tv, UserPlus } from "lucide-react";
+import { EyeOff, ImagePlus, Trash2, Tv, UserPlus } from "lucide-react";
 import {
   useContext,
   useEffect,
@@ -43,7 +45,12 @@ import { fileName } from "./file-name.js";
 import { MapChangeChoice } from "./MapChangeChoice.js";
 import { levelMedia } from "../level-media.js";
 import { LevelGroup, type LevelFile } from "./LevelGroup.js";
-import { MapView, MapViewContext, type MapTool } from "./MapView.js";
+import {
+  MapView,
+  MapViewContext,
+  type MapTool,
+  type TokenControl,
+} from "./MapView.js";
 import { releaseVideo } from "../platform/map-images.js";
 import type { FogShape } from "./fog-shapes.js";
 import { FogToolbar } from "./FogToolbar.js";
@@ -72,6 +79,7 @@ const rectangle = (size: Size): Polygon => ({
 
 /** One shared empty list, so an unrevealed level does not rebuild the fog on every render. */
 const NOTHING_REVEALED: readonly Polygon[] = [];
+const NOTHING_SELECTED: ReadonlySet<string> = new Set();
 
 /** Undo/redo keys, unless the DM is typing in a field (where they edit the text). */
 function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
@@ -251,14 +259,34 @@ export function OpenScenePanel({
     setPicked(null);
   }, [scene.id, mapPath]);
 
+  // Selected tokens (T-107b): of the level shown; another scene or level starts with none, and
+  // removed tokens (also by undo) drop out.
+  const [selection, setSelection] =
+    useState<ReadonlySet<string>>(NOTHING_SELECTED);
+  useEffect(() => {
+    setSelection(NOTHING_SELECTED);
+  }, [scene.id, levelId]);
+  const selected = useMemo(() => {
+    const here = scene.tokens.filter(
+      (token) => token.levelId === levelId && selection.has(token.id),
+    );
+    return here.length === selection.size
+      ? selection
+      : new Set(here.map((token) => token.id));
+  }, [scene.tokens, levelId, selection]);
+  const selectedTokens = scene.tokens.filter((token) => selected.has(token.id));
+  const allHidden =
+    selectedTokens.length > 0 &&
+    selectedTokens.every((token) => token.visibility?.token === "hidden");
+
   // New tokens (T-107a): on the free cell nearest the map's middle, on the level the DM works on.
   const newTokenButton = useRef<HTMLButtonElement>(null);
   const tokens = useMemo(
     () =>
       map && levelId !== undefined
-        ? tokenShapes(scene.tokens, map.grid, levelId)
+        ? tokenShapes(scene.tokens, map.grid, levelId, selected)
         : [],
-    [scene.tokens, map, levelId],
+    [scene.tokens, map, levelId, selected],
   );
   const [creatingToken, setCreatingToken] = useState(false);
   const addToken = (name: string, size: TokenSize): boolean => {
@@ -289,6 +317,47 @@ export function OpenScenePanel({
     if (!added) setError(t("token.notCreated"));
     return added;
   };
+
+  // Moves tokens as one step; a group stops at the map's edge, keeping its formation (T-107b).
+  const moveTokens = (ids: readonly string[], shift: GridCell) => {
+    if (!map) return;
+    const moving = scene.tokens.filter((token) => ids.includes(token.id));
+    const clamped = mapSize
+      ? clampGroupShift(
+          moving.map((token) => ({
+            position: token.position,
+            footprint: gridFootprint(token.size),
+          })),
+          shift,
+          gridBounds(mapSize, map.grid),
+        )
+      : shift;
+    if (moving.length === 0 || (clamped.col === 0 && clamped.row === 0)) return;
+    const moved = session.run({
+      type: "token.moveMany",
+      moves: moving.map((token) => ({
+        tokenId: token.id,
+        to: {
+          col: token.position.col + clamped.col,
+          row: token.position.row + clamped.row,
+        },
+      })),
+    });
+    if (!moved) setError(t("token.notMoved"));
+  };
+  const deleteTokens = (ids: readonly string[]) => {
+    if (ids.length === 0) return;
+    if (session.run({ type: "token.remove", tokenIds: ids }))
+      setSelection(NOTHING_SELECTED);
+  };
+  const tokenControl: TokenControl | null = busy
+    ? null
+    : {
+        selected,
+        onSelect: setSelection,
+        onMove: moveTokens,
+        onDelete: deleteTokens,
+      };
 
   const fogCommand = (type: "fog.reveal" | "fog.hide", area: Polygon) => {
     if (levelId === undefined) return;
@@ -688,6 +757,29 @@ export function OpenScenePanel({
                 />
               )}
             </Popover>
+            <IconButton
+              icon={<EyeOff />}
+              label={t("token.hideOnTv")}
+              pressed={allHidden}
+              disabled={busy || selected.size === 0}
+              onClick={() => {
+                session.run({
+                  type: "visibility.setTokens",
+                  tokenIds: [...selected],
+                  elementType: "token",
+                  visibility: allHidden ? null : "hidden",
+                });
+              }}
+            />
+            <IconButton
+              icon={<Trash2 />}
+              label={t("token.delete")}
+              aria-keyshortcuts="Delete"
+              disabled={busy || selected.size === 0}
+              onClick={() => {
+                deleteTokens([...selected]);
+              }}
+            />
           </RibbonGroup>
         )}
       </ShellPortal>
@@ -728,6 +820,7 @@ export function OpenScenePanel({
               brushRadius={(brushCells * map.grid.cellSizePx) / 2}
               grid={map.grid}
               tokens={tokens}
+              tokenControl={tokenControl}
               tvFrame={
                 tvView && sceneOnTv && mapSize
                   ? {
