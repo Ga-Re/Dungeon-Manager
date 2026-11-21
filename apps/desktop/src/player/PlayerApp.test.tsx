@@ -319,6 +319,41 @@ describe("PlayerApp", () => {
       bar.closest(".player-initiative-frame")?.getAttribute("data-rotation"),
     ).toBe("90");
 
+    // No turn shown (the active one hidden by the projection), no entries: no ring, no bar.
+    feed.send({
+      v: 1,
+      scene: {
+        ...scene,
+        initiative: { round: 2, activeCombatantId: null, combatants: [] },
+      },
+      rotation: 0,
+    });
+    await waitFor(() => {
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([
+        expect.not.objectContaining({ active: true }),
+      ]);
+    });
+    expect(screen.queryByRole("region", { name: "Initiative" })).toBeNull();
+    // The active one without a token: no ring either.
+    feed.send({
+      v: 1,
+      scene: {
+        ...scene,
+        initiative: {
+          round: 2,
+          activeCombatantId: "lair",
+          combatants: [{ id: "lair", name: "Hort" }],
+        },
+      },
+      rotation: 0,
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("region", { name: "Initiative" })).toBeTruthy();
+    });
+    expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([
+      expect.not.objectContaining({ active: true }),
+    ]);
+
     // Before the first turn, and without an initiative, there is no bar.
     feed.send({
       v: 1,

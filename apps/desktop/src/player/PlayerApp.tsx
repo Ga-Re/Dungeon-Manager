@@ -6,10 +6,10 @@ import {
   type Renderer,
   type Size,
 } from "@dungeon-manager/renderer";
-import { useEffect, useRef, useState } from "react";
 import type { ViewerScene } from "@dungeon-manager/schema";
-import { InitiativeBar } from "./InitiativeBar.js";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { InitiativeBar } from "./InitiativeBar.js";
 import { levelMedia } from "../level-media.js";
 import { tokenShapes } from "../token-shapes.js";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
@@ -158,7 +158,8 @@ export function PlayerApp({
       message = next;
       const initiative = next.scene?.initiative;
       setBar(
-        initiative && initiative.round > 0
+        // Nothing to list, nothing shown: an empty bar would only say "something acts".
+        initiative && initiative.round > 0 && initiative.combatants.length > 0
           ? { initiative, rotation: next.rotation }
           : null,
       );

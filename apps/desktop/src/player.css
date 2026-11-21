@@ -83,9 +83,12 @@ body {
   color: #cfcfcf;
 }
 
+/* One row only, so the bar never covers more of the map; long orders are cut at the end. */
 .player-initiative-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
   gap: 1vmin;
   margin: 0;
   padding: 0;
@@ -93,6 +96,8 @@ body {
 }
 
 .player-initiative-entry {
+  flex: none;
+  white-space: nowrap;
   padding: 0.4vmin 1.2vmin;
   border: 0.3vmin solid transparent;
   border-radius: 0.6vmin;
