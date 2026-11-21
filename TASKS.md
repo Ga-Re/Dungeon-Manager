@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111a, T-111b, T-111c, T-111d, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111a, T-111b, T-111c, T-111d, T-112a, T-112b, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -578,14 +578,20 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] The bar shows only what players may see (projection tests)
 - **Notes:** The bar shows from the first turn on (round ≥ 1), along the players' top edge and turned with the TV's view; names withheld by visibility show as "Unbekannt". The DM window marks the active token the same way.
 
-### T-112 HP and conditions
+### T-112a HP and conditions: core
 
-- **Status:** todo · **Depends on:** T-111b
-- HP, temp HP, conditions with round duration; icons and HP bar on tokens respecting visibility.
+- **Status:** done · **Depends on:** T-111a · **Refs:** SPEC 11
+- Core: `hp.set` (start tracking or correct current and maximum), `condition.add` (replaces one of the same type) and `condition.remove`; at the start of each new round every condition with a duration counts down, and at 0 it goes – "act now" never counts twice.
 - **Acceptance criteria**
-  - [ ] Conditions expire automatically at the right turn (tests)
-- **Notes:** From the T-111a review: "act now" restarts the turn of the combatant it interrupted (a second `initiative.turnStarted` in the same round) – conditions that count turns must not count it twice.
-- DM decisions (2026-11-21): HP show in the Initiative panel only (no bar on tokens, in the DM window or on the TV); conditions with a duration count down together at the end of each round (a new round starts) and go at 0 – so "act now" never counts twice.
+  - [x] Conditions expire automatically at the right turn (tests)
+- **Notes:** Split from T-112 (agent, 2026-11-21). DM decisions (2026-11-21): HP show in the Initiative panel only (no bar on tokens, in the DM window or on the TV); conditions with a duration count down together at the end of each round (a new round starts) and go at 0. From the T-111a review: "act now" restarts the turn of the combatant it interrupted – conditions must not count it twice (round-based counting avoids that).
+
+### T-112b HP and conditions in the Initiative panel
+
+- **Status:** todo · **Depends on:** T-112a, T-111b · **Refs:** SPEC 11
+- Per combatant in the Initiative panel: HP (current/maximum, temporary), damage and healing in place, conditions (the 5e conditions, optionally with rounds) added and removed. HP stay in the panel (DM decision); the TV keeps showing no HP.
+- **Acceptance criteria**
+  - [ ] Damage, healing, temporary HP and conditions reach the scene from the panel (component tests)
 
 ### T-113 Blackout button and DM preview of the player view
 
@@ -1085,7 +1091,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-182 Game-Orchestrator: scene bar and group overview
 
-- **Status:** todo · **Depends on:** T-172a, T-174, T-175, T-111c, T-112 · **Refs:** SPEC §2.5, §13.2
+- **Status:** todo · **Depends on:** T-172a, T-174, T-175, T-111c, T-112b · **Refs:** SPEC §2.5, §13.2
 - A scene bar with the session's scenes; the next scene can be prepared quickly (fog) without touching the TV and then switched live. A group overview shows all player characters with HP, conditions and concentration. Default layout: the map large, initiative, group, dice and the inspector as small panels the DM shows or hides from the View menu and docks where they like (T-172); the dock holds zoom, TV preview, pause and blackout.
 - **Acceptance criteria**
   - [ ] Preparing the next scene never changes the TV (E2E test)

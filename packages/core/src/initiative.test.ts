@@ -440,3 +440,149 @@ describe("initiative commands", () => {
     expect(nothing.state).toBe(start);
   });
 });
+
+describe("HP and conditions (T-112a)", () => {
+  const two = [fighter("aria", 15), fighter("goblin", 10)];
+  const fighting = () =>
+    run(
+      state,
+      { type: "initiative.addMany", combatants: two },
+      { type: "initiative.start", bounds },
+    );
+
+  test("conditions count down when a new round starts and go at 0; act now counts nothing", () => {
+    let current = run(
+      fighting(),
+      {
+        type: "condition.add",
+        combatantId: "goblin",
+        condition: { type: "poisoned", remainingRounds: 2 },
+      },
+      {
+        type: "condition.add",
+        combatantId: "goblin",
+        condition: { type: "prone" },
+      },
+    );
+    const conditions = () => combatant(current, "goblin")?.conditions;
+    // Round 1: goblin's turn, then round 2 starts with aria.
+    current = run(current, { type: "initiative.next" });
+    expect(conditions()).toEqual([
+      { type: "poisoned", remainingRounds: 2 },
+      { type: "prone" },
+    ]);
+    current = run(current, { type: "initiative.next" });
+    expect(current.scene.initiative?.round).toBe(2);
+    expect(conditions()).toEqual([
+      { type: "poisoned", remainingRounds: 1 },
+      { type: "prone" },
+    ]);
+    // Aria delays, goblin acts, aria acts now: a restarted turn, no new round, no count.
+    current = run(
+      current,
+      { type: "initiative.delay", combatantId: "aria" },
+      { type: "initiative.actNow", combatantId: "aria" },
+    );
+    expect(conditions()).toEqual([
+      { type: "poisoned", remainingRounds: 1 },
+      { type: "prone" },
+    ]);
+    // Round 3 starts: poisoned is over, prone (no duration) stays.
+    current = run(
+      current,
+      { type: "initiative.next" },
+      { type: "initiative.next" },
+    );
+    expect(current.scene.initiative?.round).toBe(3);
+    expect(conditions()).toEqual([{ type: "prone" }]);
+  });
+
+  test("a condition of the same type is replaced; removing one that is not there changes nothing", () => {
+    let current = run(
+      fighting(),
+      {
+        type: "condition.add",
+        combatantId: "aria",
+        condition: { type: "frightened", remainingRounds: 1 },
+      },
+      {
+        type: "condition.add",
+        combatantId: "aria",
+        condition: { type: "frightened", remainingRounds: 3 },
+      },
+    );
+    expect(combatant(current, "aria")?.conditions).toEqual([
+      { type: "frightened", remainingRounds: 3 },
+    ]);
+    current = run(current, {
+      type: "condition.remove",
+      combatantId: "aria",
+      conditionType: "frightened",
+    });
+    expect(combatant(current, "aria")?.conditions).toEqual([]);
+    expect(
+      run(current, {
+        type: "condition.remove",
+        combatantId: "aria",
+        conditionType: "frightened",
+      }),
+    ).toBe(current);
+    for (const condition of [
+      { type: " " },
+      { type: "stunned", remainingRounds: 0 },
+      { type: "stunned", remainingRounds: 1.5 },
+    ])
+      expect(
+        apply(
+          current,
+          { type: "condition.add", combatantId: "aria", condition },
+          ctx,
+        ),
+      ).toEqual({ ok: false, reason: "invalidAmount" });
+  });
+
+  test("hp.set starts tracking and corrects; damage and healing then work", () => {
+    let current = run(fighting(), {
+      type: "hp.set",
+      combatantId: "goblin",
+      current: 7,
+      max: 7,
+    });
+    expect(combatant(current, "goblin")?.hp).toEqual({
+      current: 7,
+      max: 7,
+      temp: 0,
+    });
+    current = run(
+      current,
+      { type: "hp.setTemp", combatantId: "goblin", temp: 3 },
+      { type: "hp.change", combatantId: "goblin", amount: -5 },
+      { type: "hp.set", combatantId: "goblin", current: 4, max: 9 },
+    );
+    // Temporary HP stay when HP are corrected.
+    expect(combatant(current, "goblin")?.hp).toEqual({
+      current: 4,
+      max: 9,
+      temp: 0,
+    });
+    for (const [currentHp, max] of [
+      [-1, 7],
+      [3, 0],
+      [2.5, 7],
+    ] as const)
+      expect(
+        apply(
+          current,
+          { type: "hp.set", combatantId: "goblin", current: currentHp, max },
+          ctx,
+        ),
+      ).toEqual({ ok: false, reason: "invalidAmount" });
+    expect(
+      apply(
+        state,
+        { type: "hp.set", combatantId: "goblin", current: 1, max: 1 },
+        ctx,
+      ),
+    ).toEqual({ ok: false, reason: "noInitiative" });
+  });
+});

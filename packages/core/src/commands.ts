@@ -1,5 +1,6 @@
 import type {
   Combatant,
+  Condition,
   GridMode,
   Polygon,
   TokenPosition,
@@ -125,6 +126,24 @@ export type Command =
         readonly initiative: number;
         readonly playerId?: string;
       }[];
+    }
+  /** Tracks a combatant's HP from now on, or corrects them (T-112a); temporary HP stay. */
+  | {
+      readonly type: "hp.set";
+      readonly combatantId: string;
+      readonly current: number;
+      readonly max: number;
+    }
+  /** A condition on a combatant (T-112a); one of the same type is replaced. */
+  | {
+      readonly type: "condition.add";
+      readonly combatantId: string;
+      readonly condition: Condition;
+    }
+  | {
+      readonly type: "condition.remove";
+      readonly combatantId: string;
+      readonly conditionType: string;
     }
   /** Moves a combatant to `index` in turn order (reordering by hand). */
   | {

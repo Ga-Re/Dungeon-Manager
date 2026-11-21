@@ -593,6 +593,63 @@ function applyChange(state: SessionState, command: Command): Change {
     case "hp.change":
     case "hp.setTemp":
       return changeHp(state, command);
+    case "hp.set": {
+      const { current, max } = command;
+      if (
+        !Number.isInteger(current) ||
+        !Number.isInteger(max) ||
+        max <= 0 ||
+        current < 0
+      )
+        return "invalidAmount";
+      return updateCombatant(state, command.combatantId, (combatant) => ({
+        combatant: {
+          ...combatant,
+          hp: { current, max, temp: combatant.hp?.temp ?? 0 },
+        },
+        events: [
+          {
+            type: "hp.changed",
+            combatantId: combatant.id,
+            current,
+            temp: combatant.hp?.temp ?? 0,
+          },
+        ],
+      }));
+    }
+    case "condition.add": {
+      const { condition } = command;
+      const rounds = condition.remainingRounds;
+      if (
+        condition.type.trim() === "" ||
+        (rounds !== undefined && (!Number.isInteger(rounds) || rounds <= 0))
+      )
+        return "invalidAmount";
+      return updateCombatant(state, command.combatantId, (combatant) => ({
+        combatant: {
+          ...combatant,
+          conditions: [
+            ...combatant.conditions.filter(
+              (each) => each.type !== condition.type,
+            ),
+            condition,
+          ],
+        },
+        events: [{ type: "initiative.changed" }],
+      }));
+    }
+    case "condition.remove":
+      return updateCombatant(state, command.combatantId, (combatant) => {
+        const conditions = combatant.conditions.filter(
+          (each) => each.type !== command.conditionType,
+        );
+        return conditions.length === combatant.conditions.length
+          ? null
+          : {
+              combatant: { ...combatant, conditions },
+              events: [{ type: "initiative.changed" }],
+            };
+      });
   }
 }
 
@@ -905,7 +962,17 @@ function passTurn(
       : wraps
         ? initiative.round + 1
         : initiative.round;
-  const combatants = initiative.combatants.map((each) => {
+  // A new round (not the first) counts the conditions down (T-112a).
+  const roundEnded = initiative.round > 0 && wraps;
+  const counted = roundEnded
+    ? initiative.combatants.map((each) =>
+        each.conditions.length === 0
+          ? each
+          : { ...each, conditions: afterRound(each.conditions) },
+      )
+    : initiative.combatants;
+  // A held action (`ready`) ends as its own turn starts.
+  const combatants = counted.map((each) => {
     if (each.id !== activeCombatantId) return each;
     if (each.ready !== true && each.delayed !== true) return each;
     const acting: Combatant = { ...each };
@@ -925,6 +992,52 @@ function passTurn(
       { type: "initiative.turnStarted", round, combatantId: activeCombatantId },
     ],
   };
+}
+
+/**
+ * Changes one combatant (T-112a); `change` returns its new version and the events, or `null`
+ * for no change at all.
+ */
+function updateCombatant(
+  state: SessionState,
+  combatantId: string,
+  change: (combatant: Combatant) => {
+    readonly combatant: Combatant;
+    readonly events: readonly DomainEventBody[];
+  } | null,
+): Change {
+  const initiative = state.scene.initiative;
+  if (!initiative) return "noInitiative";
+  const combatant = initiative.combatants.find(
+    (each) => each.id === combatantId,
+  );
+  if (!combatant) return "unknownCombatant";
+  const changed = change(combatant);
+  if (!changed) return { state, events: [] };
+  return {
+    state: withInitiative(state, {
+      ...initiative,
+      combatants: initiative.combatants.map((each) =>
+        each.id === combatantId ? changed.combatant : each,
+      ),
+    }),
+    events: changed.events,
+  };
+}
+
+/**
+ * The conditions after a round has ended (T-112a, DM decision 2026-11-21): every duration counts
+ * down by one, and a condition at 0 goes. Conditions without a duration stay.
+ */
+function afterRound(
+  conditions: Combatant["conditions"],
+): Combatant["conditions"] {
+  return conditions.flatMap((each) => {
+    if (each.remainingRounds === undefined) return [each];
+    return each.remainingRounds > 1
+      ? [{ ...each, remainingRounds: each.remainingRounds - 1 }]
+      : [];
+  });
 }
 
 function changeHp(
