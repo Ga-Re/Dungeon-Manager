@@ -1,5 +1,6 @@
 import type { Point, Polygon } from "@dungeon-manager/schema";
 import { union, type Geom } from "polyclip-ts";
+import { isInside } from "./fog.js";
 
 // Shapes the DM draws fog with (SPEC 4), in map pixels. Pure; never call polyclip's setPrecision.
 
@@ -173,11 +174,14 @@ export function strokeArea(
   if (points.length === 0 || !(radius > 0)) return null;
   const kept = simplify(points, radius / 4);
   // polyclip-ts can fail on floating-point noise where arcs cross ("Unable to complete output
-  // ring"). Snapping every corner to a grid makes shared and crossing points exact; a coarser
-  // grid is the fallback (a thousandth of a map pixel is invisible, a whole one too).
-  for (const grid of [1 / 1024, 1 / 16, 1]) {
+  // ring"), or – worse – silently drop part of a self-crossing stroke (T-240). Snapping every
+  // corner to a grid makes shared and crossing points exact; a coarser grid is the fallback (a
+  // thousandth of a map pixel is invisible, a whole one too). A result is only taken when every
+  // point of the stroke lies inside it.
+  for (const grid of [1 / 1024, 1 / 256, 1 / 16, 1]) {
     try {
-      return unite(kept, radius, grid);
+      const area = unite(kept, radius, grid);
+      if (area && kept.every((point) => isInside([area], point))) return area;
     } catch {
       // Try the next, coarser grid.
     }
