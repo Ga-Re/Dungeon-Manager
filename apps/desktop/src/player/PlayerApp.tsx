@@ -101,6 +101,8 @@ export function PlayerApp({
                 message.rotation,
                 cellSizePx,
                 (scale.inchPx * scale.cellInches) / window.devicePixelRatio,
+                // Where the DM moved the TV's view (T-106c); the map's middle by default.
+                message.viewCenter,
               )
             : fitCamera(mapSize, windowSize(), message.rotation),
         );

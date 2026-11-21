@@ -77,3 +77,20 @@ test("switches grid lines on the TV, off by default (T-106b)", () => {
   feed.showGrid(false);
   expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0 });
 });
+
+test("sends where the calibrated TV view centres (T-106c)", () => {
+  const sent: PlayerViewMessage[] = [];
+  const feed = createPlayerFeedSender(
+    (message) => sent.push(message),
+    () => undefined,
+  );
+  feed.setViewCenter({ x: 300, y: 200 });
+  expect(sent.at(-1)).toEqual({
+    v: 1,
+    scene: null,
+    rotation: 0,
+    viewCenter: { x: 300, y: 200 },
+  });
+  feed.setViewCenter(null);
+  expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0 });
+});

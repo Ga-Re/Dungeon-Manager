@@ -22,6 +22,10 @@ export interface PlayerFeedSender {
   showCheckSquare(sidePx: number | null): void;
   /** Grid lines on the TV, off by default (T-106b). */
   showGrid(show: boolean): void;
+  /** Where the calibrated TV view centres, in map pixels (T-106c); `null`: the map's middle. */
+  setViewCenter(
+    center: { readonly x: number; readonly y: number } | null,
+  ): void;
 }
 
 /** Player side: calls `listener` with every valid message; invalid ones are dropped. */
@@ -46,6 +50,7 @@ export function createPlayerFeedSender(
   let scale: PlayerViewScale | null = null;
   let checkSquarePx: number | null = null;
   let grid = false;
+  let viewCenter: { readonly x: number; readonly y: number } | null = null;
   const publish = () => {
     send({
       v: PLAYER_VIEW_VERSION,
@@ -54,6 +59,7 @@ export function createPlayerFeedSender(
       ...(scale && { scale }),
       ...(checkSquarePx !== null && { checkSquarePx }),
       ...(grid && { showGrid: true as const }),
+      ...(viewCenter && { viewCenter: { x: viewCenter.x, y: viewCenter.y } }),
     });
   };
   onPlayerReady(publish);
@@ -79,6 +85,10 @@ export function createPlayerFeedSender(
     },
     showGrid(next) {
       grid = next;
+      publish();
+    },
+    setViewCenter(next) {
+      viewCenter = next;
       publish();
     },
   };

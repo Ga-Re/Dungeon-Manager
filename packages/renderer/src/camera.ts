@@ -43,19 +43,37 @@ export function fitCamera(map: Size, view: Size, rotation: Rotation): Camera {
 }
 
 /**
+ * The map area (map pixels) a calibrated display shows (T-106c): `display` physical pixels at
+ * `pxPerCell` physical pixels per grid cell of `cellSizePx` map pixels, turned by `rotation`.
+ */
+export function viewArea(
+  display: Size,
+  pxPerCell: number,
+  cellSizePx: number,
+  rotation: Rotation,
+): Size {
+  const sideways = rotation === 90 || rotation === 270;
+  const across = sideways ? display.height : display.width;
+  const down = sideways ? display.width : display.height;
+  const scale = pxPerCell > 0 ? cellSizePx / pxPerCell : 0;
+  return { width: across * scale, height: down * scale };
+}
+
+/**
  * The camera that shows the map at a true size on a calibrated display (T-106a, SPEC 2.2): one
  * grid cell (`cellSizePx` map pixels) becomes `viewPxPerCell` view pixels – e.g. one inch, so
- * physical minis fit. Centred on the map; the DM moves the view (T-106c).
+ * physical minis fit. Centred on `center` (the map's middle by default); the DM moves it (T-106c).
  */
 export function inchCamera(
   map: Size,
   rotation: Rotation,
   cellSizePx: number,
   viewPxPerCell: number,
+  center: Point = { x: map.width / 2, y: map.height / 2 },
 ): Camera {
   return {
-    centerX: map.width / 2,
-    centerY: map.height / 2,
+    centerX: center.x,
+    centerY: center.y,
     zoom: cellSizePx > 0 ? clampZoom(viewPxPerCell / cellSizePx) : 1,
     rotation,
   };

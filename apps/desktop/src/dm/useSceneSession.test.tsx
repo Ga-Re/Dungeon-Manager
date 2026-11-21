@@ -14,6 +14,7 @@ import { PlayerFeedContext } from "./player-feed-context.js";
 import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
 import { ActiveWorkspaceContext, type Workspace } from "./shell/workspace.js";
 import { SceneRescueContext, type SceneRescue } from "./rescue-copies.js";
+import { TvViewContext, type TvView } from "./tv-view-context.js";
 
 const campaign = JSON.stringify({
   schemaVersion: 2,
@@ -45,6 +46,7 @@ const scene: Scene = {
 
 function fakeFeed() {
   const shown: (ViewerScene | null)[] = [];
+  const setViewCenter = vi.fn<PlayerFeedSender["setViewCenter"]>();
   const feed: PlayerFeedSender = {
     show: vi.fn((next: ViewerScene | null) => {
       shown.push(next);
@@ -54,8 +56,9 @@ function fakeFeed() {
     calibrate: vi.fn(),
     showCheckSquare: vi.fn(),
     showGrid: vi.fn(),
+    setViewCenter,
   };
-  return { feed, shown };
+  return { feed, shown, setViewCenter };
 }
 
 const hash = `sha256:${"a".repeat(64)}`;
@@ -82,6 +85,7 @@ function renderScene(
   files: Record<string, string | { readonly placeholder: true }>,
   opened: Scene = scene,
   rescue: SceneRescue | null = null,
+  tvView: TvView | null = null,
 ) {
   const library = fakeLibraryService("/lib", {
     [`${HOEHLE}.dm.json`]: hoehleSidecar,
@@ -97,17 +101,19 @@ function renderScene(
       <SceneRescueContext value={rescue}>
         <ActiveWorkspaceContext value={workspace}>
           <PlayerFeedContext value={tv.feed}>
-            <MapViewContext value={maps.service}>
-              <OpenScenePanel
-                service={library.service}
-                slug="mine"
-                scene={opened}
-                newId={() => "new-level"}
-                onChanged={() => undefined}
-                onDeleted={() => undefined}
-                onClose={() => undefined}
-              />
-            </MapViewContext>
+            <TvViewContext value={tvView}>
+              <MapViewContext value={maps.service}>
+                <OpenScenePanel
+                  service={library.service}
+                  slug="mine"
+                  scene={opened}
+                  newId={() => "new-level"}
+                  onChanged={() => undefined}
+                  onDeleted={() => undefined}
+                  onClose={() => undefined}
+                />
+              </MapViewContext>
+            </TvViewContext>
           </PlayerFeedContext>
         </ActiveWorkspaceContext>
       </SceneRescueContext>
@@ -249,6 +255,23 @@ describe("editing the fog", () => {
     ).toBe("true");
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     expect(tv.shown.at(-1)?.fog["ground"]?.revealed ?? []).toHaveLength(0);
+  });
+
+  test("on a calibrated TV, the scene on it shows the TV's view as a frame the DM moves (T-106c)", async () => {
+    // 1600 × 800 px at 200 px per cell: 8 × 4 cells of the map's 100 px.
+    const { tv } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      mapped,
+      null,
+      { display: { width: 1600, height: 800 }, pxPerCell: 200, rotation: 0 },
+    );
+    const frame = await screen.findByRole("button", {
+      name: /Ausschnitt des TVs/,
+    });
+    // Centred on the 1000 × 500 map until moved: the TV gets no centre of its own.
+    expect(tv.setViewCenter).toHaveBeenLastCalledWith(null);
+    fireEvent.keyDown(frame, { key: "ArrowRight" });
+    expect(tv.setViewCenter).toHaveBeenLastCalledWith({ x: 600, y: 250 });
   });
 
   test("undo keys are left to text fields", async () => {

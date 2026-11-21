@@ -4,7 +4,7 @@ import {
   tableLevels,
   type ResolvedMap,
 } from "@dungeon-manager/core";
-import type { Size } from "@dungeon-manager/renderer";
+import { viewArea, type Point, type Size } from "@dungeon-manager/renderer";
 import type { AssetRef, Polygon, Scene } from "@dungeon-manager/schema";
 import {
   deleteScene,
@@ -37,6 +37,8 @@ import { useSceneSession } from "./useSceneSession.js";
 import { softEdgeWidth } from "../fog-settings.js";
 import { FogLookContext } from "./shell/fog-look.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
+import { TvViewContext } from "./tv-view-context.js";
+import { PlayerFeedContext } from "./player-feed-context.js";
 import { SceneRescueContext } from "./rescue-copies.js";
 
 /** A rectangle polygon in map pixels. */
@@ -176,6 +178,15 @@ export function OpenScenePanel({
   const [shape, setShape] = useState<FogShape>("rectangle");
   const [brushCells, setBrushCells] = useState(1);
   const [mapSize, setMapSize] = useState<Size | null>(null);
+  // The calibrated TV's view on this scene's map (T-106c): the DM moves it; the TV follows. Only
+  // the scene on the TV has one; `null` centres the map.
+  const tvView = useContext(TvViewContext);
+  const feed = useContext(PlayerFeedContext);
+  const [tvCenter, setTvCenter] = useState<Point | null>(null);
+  const tvOnThisMap = sceneOnTv && tvView !== null;
+  useEffect(() => {
+    if (tvOnThisMap) feed?.setViewCenter(tvCenter);
+  }, [feed, tvOnThisMap, tvCenter]);
   // The DM works on a level of their choice, the TV's until they pick another (T-118c).
   const onTv = tableLevels(scene, map).current ?? undefined;
   const [picked, setPicked] = useState<string | null>(null);
@@ -609,6 +620,23 @@ export function OpenScenePanel({
               // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
               brushRadius={(brushCells * map.grid.cellSizePx) / 2}
               grid={map.grid}
+              tvFrame={
+                tvView && sceneOnTv && mapSize
+                  ? {
+                      area: viewArea(
+                        tvView.display,
+                        tvView.pxPerCell,
+                        map.grid.cellSizePx,
+                        tvView.rotation,
+                      ),
+                      center: tvCenter ?? {
+                        x: mapSize.width / 2,
+                        y: mapSize.height / 2,
+                      },
+                      onMove: setTvCenter,
+                    }
+                  : null
+              }
               // Slightly rounded rectangles, as wide as the soft fog edge (T-170).
               cornerRadius={map.grid.cellSizePx / 4}
               softEdge={softEdgeWidth(map.grid.cellSizePx, fogLook.softEdges)}

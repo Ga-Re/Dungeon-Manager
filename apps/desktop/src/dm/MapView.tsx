@@ -25,6 +25,7 @@ import { Grid3x3, RotateCw, Scan, ZoomIn, ZoomOut } from "lucide-react";
 import { ShellPortal } from "./shell/slots.js";
 import { useTranslation } from "react-i18next";
 import { FogPreview } from "./FogPreview.js";
+import { TvFrame } from "./TvFrame.js";
 import {
   brushArea,
   dragArea,
@@ -76,6 +77,7 @@ export function MapView({
   onArea,
   onMapSize,
   grid = null,
+  tvFrame = null,
 }: {
   readonly path: string;
   /** Video maps play in a `<video>` under the canvas (ADR-0010). */
@@ -99,6 +101,12 @@ export function MapView({
   readonly onMapSize?: (size: Size) => void;
   /** The map's grid (sidecar calibration); its lines can be shown in this view (T-106b). */
   readonly grid?: GridCalibration | null;
+  /** The calibrated TV's view on this map (T-106c): shown as a frame the DM moves. */
+  readonly tvFrame?: {
+    readonly area: Size;
+    readonly center: Point;
+    readonly onMove: (center: Point) => void;
+  } | null;
 }) {
   const { t } = useTranslation();
   // Grid lines in the DM's view: on by default, switched in the dock (T-106b).
@@ -463,6 +471,17 @@ export function MapView({
         }}
         data-tool={tool}
       >
+        {camera && sizeNow.current && tvFrame && grid && (
+          <TvFrame
+            camera={camera}
+            view={sizeNow.current}
+            area={tvFrame.area}
+            center={tvFrame.center}
+            cellSizePx={grid.cellSizePx}
+            movable={tool === "pan"}
+            onMove={tvFrame.onMove}
+          />
+        )}
         {camera && sizeNow.current && tool !== "pan" && (
           <FogPreview
             tool={tool}

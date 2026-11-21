@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   fitCamera,
   inchCamera,
+  viewArea,
   panBy,
   rotateBy,
   mapToScreen,
@@ -151,5 +152,31 @@ describe("inchCamera (T-106a)", () => {
 
   test("stays usable without a cell size", () => {
     expect(inchCamera({ width: 10, height: 10 }, 0, 0, 80).zoom).toBe(1);
+  });
+});
+
+describe("the TV's view area (T-106c)", () => {
+  test("is the display at its cell size, in map pixels, turned with the TV", () => {
+    // 3840 × 2160 px at 80 px per cell of 100 map pixels: 48 × 27 cells.
+    expect(viewArea({ width: 3840, height: 2160 }, 80, 100, 0)).toEqual({
+      width: 4800,
+      height: 2700,
+    });
+    expect(viewArea({ width: 3840, height: 2160 }, 80, 100, 90)).toEqual({
+      width: 2700,
+      height: 4800,
+    });
+    expect(viewArea({ width: 10, height: 10 }, 0, 100, 0)).toEqual({
+      width: 0,
+      height: 0,
+    });
+  });
+
+  test("the calibrated camera centres where the DM moved the view", () => {
+    const camera = inchCamera({ width: 2000, height: 1000 }, 0, 100, 80, {
+      x: 300,
+      y: 200,
+    });
+    expect(camera).toMatchObject({ centerX: 300, centerY: 200, zoom: 0.8 });
   });
 });

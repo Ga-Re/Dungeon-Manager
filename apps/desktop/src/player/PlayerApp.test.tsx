@@ -156,6 +156,18 @@ describe("PlayerApp", () => {
     expect(square?.style.width).toBe("360px");
     vi.unstubAllGlobals();
 
+    // Where the DM moved the TV's view (T-106c).
+    feed.send({
+      v: 1,
+      scene,
+      rotation: 0,
+      scale: { inchPx: 80, cellInches: 1 },
+      viewCenter: { x: 300, y: 200 },
+    });
+    await waitFor(() => {
+      expect(maps.camera()).toMatchObject({ centerX: 300, centerY: 200 });
+    });
+
     // Without a calibration the whole map fits again.
     feed.send({ v: 1, scene, rotation: 0 });
     await waitFor(() => {
