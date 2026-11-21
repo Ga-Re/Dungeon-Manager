@@ -1,16 +1,16 @@
-// SPIKE (T-007): dev-server endpoint that receives the spike report, prints it in the terminal
-// and stores it as JSON in apps/desktop/spike-results/ (git-ignored).
+// Renderer benchmark (T-105d): dev-server endpoint that receives the benchmark's report, prints it
+// in the terminal and stores it as JSON in apps/desktop/bench-results/ (git-ignored).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 /** @returns {import("vite").Plugin} */
-export function spikeResults() {
-  const outDir = join(import.meta.dirname, "..", "spike-results");
+export function benchResults() {
+  const outDir = join(import.meta.dirname, "..", "bench-results");
   return {
-    name: "spike-results",
+    name: "bench-results",
     apply: "serve",
     configureServer(server) {
-      server.middlewares.use("/__spike/results", (request, response) => {
+      server.middlewares.use("/__bench/results", (request, response) => {
         if (request.method !== "POST") {
           response.statusCode = 405;
           response.end();
@@ -34,7 +34,7 @@ export function spikeResults() {
           );
           writeFileSync(file, pretty + "\n");
           console.log(
-            `\n===== SPIKE RESULTS (copy everything up to END) =====\n${pretty}\n===== END (saved to ${file}) =====\n`,
+            `\n===== BENCH RESULTS (copy everything up to END) =====\n${pretty}\n===== END (saved to ${file}) =====\n`,
           );
           response.end("ok");
         });

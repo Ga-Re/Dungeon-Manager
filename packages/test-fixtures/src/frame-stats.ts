@@ -1,4 +1,5 @@
-// SPIKE (T-007): throwaway measurement code, not product code. Replaced by the renderer benchmark (T-105).
+// Frame statistics of the renderer benchmark (T-105d; from the T-007 spike): frame intervals in,
+// percentiles, missed refreshes and the budget's verdict out (ARCHITECTURE §11).
 
 /** Summary of recorded frame intervals in milliseconds. */
 export interface FrameStats {

@@ -14,8 +14,8 @@
     "tauri": "tauri",
     "build:app": "tauri build --debug --no-bundle",
     "smoke": "node smoke/run.js",
-    "spike": "VITE_SPIKE=1 tauri dev",
-    "spike:video": "bash spike/make-video.sh"
+    "bench": "VITE_BENCH=1 tauri dev",
+    "bench:video": "bash bench/make-video.sh"
   },
   "dependencies": {
     "@dungeon-manager/core": "workspace:*",
@@ -29,7 +29,6 @@
     "dockview-react": "8.9.1",
     "i18next": "27.1.2",
     "lucide-react": "1.68.0",
-    "pixi.js": "8.22.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-i18next": "18.0.1",
@@ -37,6 +36,7 @@
     "remark-gfm": "4.0.1"
   },
   "devDependencies": {
+    "@dungeon-manager/test-fixtures": "workspace:*",
     "@dungeon-manager/tsconfig": "workspace:*",
     "@tauri-apps/cli": "2.12.4",
     "@types/react": "19.3.0",
