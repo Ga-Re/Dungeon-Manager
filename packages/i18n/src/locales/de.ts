@@ -39,6 +39,7 @@ export const de = {
       none: "Ohne Kalibrierung zeigt der TV die ganze Karte.",
       remove: "Kalibrierung entfernen",
     },
+    blackout: "TV schwarz (.)",
     rotateTv: "TV-Ansicht drehen (jetzt {{degrees}}°)",
     refreshDisplays: "Displays neu suchen",
     error: "Das hat nicht geklappt: {{message}}",

@@ -108,3 +108,20 @@ test("a new scene on the TV starts in its middle, not at the old one's centre (T
   feed.show({ ...scene, id: "t" });
   expect(sent.at(-1)?.viewCenter).toBeUndefined();
 });
+
+test("blacks the TV out and back (T-113a)", () => {
+  const sent: PlayerViewMessage[] = [];
+  const feed = createPlayerFeedSender(
+    (message) => sent.push(message),
+    () => undefined,
+  );
+  feed.blackout(true);
+  expect(sent.at(-1)).toEqual({
+    v: 1,
+    scene: null,
+    rotation: 0,
+    blackout: true,
+  });
+  feed.blackout(false);
+  expect(sent.at(-1)).toEqual({ v: 1, scene: null, rotation: 0 });
+});

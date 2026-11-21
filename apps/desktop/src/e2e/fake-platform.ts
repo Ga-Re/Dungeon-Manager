@@ -223,6 +223,9 @@ export const e2ePlayerFeed: PlayerFeedSender = {
   showCheckSquare: () => undefined,
   showGrid: () => undefined,
   setViewCenter: () => undefined,
+  blackout(on) {
+    document.body.dataset["e2eBlackout"] = String(on);
+  },
 };
 
 export const e2eMapView: MapViewService = {

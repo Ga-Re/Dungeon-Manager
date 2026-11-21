@@ -40,6 +40,7 @@ export const en: Messages = {
       none: "Without a calibration the TV shows the whole map.",
       remove: "Remove calibration",
     },
+    blackout: "TV black (.)",
     rotateTv: "Rotate TV view (now {{degrees}}°)",
     refreshDisplays: "Search displays again",
     error: "That did not work: {{message}}",

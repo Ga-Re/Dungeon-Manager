@@ -368,6 +368,36 @@ describe("PlayerApp", () => {
     });
   });
 
+  test("blackout is set before anything is drawn and lifts again (T-113a)", async () => {
+    const { feed, maps } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const overlay = () =>
+      document.querySelector<HTMLElement>(".player-blackout");
+    // When the tokens are drawn, the black is already up: no frame of the scene shows.
+    let blackWhenDrawn: boolean | undefined;
+    maps.view.setTokens.mockImplementation(() => {
+      blackWhenDrawn = overlay()?.hidden === false;
+    });
+    feed.send({
+      v: 1,
+      scene: sceneWith("library/maps/a.png"),
+      rotation: 0,
+      blackout: true,
+    });
+    await waitFor(() => {
+      expect(overlay()?.hidden).toBe(false);
+    });
+    expect(blackWhenDrawn).toBe(true);
+    // Above everything: the body's last child, outside the player view and its bar.
+    expect(document.body.lastElementChild).toBe(overlay());
+    feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
+    await waitFor(() => {
+      expect(overlay()?.hidden).toBe(true);
+    });
+  });
+
   test("removes the old map at once when the scene changes or closes", async () => {
     const { maps, feed } = renderPlayer();
     await waitFor(() => {

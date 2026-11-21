@@ -200,6 +200,7 @@ describe("DmApp", () => {
             showCheckSquare: vi.fn(),
             showGrid,
             setViewCenter: vi.fn(),
+            blackout: vi.fn(),
           }}
         >
           <DmApp
@@ -231,6 +232,7 @@ describe("DmApp", () => {
             showCheckSquare: vi.fn(),
             showGrid: vi.fn(),
             setViewCenter: vi.fn(),
+            blackout: vi.fn(),
           }}
         >
           <DmApp
@@ -250,6 +252,52 @@ describe("DmApp", () => {
     ).toBeTruthy();
   });
 
+  test('blacks the TV out by the dock\'s button and by ".", not while typing (T-113a)', () => {
+    const blackout = vi.fn();
+    render(
+      <I18nextProvider i18n={createI18n("de")}>
+        <PlayerFeedContext
+          value={{
+            show: vi.fn(),
+            rotate: vi.fn(),
+            rotation: 0,
+            calibrate: vi.fn(),
+            showCheckSquare: vi.fn(),
+            showGrid: vi.fn(),
+            setViewCenter: vi.fn(),
+            blackout,
+          }}
+        >
+          <DmApp
+            displayService={fakeService()}
+            libraryService={fakeLibraryService(null).service}
+            newId={() => "id-1"}
+          />
+        </PlayerFeedContext>
+      </I18nextProvider>,
+    );
+    expect(blackout).toHaveBeenLastCalledWith(false);
+    const button = screen.getByRole("button", { name: "TV schwarz (.)" });
+    fireEvent.click(button);
+    expect(blackout).toHaveBeenLastCalledWith(true);
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.keyDown(window, { key: "." });
+    expect(blackout).toHaveBeenLastCalledWith(false);
+    fireEvent.keyDown(window, { key: "." });
+    expect(blackout).toHaveBeenLastCalledWith(true);
+    // Held down: the repeats change nothing.
+    const before = blackout.mock.calls.length;
+    fireEvent.keyDown(window, { key: ".", repeat: true });
+    expect(blackout.mock.calls.length).toBe(before);
+    // A "." typed into a field is just a dot.
+    const field = document.createElement("input");
+    document.body.appendChild(field);
+    const calls = blackout.mock.calls.length;
+    fireEvent.keyDown(field, { key: "." });
+    expect(blackout.mock.calls.length).toBe(calls);
+    field.remove();
+  });
+
   test("calibrates the TV by a measured check square; one cell has the size set in the settings (T-106d)", async () => {
     const calibrate = vi.fn();
     const showCheckSquare = vi.fn();
@@ -265,6 +313,7 @@ describe("DmApp", () => {
             showCheckSquare,
             showGrid: vi.fn(),
             setViewCenter: vi.fn(),
+            blackout: vi.fn(),
           }}
         >
           <DmApp

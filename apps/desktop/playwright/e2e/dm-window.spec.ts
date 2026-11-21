@@ -1249,3 +1249,19 @@ test("the DM starts a combat: tokens snap onto cells, and the TV learns of it (T
   await expect.poll(async () => (await tv())?.combat).toBeUndefined();
   expect(await position()).toEqual({ col: 3, row: 2 });
 });
+
+test('the DM blacks the TV out with "." and the dock\'s button (T-113a)', async ({
+  page,
+}) => {
+  await page.goto(`${HARNESS}?tv`);
+  await closeWelcome(page);
+  const black = () =>
+    page.evaluate(() => document.body.dataset["e2eBlackout"] ?? "");
+  const button = page.getByRole("button", { name: "TV schwarz (.)" });
+  await expect.poll(black).toBe("false");
+  await page.keyboard.press(".");
+  await expect.poll(black).toBe("true");
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await button.click();
+  await expect.poll(black).toBe("false");
+});
