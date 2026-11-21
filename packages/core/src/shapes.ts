@@ -165,7 +165,8 @@ function simplify(input: readonly Point[], tolerance: number): Point[] {
  * stroke is connected, so the result is one area (with holes where it encloses some) – one fog
  * command, one undo step. Measured on smooth strokes of up to 600 pointer events: ~30 ms on
  * average, under 100 ms at worst in CI-class hardware.
- * @returns `null` for an empty stroke, a non-positive radius, or if no grid could unite it
+ * @returns `null` for an empty stroke, a non-positive radius, or if no grid gave an area holding
+ *   every point of the stroke
  */
 export function strokeArea(
   points: readonly Point[],
@@ -181,7 +182,7 @@ export function strokeArea(
   for (const grid of [1 / 1024, 1 / 256, 1 / 16, 1]) {
     try {
       const area = unite(kept, radius, grid);
-      if (area && kept.every((point) => isInside([area], point))) return area;
+      if (area && points.every((point) => isInside([area], point))) return area;
     } catch {
       // Try the next, coarser grid.
     }
