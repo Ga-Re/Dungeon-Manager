@@ -1442,3 +1442,79 @@ button.dm-welcome-campaign:hover {
 .dm-settings-campaign:not(:empty) ~ .dm-settings-no-campaign {
   display: none;
 }
+
+/* The Initiative panel (T-111b): round and actions on top, the order below. */
+.dm-initiative {
+  display: grid;
+  gap: var(--dm-space-2);
+  padding: var(--dm-space-2);
+}
+
+.dm-initiative-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-1);
+}
+
+.dm-initiative-round {
+  flex: 1;
+  font-size: var(--dm-font-size-sm);
+  color: var(--dm-text-secondary);
+}
+
+.dm-initiative-empty {
+  margin: 0;
+  font-size: var(--dm-font-size-sm);
+  color: var(--dm-text-secondary);
+}
+
+.dm-initiative-list {
+  display: grid;
+  gap: var(--dm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dm-initiative-row {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-1);
+  padding: var(--dm-space-1);
+  border: 1px solid var(--dm-border-subtle);
+  border-radius: var(--dm-radius-sm);
+}
+
+/* The active turn: the one accent for active states. */
+.dm-initiative-row[aria-current="true"] {
+  border-color: var(--dm-accent);
+  box-shadow: inset 3px 0 0 var(--dm-accent);
+}
+
+.dm-initiative-row[data-delayed] .dm-initiative-name {
+  color: var(--dm-text-secondary);
+}
+
+.dm-initiative-value {
+  width: 3.5em;
+  font-family: var(--dm-font-mono);
+}
+
+.dm-initiative-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-initiative-marker {
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+  text-transform: uppercase;
+}
+
+.dm-initiative-actions {
+  display: flex;
+  gap: 0;
+}

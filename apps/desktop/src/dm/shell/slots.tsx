@@ -10,6 +10,7 @@ export type ShellSlot =
   | "canvas"
   | "browser"
   | "details"
+  | "initiative"
   | "dataPanel"
   | "settings"
   | "settingsTv"

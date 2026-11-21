@@ -114,6 +114,8 @@ function renderScene(
                   onDeleted={() => undefined}
                   onClose={() => undefined}
                   campaignGridMode={campaignGridMode}
+                  // Every roll is an 11: d20 of 0.5.
+                  random={() => 0.5}
                 />
               </MapViewContext>
             </TvViewContext>
@@ -750,6 +752,132 @@ describe("editing the fog", () => {
       expect(saved().tokens[0]?.position).toEqual({ col: 3.9, row: 1 });
     });
     expect(saved().gridMode).toBe("free");
+  });
+
+  test("the Initiative panel: add selected tokens, start, delay, act now, ready, values, order, end (T-111b)", async () => {
+    const two: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "goblin",
+          name: "Goblin",
+          size: "medium",
+          position: { col: 1, row: 1 },
+          levelId: "ground",
+        },
+        {
+          id: "aria",
+          name: "Aria",
+          size: "medium",
+          position: { col: 4, row: 1 },
+          levelId: "ground",
+          ownerPlayerId: "player-1",
+        },
+      ],
+    };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      two,
+    );
+    const saved = () =>
+      JSON.parse(
+        library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+      ) as Scene;
+    const names = () => {
+      const initiative = saved().initiative;
+      return initiative?.order.map(
+        (id) => initiative.combatants.find((each) => each.id === id)?.name,
+      );
+    };
+    const map = await screen.findByRole("application", { name: /Höhle/ });
+    await enabled("Alles aufdecken");
+    const click = (x: number, shiftKey = false) => {
+      fireEvent.pointerDown(map, {
+        clientX: x,
+        clientY: 150,
+        pointerId: 1,
+        shiftKey,
+      });
+      fireEvent.pointerUp(map, {
+        clientX: x,
+        clientY: 150,
+        pointerId: 1,
+        shiftKey,
+      });
+    };
+    click(150);
+    click(450, true);
+    fireEvent.click(await enabled("Ausgewählte Tokens hinzufügen"));
+    // Both rolled 11: Aria's player wins the tie.
+    await waitFor(() => {
+      expect(names()).toEqual(["Aria", "Goblin"]);
+    });
+    expect(
+      saved().initiative?.combatants.map((each) => each.initiative),
+    ).toEqual([11, 11]);
+    // Already in: nothing more to add.
+    expect(
+      screen.getByRole("button", { name: "Ausgewählte Tokens hinzufügen" }),
+    ).toHaveProperty("disabled", true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Initiative starten" }));
+    await waitFor(() => {
+      expect(saved().combat).toBe(true);
+    });
+    expect(screen.getByText("Runde 1")).toBeTruthy();
+    const row = (name: string) =>
+      screen.getByText(name, { selector: ".dm-initiative-name" }).closest("li");
+    expect(row("Aria")?.getAttribute("aria-current")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Aria verzögert" }));
+    await waitFor(() => {
+      expect(row("Goblin")?.getAttribute("aria-current")).toBe("true");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Aria handelt jetzt" }));
+    await waitFor(() => {
+      expect(row("Aria")?.getAttribute("aria-current")).toBe("true");
+    });
+    expect(names()).toEqual(["Aria", "Goblin"]);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Goblin hält eine Aktion bereit" }),
+    );
+    await waitFor(() => {
+      expect(
+        saved().initiative?.combatants.find((each) => each.name === "Goblin")
+          ?.ready,
+      ).toBe(true);
+    });
+
+    // A value told at the table: Enter places the Goblin anew.
+    const value = screen.getByRole("spinbutton", {
+      name: "Initiative von Goblin",
+    });
+    fireEvent.change(value, { target: { value: "15" } });
+    fireEvent.keyDown(value, { key: "Enter" });
+    await waitFor(() => {
+      expect(names()).toEqual(["Goblin", "Aria"]);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Goblin nach unten" }));
+    await waitFor(() => {
+      expect(names()).toEqual(["Aria", "Goblin"]);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Nächster Zug" }));
+    await waitFor(() => {
+      expect(row("Goblin")?.getAttribute("aria-current")).toBe("true");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Goblin entfernen" }));
+    await waitFor(() => {
+      expect(names()).toEqual(["Aria"]);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Kampf beenden" }));
+    await waitFor(() => {
+      expect(saved().initiative).toBeNull();
+    });
+    expect(saved().combat).toBeUndefined();
+    expect(screen.getByText(/Noch niemand in der Initiative/)).toBeTruthy();
   });
 
   test("undo keys are left to text fields", async () => {

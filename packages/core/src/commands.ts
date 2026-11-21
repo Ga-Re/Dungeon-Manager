@@ -104,6 +104,15 @@ export type Command =
       readonly combatantId: string;
       readonly ready: boolean;
     }
+  /**
+   * Sets a combatant's initiative (T-111b: a player's roll told at the table); it is placed
+   * anew by the ranking rule, the rest of the order stays.
+   */
+  | {
+      readonly type: "initiative.setValue";
+      readonly combatantId: string;
+      readonly initiative: number;
+    }
   /** Moves a combatant to `index` in turn order (reordering by hand). */
   | {
       readonly type: "initiative.move";

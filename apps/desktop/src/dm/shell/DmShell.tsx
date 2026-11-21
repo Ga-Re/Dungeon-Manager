@@ -105,6 +105,7 @@ const PANEL_COMMAND = {
   map: "toggleMap",
   browser: "toggleBrowser",
   details: "toggleDetails",
+  initiative: "toggleInitiative",
 } as const satisfies Record<PanelId, AppCommand>;
 
 const MODES = ["scene", "fog", "display"] as const;
@@ -130,6 +131,7 @@ interface PanelHosts {
   readonly canvas: HTMLElement;
   readonly browser: HTMLElement;
   readonly details: HTMLElement;
+  readonly initiative: HTMLElement;
   readonly notices: HTMLElement;
   readonly dock: HTMLElement;
 }
@@ -293,6 +295,12 @@ const PANEL_COMPONENTS: Record<
       className="dm-panel-body dm-details-panel"
     />
   ),
+  initiative: () => (
+    <SlotHost
+      element={usePanelHosts().initiative}
+      className="dm-panel-body dm-initiative-panel"
+    />
+  ),
 };
 
 /** Cmd+B on macOS, Ctrl+B elsewhere; not in rich-text fields, where it means bold. */
@@ -397,6 +405,7 @@ export function DmShell({
       canvas: createHost("dm-canvas"),
       browser: createHost("dm-browser"),
       details: createHost("dm-details"),
+      initiative: createHost("dm-initiative"),
       notices: createHost("dm-notices"),
       dock: createHost("dm-dock"),
     }),
@@ -413,6 +422,7 @@ export function DmShell({
       canvas: hosts.canvas,
       browser: hosts.browser,
       details: hosts.details,
+      initiative: hosts.initiative,
       notices: hosts.notices,
       dock: hosts.dock,
     }),
@@ -440,6 +450,7 @@ export function DmShell({
       map: t("shell.panels.map"),
       browser: t("shell.panels.browser"),
       details: t("shell.panels.details"),
+      initiative: t("shell.panels.initiative"),
     }),
     [t],
   );

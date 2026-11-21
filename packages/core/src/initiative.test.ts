@@ -319,4 +319,87 @@ describe("initiative commands", () => {
       [],
     );
   });
+
+  test("setValue places a combatant anew by its new initiative; turn and markers stay", () => {
+    const fighting = run(
+      state,
+      { type: "initiative.addMany", combatants: four },
+      { type: "initiative.start", bounds },
+      { type: "initiative.ready", combatantId: "ogre", ready: true },
+    );
+    const raised = run(fighting, {
+      type: "initiative.setValue",
+      combatantId: "ogre",
+      initiative: 13,
+    });
+    expect(order(raised)).toEqual(["lair", "ogre", "aria", "goblin"]);
+    expect(combatant(raised, "ogre")).toMatchObject({
+      initiative: 13,
+      ready: true,
+    });
+    expect(active(raised)).toBe("lair");
+    expect(
+      run(raised, {
+        type: "initiative.setValue",
+        combatantId: "ogre",
+        initiative: 13,
+      }),
+    ).toBe(raised);
+    expect(
+      apply(
+        raised,
+        {
+          type: "initiative.setValue",
+          combatantId: "ogre",
+          initiative: Number.NaN,
+        },
+        ctx,
+      ),
+    ).toEqual({ ok: false, reason: "invalidAmount" });
+  });
+
+  test("setValue keeps a combatant whose token was removed, the active turn and delay", () => {
+    const withToken = fighter("guard", 9, { tokenId: "token-goblin" });
+    let current = run(
+      state,
+      { type: "initiative.addMany", combatants: [...four, withToken] },
+      { type: "initiative.start", bounds },
+      { type: "token.remove", tokenIds: ["token-goblin"] },
+    );
+    current = run(current, {
+      type: "initiative.setValue",
+      combatantId: "guard",
+      initiative: 30,
+    });
+    expect(order(current)?.[0]).toBe("guard");
+    // The active one moves, the turn stays on it.
+    current = run(current, {
+      type: "initiative.setValue",
+      combatantId: "lair",
+      initiative: 1,
+    });
+    expect(active(current)).toBe("lair");
+    expect(order(current)?.at(-1)).toBe("lair");
+    // A delayed one stays delayed.
+    current = run(
+      current,
+      { type: "initiative.delay", combatantId: "lair" },
+      { type: "initiative.setValue", combatantId: "lair", initiative: 5 },
+    );
+    expect(combatant(current, "lair")?.delayed).toBe(true);
+    expect(
+      apply(
+        current,
+        { type: "initiative.setValue", combatantId: "nobody", initiative: 3 },
+        ctx,
+      ),
+    ).toEqual({ ok: false, reason: "unknownCombatant" });
+    expect(
+      apply(
+        state,
+        { type: "initiative.setValue", combatantId: "lair", initiative: 3 },
+        ctx,
+      ),
+    ).toEqual({ ok: false, reason: "noInitiative" });
+  });
 });

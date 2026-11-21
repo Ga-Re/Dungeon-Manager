@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111a, T-111b, T-111c, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111a, T-111b, T-111c, T-111d, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -547,11 +547,18 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-111b Initiative panel
 
-- **Status:** todo · **Depends on:** T-111a, T-172a · **Refs:** SPEC 11
-- A dockable "Initiative" panel (shown in the Game-Orchestrator): the order with round and active turn, next turn, start and end combat, delay/act now, ready, reordering by drag and keyboard, removing; adding from selected tokens (creatures roll), a quick entry of the players' rolls, free entries (name and value).
+- **Status:** done · **Depends on:** T-111a, T-172a · **Refs:** SPEC 11
+- A dockable "Initiative" panel (in the default layout; existing layouts show it from the View menu): the order with round and active turn, start (with combat), next turn, end combat, delay/act now, ready, moving up and down, changing a value (`initiative.setValue`: placed anew by the ranking rule), removing; adding the selected tokens (creatures roll d20 + bonus, players' characters carry their `playerId`).
 - **Acceptance criteria**
-  - [ ] Every panel action reaches the scene (component tests); quick entry by keyboard only (component test)
-- **Notes:** From the T-111a review: players win ties through `playerId` only – set it from the token's `ownerPlayerId` (and in the players' quick entry).
+  - [x] Every panel action reaches the scene (component tests)
+- **Notes:** From the T-111a review: players win ties through `playerId` only – set it from the token's `ownerPlayerId` (and in the players' quick entry). Split from T-111b (agent, 2026-11-21): quick entry, free entries and drag reordering are T-111d. Creatures roll with bonus 0 until creature data reaches the DM window (T-180: `initiativeModifier`).
+
+### T-111d Initiative: quick entry, free entries, dragging
+
+- **Status:** todo · **Depends on:** T-111b · **Refs:** SPEC 11
+- A quick entry of the players' rolls (one field per player character, keyboard only), free entries (name and value, e.g. a lair action), reordering by drag.
+- **Acceptance criteria**
+  - [ ] Quick entry by keyboard only; free entries; drag reordering (component tests)
 
 ### T-111c Initiative on the TV
 

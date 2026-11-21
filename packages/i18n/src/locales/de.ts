@@ -281,6 +281,29 @@ export const de = {
       free: "Immer frei",
     },
   },
+  initiative: {
+    label: "Initiative",
+    round: "Runde {{round}}",
+    notStarted: "Noch nicht begonnen",
+    addSelected: "Ausgewählte Tokens hinzufügen",
+    start: "Initiative starten",
+    next: "Nächster Zug",
+    end: "Kampf beenden",
+    empty:
+      "Noch niemand in der Initiative: Tokens auf der Karte auswählen und hinzufügen.",
+    value: "Initiative von {{name}}",
+    delayed: "verzögert",
+    ready: "bereit",
+    delay: "{{name}} verzögert",
+    actNow: "{{name}} handelt jetzt",
+    holdReady: "{{name}} hält eine Aktion bereit",
+    up: "{{name}} nach oben",
+    down: "{{name}} nach unten",
+    remove: "{{name}} entfernen",
+    notApplied: "Die Initiative konnte nicht geändert werden.",
+    noRoom:
+      "Nicht jedes Token findet ein freies Feld: der Kampf beginnt nicht.",
+  },
   combat: {
     group: "Kampf",
     toggle: "Kampf",
@@ -495,6 +518,7 @@ export const de = {
       map: "Karte",
       browser: "Browser",
       details: "Eigenschaften",
+      initiative: "Initiative",
     },
     workspace: {
       label: "Arbeitsbereich",

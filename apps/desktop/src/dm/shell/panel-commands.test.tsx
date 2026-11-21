@@ -19,6 +19,7 @@ const titles = {
   map: "Karte",
   browser: "Browser",
   details: "Eigenschaften",
+  initiative: "Initiative",
 };
 
 /** The default layout in a real dockview of 1280 × 800 px (jsdom measures nothing itself). */
@@ -78,7 +79,9 @@ describe("folding a panel to its title (T-172b)", () => {
   it("unfolds once its neighbour is gone", () => {
     const api = defaultPanels();
     toggleFold(api, "browser");
+    // Alone in its column again: Eigenschaften and Initiative below it go.
     api.getPanel("details")?.api.close();
+    api.getPanel("initiative")?.api.close();
     expect(settleFolds(api)).toBe(true);
     expect(isFolded(api, "browser")).toBe(false);
     expect(heightOf(api, "browser")).toBe(800);
