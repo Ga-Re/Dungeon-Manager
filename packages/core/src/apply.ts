@@ -19,6 +19,7 @@ import {
 import type { Command, DomainEvent, RejectionReason } from "./commands.js";
 import { EMPTY_LEVEL_FOG, hideArea, revealArea } from "./fog.js";
 import { seenByTable, tableLevels } from "./projection.js";
+import { goesBefore } from "./initiative.js";
 import type { ResolvedMap } from "./map.js";
 import type { Ctx, SessionState } from "./state.js";
 
@@ -369,6 +370,150 @@ function applyChange(state: SessionState, command: Command): Change {
     }
     case "initiative.add":
       return addCombatant(state, command.combatant);
+    case "initiative.addMany": {
+      if (command.combatants.length === 0) return "unknownCombatant";
+      let current = state;
+      const events: DomainEventBody[] = [];
+      for (const combatant of command.combatants) {
+        const change = addCombatant(current, combatant);
+        if (typeof change === "string") return change;
+        current = change.state;
+        events.push(...change.events);
+      }
+      return { state: current, events };
+    }
+    case "initiative.start": {
+      const initiative = state.scene.initiative;
+      if (!initiative || initiative.order.length === 0)
+        return "emptyInitiative";
+      const fighting = applyChange(state, {
+        type: "combat.start",
+        bounds: command.bounds,
+      });
+      if (typeof fighting === "string") return fighting;
+      if (initiative.round > 0) return fighting;
+      const first = nextTurn(fighting.state);
+      if (typeof first === "string") return first;
+      return {
+        state: first.state,
+        events: [...fighting.events, ...first.events],
+      };
+    }
+    case "initiative.end": {
+      const ended = applyChange(withScene(state, { initiative: null }), {
+        type: "combat.end",
+      });
+      if (typeof ended === "string") return ended;
+      return {
+        state: ended.state,
+        events: [{ type: "initiative.changed" }, ...ended.events],
+      };
+    }
+    case "initiative.delay": {
+      const initiative = state.scene.initiative;
+      if (!initiative) return "noInitiative";
+      if (initiative.activeCombatantId !== command.combatantId)
+        return "notActive";
+      const marked = withInitiative(state, {
+        ...initiative,
+        combatants: initiative.combatants.map((each) =>
+          each.id === command.combatantId ? { ...each, delayed: true } : each,
+        ),
+      });
+      const next = nextTurn(marked);
+      if (typeof next === "string") return next;
+      return {
+        state: next.state,
+        events: [{ type: "initiative.changed" }, ...next.events],
+      };
+    }
+    case "initiative.actNow": {
+      const initiative = state.scene.initiative;
+      if (!initiative) return "noInitiative";
+      const combatant = initiative.combatants.find(
+        (each) => each.id === command.combatantId,
+      );
+      if (!combatant) return "unknownCombatant";
+      if (combatant.delayed !== true) return "notDelayed";
+      // Before the one whose turn it is; it keeps that place from now on.
+      const without = initiative.order.filter((id) => id !== combatant.id);
+      const at =
+        initiative.activeCombatantId === null
+          ? 0
+          : Math.max(0, without.indexOf(initiative.activeCombatantId));
+      const order = [
+        ...without.slice(0, at),
+        combatant.id,
+        ...without.slice(at),
+      ];
+      const combatants = initiative.combatants.map((each) => {
+        if (each.id !== combatant.id) return each;
+        const acting: Combatant = { ...each };
+        delete acting.delayed;
+        delete acting.ready;
+        return acting;
+      });
+      const round = Math.max(1, initiative.round);
+      return {
+        state: withInitiative(state, {
+          ...initiative,
+          order,
+          combatants,
+          activeCombatantId: combatant.id,
+          round,
+        }),
+        events: [
+          { type: "initiative.changed" },
+          { type: "initiative.turnStarted", round, combatantId: combatant.id },
+        ],
+      };
+    }
+    case "initiative.ready": {
+      const initiative = state.scene.initiative;
+      if (!initiative) return "noInitiative";
+      if (
+        !initiative.combatants.some((each) => each.id === command.combatantId)
+      )
+        return "unknownCombatant";
+      return {
+        state: withInitiative(state, {
+          ...initiative,
+          combatants: initiative.combatants.map((each) => {
+            if (each.id !== command.combatantId) return each;
+            const marked: Combatant = { ...each };
+            if (command.ready) marked.ready = true;
+            else delete marked.ready;
+            return marked;
+          }),
+        }),
+        events: [{ type: "initiative.changed" }],
+      };
+    }
+    case "initiative.move": {
+      const initiative = state.scene.initiative;
+      if (!initiative) return "noInitiative";
+      const from = initiative.order.indexOf(command.combatantId);
+      if (from === -1) return "unknownCombatant";
+      const without = initiative.order.filter(
+        (id) => id !== command.combatantId,
+      );
+      const at = Math.min(
+        Math.max(0, Math.trunc(command.index)),
+        without.length,
+      );
+      if (at === from) return { state, events: [] };
+      return {
+        state: withInitiative(state, {
+          ...initiative,
+          order: [
+            ...without.slice(0, at),
+            command.combatantId,
+            ...without.slice(at),
+          ],
+        }),
+        events: [{ type: "initiative.changed" }],
+      };
+    }
     case "initiative.remove":
       return removeCombatant(state, command.combatantId);
     case "initiative.next":
@@ -571,15 +716,14 @@ function addCombatant(state: SessionState, combatant: Combatant): Change {
     return "unknownToken";
   }
   const combatants = [...initiative.combatants, combatant];
-  const initiativeOf = new Map(
-    combatants.map((entry) => [entry.id, entry.initiative]),
-  );
-  // Insert after everyone with an equal or higher initiative; the rest of the order (which may
-  // have been changed by hand, e.g. delay/ready) stays as it is.
-  const position = initiative.order.findIndex(
-    (id) => (initiativeOf.get(id) ?? 0) < combatant.initiative,
-  );
-  const at = position === -1 ? initiative.order.length : position;
+  const byId = new Map(combatants.map((entry) => [entry.id, entry]));
+  // Insert behind the last one that does not rank below it (T-111: initiative, then bonus,
+  // then players first), so an order changed by hand stays as it is.
+  let at = 0;
+  initiative.order.forEach((id, index) => {
+    const other = byId.get(id);
+    if (other && !goesBefore(combatant, other)) at = index + 1;
+  });
   const order = [
     ...initiative.order.slice(0, at),
     combatant.id,
@@ -643,24 +787,53 @@ function removeCombatant(state: SessionState, combatantId: string): Change {
 function nextTurn(state: SessionState): Change {
   const initiative = state.scene.initiative;
   if (!initiative) return "noInitiative";
-  const first = initiative.order[0];
-  if (first === undefined) return "emptyInitiative";
+  const { order } = initiative;
+  if (order.length === 0) return "emptyInitiative";
+  const delayed = new Set(
+    initiative.combatants
+      .filter((each) => each.delayed === true)
+      .map((each) => each.id),
+  );
   const index =
     initiative.activeCombatantId === null
       ? -1
-      : initiative.order.indexOf(initiative.activeCombatantId);
-  const wraps = index + 1 >= initiative.order.length;
-  const activeCombatantId = wraps
-    ? first
-    : (initiative.order[index + 1] ?? first);
+      : order.indexOf(initiative.activeCombatantId);
+  // The next one in order who has not delayed (T-111); if all have, simply the next one.
+  let step = 1;
+  while (
+    step < order.length &&
+    delayed.has(order[(index + step) % order.length] ?? "")
+  )
+    step++;
+  if (
+    step >= order.length &&
+    delayed.has(order[(index + step) % order.length] ?? "")
+  )
+    step = 1;
+  const nextIndex = (index + step) % order.length;
+  const activeCombatantId = order[nextIndex] ?? order[0] ?? null;
+  if (activeCombatantId === null) return "emptyInitiative";
+  const wraps = index + step >= order.length;
   const round =
     initiative.round === 0
       ? 1
       : wraps
         ? initiative.round + 1
         : initiative.round;
+  // A held action lasts until the combatant's own next turn.
+  const combatants = initiative.combatants.map((each) => {
+    if (each.id !== activeCombatantId || each.ready !== true) return each;
+    const acting: Combatant = { ...each };
+    delete acting.ready;
+    return acting;
+  });
   return {
-    state: withInitiative(state, { ...initiative, round, activeCombatantId }),
+    state: withInitiative(state, {
+      ...initiative,
+      combatants,
+      round,
+      activeCombatantId,
+    }),
     events: [
       { type: "initiative.turnStarted", round, combatantId: activeCombatantId },
     ],

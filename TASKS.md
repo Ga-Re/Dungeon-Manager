@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111a, T-111b, T-111c, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -537,19 +537,32 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Approximate HP rendering ("unhurt / wounded / badly wounded")
   - [ ] Projection tests extended
 
-### T-111 Initiative tracker
+### T-111a Initiative: rules and commands (core)
 
-- **Status:** todo · **Depends on:** T-102b, T-172a · **Refs:** SPEC 11
-- Order, rounds, active turn (highlight on TV), delay/ready, quick entry.
+- **Status:** in-progress · **Depends on:** T-102b, T-233b · **Refs:** SPEC 11
+- Combatants carry an optional `initiativeBonus`, `playerId`, `delayed` and `ready` (additive, DM decision 2026-11-21). Core: `rollInitiative` (d20 + bonus, injected random), turn order by initiative, then bonus, then players before creatures; `initiative.addMany`, `initiative.start` (starts combat – tokens snap – and round 1), `initiative.end` (clears it and ends combat), `initiative.delay`/`initiative.actNow`, `initiative.ready`, `initiative.move`; delayed combatants are skipped, ready ends at the next own turn.
 - **Acceptance criteria**
   - [ ] Reducer tests for all initiative commands
+- **Notes:** Split from T-111 (agent, 2026-11-21). DM decisions (2026-11-21): a dockable "Initiative" panel; combatants come from selected tokens (creatures roll d20 + bonus), a quick entry of the players' rolls, and free entries; delaying takes the turn out until "act now" puts it before the active one, which it keeps; ready is a marker; the TV highlights the active token and shows an initiative bar by the visibility rules; starting the initiative starts combat, ending combat clears it; ties go to the higher bonus, then players; same creatures stay single entries (groups: T-213).
+
+### T-111b Initiative panel
+
+- **Status:** todo · **Depends on:** T-111a, T-172a · **Refs:** SPEC 11
+- A dockable "Initiative" panel (shown in the Game-Orchestrator): the order with round and active turn, next turn, start and end combat, delay/act now, ready, reordering by drag and keyboard, removing; adding from selected tokens (creatures roll), a quick entry of the players' rolls, free entries (name and value).
+- **Acceptance criteria**
+  - [ ] Every panel action reaches the scene (component tests); quick entry by keyboard only (component test)
+
+### T-111c Initiative on the TV
+
+- **Status:** todo · **Depends on:** T-111a · **Refs:** SPEC 11
+- The active combatant's token is highlighted on the TV; an initiative bar at the TV's edge lists the combatants by the visibility rules (hidden ones left out, names by their visibility), the active one marked.
+- **Acceptance criteria**
   - [ ] Active token highlighted in player window (screenshot)
-- **Notes:** From T-102a: removing all combatants resets the tracker (round 0); an explicit "end combat" command, delay/ready and manual reordering belong here (adding a combatant inserts without re-sorting, so manual order is kept).
-- Workspace interview (2026-11-20): group rolls and next-turn focus follow in T-213.
+  - [ ] The bar shows only what players may see (projection tests)
 
 ### T-112 HP and conditions
 
-- **Status:** todo · **Depends on:** T-111
+- **Status:** todo · **Depends on:** T-111b
 - HP, temp HP, conditions with round duration; icons and HP bar on tokens respecting visibility.
 - **Acceptance criteria**
   - [ ] Conditions expire automatically at the right turn (tests)
@@ -1052,7 +1065,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-182 Game-Orchestrator: scene bar and group overview
 
-- **Status:** todo · **Depends on:** T-172a, T-174, T-175, T-111, T-112 · **Refs:** SPEC §2.5, §13.2
+- **Status:** todo · **Depends on:** T-172a, T-174, T-175, T-111c, T-112 · **Refs:** SPEC §2.5, §13.2
 - A scene bar with the session's scenes; the next scene can be prepared quickly (fog) without touching the TV and then switched live. A group overview shows all player characters with HP, conditions and concentration. Default layout: the map large, initiative, group, dice and the inspector as small panels the DM shows or hides from the View menu and docks where they like (T-172); the dock holds zoom, TV preview, pause and blackout.
 - **Acceptance criteria**
   - [ ] Preparing the next scene never changes the TV (E2E test)
@@ -1571,7 +1584,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-213 Initiative: group rolls and next-turn focus
 
-- **Status:** todo · **Depends on:** T-111, T-180 · **Refs:** SPEC §11
+- **Status:** todo · **Depends on:** T-111b, T-180 · **Refs:** SPEC §11
 - Roll initiative for all monsters (grouped by kind); "next turn" (space) centres the active creature and shows its movement range (walk/dash).
 - **Acceptance criteria**
   - [ ] Rolls use the creatures' modifiers (unit tests with injected RNG)

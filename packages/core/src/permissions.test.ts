@@ -67,6 +67,16 @@ const everyCommand: Command[] = [
   },
   { type: "combat.end" },
   { type: "scene.setGridMode", gridMode: "free" },
+  { type: "initiative.addMany", combatants: [goblin] },
+  {
+    type: "initiative.start",
+    bounds: { firstCol: 0, firstRow: 0, cols: 10, rows: 10 },
+  },
+  { type: "initiative.end" },
+  { type: "initiative.delay", combatantId: "goblin" },
+  { type: "initiative.actNow", combatantId: "goblin" },
+  { type: "initiative.ready", combatantId: "goblin", ready: true },
+  { type: "initiative.move", combatantId: "goblin", index: 0 },
 ];
 
 describe("canApply", () => {
