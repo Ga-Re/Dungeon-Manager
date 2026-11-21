@@ -11,6 +11,7 @@ import {
   Text,
   Texture,
   UniformGroup,
+  WebGLRenderer,
 } from "pixi.js";
 import {
   TOKEN_ACTIVE_RING,
@@ -192,10 +193,12 @@ export async function createRenderer(
 
   app.renderer.background.alpha = 1;
   // The GPU's texture limit (T-127): larger maps are drawn in tiles.
-  const gl = (app.renderer as unknown as { gl?: WebGLRenderingContext }).gl;
   const maxTextureSize =
     options.maxTextureSize ??
-    (gl ? Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)) : 4096);
+    (app.renderer instanceof WebGLRenderer
+      ? Number(app.renderer.gl.getParameter(app.renderer.gl.MAX_TEXTURE_SIZE))
+      : // WebGPU (not the preference): a size every GPU takes.
+        4096);
 
   const world = new Container();
   app.stage.addChild(world);
@@ -966,40 +969,46 @@ function mapSprites(image: MapImage, maxTextureSize: number): Container {
     maxTextureSize - 2 * TILE_PAD,
   );
   const container = new Container();
-  for (const tile of tiles) {
-    const left = Math.max(0, tile.x - TILE_PAD);
-    const top = Math.max(0, tile.y - TILE_PAD);
-    const right = Math.min(image.width, tile.x + tile.width + TILE_PAD);
-    const bottom = Math.min(image.height, tile.y + tile.height + TILE_PAD);
-    const canvas = document.createElement("canvas");
-    canvas.width = right - left;
-    canvas.height = bottom - top;
-    const context = canvas.getContext("2d");
-    if (!context)
-      throw new Error("A map tile could not be drawn (no 2D canvas).");
-    context.drawImage(
-      image,
-      left,
-      top,
-      canvas.width,
-      canvas.height,
-      0,
-      0,
-      canvas.width,
-      canvas.height,
-    );
-    const texture = new Texture({
-      source: Texture.from(canvas, true).source,
-      frame: new Rectangle(
-        tile.x - left,
-        tile.y - top,
-        tile.width,
-        tile.height,
-      ),
-    });
-    const sprite = new Sprite(texture);
-    sprite.position.set(tile.x, tile.y);
-    container.addChild(sprite);
+  try {
+    for (const tile of tiles) {
+      const left = Math.max(0, tile.x - TILE_PAD);
+      const top = Math.max(0, tile.y - TILE_PAD);
+      const right = Math.min(image.width, tile.x + tile.width + TILE_PAD);
+      const bottom = Math.min(image.height, tile.y + tile.height + TILE_PAD);
+      const canvas = document.createElement("canvas");
+      canvas.width = right - left;
+      canvas.height = bottom - top;
+      const context = canvas.getContext("2d");
+      if (!context)
+        throw new Error("A map tile could not be drawn (no 2D canvas).");
+      context.drawImage(
+        image,
+        left,
+        top,
+        canvas.width,
+        canvas.height,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+      const texture = new Texture({
+        source: Texture.from(canvas, true).source,
+        frame: new Rectangle(
+          tile.x - left,
+          tile.y - top,
+          tile.width,
+          tile.height,
+        ),
+      });
+      const sprite = new Sprite(texture);
+      sprite.position.set(tile.x, tile.y);
+      container.addChild(sprite);
+    }
+  } catch (error) {
+    // Tiles made so far would otherwise keep their textures.
+    container.destroy({ children: true, texture: true, textureSource: true });
+    throw error;
   }
   return container;
 }

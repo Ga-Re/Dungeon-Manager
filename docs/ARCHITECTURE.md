@@ -237,9 +237,9 @@ Layer order (bottom → top): map (image/video) → grid → assets → light/vi
 - **Transitions:** scene changes (crossfade, through black, instant) and soft fog fades stay fail-closed – the incoming scene becomes visible only after its fog is set. Soft fog edges and fades can be switched off in the settings and must meet §11 when on.
 - Renderer fixtures in `test-fixtures` are used for screenshot tests.
 
----
+Maps larger than the GPU's texture limit (T-127): the renderer reads `MAX_TEXTURE_SIZE` (8192 px on many integrated GPUs) and draws a larger image map as tiles that each fit, cut from the image on canvases and placed edge to edge; a map within the limit stays one texture. Video maps are a `<video>` element under the canvas (ADR-0010) and have no such limit. Each tile carries 2 px of its neighbours so scaled sampling shows no seams; tiled and single-texture rendering differ by at most 2 levels per channel (harness check). A map whose tiles cannot be made shows the "could not be loaded" state in the DM window and leaves the TV black.
 
-Maps larger than the GPU's texture limit (T-127): the renderer reads `MAX_TEXTURE_SIZE` (8192 px on many integrated GPUs) and draws a larger image map as tiles that each fit, cut from the image on canvases and placed edge to edge; a map within the limit stays one texture. Video maps are a `<video>` element under the canvas (ADR-0010) and have no such limit.
+---
 
 ## 9. Lighting
 

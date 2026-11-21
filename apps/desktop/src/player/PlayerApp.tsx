@@ -253,8 +253,15 @@ export function PlayerApp({
             mapSize = { width: shown.videoWidth, height: shown.videoHeight };
             view.setVideo(shown);
           } else {
+            try {
+              view.setMap(shown);
+            } catch (error) {
+              // Fail closed (T-127): a map that cannot be drawn leaves the TV black.
+              console.error("The player view could not draw the map.", error);
+              mark("none");
+              return;
+            }
             mapSize = { width: shown.width, height: shown.height };
-            view.setMap(shown);
           }
           mark("map");
           fit();

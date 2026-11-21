@@ -318,12 +318,65 @@ async function glideScenario(canvas: HTMLCanvasElement) {
   await renderer.drawn();
 }
 
+/**
+ * "tiles" (T-127): the fixture map drawn as one texture and in 256-px tiles (as a map beyond the
+ * GPU's texture limit is), fitted and zoomed in on a tile corner; the largest difference of any
+ * channel goes to `data-tiles-max-diff`. Tiles sample with their own coordinates, so a level or
+ * two may differ on edges; a seam would differ by far more.
+ */
+async function tilesScenario(canvas: HTMLCanvasElement) {
+  const fitted = cameraFor("fit");
+  const cameras = [
+    fitted,
+    // The tile corner at map (1280, 768), across the pool's edge.
+    zoomAt(fitted, 5, mapToScreen(fitted, view, { x: 1280, y: 768 }), view),
+  ];
+  const draw = async (maxTextureSize?: number) => {
+    const target = document.createElement("canvas");
+    canvas.replaceWith(target);
+    const renderer = await createRenderer({
+      canvas: target,
+      size: view,
+      resolution: 1,
+      ...(maxTextureSize !== undefined && { maxTextureSize }),
+    });
+    renderer.setMap(drawFixtureMap());
+    const shots: Uint8ClampedArray[] = [];
+    for (const camera of cameras) {
+      renderer.setCamera(camera);
+      await renderer.drawn();
+      shots.push(capture(target));
+    }
+    renderer.destroy();
+    target.replaceWith(canvas);
+    return shots;
+  };
+  const whole = await draw();
+  const tiled = await draw(256);
+  let maxDiff = 0;
+  whole.forEach((shot, index) => {
+    const other = tiled[index];
+    if (!other || other.length !== shot.length) {
+      maxDiff = 255;
+      return;
+    }
+    for (let i = 0; i < shot.length; i++)
+      maxDiff = Math.max(maxDiff, Math.abs((shot[i] ?? 0) - (other[i] ?? 0)));
+  });
+  document.body.dataset["tilesMaxDiff"] = String(maxDiff);
+}
+
 async function main() {
   const canvas = document.querySelector("canvas");
   if (!canvas) throw new Error("canvas missing");
   const scenario = location.hash.slice(1);
   if (scenario in SPREADS) {
     await spreadScenario(scenario as keyof typeof SPREADS, canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
+  if (scenario === "tiles") {
+    await tilesScenario(canvas);
     document.body.dataset["ready"] = "true";
     return;
   }
@@ -347,14 +400,7 @@ async function main() {
     document.body.dataset["ready"] = "true";
     return;
   }
-  // "-tiled" (T-127): a texture limit of 256 px draws the map in tiles; it must look the same.
-  const tiled = scenario.endsWith("-tiled");
-  const renderer = await createRenderer({
-    canvas,
-    size: view,
-    resolution: 1,
-    ...(tiled && { maxTextureSize: 256 }),
-  });
+  const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
   // "-grid" (T-106b): the fixture map's grid lines, 100 px cells shifted by half a cell to the
   // right, so the test shows that offsets are followed.
   const withGrid = scenario.includes("grid");
@@ -369,9 +415,7 @@ async function main() {
   const hidden = new Set(scenario.endsWith("selected") ? ["g12"] : []);
   // "player-tokens-active" (T-111c): the Ogre's turn, its token shining on the TV.
   const active = new Set(scenario.endsWith("active") ? ["ogre"] : []);
-  const base = scenario
-    .replace(/-tiled$/, "")
-    .replace(/^(grid|tokens)-?|-(grid|tokens)/, "");
+  const base = scenario.replace(/^(grid|tokens)-?|-(grid|tokens)/, "");
   // The player view always gets its fog with (never after) the map.
   const fog = fogFor(base);
   if (fog)
