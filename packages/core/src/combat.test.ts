@@ -617,3 +617,30 @@ describe("moves: seen where it stands or where it goes (T-233c review)", () => {
     );
   });
 });
+
+describe("grid moves next to free tokens (T-242)", () => {
+  test("a free Tiny's small disc leaves the next cell free; a free Medium's does not", () => {
+    const tiny = { ...token("rat", 2.2, 1), size: "tiny" as const };
+    const move = {
+      type: "token.moveMany" as const,
+      moves: [{ tokenId: "hero", to: { col: 3, row: 1 } }],
+      bounds,
+    };
+    // The rat's disc (centre 2.7, radius 1/4) stops short of cell 3.
+    const nextToRat = ok(
+      apply(withTokens(tiny, token("hero", 6, 6)), move, ctx),
+    );
+    expect(nextToRat.state.scene.tokens[1]?.position).toEqual({
+      col: 3,
+      row: 1,
+    });
+    // A Medium there (centre 2.7, radius 1/2) reaches 0.2 into cell 3: the hero goes on.
+    const nextToOgre = ok(
+      apply(withTokens(token("ogre", 2.2, 1), token("hero", 6, 6)), move, ctx),
+    );
+    expect(nextToOgre.state.scene.tokens[1]?.position).not.toEqual({
+      col: 3,
+      row: 1,
+    });
+  });
+});

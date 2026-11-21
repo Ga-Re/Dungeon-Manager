@@ -509,7 +509,7 @@ export function placeFree<T extends string>(
     x: centre?.col ?? position.col + token.footprint.cols / 2,
     y: centre?.row ?? position.row + token.footprint.rows / 2,
     r: token.radius,
-    occupant: { position, footprint: token.footprint },
+    occupant: { position, footprint: token.footprint, radius: token.radius },
   });
   const result = new Map<T, TokenPosition>();
   const placedSeen: Disc[] = [];

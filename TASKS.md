@@ -413,6 +413,14 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] A grid cell a free token's disc reaches into noticeably counts as taken (unit tests)
 - **Notes:** From the T-233d review (2026-11-21). DM decision (2026-11-21): a cell counts as taken when a free disc reaches into it noticeably; tokens never overlap, a grid move goes a cell further.
 
+### T-243 Free Tiny tokens next to Tiny tokens sharing a cell
+
+- **Status:** todo · **Depends on:** T-242 · **Refs:** SPEC §2.4
+- A free Tiny token reaching into a cell (or standing in it) leaves three quarters of it for Tiny tokens on the grid, which `tinyCentres` lays out without regard to the free disc – they can be drawn over it. Keep the arranged slots clear of free discs (or count a free Tiny as a whole cell for Tiny ones).
+- **Acceptance criteria**
+  - [ ] Tiny tokens on a cell are never drawn over a free Tiny token's disc (unit test)
+- **Notes:** From the T-242 review (2026-11-21).
+
 ### T-106c Move the TV's view
 
 - **Status:** done · **Depends on:** T-106a · **Refs:** SPEC 2.2
