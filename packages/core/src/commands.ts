@@ -20,13 +20,18 @@ export type Command =
   | { readonly type: "token.add"; readonly token: Token }
   /** Removes tokens, all in one step (T-107b: a selection). */
   | { readonly type: "token.remove"; readonly tokenIds: readonly string[] }
-  /** Moves several tokens at once, as one step (T-107b: a selection, a group). */
+  /**
+   * Moves several tokens at once, as one step (T-107b: a selection, a group). With `bounds` (the
+   * map's whole cells) they go onto cells, a token whose cell is taken onto the nearest free one
+   * (T-233c); rejected if one finds no room.
+   */
   | {
       readonly type: "token.moveMany";
       readonly moves: readonly {
         readonly tokenId: string;
         readonly to: TokenPosition;
       }[];
+      readonly bounds?: Required<CellBounds>;
     }
   | {
       readonly type: "token.move";

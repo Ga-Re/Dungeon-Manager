@@ -32,19 +32,20 @@ const MAP_PATH = "library/maps/krypta.png";
  * A library with one campaign, one scene that has a map and one (still empty) session. With
  * `levels`, the scene's map has a second level, a cellar (T-118c). `imports` are the files the
  * file dialog returns, one per call; after them it is cancelled. With `failSceneSaves`, writing
- * a scene file fails once the library is set up, as on a full disk (T-223b). With `freeToken`,
- * the scene has a token standing between cells, as placed freely (T-233b).
+ * a scene file fails once the library is set up, as on a full disk (T-223b). `tokens` start on
+ * the scene: "free" a Goblin standing between cells, as placed freely (T-233b); "arranged" Tiny
+ * ones sharing cells and a Small one next to a Medium one (T-233c).
  */
 export async function createE2eLibrary({
   levels = false,
   imports = [],
   failSceneSaves = false,
-  freeToken = false,
+  tokens = "none",
 }: {
   readonly levels?: boolean;
   readonly imports?: readonly string[];
   readonly failSceneSaves?: boolean;
-  readonly freeToken?: boolean;
+  readonly tokens?: "none" | "free" | "arranged";
 } = {}): Promise<LibraryService> {
   const queued = [...imports];
   const fs = createMemoryFileSystem();
@@ -66,19 +67,38 @@ export async function createE2eLibrary({
     name: "Krypta",
     map: { asset, levelName: "Ebene 1" },
   });
-  if (freeToken) {
+  if (tokens !== "none") {
     const path = `campaigns/${slug}/scenes/e2e-scene.json`;
     const file = await fs.read(path);
     if (file.kind !== "ok") throw new Error("the E2E scene is missing");
     const scene = JSON.parse(file.text) as { tokens: unknown[] };
     const levelId = data.levels[0]?.id ?? "";
-    scene.tokens.push({
-      id: "e2e-goblin",
-      name: "Goblin",
-      size: "medium",
-      position: { col: 3.4, row: 2.3 },
-      levelId,
-    });
+    const at = (
+      id: string,
+      name: string,
+      size: string,
+      col: number,
+      row: number,
+    ) => ({ id, name, size, position: { col, row }, levelId });
+    scene.tokens.push(
+      ...(tokens === "free"
+        ? [at("e2e-goblin", "Goblin", "medium", 3.4, 2.3)]
+        : [
+            // Around the map's middle (cell 8, 5 of 16 × 10), where zooming in keeps them.
+            at("e2e-rat-1", "Ratte 1", "tiny", 6, 4),
+            at("e2e-rat-2", "Ratte 2", "tiny", 7, 4),
+            at("e2e-rat-3", "Ratte 3", "tiny", 7, 4),
+            at("e2e-rat-4", "Ratte 4", "tiny", 8, 4),
+            at("e2e-rat-5", "Ratte 5", "tiny", 8, 4),
+            at("e2e-rat-6", "Ratte 6", "tiny", 8, 4),
+            at("e2e-rat-7", "Ratte 7", "tiny", 9, 4),
+            at("e2e-rat-8", "Ratte 8", "tiny", 9, 4),
+            at("e2e-rat-9", "Ratte 9", "tiny", 9, 4),
+            at("e2e-rat-10", "Ratte 10", "tiny", 9, 4),
+            at("e2e-kobold", "Kobold", "small", 7, 5),
+            at("e2e-aria", "Aria", "medium", 8, 5),
+          ]),
+    );
     await fs.writeAtomic(path, JSON.stringify(scene));
   }
   // A campaign note with the Markdown the details panel renders (T-163).

@@ -30,8 +30,8 @@ async function loadHarness(page: Page, search = "") {
 }
 
 /** The harness past the welcome dialog of every start (T-153). */
-async function openHarness(page: Page) {
-  await loadHarness(page);
+async function openHarness(page: Page, search = "") {
+  await loadHarness(page, search);
   const welcome = page.getByRole("dialog", { name: "Willkommen" });
   await expect(welcome).toBeVisible();
   await page.keyboard.press("Escape");
@@ -119,4 +119,20 @@ test("the workspace menu", async ({ page }) => {
   await page.evaluate(() => document.fonts.ready);
 
   await expect(page).toHaveScreenshot("dm-window-workspaces.png");
+});
+
+test("Tiny tokens sharing a cell arrange by count; a Small one is smaller (T-233c)", async ({
+  page,
+}) => {
+  await openHarness(page, "?arrangedTokens");
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  const map = page.getByRole("application", { name: /Krypta/ });
+  // Zoomed in on the tokens: one to four Tiny ones per cell, the Small one beside a Medium one.
+  await map.focus();
+  for (let step = 0; step < 4; step++) await page.keyboard.press("+");
+  await page.evaluate(() => document.fonts.ready);
+
+  await expect(map).toHaveScreenshot("dm-window-tokens-arranged.png");
 });

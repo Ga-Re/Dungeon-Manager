@@ -280,3 +280,48 @@ export function snapToCells<T extends string>(
   }
   return cells;
 }
+
+/** A token being moved onto the grid, or one standing there (`placeOnCells`). */
+interface Placing {
+  readonly footprint: GridFootprint;
+  /** Whether the table sees it: one it does not see never redirects one it sees. */
+  readonly seen: boolean;
+}
+
+/**
+ * Where moved tokens end up on the grid (T-233c): each on its wanted cell if that is free, else
+ * on the free cell nearest to it – never on an occupied one (up to four Tiny tokens share a
+ * cell, a large token claims its footprint). Tokens the table sees go first, in the given order,
+ * and only among tokens it sees: an unseen token never redirects a seen one, which would give
+ * it away (DM decision, 2026-11-21). Unseen ones then fit around everything. `null` when one
+ * finds no room.
+ */
+export function placeOnCells<T extends string>(
+  moving: readonly (Placing & { readonly id: T; readonly wanted: GridCell })[],
+  standing: readonly (Placing & { readonly position: TokenPosition })[],
+  bounds: Required<CellBounds>,
+): Map<T, GridCell> | null {
+  const cells = new Map<T, GridCell>();
+  const placedSeen: Occupant[] = [];
+  const placedAll: Occupant[] = [];
+  const place = (
+    token: (typeof moving)[number],
+    blockers: readonly Occupant[],
+  ): boolean => {
+    const cell = canOccupy(blockers, token.wanted, token.footprint)
+      ? token.wanted
+      : nearestFreeCell(token.wanted, token.footprint, blockers, bounds);
+    if (!cell) return false;
+    const occupant = { position: cell, footprint: token.footprint };
+    if (token.seen) placedSeen.push(occupant);
+    placedAll.push(occupant);
+    cells.set(token.id, cell);
+    return true;
+  };
+  const standingSeen = standing.filter((each) => each.seen);
+  for (const token of moving.filter((each) => each.seen))
+    if (!place(token, [...standingSeen, ...placedSeen])) return null;
+  for (const token of moving.filter((each) => !each.seen))
+    if (!place(token, [...standing, ...placedAll])) return null;
+  return cells;
+}

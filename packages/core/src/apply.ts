@@ -7,7 +7,12 @@ import type {
   Token,
   TokenPosition,
 } from "@dungeon-manager/schema";
-import { gridFootprint, snapToCells } from "./footprint.js";
+import {
+  gridFootprint,
+  placeOnCells,
+  snapToCells,
+  type CellBounds,
+} from "./footprint.js";
 import type { Command, DomainEvent, RejectionReason } from "./commands.js";
 import { EMPTY_LEVEL_FOG, hideArea, revealArea } from "./fog.js";
 import { seenByTable, tableLevels } from "./projection.js";
@@ -99,6 +104,11 @@ function applyChange(state: SessionState, command: Command): Change {
         moved.set(move.tokenId, move.to);
       }
       if (!state.map) return "noMap";
+      if (command.bounds) {
+        const placed = onCells(state, moved, command.bounds);
+        if (!placed) return "noFreeCell";
+        for (const [id, cell] of placed) moved.set(id, cell);
+      }
       return {
         state: withScene(state, {
           tokens: scene.tokens.map((each) => {
@@ -343,6 +353,53 @@ function applyChange(state: SessionState, command: Command): Change {
     case "hp.setTemp":
       return changeHp(state, command);
   }
+}
+
+/**
+ * Where tokens moved to `wanted` end up on the grid (T-233c), level by level: never on an
+ * occupied cell. A moved token counts as seen by the table where it stands or where it goes –
+ * its redirect would show either way.
+ */
+function onCells(
+  state: SessionState,
+  wanted: ReadonlyMap<string, TokenPosition>,
+  bounds: Required<CellBounds>,
+): Map<string, TokenPosition> | null {
+  const result = new Map<string, TokenPosition>();
+  const { tokens } = state.scene;
+  for (const levelId of new Set(tokens.map((each) => each.levelId))) {
+    const onLevel = tokens.filter((each) => each.levelId === levelId);
+    const moving = onLevel.flatMap((each) => {
+      const to = wanted.get(each.id);
+      if (!to) return [];
+      const cell = { col: Math.round(to.col), row: Math.round(to.row) };
+      return [
+        {
+          id: each.id,
+          wanted: cell,
+          footprint: gridFootprint(each.size),
+          seen:
+            seenByTable(state, each) ||
+            seenByTable(state, { ...each, position: cell }),
+        },
+      ];
+    });
+    if (moving.length === 0) continue;
+    const cells = placeOnCells(
+      moving,
+      onLevel
+        .filter((each) => !wanted.has(each.id))
+        .map((each) => ({
+          position: each.position,
+          footprint: gridFootprint(each.size),
+          seen: seenByTable(state, each),
+        })),
+      bounds,
+    );
+    if (!cells) return null;
+    for (const [id, cell] of cells) result.set(id, cell);
+  }
+  return result;
 }
 
 function withScene(state: SessionState, changes: Partial<Scene>): SessionState {
