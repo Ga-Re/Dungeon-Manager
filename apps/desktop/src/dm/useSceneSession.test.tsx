@@ -1,5 +1,10 @@
 import type { MapImage } from "@dungeon-manager/renderer";
-import type { GridMode, Scene, ViewerScene } from "@dungeon-manager/schema";
+import type {
+  GridMode,
+  Player,
+  Scene,
+  ViewerScene,
+} from "@dungeon-manager/schema";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
@@ -87,6 +92,7 @@ function renderScene(
   rescue: SceneRescue | null = null,
   tvView: TvView | null = null,
   campaignGridMode?: GridMode,
+  players: readonly Player[] = [],
 ) {
   const library = fakeLibraryService("/lib", {
     [`${HOEHLE}.dm.json`]: hoehleSidecar,
@@ -116,6 +122,7 @@ function renderScene(
                   campaignGridMode={campaignGridMode}
                   // Every roll is an 11: d20 of 0.5.
                   random={() => 0.5}
+                  players={players}
                 />
               </MapViewContext>
             </TvViewContext>
@@ -878,6 +885,86 @@ describe("editing the fog", () => {
     });
     expect(saved().combat).toBeUndefined();
     expect(screen.getByText(/Noch niemand in der Initiative/)).toBeTruthy();
+  });
+
+  test("players' rolls join with their token or change their value; free entries join (T-111d)", async () => {
+    const withAria: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "aria",
+          name: "Aria",
+          size: "medium",
+          position: { col: 4, row: 1 },
+          levelId: "ground",
+          ownerPlayerId: "p1",
+        },
+      ],
+    };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      withAria,
+      null,
+      null,
+      undefined,
+      [
+        { id: "p1", name: "Gabi", characterName: "Aria" },
+        { id: "p2", name: "Max" },
+      ],
+    );
+    const saved = () =>
+      (
+        JSON.parse(
+          library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+        ) as Scene
+      ).initiative?.combatants ?? [];
+    fireEvent.click(await enabled("Spielerwürfe eintragen …"));
+    fireEvent.change(screen.getByLabelText("Aria"), {
+      target: { value: "14" },
+    });
+    fireEvent.change(screen.getByLabelText("Max"), { target: { value: "9" } });
+    fireEvent.submit(screen.getByLabelText("Max"));
+    await waitFor(() => {
+      expect(
+        saved().map(({ name, initiative, playerId, tokenId }) => ({
+          name,
+          initiative,
+          playerId,
+          tokenId,
+        })),
+      ).toEqual([
+        { name: "Aria", initiative: 14, playerId: "p1", tokenId: "aria" },
+        { name: "Max", initiative: 9, playerId: "p2", tokenId: undefined },
+      ]);
+    });
+    // Entered again: Aria's value changes, nobody joins twice.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Spielerwürfe eintragen …" }),
+    );
+    fireEvent.change(screen.getByLabelText("Aria"), {
+      target: { value: "18" },
+    });
+    fireEvent.submit(screen.getByLabelText("Aria"));
+    await waitFor(() => {
+      expect(saved().find((each) => each.playerId === "p1")?.initiative).toBe(
+        18,
+      );
+    });
+    expect(saved()).toHaveLength(2);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Eintrag hinzufügen …" }),
+    );
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Hort-Aktion" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Initiative" }), {
+      target: { value: "20" },
+    });
+    fireEvent.submit(screen.getByLabelText("Name"));
+    await waitFor(() => {
+      expect(saved().map((each) => each.name)).toContain("Hort-Aktion");
+    });
   });
 
   test("undo keys are left to text fields", async () => {

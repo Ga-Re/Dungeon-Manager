@@ -1518,3 +1518,26 @@ button.dm-welcome-campaign:hover {
   display: flex;
   gap: 0;
 }
+
+/* Popovers of the Initiative panel's toolbar line up under their button (T-111d). */
+.dm-initiative-anchor {
+  position: relative;
+}
+
+.dm-initiative-form {
+  display: grid;
+  gap: var(--dm-space-2);
+}
+
+.dm-initiative-form label {
+  display: grid;
+  gap: var(--dm-space-1);
+}
+
+.dm-initiative-row[draggable="true"] {
+  cursor: grab;
+}
+
+.dm-initiative-row[data-dragging] {
+  opacity: 0.5;
+}

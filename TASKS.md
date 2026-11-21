@@ -555,10 +555,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-111d Initiative: quick entry, free entries, dragging
 
-- **Status:** todo · **Depends on:** T-111b · **Refs:** SPEC 11
+- **Status:** done · **Depends on:** T-111b · **Refs:** SPEC 11
 - A quick entry of the players' rolls (one field per player character, keyboard only), free entries (name and value, e.g. a lair action), reordering by drag.
 - **Acceptance criteria**
-  - [ ] Quick entry by keyboard only; free entries; drag reordering (component tests)
+  - [x] Quick entry by keyboard only; free entries; drag reordering (component tests)
+- **Notes:** The quick entry lists the campaign's players (character name, else player name), prefilled with a value already in the order; a character joining gets its token on the scene if it has one. Free entries have no token and so stay hidden on the TV until the DM releases them (rule of T-102a).
 
 ### T-111c Initiative on the TV
 

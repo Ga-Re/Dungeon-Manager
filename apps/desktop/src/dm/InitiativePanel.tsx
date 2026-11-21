@@ -1,19 +1,26 @@
 import type { Command } from "@dungeon-manager/core";
 import type { InitiativeState } from "@dungeon-manager/schema";
-import { IconButton } from "@dungeon-manager/ui";
+import { IconButton, Popover } from "@dungeon-manager/ui";
 import {
   ArrowDown,
   ArrowUp,
   Hand,
   Hourglass,
   ListPlus,
+  Plus,
+  Users,
   Play,
   SkipForward,
   Square,
   X,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import {
+  FreeEntryForm,
+  PlayerRollsForm,
+  type PlayerCharacter,
+} from "./InitiativeEntry.js";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -28,6 +35,9 @@ export function InitiativePanel({
   onAddSelected,
   onStart,
   onCommand,
+  players,
+  onPlayerRolls,
+  onAddEntry,
 }: {
   readonly initiative: InitiativeState | null;
   /** Selected tokens that are not in the initiative yet. */
@@ -39,6 +49,16 @@ export function InitiativePanel({
   /** Starts the initiative and combat (the scene knows the map's cells). */
   readonly onStart: () => void;
   readonly onCommand: (command: Command) => void;
+  /** The campaign's player characters, for the quick entry of their rolls (T-111d). */
+  readonly players: readonly PlayerCharacter[];
+  readonly onPlayerRolls: (
+    rolls: readonly {
+      readonly playerId: string;
+      readonly initiative: number;
+    }[],
+  ) => void;
+  /** A free entry without a token, e.g. a lair action (T-111d). */
+  readonly onAddEntry: (name: string, initiative: number) => void;
 }) {
   const { t } = useTranslation();
   const order = initiative?.order ?? [];
@@ -47,6 +67,11 @@ export function InitiativePanel({
   );
   const round = initiative?.round ?? 0;
   const running = round > 0;
+  const [form, setForm] = useState<"rolls" | "entry" | null>(null);
+  const rollsButton = useRef<HTMLButtonElement>(null);
+  const entryButton = useRef<HTMLButtonElement>(null);
+  // Reordering by drag (T-111d): the row being dragged.
+  const [dragged, setDragged] = useState<string | null>(null);
   return (
     <section className="dm-initiative" aria-label={t("initiative.label")}>
       <div className="dm-initiative-toolbar">
@@ -61,6 +86,67 @@ export function InitiativePanel({
           disabled={busy || !canAddSelected}
           onClick={onAddSelected}
         />
+        <span className="dm-initiative-anchor">
+          <IconButton
+            ref={rollsButton}
+            icon={<Users />}
+            label={t("initiative.playerRolls")}
+            aria-expanded={form === "rolls"}
+            disabled={busy}
+            onClick={() => {
+              setForm((current) => (current === "rolls" ? null : "rolls"));
+            }}
+          />
+          <Popover
+            open={form === "rolls"}
+            onClose={() => {
+              setForm(null);
+            }}
+            anchor={rollsButton}
+            label={t("initiative.playerRolls")}
+            align="start"
+          >
+            {form === "rolls" && (
+              <PlayerRollsForm
+                players={players}
+                onEnter={(rolls) => {
+                  onPlayerRolls(rolls);
+                  setForm(null);
+                }}
+              />
+            )}
+          </Popover>
+        </span>
+        <span className="dm-initiative-anchor">
+          <IconButton
+            ref={entryButton}
+            icon={<Plus />}
+            label={t("initiative.newEntry")}
+            aria-expanded={form === "entry"}
+            disabled={busy}
+            onClick={() => {
+              setForm((current) => (current === "entry" ? null : "entry"));
+            }}
+          />
+          <Popover
+            open={form === "entry"}
+            onClose={() => {
+              setForm(null);
+            }}
+            anchor={entryButton}
+            label={t("initiative.newEntry")}
+            align="start"
+          >
+            {form === "entry" && (
+              <FreeEntryForm
+                onAdd={(name, value) => {
+                  onAddEntry(name, value);
+                  setForm(null);
+                }}
+              />
+            )}
+          </Popover>
+        </span>
         {running ? (
           <IconButton
             icon={<SkipForward />}
@@ -104,6 +190,30 @@ export function InitiativePanel({
                 className="dm-initiative-row"
                 aria-current={active ? "true" : undefined}
                 data-delayed={delayed || undefined}
+                // Dragged onto another row, it takes that row's place (the buttons do the same
+                // by keyboard).
+                draggable={!busy}
+                data-dragging={dragged === id || undefined}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = "move";
+                  setDragged(id);
+                }}
+                onDragOver={(event) => {
+                  if (dragged !== null) event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (dragged !== null && dragged !== id)
+                    onCommand({
+                      type: "initiative.move",
+                      combatantId: dragged,
+                      index,
+                    });
+                  setDragged(null);
+                }}
+                onDragEnd={() => {
+                  setDragged(null);
+                }}
               >
                 <InitiativeValue
                   name={name}
