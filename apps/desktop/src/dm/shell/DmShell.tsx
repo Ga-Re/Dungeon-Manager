@@ -376,6 +376,7 @@ export function DmShell({
       "ribbonDisplay",
       "settings",
       "settingsTv",
+      "settingsCampaign",
     ];
     for (const name of names) {
       refs[name] = (element) => {
@@ -851,6 +852,24 @@ export function DmShell({
       label: t("shell.settingsCategory.library"),
       // The library panel puts the folder choice here (it owns the library state).
       content: <div ref={slotRefs.settings} />,
+    },
+    {
+      id: "campaign",
+      label: t("shell.settingsCategory.campaign"),
+      // The open campaign's settings (T-233e) come from the campaign panel, which owns its file.
+      content: (
+        <>
+          <p className="dm-settings-hint">{t("shell.campaignSettingsHint")}</p>
+          <div
+            ref={slotRefs.settingsCampaign}
+            className="dm-settings-campaign"
+          />
+          {/* Hidden by CSS once the open campaign puts its settings into the slot. */}
+          <p className="dm-settings-hint dm-settings-no-campaign">
+            {t("shell.noCampaignOpen")}
+          </p>
+        </>
+      ),
     },
     {
       id: "tv",

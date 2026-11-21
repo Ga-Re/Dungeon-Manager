@@ -269,6 +269,9 @@ export const en: Messages = {
   gridMode: {
     group: "Grid",
     pick: "How tokens move",
+    campaignDefault: "The campaign's grid",
+    campaignDefaultHint: 'Applies to scenes whose grid is "as the campaign".',
+    notSaved: "The campaign's grid could not be saved.",
     asCampaign: "As the campaign ({{mode}})",
     modes: {
       grid: "Always on the grid",
@@ -367,7 +370,10 @@ export const en: Messages = {
       library: "Library",
       tv: "Player view",
       layout: "Panels",
+      campaign: "Campaign",
     },
+    campaignSettingsHint: "Applies to the open campaign and is saved in it.",
+    noCampaignOpen: "No campaign open: open a campaign to change its settings.",
     uiScale: {
       label: "Interface size",
       percent: "{{percent}}%",

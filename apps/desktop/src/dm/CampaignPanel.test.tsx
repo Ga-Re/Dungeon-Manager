@@ -215,6 +215,55 @@ describe("CampaignPanel", () => {
     ).toBeTruthy();
   });
 
+  test('the campaign\'s grid mode is set in the settings; an open scene "as the campaign" follows it (T-233e)', async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/campaign.json": JSON.stringify({
+        schemaVersion: 2,
+        id: "mine",
+        name: "Die verlorene Mine",
+        players: [],
+        visibilityDefaults: {},
+      }),
+      "campaigns/mine/scenes/a.json": JSON.stringify({
+        ...JSON.parse(sceneFile("a", "Höhle")),
+        map: {
+          kind: "image",
+          asset: {
+            path: "library/maps/alt.webp",
+            hash: `sha256:${"a".repeat(64)}`,
+          },
+          grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },
+          levels: [{ id: "ground", name: "Unten" }],
+        },
+      }),
+    });
+    renderCampaign(library);
+    await openScene("Höhle");
+    // Outside the shell the settings render in place.
+    const setting = await screen.findByRole("combobox", {
+      name: "Raster der Kampagne",
+    });
+    await waitFor(() => {
+      expect(setting).toHaveProperty("disabled", false);
+    });
+    expect(
+      await screen.findByRole("button", {
+        name: "Wie Kampagne (Frei, im Kampf Raster)",
+      }),
+    ).toBeTruthy();
+
+    fireEvent.change(setting, { target: { value: "grid" } });
+    expect(
+      await screen.findByRole("button", {
+        name: "Wie Kampagne (Immer Raster)",
+      }),
+    ).toBeTruthy();
+    const campaign = JSON.parse(
+      library.fs.files().get("campaigns/mine/campaign.json") ?? "{}",
+    ) as { gridMode?: string };
+    expect(campaign.gridMode).toBe("grid");
+  });
+
   test("asks what to reset when the map of an open scene changes", async () => {
     const square = {
       outer: [

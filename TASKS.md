@@ -485,10 +485,10 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-233e The campaign's default grid mode in the settings
 
-- **Status:** todo · **Depends on:** T-233d · **Refs:** SPEC §2.4
+- **Status:** done · **Depends on:** T-233d · **Refs:** SPEC §2.4
 - The settings dialog sets the campaign's default grid mode (`campaign.gridMode`, T-233a), used by scenes "as the campaign"; an open scene follows a change at once.
 - **Acceptance criteria**
-  - [ ] Changing the default in the settings changes how an open scene "as the campaign" moves tokens (component test)
+  - [x] Changing the default in the settings changes how an open scene "as the campaign" moves tokens (component test)
 - **Notes:** DM decision (2026-11-21): the campaign default lives in the settings dialog. Needs the open scene to follow campaign changes (today it reads the campaign once).
 
 ### T-108a Fog: rectangle reveal/hide, undo, live on the TV

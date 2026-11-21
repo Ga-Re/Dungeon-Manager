@@ -271,6 +271,9 @@ export const de = {
   gridMode: {
     group: "Raster",
     pick: "Wie Tokens sich bewegen",
+    campaignDefault: "Raster der Kampagne",
+    campaignDefaultHint: "Gilt für Szenen, deren Raster „Wie Kampagne“ ist.",
+    notSaved: "Das Raster der Kampagne konnte nicht gespeichert werden.",
     asCampaign: "Wie Kampagne ({{mode}})",
     modes: {
       grid: "Immer Raster",
@@ -371,7 +374,12 @@ export const de = {
       library: "Bibliothek",
       tv: "Spieleransicht",
       layout: "Panels",
+      campaign: "Kampagne",
     },
+    campaignSettingsHint:
+      "Gilt für die geöffnete Kampagne und wird in ihr gespeichert.",
+    noCampaignOpen:
+      "Keine Kampagne geöffnet: Öffne eine Kampagne, um ihre Einstellungen zu ändern.",
     uiScale: {
       label: "Größe der Oberfläche",
       percent: "{{percent}} %",
