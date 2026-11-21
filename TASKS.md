@@ -539,10 +539,10 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-111a Initiative: rules and commands (core)
 
-- **Status:** in-progress · **Depends on:** T-102b, T-233b · **Refs:** SPEC 11
+- **Status:** done · **Depends on:** T-102b, T-233b · **Refs:** SPEC 11
 - Combatants carry an optional `initiativeBonus`, `playerId`, `delayed` and `ready` (additive, DM decision 2026-11-21). Core: `rollInitiative` (d20 + bonus, injected random), turn order by initiative, then bonus, then players before creatures; `initiative.addMany`, `initiative.start` (starts combat – tokens snap – and round 1), `initiative.end` (clears it and ends combat), `initiative.delay`/`initiative.actNow`, `initiative.ready`, `initiative.move`; delayed combatants are skipped, ready ends at the next own turn.
 - **Acceptance criteria**
-  - [ ] Reducer tests for all initiative commands
+  - [x] Reducer tests for all initiative commands
 - **Notes:** Split from T-111 (agent, 2026-11-21). DM decisions (2026-11-21): a dockable "Initiative" panel; combatants come from selected tokens (creatures roll d20 + bonus), a quick entry of the players' rolls, and free entries; delaying takes the turn out until "act now" puts it before the active one, which it keeps; ready is a marker; the TV highlights the active token and shows an initiative bar by the visibility rules; starting the initiative starts combat, ending combat clears it; ties go to the higher bonus, then players; same creatures stay single entries (groups: T-213).
 
 ### T-111b Initiative panel
@@ -551,6 +551,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - A dockable "Initiative" panel (shown in the Game-Orchestrator): the order with round and active turn, next turn, start and end combat, delay/act now, ready, reordering by drag and keyboard, removing; adding from selected tokens (creatures roll), a quick entry of the players' rolls, free entries (name and value).
 - **Acceptance criteria**
   - [ ] Every panel action reaches the scene (component tests); quick entry by keyboard only (component test)
+- **Notes:** From the T-111a review: players win ties through `playerId` only – set it from the token's `ownerPlayerId` (and in the players' quick entry).
 
 ### T-111c Initiative on the TV
 
@@ -566,6 +567,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - HP, temp HP, conditions with round duration; icons and HP bar on tokens respecting visibility.
 - **Acceptance criteria**
   - [ ] Conditions expire automatically at the right turn (tests)
+- **Notes:** From the T-111a review: "act now" restarts the turn of the combatant it interrupted (a second `initiative.turnStarted` in the same round) – conditions that count turns must not count it twice.
 
 ### T-113 Blackout button and DM preview of the player view
 

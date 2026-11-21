@@ -5,6 +5,7 @@ import {
   createHistory,
   execute,
   goesBefore,
+  projectEvents,
   rollInitiative,
   undo,
   type ApplyResult,
@@ -79,9 +80,10 @@ describe("initiative commands", () => {
       "initiative.combatantAdded",
       "initiative.combatantAdded",
     ]);
-    expect(
+    const none = ok(
       apply(state, { type: "initiative.addMany", combatants: [] }, ctx),
-    ).toEqual({ ok: false, reason: "unknownCombatant" });
+    );
+    expect(none.state).toBe(state);
   });
 
   test("start begins combat and the first turn in round 1, as one step", () => {
@@ -209,5 +211,112 @@ describe("initiative commands", () => {
         ctx,
       ),
     ).toEqual({ ok: false, reason: "unknownCombatant" });
+  });
+
+  test("removing the active one passes the turn like next turn: delayed skipped, ready ended", () => {
+    let current = run(
+      state,
+      { type: "initiative.addMany", combatants: four },
+      { type: "initiative.start", bounds },
+      { type: "initiative.delay", combatantId: "lair" },
+      { type: "initiative.ready", combatantId: "goblin", ready: true },
+    );
+    // aria's turn; removing her passes to goblin (ready ends), skipping nobody.
+    current = run(current, { type: "initiative.remove", combatantId: "aria" });
+    expect(active(current)).toBe("goblin");
+    expect(combatant(current, "goblin")?.ready).toBeUndefined();
+    // ogre's turn; removing him wraps past the delayed lair to goblin, next round.
+    current = run(
+      current,
+      { type: "initiative.next" },
+      { type: "initiative.remove", combatantId: "ogre" },
+    );
+    expect(active(current)).toBe("goblin");
+    expect(current.scene.initiative?.round).toBe(2);
+  });
+
+  test("when all have delayed, the next one acts and is no longer delayed", () => {
+    const two = [fighter("a", 15), fighter("b", 10)];
+    let current = run(
+      state,
+      { type: "initiative.addMany", combatants: two },
+      { type: "initiative.start", bounds },
+      { type: "initiative.delay", combatantId: "a" },
+    );
+    expect(active(current)).toBe("b");
+    current = run(current, { type: "initiative.delay", combatantId: "b" });
+    expect(active(current)).toBe("a");
+    expect(combatant(current, "a")?.delayed).toBeUndefined();
+    // The active one cannot "act now"; nor can anyone before the first turn.
+    expect(
+      apply(current, { type: "initiative.actNow", combatantId: "a" }, ctx),
+    ).toEqual({ ok: false, reason: "notDelayed" });
+    const waiting = run(state, {
+      type: "initiative.add",
+      combatant: fighter("x", 5, { delayed: true, ready: true }),
+    });
+    // Markers do not come in with a new combatant.
+    expect(combatant(waiting, "x")?.delayed).toBeUndefined();
+    expect(combatant(waiting, "x")?.ready).toBeUndefined();
+  });
+
+  test("start on a running initiative only snaps; end without one changes nothing; end is undone as one step", () => {
+    const fighting = run(
+      state,
+      { type: "initiative.addMany", combatants: four },
+      { type: "initiative.start", bounds },
+      { type: "initiative.next" },
+    );
+    const again = run(fighting, { type: "initiative.start", bounds });
+    expect(again.scene.initiative?.round).toBe(1);
+    expect(active(again)).toBe("aria");
+    const nothing = ok(apply(state, { type: "initiative.end" }, ctx));
+    expect(nothing.state).toBe(state);
+    expect(nothing.events).toEqual([]);
+    const ended = execute(
+      fighting,
+      createHistory(),
+      { type: "initiative.end" },
+      ctx,
+    );
+    if (!ended.ok) throw new Error("rejected");
+    expect(undo(ended.state, ended.history)?.state).toEqual(fighting);
+  });
+
+  test("commands on no initiative are refused; a move to no number changes nothing", () => {
+    for (const command of [
+      { type: "initiative.delay", combatantId: "a" },
+      { type: "initiative.actNow", combatantId: "a" },
+      { type: "initiative.ready", combatantId: "a", ready: true },
+      { type: "initiative.move", combatantId: "a", index: 0 },
+    ] as const)
+      expect(apply(state, command, ctx)).toEqual({
+        ok: false,
+        reason: "noInitiative",
+      });
+    const added = run(state, { type: "initiative.addMany", combatants: four });
+    expect(
+      run(added, {
+        type: "initiative.move",
+        combatantId: "ogre",
+        index: Number.NaN,
+      }),
+    ).toBe(added);
+  });
+
+  test("a hidden combatant's turn from acting now is not told to the players", () => {
+    // Without a token and without released initiative visibility, a combatant stays hidden.
+    const fighting = run(
+      state,
+      { type: "initiative.addMany", combatants: four },
+      { type: "initiative.start", bounds },
+      { type: "initiative.delay", combatantId: "lair" },
+    );
+    const acted = ok(
+      apply(fighting, { type: "initiative.actNow", combatantId: "lair" }, ctx),
+    );
+    expect(projectEvents(acted.events, acted.state, { kind: "table" })).toEqual(
+      [],
+    );
   });
 });
