@@ -924,6 +924,7 @@ export function OpenScenePanel({
         <InitiativePanel
           initiative={scene.initiative}
           canAddSelected={toAdd.length > 0}
+          canStart={map !== null && mapSize !== null}
           busy={busy}
           onAddSelected={addSelectedToInitiative}
           onStart={() => {

@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 export function InitiativePanel({
   initiative,
   canAddSelected,
+  canStart,
   busy,
   onAddSelected,
   onStart,
@@ -31,6 +32,8 @@ export function InitiativePanel({
   readonly initiative: InitiativeState | null;
   /** Selected tokens that are not in the initiative yet. */
   readonly canAddSelected: boolean;
+  /** Whether combat can start: the map's cells are known. */
+  readonly canStart: boolean;
   readonly busy: boolean;
   readonly onAddSelected: () => void;
   /** Starts the initiative and combat (the scene knows the map's cells). */
@@ -71,7 +74,7 @@ export function InitiativePanel({
           <IconButton
             icon={<Play />}
             label={t("initiative.start")}
-            disabled={busy || order.length === 0}
+            disabled={busy || order.length === 0 || !canStart}
             onClick={onStart}
           />
         )}

@@ -504,31 +504,18 @@ function applyChange(state: SessionState, command: Command): Change {
       if (!combatant) return "unknownCombatant";
       if (combatant.initiative === command.initiative)
         return { state, events: [] };
-      // Taken out and put back in by the ranking rule; its markers and the turn stay.
-      const without = withInitiative(state, {
-        ...initiative,
-        order: initiative.order.filter((id) => id !== combatant.id),
-        combatants: initiative.combatants.filter(
-          (each) => each.id !== combatant.id,
-        ),
-      });
-      const placed = addCombatant(without, {
-        ...combatant,
-        initiative: command.initiative,
-      });
-      if (typeof placed === "string") return placed;
-      const placedInitiative = placed.state.scene.initiative;
-      if (!placedInitiative) return "noInitiative";
+      // Placed anew by the ranking rule; its token (even one removed meanwhile), markers, the
+      // turn and the round stay.
+      const changed = { ...combatant, initiative: command.initiative };
+      const others = initiative.order.filter((id) => id !== combatant.id);
+      const at = rankedIndex(others, initiative.combatants, changed);
       return {
-        state: withInitiative(placed.state, {
-          ...placedInitiative,
-          combatants: placedInitiative.combatants.map((each) =>
-            each.id === combatant.id
-              ? { ...combatant, initiative: command.initiative }
-              : each,
+        state: withInitiative(state, {
+          ...initiative,
+          order: [...others.slice(0, at), combatant.id, ...others.slice(at)],
+          combatants: initiative.combatants.map((each) =>
+            each.id === combatant.id ? changed : each,
           ),
-          activeCombatantId: initiative.activeCombatantId,
-          round: initiative.round,
         }),
         events: [{ type: "initiative.changed" }],
       };
@@ -750,6 +737,24 @@ function withInitiative(
   return withScene(state, { initiative });
 }
 
+/**
+ * Where `combatant` goes in `order`: behind the last one that does not rank below it (T-111:
+ * initiative, then bonus, then players first), so an order changed by hand stays as it is.
+ */
+function rankedIndex(
+  order: readonly string[],
+  combatants: readonly Combatant[],
+  combatant: Combatant,
+): number {
+  const byId = new Map(combatants.map((entry) => [entry.id, entry]));
+  let at = 0;
+  order.forEach((id, index) => {
+    const other = byId.get(id);
+    if (other && !goesBefore(combatant, other)) at = index + 1;
+  });
+  return at;
+}
+
 function addCombatant(state: SessionState, entering: Combatant): Change {
   // A new combatant has not delayed or readied anything yet (T-111a).
   const combatant: Combatant = { ...entering };
@@ -765,14 +770,7 @@ function addCombatant(state: SessionState, entering: Combatant): Change {
     return "unknownToken";
   }
   const combatants = [...initiative.combatants, combatant];
-  const byId = new Map(combatants.map((entry) => [entry.id, entry]));
-  // Insert behind the last one that does not rank below it (T-111: initiative, then bonus,
-  // then players first), so an order changed by hand stays as it is.
-  let at = 0;
-  initiative.order.forEach((id, index) => {
-    const other = byId.get(id);
-    if (other && !goesBefore(combatant, other)) at = index + 1;
-  });
+  const at = rankedIndex(initiative.order, combatants, combatant);
   const order = [
     ...initiative.order.slice(0, at),
     combatant.id,

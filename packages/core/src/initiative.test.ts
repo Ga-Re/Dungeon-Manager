@@ -357,4 +357,49 @@ describe("initiative commands", () => {
       ),
     ).toEqual({ ok: false, reason: "invalidAmount" });
   });
+
+  test("setValue keeps a combatant whose token was removed, the active turn and delay", () => {
+    const withToken = fighter("guard", 9, { tokenId: "token-goblin" });
+    let current = run(
+      state,
+      { type: "initiative.addMany", combatants: [...four, withToken] },
+      { type: "initiative.start", bounds },
+      { type: "token.remove", tokenIds: ["token-goblin"] },
+    );
+    current = run(current, {
+      type: "initiative.setValue",
+      combatantId: "guard",
+      initiative: 30,
+    });
+    expect(order(current)?.[0]).toBe("guard");
+    // The active one moves, the turn stays on it.
+    current = run(current, {
+      type: "initiative.setValue",
+      combatantId: "lair",
+      initiative: 1,
+    });
+    expect(active(current)).toBe("lair");
+    expect(order(current)?.at(-1)).toBe("lair");
+    // A delayed one stays delayed.
+    current = run(
+      current,
+      { type: "initiative.delay", combatantId: "lair" },
+      { type: "initiative.setValue", combatantId: "lair", initiative: 5 },
+    );
+    expect(combatant(current, "lair")?.delayed).toBe(true);
+    expect(
+      apply(
+        current,
+        { type: "initiative.setValue", combatantId: "nobody", initiative: 3 },
+        ctx,
+      ),
+    ).toEqual({ ok: false, reason: "unknownCombatant" });
+    expect(
+      apply(
+        state,
+        { type: "initiative.setValue", combatantId: "lair", initiative: 3 },
+        ctx,
+      ),
+    ).toEqual({ ok: false, reason: "noInitiative" });
+  });
 });
