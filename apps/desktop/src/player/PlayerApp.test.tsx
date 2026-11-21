@@ -221,13 +221,56 @@ describe("PlayerApp", () => {
     };
     feed.send({ v: 1, scene, rotation: 0 });
     await waitFor(() => {
-      expect(maps.view.setTokens).toHaveBeenLastCalledWith([
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([
         { id: "t1", name: "Aria", x: 100, y: 0, width: 100, height: 100 },
       ]);
     });
     feed.send({ v: 1, scene: null, rotation: 0 });
     await waitFor(() => {
-      expect(maps.view.setTokens).toHaveBeenLastCalledWith([]);
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([]);
+    });
+  });
+
+  test("tokens glide on the shown scene, but appear at once in a new scene or on a new grid (T-233b)", async () => {
+    const { maps, feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    const at = (col: number) => ({
+      ...sceneWith("library/maps/a.png"),
+      tokens: [
+        {
+          id: "t1",
+          size: "medium" as const,
+          position: { col, row: 0 },
+          levelId: "ground",
+        },
+      ],
+    });
+    const glide = () => maps.view.setTokens.mock.lastCall?.[1]?.glide;
+    feed.send({ v: 1, scene: at(1), rotation: 0 });
+    await waitFor(() => {
+      expect(glide()).toBe(0);
+    });
+    feed.send({ v: 1, scene: at(2), rotation: 0 });
+    await waitFor(() => {
+      expect(glide()).toBe(250);
+    });
+    const regridded = at(3);
+    if (!regridded.map) throw new Error("map expected");
+    feed.send({
+      v: 1,
+      scene: {
+        ...regridded,
+        map: {
+          ...regridded.map,
+          grid: { ...regridded.map.grid, cellSizePx: 90 },
+        },
+      },
+      rotation: 0,
+    });
+    await waitFor(() => {
+      expect(glide()).toBe(0);
     });
   });
 

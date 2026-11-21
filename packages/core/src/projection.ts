@@ -264,6 +264,15 @@ function ownedBy(token: Token | undefined, viewer: Viewer): boolean {
  * Never on an unreleased level (its id alone would give the level away); else visible unless
  * hidden or standing outside the revealed fog of its level; own tokens always show.
  */
+/**
+ * Whether the table (the TV) shows `token` now (T-233b): released level, not hidden, centred in
+ * revealed fog – the same rule as `projectForViewer`.
+ */
+export function seenByTable(state: SessionState, token: Token): boolean {
+  const { released } = tableLevels(state.scene, state.map);
+  return isTokenVisible(state, token, { kind: "table" }, released);
+}
+
 function isTokenVisible(
   state: SessionState,
   token: Token,

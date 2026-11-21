@@ -268,6 +268,12 @@ export const de = {
       "Ausschnitt des TVs – am Rand ziehen oder mit den Pfeiltasten verschieben",
     tvFrameRole: "verschiebbarer Rahmen",
   },
+  combat: {
+    group: "Kampf",
+    toggle: "Kampf",
+    noRoom:
+      "Nicht jedes Token findet ein freies Feld: der Kampf beginnt nicht.",
+  },
   token: {
     group: "Token",
     new: "Token anlegen …",

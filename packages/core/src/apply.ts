@@ -10,7 +10,7 @@ import type {
 import { gridFootprint, snapToCells } from "./footprint.js";
 import type { Command, DomainEvent, RejectionReason } from "./commands.js";
 import { EMPTY_LEVEL_FOG, hideArea, revealArea } from "./fog.js";
-import { tableLevels } from "./projection.js";
+import { seenByTable, tableLevels } from "./projection.js";
 import type { ResolvedMap } from "./map.js";
 import type { Ctx, SessionState } from "./state.js";
 
@@ -189,21 +189,33 @@ function applyChange(state: SessionState, command: Command): Change {
       };
     }
     case "combat.start": {
-      // Level by level: tokens on different levels never share space.
+      // Level by level: tokens on different levels never share space. Tokens the table sees
+      // first, among themselves: one it does not see (hidden, or in fog) never pushes a seen one
+      // aside, which would give it away (DM decision, 2026-11-21); the others fit around them.
       const cells = new Map<string, TokenPosition>();
+      const placing = (tokens: readonly Token[]) =>
+        tokens.map((each) => ({
+          id: each.id,
+          position: each.position,
+          footprint: gridFootprint(each.size),
+        }));
       for (const levelId of new Set(scene.tokens.map((each) => each.levelId))) {
-        const snapped = snapToCells(
-          scene.tokens
-            .filter((each) => each.levelId === levelId)
-            .map((each) => ({
-              id: each.id,
-              position: each.position,
-              footprint: gridFootprint(each.size),
-            })),
+        const onLevel = scene.tokens.filter((each) => each.levelId === levelId);
+        const hidden = (each: Token) => !seenByTable(state, each);
+        const shown = placing(onLevel.filter((each) => !hidden(each)));
+        const visible = snapToCells(shown, command.bounds);
+        if (!visible) return "noFreeCell";
+        const standing = shown.flatMap((each) => {
+          const cell = visible.get(each.id);
+          return cell ? [{ position: cell, footprint: each.footprint }] : [];
+        });
+        const rest = snapToCells(
+          placing(onLevel.filter(hidden)),
           command.bounds,
+          standing,
         );
-        if (!snapped) return "noFreeCell";
-        for (const [id, cell] of snapped) cells.set(id, cell);
+        if (!rest) return "noFreeCell";
+        for (const [id, cell] of [...visible, ...rest]) cells.set(id, cell);
       }
       const moves = scene.tokens.flatMap((each) => {
         const to = cells.get(each.id);

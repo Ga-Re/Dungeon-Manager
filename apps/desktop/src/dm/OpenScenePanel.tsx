@@ -30,7 +30,7 @@ import {
   withMap,
 } from "@dungeon-manager/storage";
 import { IconButton, Popover, RibbonGroup } from "@dungeon-manager/ui";
-import { EyeOff, ImagePlus, Trash2, Tv, UserPlus } from "lucide-react";
+import { EyeOff, ImagePlus, Swords, Trash2, Tv, UserPlus } from "lucide-react";
 import {
   useContext,
   useEffect,
@@ -737,6 +737,29 @@ export function OpenScenePanel({
               editLevels((data) => renameLevel(data, levelId, name))
             }
           />
+        )}
+        {/* Combat (T-233b): in play only; starting it snaps every token onto a free cell. */}
+        {inGame && map && mapSize && (
+          <RibbonGroup caption={t("combat.group")}>
+            <IconButton
+              showLabel
+              icon={<Swords />}
+              label={t("combat.toggle")}
+              pressed={scene.combat === true}
+              disabled={busy}
+              onClick={() => {
+                if (scene.combat === true) {
+                  session.run({ type: "combat.end" });
+                  return;
+                }
+                const started = session.run({
+                  type: "combat.start",
+                  bounds: gridBounds(mapSize, map.grid),
+                });
+                if (!started) setError(t("combat.noRoom"));
+              }}
+            />
+          </RibbonGroup>
         )}
         {map && mapSize && levelId !== undefined && (
           <RibbonGroup caption={t("token.group")}>

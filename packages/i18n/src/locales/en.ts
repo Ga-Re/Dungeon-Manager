@@ -266,6 +266,11 @@ export const en: Messages = {
     tvFrame: "The TV's view – drag its border or move it with the arrow keys",
     tvFrameRole: "movable frame",
   },
+  combat: {
+    group: "Combat",
+    toggle: "Combat",
+    noRoom: "Not every token finds a free cell: the combat does not start.",
+  },
   token: {
     group: "Token",
     new: "New token …",

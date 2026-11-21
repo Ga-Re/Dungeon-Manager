@@ -287,12 +287,48 @@ async function spreadScenario(
   document.body.dataset["spreadEnd"] = red(fogged) === 0 ? "fogged" : "open";
 }
 
+/**
+ * "tokens-glide" (T-233b): Aria glides from the left room towards the pool, frozen half-way;
+ * the Goblin, which did not move, stays put.
+ */
+async function glideScenario(canvas: HTMLCanvasElement) {
+  let time = 0;
+  const renderer = await createRenderer({
+    canvas,
+    size: view,
+    resolution: 1,
+    now: () => time,
+  });
+  const goblin = {
+    id: "g12",
+    name: "Goblin 12",
+    x: 300,
+    y: 200,
+    width: 100,
+    height: 100,
+  };
+  const aria = { id: "aria", name: "Aria", width: 100, height: 100 };
+  renderer.setMap(drawFixtureMap());
+  renderer.setCamera(cameraFor("fit"));
+  renderer.setTokens([{ ...aria, x: 200, y: 200 }, goblin]);
+  await renderer.drawn();
+  renderer.setTokens([{ ...aria, x: 1100, y: 600 }, goblin], { glide: 1000 });
+  // Eased, 206 of 1000 ms is half-way (1 − 0.794³ ≈ 0.5).
+  time = 206;
+  await renderer.drawn();
+}
+
 async function main() {
   const canvas = document.querySelector("canvas");
   if (!canvas) throw new Error("canvas missing");
   const scenario = location.hash.slice(1);
   if (scenario in SPREADS) {
     await spreadScenario(scenario as keyof typeof SPREADS, canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
+  if (scenario === "tokens-glide") {
+    await glideScenario(canvas);
     document.body.dataset["ready"] = "true";
     return;
   }

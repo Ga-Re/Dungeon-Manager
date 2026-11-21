@@ -145,9 +145,10 @@ export interface Renderer {
   /**
    * Draws tokens (T-107a) over the map and grid, under the fog: a token in fog stays covered
    * on the TV. Replaces the tokens drawn before; a token that only moved keeps what was built
-   * for it (T-107b), so dragging one rebuilds nothing.
+   * for it (T-107b), so dragging one rebuilds nothing. With `glide` (milliseconds) moved tokens
+   * glide to their new place instead of jumping (T-233b: combat's snap).
    */
-  setTokens(tokens: readonly TokenShape[]): void;
+  setTokens(tokens: readonly TokenShape[], options?: { glide?: number }): void;
   setCamera(camera: Camera): void;
   resize(size: Size): void;
   /** Resolves after the next draw has been submitted (for screenshots and tests). */
@@ -195,6 +196,28 @@ export async function createRenderer(
     string,
     { look: string; view: Container; label: Text | null }
   >();
+  // Tokens gliding to their new place, by id: from where they were shown, to where they go.
+  const glides = new Map<
+    string,
+    {
+      readonly view: Container;
+      readonly from: { x: number; y: number };
+      readonly to: { x: number; y: number };
+      readonly start: number;
+      readonly duration: number;
+    }
+  >();
+  const stepGlides = () => {
+    for (const [id, glide] of glides) {
+      const progress = fadeProgress(glide.start, glide.duration, now());
+      const mix = easeOut(progress);
+      glide.view.position.set(
+        glide.from.x + (glide.to.x - glide.from.x) * mix,
+        glide.from.y + (glide.to.y - glide.from.y) * mix,
+      );
+      if (progress >= 1) glides.delete(id);
+    }
+  };
   // Labels are rasterised for the current zoom, so initials stay sharp when the DM zooms in.
   let tokenLabelResolution = labelResolution(1, options.resolution ?? 1);
   const buildToken = (token: TokenShape) => {
@@ -232,10 +255,11 @@ export async function createRenderer(
     view.alpha = token.hidden === true ? TOKEN_HIDDEN_ALPHA : 1;
     return { view, label };
   };
-  const drawTokens = (tokens: readonly TokenShape[]) => {
+  const drawTokens = (tokens: readonly TokenShape[], glide = 0) => {
     const wanted = new Set(tokens.map((token) => token.id));
     for (const [id, built] of builtTokens)
       if (!wanted.has(id)) {
+        glides.delete(id);
         tokenLayer.removeChild(built.view);
         built.view.destroy({ children: true, context: true, style: true });
         builtTokens.delete(id);
@@ -249,6 +273,10 @@ export async function createRenderer(
         token.hidden === true,
       ]);
       let built = builtTokens.get(token.id);
+      // Where it is shown now, mid-glide too: a new glide starts from there.
+      const shownAt = built
+        ? { x: built.view.position.x, y: built.view.position.y }
+        : null;
       if (built?.look !== look) {
         if (built) {
           tokenLayer.removeChild(built.view);
@@ -258,10 +286,32 @@ export async function createRenderer(
         builtTokens.set(token.id, built);
         tokenLayer.addChild(built.view);
       }
-      built.view.position.set(
-        token.x + token.width / 2,
-        token.y + token.height / 2,
-      );
+      const to = {
+        x: token.x + token.width / 2,
+        y: token.y + token.height / 2,
+      };
+      const moves = shownAt && (shownAt.x !== to.x || shownAt.y !== to.y);
+      const running = glides.get(token.id);
+      // Already on its way there (another message during the glide): it goes on as it was.
+      if (
+        running?.view === built.view &&
+        running.to.x === to.x &&
+        running.to.y === to.y
+      )
+        return;
+      if (glide > 0 && moves) {
+        glides.set(token.id, {
+          view: built.view,
+          from: shownAt,
+          to,
+          start: now(),
+          duration: glide,
+        });
+        built.view.position.set(shownAt.x, shownAt.y);
+      } else {
+        glides.delete(token.id);
+        built.view.position.set(to.x, to.y);
+      }
       // The order given is the drawing order (later tokens on top).
       tokenLayer.setChildIndex(built.view, index);
     });
@@ -450,6 +500,7 @@ export async function createRenderer(
       frame = null;
       try {
         stepFade();
+        stepGlides();
         applyCamera();
         app.render();
         gate.drawn();
@@ -466,7 +517,7 @@ export async function createRenderer(
         resolve();
       });
       // A fade draws every frame until it is over; otherwise drawing stays on demand.
-      if (fade) requestDraw();
+      if (fade || glides.size > 0) requestDraw();
     });
   };
 
@@ -539,8 +590,8 @@ export async function createRenderer(
       gate.fogSet();
       requestDraw();
     },
-    setTokens(next) {
-      drawTokens(next);
+    setTokens(next, tokenOptions) {
+      drawTokens(next, tokenOptions?.glide ?? 0);
       requestDraw();
     },
     setGrid(next) {

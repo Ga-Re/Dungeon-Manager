@@ -11,7 +11,7 @@ import {
   undo,
   type ApplyResult,
 } from "./index.js";
-import { ctx, state } from "./test-data.test-data.js";
+import { ctx, square, state } from "./test-data.test-data.js";
 
 // Combat (T-233): starting one snaps every token to a free cell in one step.
 
@@ -265,5 +265,111 @@ describe("snapToCells (property)", () => {
         },
       ),
     );
+  });
+});
+
+/** `start` with the whole ground floor revealed, or only `area` of it (map pixels, 100 per cell). */
+const revealed = (
+  start: ReturnType<typeof withTokens>,
+  area = square(0, 0, 2000),
+) => ({
+  ...start,
+  scene: {
+    ...start.scene,
+    fog: { levels: { ground: { revealed: [area], remembered: [] } } },
+  },
+});
+
+describe("hidden tokens in combat's snap (T-233b)", () => {
+  const hiddenToken = (id: string, col: number, row: number): Token => ({
+    ...token(id, col, row),
+    visibility: { token: "hidden" },
+  });
+
+  test("never push a visible token aside: it keeps its cell, the hidden one moves", () => {
+    // The hidden one stands exactly on the cell, the visible one only near it: by distance the
+    // hidden one would win.
+    const result = ok(
+      apply(
+        revealed(
+          withTokens(hiddenToken("lurker", 3, 3), token("hero", 3.2, 3)),
+        ),
+        { type: "combat.start", bounds },
+        ctx,
+      ),
+    );
+    const at = new Map(
+      result.state.scene.tokens.map((each) => [each.id, each.position]),
+    );
+    expect(at.get("hero")).toEqual({ col: 3, row: 3 });
+    expect(at.get("lurker")).not.toEqual({ col: 3, row: 3 });
+  });
+
+  test("hidden by the campaign's default counts as hidden", () => {
+    const start = revealed(
+      withTokens(token("lurker", 3, 3), {
+        ...token("hero", 3.2, 3),
+        visibility: { token: "visible" },
+      }),
+    );
+    const result = ok(
+      apply(
+        {
+          ...start,
+          campaign: {
+            ...start.campaign,
+            visibilityDefaults: { token: "hidden" },
+          },
+        },
+        { type: "combat.start", bounds },
+        ctx,
+      ),
+    );
+    expect(result.state.scene.tokens[1]?.position).toEqual({ col: 3, row: 3 });
+  });
+});
+
+describe("tokens in fog in combat's snap (T-233b review)", () => {
+  test("a token in fog never pushes a token the players see aside", () => {
+    // Only the cells up to col 3 are revealed; the monster at (4, 3) stands in fog, exactly on
+    // its cell, the hero near the same cell but centred in revealed fog.
+    const result = ok(
+      apply(
+        revealed(
+          withTokens(token("monster", 4, 3), token("hero", 3.6, 3)),
+          square(0, 0, 440),
+        ),
+        { type: "combat.start", bounds },
+        ctx,
+      ),
+    );
+    const at = new Map(
+      result.state.scene.tokens.map((each) => [each.id, each.position]),
+    );
+    expect(at.get("hero")).toEqual({ col: 4, row: 3 });
+    expect(at.get("monster")).not.toEqual({ col: 4, row: 3 });
+  });
+});
+
+describe("free tokens as occupants (T-233b)", () => {
+  test("count as standing on their nearest cell", () => {
+    const cell = snapToCells(
+      [
+        {
+          id: "new",
+          position: { col: 2, row: 2 },
+          footprint: gridFootprint("medium"),
+        },
+      ],
+      bounds,
+      [
+        {
+          position: { col: 2.3, row: 1.6 },
+          footprint: gridFootprint("medium"),
+        },
+      ],
+    )?.get("new");
+    // (2, 2) is taken by the free token's nearest cell; the first free one in the ring above.
+    expect(cell).toEqual({ col: 2, row: 1 });
   });
 });

@@ -2,6 +2,7 @@ import type { PlayerViewMessage } from "@dungeon-manager/protocol";
 import {
   fitCamera,
   inchCamera,
+  TOKEN_GLIDE_MS,
   type Renderer,
   type Size,
 } from "@dungeon-manager/renderer";
@@ -143,6 +144,10 @@ export function PlayerApp({
         message.scene.id === next.scene?.id &&
         previousPath === media?.path &&
         message.scene.map?.currentLevelId === next.scene.map?.currentLevelId;
+      // A recalibrated grid moves tokens with its lines, not after them.
+      const sameGrid =
+        JSON.stringify(message?.scene?.map?.grid) ===
+        JSON.stringify(next.scene?.map?.grid);
       message = next;
       const view = renderer;
       if (!view) return;
@@ -155,6 +160,8 @@ export function PlayerApp({
         map && next.scene
           ? tokenShapes(next.scene.tokens, map.grid, map.currentLevelId)
           : [],
+        // Moves on the shown level glide (T-233b: combat's snap); a new scene appears at once.
+        { glide: sameScene && sameGrid ? TOKEN_GLIDE_MS : 0 },
       );
       // Fog first: everything not revealed on the shown level stays covered.
       applyFog(view, next, sameScene);

@@ -706,11 +706,13 @@ describe("MapView tokens (T-107b)", () => {
     // 2.4 cells right and 0.6 down (50 screen px per cell) snap to 2 and 1.
     fireEvent.pointerMove(area(), { clientX: 245, clientY: 155, pointerId: 1 });
     await waitFor(() => {
-      expect(view.fake.view.setTokens).toHaveBeenLastCalledWith([
+      expect(view.fake.view.setTokens.mock.lastCall?.[0]).toEqual([
         { ...goblin, x: 400, y: 300 },
         { ...ogre, x: 800, y: 300 },
       ]);
     });
+    // The preview follows the pointer at once, it never glides.
+    expect(view.fake.view.setTokens.mock.lastCall?.[1]).toEqual({ glide: 0 });
     fireEvent.pointerUp(area(), { clientX: 245, clientY: 155, pointerId: 1 });
     expect(view.onMove).toHaveBeenCalledExactlyOnceWith(["ogre", "goblin"], {
       col: 2,
@@ -794,7 +796,7 @@ describe("MapView tokens (T-107b)", () => {
     fireEvent.pointerDown(area(), { ...onGoblin, pointerId: 1 });
     fireEvent.pointerMove(area(), { clientX: 275, clientY: 125, pointerId: 1 });
     await waitFor(() => {
-      expect(view.fake.view.setTokens).toHaveBeenLastCalledWith([
+      expect(view.fake.view.setTokens.mock.lastCall?.[0]).toEqual([
         { ...goblin, x: 300 },
         ogre,
       ]);
