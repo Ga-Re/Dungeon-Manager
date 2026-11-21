@@ -418,10 +418,11 @@ importers:
         version: link:../../tooling/tsconfig
 
   packages/test-fixtures:
-    devDependencies:
+    dependencies:
       '@dungeon-manager/renderer':
         specifier: workspace:*
         version: link:../renderer
+    devDependencies:
       '@dungeon-manager/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/tsconfig

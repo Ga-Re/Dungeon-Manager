@@ -13,8 +13,8 @@ export default defineConfig(({ mode }) => {
   const e2e = mode === "e2e";
   return {
     plugins: [react(), ...(bench ? [benchResults()] : [])],
-    // The benchmark's video map is served only in bench mode, so it never ends up in an app build.
-    publicDir: bench ? "bench-assets" : false,
+    // Nothing is served from a public folder (the benchmark's video map comes from the library).
+    publicDir: false,
     // Tauri expects a fixed port and shows its own errors (tauri.conf.json → build.devUrl).
     clearScreen: false,
     server: { port: 1420, strictPort: true },

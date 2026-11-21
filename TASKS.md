@@ -338,7 +338,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Benchmark scene added to `test-fixtures`
   - [ ] ≤ 1 % missed refreshes at 4K/60 Hz on the reference notebook (DM measures with `pnpm bench`)
   - [x] Spike code removed; `pixi.js` only in `packages/renderer`
-- **Notes:** Judge video smoothness separately and investigate the hitches seen in the spike (ADR-0010). The benchmark (`pnpm bench`, README) draws the scene with the real renderer in the player window; the DM's measurement is on the list of manual checks.
+- **Notes:** Judge video smoothness separately and investigate the hitches seen in the spike (ADR-0010). The benchmark (`pnpm bench`, README) draws the scene with the real renderer in the player window; the DM's measurement is among the manual checks the agent keeps for the DM.
 
 ### T-127 Maps larger than the GPU texture limit
 
@@ -445,7 +445,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] Setting in the DM window, applied to the player view without restart
   - [ ] Screenshot test of the player view in both modes
-- **Notes:** DM requirement from T-007 (4K Samsung The Frame, should also run in Full HD). The T-007 spike measures both modes.
+- **Notes:** DM requirement from T-007 (4K Samsung The Frame, should also run in Full HD). The T-007 spike measured both modes (docs/benchmarks); `pnpm bench` (T-105d) measures the TV at its resolution.
 
 ### T-107a Tokens: create and draw
 

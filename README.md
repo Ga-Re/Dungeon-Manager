@@ -126,19 +126,13 @@ Measures whether the TV keeps 60 FPS with the benchmark scene (ARCHITECTURE §11
 - TV in System Settings → Displays: 3840 × 2160 at **60 Hz** (4K at 60 Hz needs an adapter and cable supporting HDMI 2.0 or newer; otherwise the report says "display below 60 Hz").
 - Close other heavy apps. Don't touch the windows while it runs.
 
-**1. Provide the video map (once)** – a synthetic 4K video (needs `brew install ffmpeg`):
+**1. Provide the video map (once)** – a synthetic 4K video (needs `brew install ffmpeg`), then copy it into your library as `maps/bench-4k.mp4` (the app only plays media from the library):
 
 ```bash
 pnpm --filter @dungeon-manager/desktop bench:video
 ```
 
-…or use your own animated map (stays local, never committed; use the full path, at least 30 s long):
-
-```bash
-pnpm --filter @dungeon-manager/desktop bench:video /Users/you/Maps/animated-map.mp4
-```
-
-Without a video the scene runs without its map.
+Your own animated map works too: put it in the library and start with `VITE_BENCH_VIDEO=library/maps/your-map.mp4 pnpm bench` (at least 40 s long). Without a video the scene runs without its map and the report says so.
 
 **2. Start the app in benchmark mode**, choose the TV and click **Spieleransicht öffnen**:
 
@@ -146,7 +140,7 @@ Without a video the scene runs without its map.
 pnpm bench
 ```
 
-**3. Wait about 40 seconds** (refresh rate, 5 s warm-up, 30 s measurement; `VITE_BENCH_SECONDS` changes the measurement). The verdict and the frame statistics appear on the TV and in the terminal between `===== BENCH RESULTS` and `===== END`; they are also saved in `apps/desktop/bench-results/`. Watch the TV meanwhile: does the video look smooth? The benchmark cannot judge that itself (ADR-0010).
+**3. Wait about 40 seconds** (until the TV window has settled, refresh rate, 5 s warm-up, 30 s measurement; `VITE_BENCH_SECONDS` changes the measurement). The verdict and the frame statistics appear on the TV and in the terminal between `===== BENCH RESULTS` and `===== END`; they are also saved in `apps/desktop/bench-results/`, with the GPU, the picture size and warnings (e.g. when the picture is not 4K). Watch the TV meanwhile: does the video look smooth? The benchmark cannot judge that itself (ADR-0010).
 
 ## Repository layout
 

@@ -48,8 +48,10 @@ describe("bench scene", () => {
     const later = benchCamera(BENCH_CYCLE_MS / 4, view);
     expect(later).not.toEqual(start);
     expect(later.zoom).toBeGreaterThan(start.zoom);
-    const again = benchCamera(BENCH_CYCLE_MS, view);
-    expect(again.zoom).toBeCloseTo(start.zoom);
-    expect(again.centerX).toBeCloseTo(start.centerX);
+    // No jump at the loop's seam: just before the cycle ends it is where it starts.
+    const seam = benchCamera(BENCH_CYCLE_MS - 16, view);
+    expect(seam.zoom).toBeCloseTo(start.zoom, 2);
+    expect(Math.abs(seam.centerX - start.centerX)).toBeLessThan(5);
+    expect(Math.abs(seam.centerY - start.centerY)).toBeLessThan(5);
   });
 });

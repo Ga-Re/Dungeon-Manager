@@ -13,9 +13,14 @@
         background: #000;
         cursor: none;
       }
-      /* The video map lies under the canvas (ADR-0010), the report on top. */
+      /* As in the player window: the video map (absolute, from the renderer) under the canvas
+         (absolute too, later in the stage), the report on top (ADR-0010). */
       #stage {
         position: fixed;
+        inset: 0;
+      }
+      #stage canvas {
+        position: absolute;
         inset: 0;
       }
       #report {

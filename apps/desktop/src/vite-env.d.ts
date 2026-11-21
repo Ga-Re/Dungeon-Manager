@@ -6,4 +6,6 @@ interface ImportMetaEnv {
   readonly VITE_BENCH?: string;
   /** Renderer benchmark (T-105d): seconds measured (default 30). */
   readonly VITE_BENCH_SECONDS?: string;
+  /** Renderer benchmark (T-105d): the video map's library path (default library/maps/bench-4k.mp4). */
+  readonly VITE_BENCH_VIDEO?: string;
 }
