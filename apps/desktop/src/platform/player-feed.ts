@@ -65,6 +65,8 @@ export function createPlayerFeedSender(
   onPlayerReady(publish);
   return {
     show(next) {
+      // Another scene has other coordinates: its view starts in its middle (T-106c).
+      if (next?.id !== scene?.id) viewCenter = null;
       scene = next;
       publish();
     },

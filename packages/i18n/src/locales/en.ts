@@ -263,7 +263,8 @@ export const en: Messages = {
     zoomIn: "Zoom in",
     zoomOut: "Zoom out",
     grid: "Show grid",
-    tvFrame: "The TV's view – drag it or move it with the arrow keys",
+    tvFrame: "The TV's view – drag its border or move it with the arrow keys",
+    tvFrameRole: "movable frame",
   },
   level: {
     group: "Level",

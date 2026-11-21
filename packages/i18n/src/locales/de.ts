@@ -264,7 +264,9 @@ export const de = {
     zoomIn: "Vergrößern",
     zoomOut: "Verkleinern",
     grid: "Raster anzeigen",
-    tvFrame: "Ausschnitt des TVs – ziehen oder mit den Pfeiltasten verschieben",
+    tvFrame:
+      "Ausschnitt des TVs – am Rand ziehen oder mit den Pfeiltasten verschieben",
+    tvFrameRole: "verschiebbarer Rahmen",
   },
   level: {
     group: "Ebene",

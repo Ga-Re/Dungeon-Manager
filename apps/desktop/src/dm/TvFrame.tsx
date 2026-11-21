@@ -5,7 +5,12 @@ import {
   type Point,
   type Size,
 } from "@dungeon-manager/renderer";
-import { useRef, type KeyboardEvent, type PointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -37,6 +42,23 @@ export function TvFrame({
 }) {
   const { t } = useTranslation();
   const dragging = useRef<{ start: Point; center: Point } | null>(null);
+  // One move per animation frame while dragging: each one is a message to the TV.
+  const pending = useRef<Point | null>(null);
+  const frame = useRef<number | null>(null);
+  const moveSoon = (next: Point) => {
+    pending.current = next;
+    frame.current ??= requestAnimationFrame(() => {
+      frame.current = null;
+      if (pending.current) onMove(pending.current);
+      pending.current = null;
+    });
+  };
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    [],
+  );
   const left = center.x - area.width / 2;
   const top = center.y - area.height / 2;
   const corners = [
@@ -71,7 +93,7 @@ export function TvFrame({
     if (!drag) return;
     event.stopPropagation();
     const now = screenToMap(camera, view, local(event));
-    onMove({
+    moveSoon({
       x: drag.center.x + now.x - drag.start.x,
       y: drag.center.y + now.y - drag.start.y,
     });
@@ -82,6 +104,7 @@ export function TvFrame({
     dragging.current = null;
   };
   const onKeyDown = (event: KeyboardEvent<SVGPolygonElement>) => {
+    if (!movable) return;
     const step: Record<string, Point> = {
       ArrowLeft: { x: -cellSizePx, y: 0 },
       ArrowRight: { x: cellSizePx, y: 0 },
@@ -98,9 +121,13 @@ export function TvFrame({
 
   return (
     <svg className="map-view-tv-frame" data-movable={movable}>
+      <polygon className="map-view-tv-frame-line" points={points} />
+      {/* The hit area: only the border, so dragging inside still pans the DM's own view. */}
       <polygon
+        className="map-view-tv-frame-handle"
         points={points}
         role="button"
+        aria-roledescription={t("mapView.tvFrameRole")}
         tabIndex={movable ? 0 : -1}
         aria-label={t("mapView.tvFrame")}
         aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"

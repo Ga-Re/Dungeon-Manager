@@ -394,8 +394,8 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Status:** done · **Depends on:** T-106a · **Refs:** SPEC 2.2
 - At true size the map is usually larger than the TV: the DM window shows the TV's view as a frame on the map; the DM drags it where play happens (DM decision, 2026-11-20). The zoom stays at the calibrated size.
 - **Acceptance criteria**
-  - [x] Dragging the frame moves the TV's view; rotation and calibration are kept (component tests; the E2E harness has no calibrated TV)
-- **Notes:** The frame shows on the map of the scene on the TV while a calibrated player view runs (`TvViewContext` from the DM app: the TV's size, pixels per cell, rotation; `viewArea`). It moves by dragging or by one cell per arrow key, with the pan tool only (fog tools draw there). The player-view message carries `viewCenter` in map pixels; the TV centres on the map until the DM moves the view. The centre is per open scene and not stored.
+  - [x] Dragging the frame moves the TV's view; rotation and calibration are kept (component + E2E test)
+- **Notes:** The frame shows on the map of the scene on the TV while a calibrated player view runs (`TvViewContext` from the DM app: the TV's size, pixels per cell, rotation; `viewArea`). It moves by dragging its border (the inside still pans the DM's own view) or by one cell per arrow key, with the pan tool only (fog tools draw there); its centre stays on the map and starts in the middle again for a new map or another scene on the TV. The player-view message carries `viewCenter` in map pixels; the TV centres on the map until the DM moves the view. The centre is per open scene and not stored.
 
 ### T-116 Player view render resolution setting
 

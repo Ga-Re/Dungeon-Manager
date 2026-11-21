@@ -183,6 +183,22 @@ export function OpenScenePanel({
   const tvView = useContext(TvViewContext);
   const feed = useContext(PlayerFeedContext);
   const [tvCenter, setTvCenter] = useState<Point | null>(null);
+  // A new map has its own coordinates: the TV's view starts in its middle again.
+  const tvMapPath = scene.map?.asset.path;
+  useEffect(() => {
+    setTvCenter(null);
+  }, [tvMapPath]);
+  /** The view's centre kept on the map, so the TV never shows only what lies beyond it. */
+  const moveTvView = (next: Point) => {
+    setTvCenter(
+      mapSize
+        ? {
+            x: Math.min(Math.max(next.x, 0), mapSize.width),
+            y: Math.min(Math.max(next.y, 0), mapSize.height),
+          }
+        : next,
+    );
+  };
   const tvOnThisMap = sceneOnTv && tvView !== null;
   useEffect(() => {
     if (tvOnThisMap) feed?.setViewCenter(tvCenter);
@@ -633,7 +649,7 @@ export function OpenScenePanel({
                         x: mapSize.width / 2,
                         y: mapSize.height / 2,
                       },
-                      onMove: setTvCenter,
+                      onMove: moveTvView,
                     }
                   : null
               }

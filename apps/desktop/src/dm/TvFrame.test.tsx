@@ -1,6 +1,6 @@
 // The TV's view as a frame on the DM's map (T-106c): dragged or moved by keys, the TV follows.
 import { createI18n } from "@dungeon-manager/ui";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { describe, expect, test, vi } from "vitest";
 import { TvFrame } from "./TvFrame.js";
@@ -46,7 +46,7 @@ describe("the TV's frame on the DM's map", () => {
     expect(onMove).toHaveBeenCalledTimes(2);
   });
 
-  test("follows a drag, converted from screen to map pixels", () => {
+  test("follows a drag, converted from screen to map pixels, once per frame", async () => {
     const { frame, onMove } = renderFrame();
     frame.setPointerCapture = vi.fn();
     fireEvent.pointerDown(frame, {
@@ -56,15 +56,23 @@ describe("the TV's frame on the DM's map", () => {
       clientY: 300,
     });
     fireEvent.pointerMove(frame, { pointerId: 1, clientX: 450, clientY: 320 });
-    // 50 × 20 screen pixels at zoom 0.5: 100 × 40 map pixels.
-    expect(onMove).toHaveBeenLastCalledWith({ x: 600, y: 540 });
+    fireEvent.pointerMove(frame, { pointerId: 1, clientX: 450, clientY: 320 });
+    // Two moves in one frame: one message to the TV. 50 × 20 screen pixels at zoom 0.5 are
+    // 100 × 40 map pixels.
+    await waitFor(() => {
+      expect(onMove).toHaveBeenLastCalledWith({ x: 600, y: 540 });
+    });
+    expect(onMove).toHaveBeenCalledTimes(1);
     fireEvent.pointerUp(frame, { pointerId: 1 });
     fireEvent.pointerMove(frame, { pointerId: 1, clientX: 500, clientY: 400 });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
     expect(onMove).toHaveBeenCalledTimes(1);
   });
 
   test("is shown but not reachable while a fog tool draws", () => {
-    const { frame } = renderFrame(false);
+    const { frame, onMove } = renderFrame(false);
+    fireEvent.keyDown(frame, { key: "ArrowRight" });
+    expect(onMove).not.toHaveBeenCalled();
     expect(frame.getAttribute("tabindex")).toBe("-1");
     expect(frame.closest("svg")?.getAttribute("data-movable")).toBe("false");
   });

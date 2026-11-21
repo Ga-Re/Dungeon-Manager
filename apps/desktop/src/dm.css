@@ -65,19 +65,26 @@ label {
   pointer-events: none;
 }
 
-.map-view-tv-frame polygon {
-  fill: transparent;
+.map-view-tv-frame-line {
+  fill: none;
   stroke: var(--dm-accent);
   stroke-width: 2;
   stroke-dasharray: 8 4;
 }
 
-.map-view-tv-frame[data-movable="true"] polygon {
-  pointer-events: all;
+/* A wide transparent border to grab; the inside is left to the map. */
+.map-view-tv-frame-handle {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+}
+
+.map-view-tv-frame[data-movable="true"] .map-view-tv-frame-handle {
+  pointer-events: stroke;
   cursor: move;
 }
 
-.map-view-tv-frame polygon:focus-visible {
+.map-view-tv-frame-handle:focus-visible {
   outline: none;
   stroke: var(--dm-focus);
   stroke-width: 3;
