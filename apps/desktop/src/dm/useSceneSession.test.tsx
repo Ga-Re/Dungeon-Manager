@@ -295,7 +295,7 @@ describe("editing the fog", () => {
     await create("Goblin 1", "medium");
     // The 1000 × 500 map has 10 × 5 cells of 100 px: the middle cell is (4, 2).
     await waitFor(() => {
-      expect(maps.view.setTokens).toHaveBeenLastCalledWith([
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([
         {
           id: "new-1",
           name: "Goblin 1",
@@ -420,7 +420,7 @@ describe("editing the fog", () => {
     await waitFor(() => {
       expect(saved()).toEqual([]);
     });
-    expect(maps.view.setTokens).toHaveBeenLastCalledWith([]);
+    expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([]);
   });
 
   test("a campaign that hides tokens by default: they show faded, and showing one sets it visible (T-107b)", async () => {
@@ -462,6 +462,71 @@ describe("editing the fog", () => {
         '"visible"',
       );
     });
+  });
+
+  test("the combat switch snaps tokens onto cells, gliding, and one undo brings them back (T-233b)", async () => {
+    const free: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "goblin",
+          name: "Goblin",
+          size: "medium",
+          position: { col: 3.4, row: 2.3 },
+          levelId: "ground",
+        },
+      ],
+    };
+    const { tv, maps } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      free,
+    );
+    const combat = await enabled("Kampf");
+    fireEvent.click(combat);
+    await waitFor(() => {
+      expect(maps.view.setTokens.mock.lastCall?.[0][0]).toMatchObject({
+        x: 300,
+        y: 200,
+      });
+    });
+    // The snap glides into place.
+    expect(maps.view.setTokens.mock.lastCall?.[1]).toEqual({ glide: 250 });
+    expect(combat.getAttribute("aria-pressed")).toBe("true");
+    expect(tv.shown.at(-1)?.combat).toBe(true);
+
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    await waitFor(() => {
+      const back = maps.view.setTokens.mock.lastCall?.[0][0];
+      expect(back?.x).toBeCloseTo(340);
+      expect(back?.y).toBeCloseTo(230);
+    });
+    expect(tv.shown.at(-1)?.combat).toBeUndefined();
+  });
+
+  test("a combat that finds no room for every token does not start (T-233b)", async () => {
+    // The 1000 × 500 map has 10 × 5 cells: 51 tokens cannot all have one.
+    const crowded: Scene = {
+      ...mapped,
+      tokens: Array.from({ length: 51 }, (_, index) => ({
+        id: `goblin-${String(index)}`,
+        name: "Goblin",
+        size: "medium" as const,
+        position: { col: 0, row: 0 },
+        levelId: "ground",
+      })),
+    };
+    renderScene({ "campaigns/mine/campaign.json": campaign }, crowded);
+    fireEvent.click(await enabled("Kampf"));
+    expect(
+      await screen.findByText(
+        "Nicht jedes Token findet ein freies Feld: der Kampf beginnt nicht.",
+      ),
+    ).toBeDefined();
+    expect(
+      screen
+        .getByRole("button", { name: "Kampf" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
   });
 
   test("undo keys are left to text fields", async () => {

@@ -10,6 +10,7 @@ import {
   type Renderer,
   type Size,
   type TokenShape,
+  TOKEN_GLIDE_MS,
 } from "@dungeon-manager/renderer";
 import {
   createContext,
@@ -329,9 +330,13 @@ export function MapView({
 
   const tokensNow = useRef(shownTokens);
   tokensNow.current = shownTokens;
+  // Moves glide (T-233b: combat's snap, undo); a drag's preview follows the pointer at once.
+  const dragging = dragShift !== null;
   useEffect(() => {
-    renderer.current?.setTokens(shownTokens);
-  }, [shownTokens]);
+    renderer.current?.setTokens(shownTokens, {
+      glide: dragging ? 0 : TOKEN_GLIDE_MS,
+    });
+  }, [shownTokens, dragging]);
 
   const gridCell = grid?.cellSizePx;
   const gridX = grid?.offsetXPx;

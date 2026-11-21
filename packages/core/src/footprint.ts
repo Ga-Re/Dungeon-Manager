@@ -63,11 +63,20 @@ export interface Occupant {
   readonly footprint: GridFootprint;
 }
 
-/** How much of each cell `others` take (T-233's load: a Tiny token a quarter, others all). */
+/**
+ * How much of each cell `others` take (T-233's load: a Tiny token a quarter, others all). A
+ * token placed freely counts as standing on its nearest cell (T-233b).
+ */
 function cellLoads(others: readonly Occupant[]): Map<string, number> {
   const load = new Map<string, number>();
   for (const other of others)
-    for (const cell of occupiedCells(other.position, other.footprint))
+    for (const cell of occupiedCells(
+      {
+        col: Math.round(other.position.col),
+        row: Math.round(other.position.row),
+      },
+      other.footprint,
+    ))
       load.set(key(cell), (load.get(key(cell)) ?? 0) + other.footprint.share);
   return load;
 }
@@ -232,7 +241,8 @@ export function clampGroupShift(
 /**
  * Combat's snap (T-233): a whole cell for each token inside `bounds`, no two on one cell (up to
  * four Tiny ones share one), large footprints whole. The token nearest to a cell goes first and
- * takes the free cell nearest to where it stands; `null` when one finds no room.
+ * takes the free cell nearest to where it stands; `null` when one finds no room. `occupied`:
+ * tokens already standing, which keep their place.
  */
 export function snapToCells<T extends string>(
   tokens: readonly {
@@ -241,6 +251,7 @@ export function snapToCells<T extends string>(
     readonly footprint: GridFootprint;
   }[],
   bounds: Required<CellBounds>,
+  occupied: readonly Occupant[] = [],
 ): Map<T, GridCell> | null {
   const offCell = (position: TokenPosition) =>
     Math.hypot(
@@ -251,7 +262,7 @@ export function snapToCells<T extends string>(
   const order = [...tokens].sort(
     (a, b) => offCell(a.position) - offCell(b.position),
   );
-  const placed: Occupant[] = [];
+  const placed: Occupant[] = [...occupied];
   const cells = new Map<T, GridCell>();
   for (const token of order) {
     const cell = nearestFreeCell(

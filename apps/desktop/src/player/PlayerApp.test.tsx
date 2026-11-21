@@ -221,13 +221,13 @@ describe("PlayerApp", () => {
     };
     feed.send({ v: 1, scene, rotation: 0 });
     await waitFor(() => {
-      expect(maps.view.setTokens).toHaveBeenLastCalledWith([
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([
         { id: "t1", name: "Aria", x: 100, y: 0, width: 100, height: 100 },
       ]);
     });
     feed.send({ v: 1, scene: null, rotation: 0 });
     await waitFor(() => {
-      expect(maps.view.setTokens).toHaveBeenLastCalledWith([]);
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toEqual([]);
     });
   });
 

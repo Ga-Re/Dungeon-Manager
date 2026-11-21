@@ -23,6 +23,9 @@ export const TOKEN_RING = "#e8d3a3";
 /** The ring around a selected token in the DM window (T-107b): the accent, bright on any map. */
 export const TOKEN_SELECTED_RING = "#ffb627";
 
+/** How long a moved token glides to its new place, in milliseconds (T-233b). */
+export const TOKEN_GLIDE_MS = 250;
+
 /** How opaque the DM window draws a token hidden from the players (T-107b). */
 export const TOKEN_HIDDEN_ALPHA = 0.45;
 

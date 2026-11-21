@@ -267,3 +267,70 @@ describe("snapToCells (property)", () => {
     );
   });
 });
+
+describe("hidden tokens in combat's snap (T-233b)", () => {
+  const hiddenToken = (id: string, col: number, row: number): Token => ({
+    ...token(id, col, row),
+    visibility: { token: "hidden" },
+  });
+
+  test("never push a visible token aside: it keeps its cell, the hidden one moves", () => {
+    // The hidden one stands exactly on the cell, the visible one only near it: by distance the
+    // hidden one would win.
+    const result = ok(
+      apply(
+        withTokens(hiddenToken("lurker", 3, 3), token("hero", 3.2, 3)),
+        { type: "combat.start", bounds },
+        ctx,
+      ),
+    );
+    const at = new Map(
+      result.state.scene.tokens.map((each) => [each.id, each.position]),
+    );
+    expect(at.get("hero")).toEqual({ col: 3, row: 3 });
+    expect(at.get("lurker")).not.toEqual({ col: 3, row: 3 });
+  });
+
+  test("hidden by the campaign's default counts as hidden", () => {
+    const start = withTokens(token("lurker", 3, 3), {
+      ...token("hero", 3.2, 3),
+      visibility: { token: "visible" },
+    });
+    const result = ok(
+      apply(
+        {
+          ...start,
+          campaign: {
+            ...start.campaign,
+            visibilityDefaults: { token: "hidden" },
+          },
+        },
+        { type: "combat.start", bounds },
+        ctx,
+      ),
+    );
+    expect(result.state.scene.tokens[1]?.position).toEqual({ col: 3, row: 3 });
+  });
+});
+
+describe("free tokens as occupants (T-233b)", () => {
+  test("count as standing on their nearest cell", () => {
+    const cell = snapToCells(
+      [
+        {
+          id: "new",
+          position: { col: 2, row: 2 },
+          footprint: gridFootprint("medium"),
+        },
+      ],
+      bounds,
+      [
+        {
+          position: { col: 2.3, row: 1.6 },
+          footprint: gridFootprint("medium"),
+        },
+      ],
+    )?.get("new");
+    expect(cell).not.toEqual({ col: 2, row: 2 });
+  });
+});

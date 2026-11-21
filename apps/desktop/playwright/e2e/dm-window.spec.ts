@@ -576,7 +576,7 @@ test("the dock zooms and fits the DM's view of the map (T-131)", async ({
     .poll(async () => (await camera())?.zoom)
     .toBeCloseTo(fitted?.zoom ?? 0, 5);
 
-  await dock.getByRole("button", { name: "Drehen" }).click();
+  await dock.getByRole("button", { name: "Drehen", exact: true }).click();
   await expect.poll(async () => (await camera())?.rotation).toBe(90);
 });
 
@@ -1205,4 +1205,43 @@ test("the DM drags a token by mouse, moves it with the keys and deletes it (T-10
   await expect
     .poll(async () => (await drawn())[0])
     .toMatchObject({ x: token.x - 2 * cell, y: token.y + cell });
+});
+
+test("the DM starts a combat: tokens snap onto cells, and the TV learns of it (T-233b)", async ({
+  page,
+}) => {
+  await page.goto(`${HARNESS}?freeToken`);
+  await closeWelcome(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  // The first scene opened goes to the TV by itself.
+
+  // What the TV was last sent (see fake-platform).
+  const tv = () =>
+    page.evaluate(
+      () =>
+        JSON.parse(document.body.dataset["e2eTv"] ?? "null") as {
+          combat?: true;
+          tokens: { position: { col: number; row: number } }[];
+        } | null,
+    );
+  const position = async () => (await tv())?.tokens[0]?.position;
+  // The players see tokens in revealed fog only.
+  await page.getByRole("tab", { name: "Nebel" }).click();
+  await page.getByRole("button", { name: "Alles aufdecken" }).click();
+  await expect.poll(position).toEqual({ col: 3.4, row: 2.3 });
+  await expect.poll(async () => (await tv())?.combat).toBeUndefined();
+
+  await page.getByRole("tab", { name: "Szene" }).click();
+  const combat = page.getByRole("button", { name: "Kampf", exact: true });
+  await combat.click();
+  await expect(combat).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(position).toEqual({ col: 3, row: 2 });
+  await expect.poll(async () => (await tv())?.combat).toBe(true);
+
+  // Ending it leaves the token where it is.
+  await combat.click();
+  await expect(combat).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(async () => (await tv())?.combat).toBeUndefined();
+  expect(await position()).toEqual({ col: 3, row: 2 });
 });

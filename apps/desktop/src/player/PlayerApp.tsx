@@ -2,6 +2,7 @@ import type { PlayerViewMessage } from "@dungeon-manager/protocol";
 import {
   fitCamera,
   inchCamera,
+  TOKEN_GLIDE_MS,
   type Renderer,
   type Size,
 } from "@dungeon-manager/renderer";
@@ -155,6 +156,8 @@ export function PlayerApp({
         map && next.scene
           ? tokenShapes(next.scene.tokens, map.grid, map.currentLevelId)
           : [],
+        // Moves on the shown level glide (T-233b: combat's snap); a new scene appears at once.
+        { glide: sameScene ? TOKEN_GLIDE_MS : 0 },
       );
       // Fog first: everything not revealed on the shown level stays covered.
       applyFog(view, next, sameScene);

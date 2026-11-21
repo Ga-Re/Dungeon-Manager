@@ -13,6 +13,7 @@ import {
 import type { DisplayService } from "../platform/displays.js";
 import type { LibraryService } from "../platform/library.js";
 import type { MapViewService } from "../platform/map-images.js";
+import type { PlayerFeedSender } from "../platform/player-feed.js";
 
 /** A 120×60 gold PNG for the harness's note image (made by hand, no third-party content). */
 const WAPPEN_PNG = Uint8Array.from(
@@ -31,16 +32,19 @@ const MAP_PATH = "library/maps/krypta.png";
  * A library with one campaign, one scene that has a map and one (still empty) session. With
  * `levels`, the scene's map has a second level, a cellar (T-118c). `imports` are the files the
  * file dialog returns, one per call; after them it is cancelled. With `failSceneSaves`, writing
- * a scene file fails once the library is set up, as on a full disk (T-223b).
+ * a scene file fails once the library is set up, as on a full disk (T-223b). With `freeToken`,
+ * the scene has a token standing between cells, as placed freely (T-233b).
  */
 export async function createE2eLibrary({
   levels = false,
   imports = [],
   failSceneSaves = false,
+  freeToken = false,
 }: {
   readonly levels?: boolean;
   readonly imports?: readonly string[];
   readonly failSceneSaves?: boolean;
+  readonly freeToken?: boolean;
 } = {}): Promise<LibraryService> {
   const queued = [...imports];
   const fs = createMemoryFileSystem();
@@ -62,6 +66,21 @@ export async function createE2eLibrary({
     name: "Krypta",
     map: { asset, levelName: "Ebene 1" },
   });
+  if (freeToken) {
+    const path = `campaigns/${slug}/scenes/e2e-scene.json`;
+    const file = await fs.read(path);
+    if (file.kind !== "ok") throw new Error("the E2E scene is missing");
+    const scene = JSON.parse(file.text) as { tokens: unknown[] };
+    const levelId = data.levels[0]?.id ?? "";
+    scene.tokens.push({
+      id: "e2e-goblin",
+      name: "Goblin",
+      size: "medium",
+      position: { col: 3.4, row: 2.3 },
+      levelId,
+    });
+    await fs.writeAtomic(path, JSON.stringify(scene));
+  }
   // A campaign note with the Markdown the details panel renders (T-163).
   await fs.writeAtomic(
     `campaigns/${slug}/notes/campaign.md`,
@@ -170,6 +189,22 @@ function drawMap(path: string): HTMLCanvasElement {
   return canvas;
 }
 
+/**
+ * The TV's feed (T-233b): what the TV was last sent is noted on the page, so E2E tests can check
+ * what reaches the players without a second window.
+ */
+export const e2ePlayerFeed: PlayerFeedSender = {
+  show(scene) {
+    document.body.dataset["e2eTv"] = JSON.stringify(scene);
+  },
+  rotate: () => undefined,
+  rotation: 0,
+  calibrate: () => undefined,
+  showCheckSquare: () => undefined,
+  showGrid: () => undefined,
+  setViewCenter: () => undefined,
+};
+
 export const e2eMapView: MapViewService = {
   loadImage: (path) => Promise.resolve(drawMap(path)),
   loadVideo: () =>
@@ -188,9 +223,9 @@ export const e2eMapView: MapViewService = {
         document.body.dataset["e2eCamera"] = JSON.stringify(camera);
         renderer.setCamera(camera);
       },
-      setTokens(tokens) {
+      setTokens(tokens, tokenOptions) {
         document.body.dataset["e2eTokens"] = JSON.stringify(tokens);
-        renderer.setTokens(tokens);
+        renderer.setTokens(tokens, tokenOptions);
       },
     };
   },
