@@ -1480,6 +1480,7 @@ button.dm-welcome-campaign:hover {
 
 .dm-initiative-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--dm-space-1);
   padding: var(--dm-space-1);
@@ -1537,4 +1538,41 @@ button.dm-welcome-campaign:hover {
 
 .dm-initiative-row[data-dragging] {
   opacity: 0.5;
+}
+
+/* HP and conditions of a combatant (T-112b): a line of its own under its name. */
+.dm-initiative-status {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dm-space-1);
+  font-size: var(--dm-font-size-xs);
+}
+
+.dm-initiative-hp {
+  font-family: var(--dm-font-mono);
+}
+
+.dm-initiative-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dm-initiative-condition {
+  display: inline-flex;
+  align-items: center;
+  padding-left: var(--dm-space-1);
+  border: 1px solid var(--dm-border-subtle);
+  border-radius: var(--dm-radius-sm);
+  color: var(--dm-text-secondary);
+}
+
+.dm-initiative-form-actions {
+  display: flex;
+  gap: var(--dm-space-1);
 }

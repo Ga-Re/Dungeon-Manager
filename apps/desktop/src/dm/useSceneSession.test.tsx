@@ -1039,6 +1039,67 @@ describe("editing the fog", () => {
     );
   });
 
+  test("HP and conditions from the Initiative panel are saved with the scene (T-112b)", async () => {
+    const fighting: Scene = {
+      ...mapped,
+      initiative: {
+        round: 1,
+        activeCombatantId: "c-goblin",
+        order: ["c-goblin"],
+        combatants: [
+          { id: "c-goblin", name: "Goblin", initiative: 12, conditions: [] },
+        ],
+      },
+    };
+    const { library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      fighting,
+    );
+    const goblin = () =>
+      (
+        JSON.parse(
+          library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+        ) as Scene
+      ).initiative?.combatants[0];
+    fireEvent.click(await enabled("Trefferpunkte von Goblin"));
+    fireEvent.change(screen.getByLabelText("Aktuell"), {
+      target: { value: "7" },
+    });
+    fireEvent.change(screen.getByLabelText("Maximum"), {
+      target: { value: "7" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "TP verfolgen" }));
+    await waitFor(() => {
+      expect(goblin()?.hp).toEqual({ current: 7, max: 7, temp: 0 });
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Trefferpunkte von Goblin" }),
+    );
+    fireEvent.change(screen.getByLabelText("Betrag"), {
+      target: { value: "3" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Schaden" }));
+    await waitFor(() => {
+      expect(goblin()?.hp?.current).toBe(4);
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Zustand für Goblin hinzufügen" }),
+    );
+    fireEvent.change(screen.getByLabelText("Zustand"), {
+      target: { value: "poisoned" },
+    });
+    fireEvent.change(screen.getByLabelText("Runden"), {
+      target: { value: "2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Hinzufügen" }));
+    await waitFor(() => {
+      expect(goblin()?.conditions).toEqual([
+        { type: "poisoned", remainingRounds: 2 },
+      ]);
+    });
+    expect(screen.getByText("Vergiftet (2)")).toBeTruthy();
+  });
+
   test("undo keys are left to text fields", async () => {
     const { tv } = renderScene(
       { "campaigns/mine/campaign.json": campaign },

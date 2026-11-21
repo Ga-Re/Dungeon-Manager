@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useRef, useState } from "react";
+import { CombatantStatus } from "./CombatantStatus.js";
 import {
   FreeEntryForm,
   PlayerRollsForm,
@@ -317,6 +318,11 @@ export function InitiativePanel({
                     }}
                   />
                 </span>
+                <CombatantStatus
+                  combatant={combatant}
+                  busy={busy}
+                  onCommand={onCommand}
+                />
               </li>
             );
           })}

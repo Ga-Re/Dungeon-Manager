@@ -588,10 +588,10 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-112b HP and conditions in the Initiative panel
 
-- **Status:** todo · **Depends on:** T-112a, T-111b · **Refs:** SPEC 11
+- **Status:** done · **Depends on:** T-112a, T-111b · **Refs:** SPEC 11
 - Per combatant in the Initiative panel: HP (current/maximum, temporary), damage and healing in place, conditions (the 5e conditions, optionally with rounds) added and removed. HP stay in the panel (DM decision); the TV keeps showing no HP.
 - **Acceptance criteria**
-  - [ ] Damage, healing, temporary HP and conditions reach the scene from the panel (component tests)
+  - [x] Damage, healing, temporary HP and conditions reach the scene from the panel (component tests)
 
 ### T-113 Blackout button and DM preview of the player view
 
