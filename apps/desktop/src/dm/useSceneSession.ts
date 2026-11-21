@@ -10,7 +10,12 @@ import {
   type ResolvedMap,
   type SessionState,
 } from "@dungeon-manager/core";
-import type { Campaign, MapData, Scene } from "@dungeon-manager/schema";
+import type {
+  Campaign,
+  MapData,
+  Scene,
+  VisibilityRules,
+} from "@dungeon-manager/schema";
 import {
   DEFAULT_LEVEL_ID,
   loadCampaign,
@@ -32,6 +37,8 @@ import type { LibraryService } from "../platform/library.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 import { SceneRescueContext } from "./rescue-copies.js";
 import { useMapData, type MapDataState } from "./useMapData.js";
+
+const NO_DEFAULTS: VisibilityRules = {};
 
 /** Time and randomness for core commands (ARCHITECTURE §4: injected, never read inside core). */
 const ctx = { now: () => Date.now(), random: () => Math.random() };
@@ -65,6 +72,8 @@ export interface SceneSession {
   readonly canRedo: boolean;
   /** The TV shows nothing because the campaign could not be read or projected. */
   readonly notOnTv: boolean;
+  /** The campaign's visibility defaults (`{}` until it is read): what a token without its own follows. */
+  readonly visibilityDefaults: VisibilityRules;
   /** Saving the last change failed (it stays in memory; the next change or `retrySave` retries). */
   readonly saveFailed: boolean;
   /** A write is queued or in flight, so the file does not have the latest change yet. */
@@ -289,6 +298,7 @@ export function useSceneSession(
     canUndo: campaign !== null && history.past.length > 0,
     canRedo: campaign !== null && history.future.length > 0,
     notOnTv,
+    visibilityDefaults: campaign?.visibilityDefaults ?? NO_DEFAULTS,
     saveFailed,
     saving: pendingWrites > 0,
     retrySave() {

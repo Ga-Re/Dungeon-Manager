@@ -68,4 +68,19 @@ describe("token shapes", () => {
       { id: "e", selected: undefined, hidden: true },
     ]);
   });
+
+  it("fade tokens the campaign hides by default, unless shown on their own (T-107b)", () => {
+    const shown = {
+      ...token("f", "medium"),
+      visibility: { token: "visible" as const },
+    };
+    expect(
+      tokenShapes([token("a", "medium"), shown], grid, "ground", undefined, {
+        token: "hidden",
+      }).map(({ id, hidden }) => ({ id, hidden })),
+    ).toEqual([
+      { id: "a", hidden: true },
+      { id: "f", hidden: undefined },
+    ]);
+  });
 });

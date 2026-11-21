@@ -423,6 +423,47 @@ describe("editing the fog", () => {
     expect(maps.view.setTokens).toHaveBeenLastCalledWith([]);
   });
 
+  test("a campaign that hides tokens by default: they show faded, and showing one sets it visible (T-107b)", async () => {
+    const hiding = JSON.stringify({
+      ...(JSON.parse(campaign) as object),
+      visibilityDefaults: { token: "hidden" },
+    });
+    const oneToken: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "goblin",
+          name: "Goblin",
+          size: "medium",
+          position: { col: 1, row: 1 },
+          levelId: "ground",
+        },
+      ],
+    };
+    const { tv, library, maps } = renderScene(
+      { "campaigns/mine/campaign.json": hiding },
+      oneToken,
+    );
+    fireEvent.click(await enabled("Alles aufdecken"));
+    await waitFor(() => {
+      expect(maps.view.setTokens.mock.lastCall?.[0][0]?.hidden).toBe(true);
+    });
+    const map = screen.getByRole("application", { name: /Höhle/ });
+    fireEvent.pointerDown(map, { clientX: 150, clientY: 150, pointerId: 1 });
+    fireEvent.pointerUp(map, { clientX: 150, clientY: 150, pointerId: 1 });
+    const hide = await enabled("Auf dem TV verbergen");
+    expect(hide.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(hide);
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.tokens).toHaveLength(1);
+    });
+    await waitFor(() => {
+      expect(library.fs.files().get("campaigns/mine/scenes/s.json")).toContain(
+        '"visible"',
+      );
+    });
+  });
+
   test("undo keys are left to text fields", async () => {
     const { tv } = renderScene(
       { "campaigns/mine/campaign.json": campaign },

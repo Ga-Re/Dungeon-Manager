@@ -4,6 +4,7 @@ import {
   apply,
   approximateHp,
   projectForViewer,
+  tokenVisibility,
   type Command,
   type SessionState,
 } from "./index.js";
@@ -370,4 +371,20 @@ test.each([
   [-3, 7, "down"],
 ] as const)("approximateHp(%i, %i) is %s", (current, max, expected) => {
   expect(approximateHp(current, max)).toBe(expected);
+});
+
+describe("tokenVisibility (T-107b)", () => {
+  test("a token's own setting wins over the campaign default, else visible", () => {
+    expect(tokenVisibility({}, {})).toBe("visible");
+    expect(tokenVisibility({ token: "hidden" }, {})).toBe("hidden");
+    expect(
+      tokenVisibility(
+        { token: "hidden" },
+        { visibility: { token: "visible" } },
+      ),
+    ).toBe("visible");
+    expect(tokenVisibility({}, { visibility: { token: "hidden" } })).toBe(
+      "hidden",
+    );
+  });
 });

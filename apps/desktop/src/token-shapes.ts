@@ -1,4 +1,4 @@
-import { gridFootprint } from "@dungeon-manager/core";
+import { gridFootprint, tokenVisibility } from "@dungeon-manager/core";
 import type { TokenShape } from "@dungeon-manager/renderer";
 import type {
   GridCell,
@@ -19,18 +19,20 @@ export interface PlacedToken {
 }
 
 const NONE: ReadonlySet<string> = new Set();
+const NO_DEFAULTS: VisibilityRules = {};
 
 /**
  * The tokens on `levelId` in map pixels (T-107a): each covers its footprint from its position
  * (the top left cell) on `grid`. A Tiny token takes the middle half of its cell (T-233: up to four
  * share one). In the DM window `selected` tokens get a selection ring, and tokens hidden from the
- * players show faded (T-107b).
+ * players (by their own setting or the campaign's `defaults`) show faded (T-107b).
  */
 export function tokenShapes(
   tokens: readonly PlacedToken[],
   grid: Grid,
   levelId: string,
   selected: ReadonlySet<string> = NONE,
+  defaults: VisibilityRules = NO_DEFAULTS,
 ): TokenShape[] {
   const cell = grid.cellSizePx;
   return tokens
@@ -50,7 +52,7 @@ export function tokenShapes(
         height,
         // Only when set: the TV's tokens carry neither.
         ...(selected.has(token.id) && { selected: true }),
-        ...(token.visibility?.token === "hidden" && { hidden: true }),
+        ...(tokenVisibility(defaults, token) === "hidden" && { hidden: true }),
       };
     });
 }

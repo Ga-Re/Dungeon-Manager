@@ -1,6 +1,7 @@
 import {
   addLevel,
   clampGroupShift,
+  tokenVisibility,
   gridBounds,
   gridFootprint,
   middleCell,
@@ -274,19 +275,26 @@ export function OpenScenePanel({
       ? selection
       : new Set(here.map((token) => token.id));
   }, [scene.tokens, levelId, selection]);
+  // Forgotten for good: a redo that brings a token back does not select it again.
+  useEffect(() => {
+    if (selected !== selection) setSelection(selected);
+  }, [selected, selection]);
+  const defaults = session.visibilityDefaults;
   const selectedTokens = scene.tokens.filter((token) => selected.has(token.id));
   const allHidden =
     selectedTokens.length > 0 &&
-    selectedTokens.every((token) => token.visibility?.token === "hidden");
+    selectedTokens.every(
+      (token) => tokenVisibility(defaults, token) === "hidden",
+    );
 
   // New tokens (T-107a): on the free cell nearest the map's middle, on the level the DM works on.
   const newTokenButton = useRef<HTMLButtonElement>(null);
   const tokens = useMemo(
     () =>
       map && levelId !== undefined
-        ? tokenShapes(scene.tokens, map.grid, levelId, selected)
+        ? tokenShapes(scene.tokens, map.grid, levelId, selected, defaults)
         : [],
-    [scene.tokens, map, levelId, selected],
+    [scene.tokens, map, levelId, selected, defaults],
   );
   const [creatingToken, setCreatingToken] = useState(false);
   const addToken = (name: string, size: TokenSize): boolean => {
@@ -319,19 +327,23 @@ export function OpenScenePanel({
   };
 
   // Moves tokens as one step; a group stops at the map's edge, keeping its formation (T-107b).
-  const moveTokens = (ids: readonly string[], shift: GridCell) => {
-    if (!map) return;
-    const moving = scene.tokens.filter((token) => ids.includes(token.id));
-    const clamped = mapSize
+  // Until the map's size is known nothing moves: the edge is not known yet.
+  const clampShift = (ids: readonly string[], shift: GridCell): GridCell =>
+    map && mapSize
       ? clampGroupShift(
-          moving.map((token) => ({
-            position: token.position,
-            footprint: gridFootprint(token.size),
-          })),
+          scene.tokens
+            .filter((token) => ids.includes(token.id))
+            .map((token) => ({
+              position: token.position,
+              footprint: gridFootprint(token.size),
+            })),
           shift,
           gridBounds(mapSize, map.grid),
         )
-      : shift;
+      : { col: 0, row: 0 };
+  const moveTokens = (ids: readonly string[], shift: GridCell) => {
+    const moving = scene.tokens.filter((token) => ids.includes(token.id));
+    const clamped = clampShift(ids, shift);
     if (moving.length === 0 || (clamped.col === 0 && clamped.row === 0)) return;
     const moved = session.run({
       type: "token.moveMany",
@@ -356,6 +368,7 @@ export function OpenScenePanel({
         selected,
         onSelect: setSelection,
         onMove: moveTokens,
+        clampShift,
         onDelete: deleteTokens,
       };
 
@@ -767,7 +780,12 @@ export function OpenScenePanel({
                   type: "visibility.setTokens",
                   tokenIds: [...selected],
                   elementType: "token",
-                  visibility: allHidden ? null : "hidden",
+                  // Shown against a campaign that hides tokens by default: set, not cleared.
+                  visibility: allHidden
+                    ? defaults.token === "hidden"
+                      ? "visible"
+                      : null
+                    : "hidden",
                 });
               }}
             />

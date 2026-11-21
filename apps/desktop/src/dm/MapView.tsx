@@ -80,11 +80,15 @@ export interface TokenControl {
   readonly onSelect: (ids: ReadonlySet<string>) => void;
   /** Moves tokens by whole cells: a drag, a tap on a cell, an arrow key. */
   readonly onMove: (ids: readonly string[], shift: GridCell) => void;
+  /** The part of `shift` the tokens can make (e.g. kept on the map), for the drag's preview. */
+  readonly clampShift?: (ids: readonly string[], shift: GridCell) => GridCell;
   readonly onDelete: (ids: readonly string[]) => void;
 }
 
 /** A press on a token: dragging moves the selection, a click changes it. */
 interface TokenPress {
+  /** The pointer pressing; other fingers or a palm do not take the drag over. */
+  readonly pointerId: number;
   readonly ids: readonly string[];
   readonly token: TokenShape;
   readonly wasSelected: boolean;
@@ -172,7 +176,10 @@ export function MapView({
   const brushing = tool !== "pan" && shape === "brush";
   const tokenPress = useRef<TokenPress | null>(null);
   // A press on empty map: a tap (no drag) clears the selection, or with touch moves it there.
-  const emptyPress = useRef<Point | null>(null);
+  const emptyPress = useRef<{
+    readonly pointerId: number;
+    readonly at: Point;
+  } | null>(null);
   // The token pressed last: a tap on a cell moves the selection so that it lands there.
   const anchorId = useRef<string | null>(null);
   // The selection's shift while it is dragged, drawn before it is applied.
@@ -440,6 +447,7 @@ export function MapView({
     }
     anchorId.current = token.id;
     tokenPress.current = {
+      pointerId: event.pointerId,
       ids: [...ids],
       token,
       wasSelected,
@@ -494,7 +502,7 @@ export function MapView({
     if (tool === "pan" && pressToken(event, point)) return;
     if (tool === "pan") {
       drag.current = { x: event.clientX, y: event.clientY };
-      emptyPress.current = point;
+      emptyPress.current = { pointerId: event.pointerId, at: point };
     } else if (shape === "brush")
       setDrawing({ kind: "brush", points: [point] });
     else if (shape !== "polygon")
@@ -504,6 +512,7 @@ export function MapView({
     const point = local(event);
     const press = tokenPress.current;
     if (press && grid) {
+      if (event.pointerId !== press.pointerId) return;
       if (
         !press.moved &&
         Math.hypot(point.x - press.downAt.x, point.y - press.downAt.y) <= TAP_PX
@@ -512,7 +521,8 @@ export function MapView({
       press.moved = true;
       const mapPoint = onMapPoint(point);
       if (!mapPoint) return;
-      const shift = dragCells(press.start, mapPoint, grid);
+      const wanted = dragCells(press.start, mapPoint, grid);
+      const shift = tokenControl?.clampShift?.(press.ids, wanted) ?? wanted;
       if (shift.col === press.shift.col && shift.row === press.shift.row)
         return;
       press.shift = shift;
@@ -522,7 +532,7 @@ export function MapView({
     const pressedAt = emptyPress.current;
     if (
       pressedAt &&
-      Math.hypot(point.x - pressedAt.x, point.y - pressedAt.y) > TAP_PX
+      Math.hypot(point.x - pressedAt.at.x, point.y - pressedAt.at.y) > TAP_PX
     )
       emptyPress.current = null;
     // Touch has no hover: the outline would only sit under the finger.
@@ -548,6 +558,7 @@ export function MapView({
   };
   const onPointerUp = (event: PointerEvent) => {
     const press = tokenPress.current;
+    if (press && event.pointerId !== press.pointerId) return;
     tokenPress.current = null;
     if (press) {
       setDragShift(null);
@@ -557,7 +568,7 @@ export function MapView({
       } else if (press.wasSelected) clickSelected(press);
       return;
     }
-    if (emptyPress.current) tapEmpty(event);
+    if (emptyPress.current?.pointerId === event.pointerId) tapEmpty(event);
     emptyPress.current = null;
     drag.current = null;
     const done = drawing;

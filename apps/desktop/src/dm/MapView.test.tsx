@@ -631,7 +631,13 @@ describe("MapView tokens (T-107b)", () => {
   const onGoblin = { clientX: 125, clientY: 125 };
   const onOgre = { clientX: 350, clientY: 150 };
 
-  function renderTokens(initial: ReadonlySet<string> = new Set()) {
+  function renderTokens(
+    initial: ReadonlySet<string> = new Set(),
+    clampShift?: (
+      ids: readonly string[],
+      shift: { col: number; row: number },
+    ) => { col: number; row: number },
+  ) {
     const fake = fakeMapService(() => Promise.resolve(image));
     const onMove =
       vi.fn<
@@ -652,6 +658,7 @@ describe("MapView tokens (T-107b)", () => {
         },
         onMove,
         onDelete,
+        ...(clampShift && { clampShift }),
       },
     });
     const result = render(tree(fake.service, undefined, props()));
@@ -775,5 +782,31 @@ describe("MapView tokens (T-107b)", () => {
     // A pan is no click: the selection stays.
     expect(view.selected()).toEqual(["goblin"]);
     expect(view.onMove).not.toHaveBeenCalled();
+  });
+
+  test("the drag's preview stops where the move would, and a second finger does not take it over", async () => {
+    // At most one cell to the right, as at a map's edge.
+    const view = renderTokens(new Set(), (_ids, shift) => ({
+      col: Math.min(shift.col, 1),
+      row: shift.row,
+    }));
+    await ready(view.fake);
+    fireEvent.pointerDown(area(), { ...onGoblin, pointerId: 1 });
+    fireEvent.pointerMove(area(), { clientX: 275, clientY: 125, pointerId: 1 });
+    await waitFor(() => {
+      expect(view.fake.view.setTokens).toHaveBeenLastCalledWith([
+        { ...goblin, x: 300 },
+        ogre,
+      ]);
+    });
+    // Another finger moves and lifts: the drag goes on.
+    fireEvent.pointerMove(area(), { clientX: 125, clientY: 300, pointerId: 2 });
+    fireEvent.pointerUp(area(), { clientX: 125, clientY: 300, pointerId: 2 });
+    expect(view.onMove).not.toHaveBeenCalled();
+    fireEvent.pointerUp(area(), { clientX: 275, clientY: 125, pointerId: 1 });
+    expect(view.onMove).toHaveBeenCalledExactlyOnceWith(["goblin"], {
+      col: 1,
+      row: 0,
+    });
   });
 });
