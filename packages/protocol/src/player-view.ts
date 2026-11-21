@@ -34,6 +34,8 @@ export const playerViewMessageSchema = z.strictObject({
   showGrid: z.literal(true).optional(),
   /** Where the calibrated view centres, in map pixels (T-106c); the map's middle when absent. */
   viewCenter: z.strictObject({ x: z.number(), y: z.number() }).optional(),
+  /** The TV is black at once (T-113a), over everything; the scene stays loaded beneath. */
+  blackout: z.literal(true).optional(),
 });
 
 /** How the TV is calibrated (T-106a). */
@@ -52,6 +54,7 @@ export interface PlayerViewMessage {
   readonly checkSquarePx?: number | undefined;
   readonly showGrid?: true | undefined;
   readonly viewCenter?: { readonly x: number; readonly y: number } | undefined;
+  readonly blackout?: true | undefined;
 }
 
 /** Validates a received message; `null` if it is not a valid player-view message. */

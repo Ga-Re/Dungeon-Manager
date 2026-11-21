@@ -368,6 +368,26 @@ describe("PlayerApp", () => {
     });
   });
 
+  test("blackout covers everything and lifts again (T-113a)", async () => {
+    const { feed } = renderPlayer();
+    await waitFor(() => {
+      expect(feed.subscribed()).toBe(true);
+    });
+    feed.send({
+      v: 1,
+      scene: sceneWith("library/maps/a.png"),
+      rotation: 0,
+      blackout: true,
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("blackout")).toBeTruthy();
+    });
+    feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
+    await waitFor(() => {
+      expect(screen.queryByTestId("blackout")).toBeNull();
+    });
+  });
+
   test("removes the old map at once when the scene changes or closes", async () => {
     const { maps, feed } = renderPlayer();
     await waitFor(() => {

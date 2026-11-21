@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111a, T-111b, T-111c, T-111d, T-112a, T-112b, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111a, T-111b, T-111c, T-111d, T-112a, T-112b, T-113a, T-113b. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -601,19 +601,25 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [x] Damage, healing, temporary HP and conditions reach the scene from the panel (component tests)
 
-### T-113 Blackout button and DM preview of the player view
+### T-113a Blackout
 
-- **Status:** todo · **Depends on:** T-105b, T-172a
-- Instant black/pause image in the player window; small live preview of the player view in the DM window as a panel (T-172a, ARCHITECTURE §15).
+- **Status:** done · **Depends on:** T-105b · **Refs:** SPEC 2
+- The TV black at once and back: a button in the dock and the "." key (DM decision 2026-11-21, as in presentation programs; not while typing in a field). The player view message carries `blackout: true`; the TV covers everything (map, fog, initiative bar) while the scene stays loaded, so it comes back without delay.
 - **Acceptance criteria**
-  - [ ] Blackout reachable by button and keyboard shortcut; E2E test
+  - [x] Blackout reachable by button and keyboard shortcut; E2E test
+- **Notes:** Split from T-113 (agent, 2026-11-21). The pause/title screen and its setting are T-175.
+
+### T-113b DM preview of the player view
+
+- **Status:** todo · **Depends on:** T-113a, T-172a · **Refs:** ARCHITECTURE §15
+- A small live preview of the player view in the DM window, as a dockable panel "TV-Vorschau" (DM decision 2026-11-21: in the default layout a tab next to Eigenschaften), drawn from exactly the message the TV gets.
+- **Acceptance criteria**
   - [ ] The preview shows exactly the projected player view (incl. blackout), never DM-only data; component/E2E test
-- **Notes:** Preview placement decided by the DM (2026-11-18, PR #27).
-- Workspace interview (2026-11-20): the pause/title screen and its setting are T-175.
+- **Notes:** Preview placement decided by the DM (2026-11-18, PR #27; 2026-11-21).
 
 ### T-133 Player-view preview on an additional DM monitor
 
-- **Status:** todo · **Depends on:** T-113 · **Refs:** SPEC 2.1, ARCHITECTURE §8, §15
+- **Status:** todo · **Depends on:** T-113b · **Refs:** SPEC 2.1, ARCHITECTURE §8, §15
 - Open the player-view preview as its own window on a chosen display (windowed or fullscreen), for a better overview on an additional DM monitor.
 - **Acceptance criteria**
   - [ ] DM chooses the display and opens/closes the window; the choice is remembered
@@ -1095,7 +1101,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] The pause screen hides the scene completely and fail-closed (screenshot + E2E test)
   - [ ] The setting changes what a workspace switch does to the TV (E2E test)
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). The DM left the default open; the agent assumes "only on the button" until the DM decides. Belongs together with the blackout of T-113.
+- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017). The DM left the default open; the agent assumes "only on the button" until the DM decides. Belongs together with the blackout of T-113a.
 
 ### T-182 Game-Orchestrator: scene bar and group overview
 

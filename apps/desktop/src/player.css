@@ -109,3 +109,11 @@ body {
   color: #fff2a8;
   font-weight: 600;
 }
+
+/* Blackout (T-113a): black over the map, the fog and the initiative bar. */
+.player-blackout {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: #000;
+}

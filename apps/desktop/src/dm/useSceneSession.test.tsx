@@ -62,6 +62,7 @@ function fakeFeed() {
     showCheckSquare: vi.fn(),
     showGrid: vi.fn(),
     setViewCenter,
+    blackout: vi.fn(),
   };
   return { feed, shown, setViewCenter };
 }

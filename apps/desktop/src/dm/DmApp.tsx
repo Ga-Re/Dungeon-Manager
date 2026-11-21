@@ -1,5 +1,5 @@
 import { IconButton, RibbonGroup } from "@dungeon-manager/ui";
-import { MonitorUp, RefreshCw, RotateCwSquare } from "lucide-react";
+import { MonitorUp, MonitorX, RefreshCw, RotateCwSquare } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -75,6 +75,32 @@ export function DmApp({
   useEffect(() => {
     playerFeed?.showGrid(tvGrid);
   }, [playerFeed, tvGrid]);
+  // Blackout (T-113a): the TV black at once, from the dock or with "." (DM decision
+  // 2026-11-21, as in presentation programs); again brings the picture back.
+  const [blackout, setBlackout] = useState(false);
+  useEffect(() => {
+    playerFeed?.blackout(blackout);
+  }, [playerFeed, blackout]);
+  useEffect(() => {
+    if (!playerFeed) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "." || event.ctrlKey || event.metaKey || event.altKey)
+        return;
+      // Typing a "." into a field is typing, not a blackout.
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest("input, textarea, select, [contenteditable]")
+      )
+        return;
+      event.preventDefault();
+      setBlackout((current) => !current);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [playerFeed]);
   // The calibration popover is open: the TV shows the check square to measure (T-106d).
   const [measuring, setMeasuring] = useState(false);
   // How big one cell is on the TV (DM, 2026-11-20): 1 inch by default, or in centimetres.
@@ -342,6 +368,15 @@ export function DmApp({
                 icon={<RotateCwSquare />}
                 label={t("dm.rotateTv", { degrees: rotation })}
                 onClick={rotateTv}
+              />
+              <IconButton
+                icon={<MonitorX />}
+                label={t("dm.blackout")}
+                aria-keyshortcuts="."
+                pressed={blackout}
+                onClick={() => {
+                  setBlackout((current) => !current);
+                }}
               />
             </div>
           )}

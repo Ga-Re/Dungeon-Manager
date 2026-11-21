@@ -26,6 +26,8 @@ export interface PlayerFeedSender {
   setViewCenter(
     center: { readonly x: number; readonly y: number } | null,
   ): void;
+  /** The TV black at once, or back (T-113a). */
+  blackout(on: boolean): void;
 }
 
 /** Player side: calls `listener` with every valid message; invalid ones are dropped. */
@@ -51,6 +53,7 @@ export function createPlayerFeedSender(
   let checkSquarePx: number | null = null;
   let grid = false;
   let viewCenter: { readonly x: number; readonly y: number } | null = null;
+  let black = false;
   const publish = () => {
     send({
       v: PLAYER_VIEW_VERSION,
@@ -60,6 +63,7 @@ export function createPlayerFeedSender(
       ...(checkSquarePx !== null && { checkSquarePx }),
       ...(grid && { showGrid: true as const }),
       ...(viewCenter && { viewCenter: { x: viewCenter.x, y: viewCenter.y } }),
+      ...(black && { blackout: true as const }),
     });
   };
   onPlayerReady(publish);
@@ -91,6 +95,10 @@ export function createPlayerFeedSender(
     },
     setViewCenter(next) {
       viewCenter = next;
+      publish();
+    },
+    blackout(on) {
+      black = on;
       publish();
     },
   };

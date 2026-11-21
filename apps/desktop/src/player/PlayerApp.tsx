@@ -50,6 +50,8 @@ export function PlayerApp({
   const { t } = useTranslation();
   const host = useRef<HTMLElement>(null);
   // The initiative bar (T-111c): the projected initiative and how the TV is turned.
+  // Blackout (T-113a): black over everything, the scene stays loaded beneath.
+  const [black, setBlack] = useState(false);
   const [bar, setBar] = useState<{
     readonly initiative: NonNullable<ViewerScene["initiative"]>;
     readonly rotation: number;
@@ -156,6 +158,7 @@ export function PlayerApp({
         JSON.stringify(message?.scene?.map?.grid) ===
         JSON.stringify(next.scene?.map?.grid);
       message = next;
+      setBlack(next.blackout === true);
       const initiative = next.scene?.initiative;
       setBar(
         // Nothing to list, nothing shown: an empty bar would only say "something acts".
@@ -293,6 +296,7 @@ export function PlayerApp({
       {bar && (
         <InitiativeBar initiative={bar.initiative} rotation={bar.rotation} />
       )}
+      {black && <div className="player-blackout" data-testid="blackout" />}
     </>
   );
 }

@@ -69,6 +69,25 @@ describe("parsePlayerViewMessage", () => {
     ).toBeNull();
   });
 
+  test("blacks the TV out, or leaves it on (T-113a)", () => {
+    expect(
+      parsePlayerViewMessage({
+        v: 1,
+        scene: null,
+        rotation: 0,
+        blackout: true,
+      }),
+    ).toEqual({ v: 1, scene: null, rotation: 0, blackout: true });
+    expect(
+      parsePlayerViewMessage({
+        v: 1,
+        scene: null,
+        rotation: 0,
+        blackout: false,
+      }),
+    ).toBeNull();
+  });
+
   test("carries where the calibrated view centres, strictly (T-106c)", () => {
     const viewCenter = { x: 300, y: 200 };
     expect(
