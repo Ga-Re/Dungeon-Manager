@@ -79,6 +79,13 @@ const everyCommand: Command[] = [
   { type: "initiative.move", combatantId: "goblin", index: 0 },
   { type: "initiative.setValue", combatantId: "goblin", initiative: 3 },
   { type: "initiative.enterRolls", add: [], values: [] },
+  { type: "hp.set", combatantId: "goblin", current: 3, max: 7 },
+  {
+    type: "condition.add",
+    combatantId: "goblin",
+    condition: { type: "prone" },
+  },
+  { type: "condition.remove", combatantId: "goblin", conditionType: "prone" },
 ];
 
 describe("canApply", () => {
