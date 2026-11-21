@@ -59,6 +59,15 @@ for (const scenario of ["grid", "grid-zoomed", "grid-rotated", "player-grid"]) {
   });
 }
 
+// Tokens (T-107a): placeholder discs with initials and a ring; under the fog on the TV.
+for (const scenario of ["tokens", "tokens-zoomed", "player-tokens"]) {
+  test(`tokens: ${scenario}`, async ({ page }) => {
+    await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
+    await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
+    await expect(page).toHaveScreenshot(`${scenario}.png`);
+  });
+}
+
 // Video maps (T-105c, ADR-0010): the video under opaque fog, also rotated; without any fog the
 // video must stay hidden (black screen).
 for (const scenario of [

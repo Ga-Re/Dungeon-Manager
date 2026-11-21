@@ -757,3 +757,58 @@ describe("level.show", () => {
     ).toEqual({ ok: false, reason: "noMap" });
   });
 });
+
+describe("token.add and token.remove (T-107a)", () => {
+  const goblinToken = scene.tokens[0];
+  if (!goblinToken) throw new Error("test data without tokens");
+  const ogre = {
+    ...goblinToken,
+    id: "token-ogre",
+    name: "Oger",
+    size: "large" as const,
+    position: { col: 4, row: 2 },
+  };
+
+  test("adds a token on a level of the map, as one undoable step", () => {
+    const result = ok(apply(state, { type: "token.add", token: ogre }, ctx));
+    expect(result.state.scene.tokens.at(-1)).toEqual(ogre);
+    expect(result.events).toEqual([
+      { at: ctx.now(), type: "token.added", tokenId: "token-ogre" },
+    ]);
+  });
+
+  test("refuses a token that cannot stand there", () => {
+    const refused = (token: typeof ogre) =>
+      apply(state, { type: "token.add", token }, ctx);
+    expect(refused({ ...ogre, id: goblinToken.id })).toEqual({
+      ok: false,
+      reason: "duplicateToken",
+    });
+    expect(refused({ ...ogre, levelId: "attic" })).toEqual({
+      ok: false,
+      reason: "unknownLevel",
+    });
+    expect(refused({ ...ogre, position: { col: -1, row: 0 } })).toEqual({
+      ok: false,
+      reason: "invalidCell",
+    });
+    expect(
+      apply({ ...state, map: null }, { type: "token.add", token: ogre }, ctx),
+    ).toEqual({ ok: false, reason: "noMap" });
+  });
+
+  test("removes a token", () => {
+    const result = ok(
+      apply(state, { type: "token.remove", tokenId: goblinToken.id }, ctx),
+    );
+    expect(result.state.scene.tokens.some((t) => t.id === goblinToken.id)).toBe(
+      false,
+    );
+    expect(result.events).toEqual([
+      { at: ctx.now(), type: "token.removed", tokenId: goblinToken.id },
+    ]);
+    expect(
+      apply(state, { type: "token.remove", tokenId: "nobody" }, ctx),
+    ).toEqual({ ok: false, reason: "unknownToken" });
+  });
+});

@@ -96,6 +96,7 @@ function renderScene(
     Promise.resolve({ width: 1000, height: 500 } as unknown as MapImage),
   );
   const i18n = createI18n("de");
+  let nextId = 0;
   const tree = (workspace: Workspace) => (
     <I18nextProvider i18n={i18n}>
       <SceneRescueContext value={rescue}>
@@ -107,7 +108,7 @@ function renderScene(
                   service={library.service}
                   slug="mine"
                   scene={opened}
-                  newId={() => "new-level"}
+                  newId={() => `new-${String(++nextId)}`}
                   onChanged={() => undefined}
                   onDeleted={() => undefined}
                   onClose={() => undefined}
@@ -272,6 +273,55 @@ describe("editing the fog", () => {
     expect(tv.setViewCenter).toHaveBeenLastCalledWith(null);
     fireEvent.keyDown(frame, { key: "ArrowRight" });
     expect(tv.setViewCenter).toHaveBeenLastCalledWith({ x: 600, y: 250 });
+  });
+
+  test("the DM creates tokens: on the free cell nearest the map's middle, drawn, saved, undoable (T-107a)", async () => {
+    const { maps, library } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      mapped,
+    );
+    const create = async (name: string, size: string) => {
+      fireEvent.click(await enabled("Token anlegen …"));
+      fireEvent.change(screen.getByLabelText("Name"), {
+        target: { value: name },
+      });
+      fireEvent.change(screen.getByLabelText("Größe"), {
+        target: { value: size },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Anlegen" }));
+    };
+    await create("Goblin 1", "medium");
+    // The 1000 × 500 map has 10 × 5 cells of 100 px: the middle cell is (4, 2).
+    await waitFor(() => {
+      expect(maps.view.setTokens).toHaveBeenLastCalledWith([
+        {
+          id: "new-1",
+          name: "Goblin 1",
+          x: 400,
+          y: 200,
+          width: 100,
+          height: 100,
+        },
+      ]);
+    });
+    await waitFor(() => {
+      expect(library.fs.files().get("campaigns/mine/scenes/s.json")).toContain(
+        "Goblin 1",
+      );
+    });
+
+    // A second one goes next to it, never on the same cell.
+    await create("Oger", "large");
+    await waitFor(() => {
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toHaveLength(2);
+    });
+    const [first, second] = maps.view.setTokens.mock.lastCall?.[0] ?? [];
+    expect(second?.x === first?.x && second?.y === first?.y).toBe(false);
+
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    await waitFor(() => {
+      expect(maps.view.setTokens.mock.lastCall?.[0]).toHaveLength(1);
+    });
   });
 
   test("undo keys are left to text fields", async () => {

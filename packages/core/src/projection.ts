@@ -166,6 +166,9 @@ export function projectEvents(
           return { ...base, hpState: approximateHp(event.current, max) };
         return null;
       }
+      // Tokens appear and go in the projected view itself; the players' log names neither.
+      case "token.added":
+      case "token.removed":
       case "visibility.changed":
       case "initiative.combatantRemoved":
         return null;

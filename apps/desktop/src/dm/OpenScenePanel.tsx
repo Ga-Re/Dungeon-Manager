@@ -1,11 +1,18 @@
 import {
   addLevel,
+  gridFootprint,
+  nearestFreeCell,
   renameLevel,
   tableLevels,
   type ResolvedMap,
 } from "@dungeon-manager/core";
 import { viewArea, type Point, type Size } from "@dungeon-manager/renderer";
-import type { AssetRef, Polygon, Scene } from "@dungeon-manager/schema";
+import type {
+  AssetRef,
+  Polygon,
+  Scene,
+  TokenSize,
+} from "@dungeon-manager/schema";
 import {
   deleteScene,
   ensureMapData,
@@ -18,8 +25,15 @@ import {
   withMap,
 } from "@dungeon-manager/storage";
 import { IconButton, Popover, RibbonGroup } from "@dungeon-manager/ui";
-import { ImagePlus, Trash2, Tv } from "lucide-react";
-import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { ImagePlus, Trash2, Tv, UserPlus } from "lucide-react";
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
@@ -37,6 +51,8 @@ import { useSceneSession } from "./useSceneSession.js";
 import { softEdgeWidth } from "../fog-settings.js";
 import { FogLookContext } from "./shell/fog-look.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
+import { NewTokenForm } from "./NewTokenForm.js";
+import { tokenShapes } from "../token-shapes.js";
 import { TvViewContext } from "./tv-view-context.js";
 import { PlayerFeedContext } from "./player-feed-context.js";
 import { SceneRescueContext } from "./rescue-copies.js";
@@ -232,6 +248,51 @@ export function OpenScenePanel({
   useEffect(() => {
     setPicked(null);
   }, [scene.id, mapPath]);
+
+  // New tokens (T-107a): on the free cell nearest the map's middle, on the level the DM works on.
+  const newTokenButton = useRef<HTMLButtonElement>(null);
+  const tokens = useMemo(
+    () =>
+      map && levelId !== undefined
+        ? tokenShapes(scene.tokens, map.grid, levelId)
+        : [],
+    [scene.tokens, map, levelId],
+  );
+  const [creatingToken, setCreatingToken] = useState(false);
+  const addToken = (name: string, size: TokenSize): boolean => {
+    if (!map || !mapSize || levelId === undefined) return false;
+    const cell = map.grid.cellSizePx;
+    const bounds = {
+      cols: Math.floor((mapSize.width - map.grid.offsetXPx) / cell),
+      rows: Math.floor((mapSize.height - map.grid.offsetYPx) / cell),
+    };
+    const footprint = gridFootprint(size);
+    const others = scene.tokens
+      .filter((token) => token.levelId === levelId)
+      .map((token) => ({
+        position: token.position,
+        footprint: gridFootprint(token.size),
+      }));
+    const position = nearestFreeCell(
+      {
+        col: Math.floor((bounds.cols - footprint.cols) / 2),
+        row: Math.floor((bounds.rows - footprint.rows) / 2),
+      },
+      footprint,
+      others,
+      bounds,
+    );
+    if (!position) {
+      setError(t("token.noFreeCell"));
+      return false;
+    }
+    const added = session.run({
+      type: "token.add",
+      token: { id: newId(), name, size, position, levelId },
+    });
+    setError(added ? "" : t("token.notCreated"));
+    return added;
+  };
 
   const fogCommand = (type: "fog.reveal" | "fog.hide", area: Polygon) => {
     if (levelId === undefined) return;
@@ -599,6 +660,40 @@ export function OpenScenePanel({
             }
           />
         )}
+        {map && mapSize && levelId !== undefined && (
+          <RibbonGroup caption={t("token.group")}>
+            <IconButton
+              ref={newTokenButton}
+              showLabel
+              icon={<UserPlus />}
+              label={t("token.new")}
+              aria-expanded={creatingToken}
+              disabled={busy}
+              onClick={() => {
+                setCreatingToken((current) => !current);
+              }}
+            />
+            <Popover
+              open={creatingToken}
+              onClose={() => {
+                setCreatingToken(false);
+              }}
+              anchor={newTokenButton}
+              label={t("token.new")}
+              align="start"
+            >
+              {creatingToken && (
+                <NewTokenForm
+                  onCreate={(name, size) => {
+                    const placed = addToken(name, size);
+                    if (placed) setCreatingToken(false);
+                    return placed;
+                  }}
+                />
+              )}
+            </Popover>
+          </RibbonGroup>
+        )}
       </ShellPortal>
       <ShellPortal slot="notices">
         {notOnTv && <p role="alert">{t("player.notShown")}</p>}
@@ -636,6 +731,7 @@ export function OpenScenePanel({
               // Brush size is chosen in grid cells (diameter), so it fits the map's scale.
               brushRadius={(brushCells * map.grid.cellSizePx) / 2}
               grid={map.grid}
+              tokens={tokens}
               tvFrame={
                 tvView && sceneOnTv && mapSize
                   ? {

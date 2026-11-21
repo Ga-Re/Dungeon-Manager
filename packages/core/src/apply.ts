@@ -56,6 +56,28 @@ export function apply(
 function applyChange(state: SessionState, command: Command): Change {
   const { scene } = state;
   switch (command.type) {
+    case "token.add": {
+      const { token } = command;
+      if (scene.tokens.some((each) => each.id === token.id))
+        return "duplicateToken";
+      if (!isCell(token.position)) return "invalidCell";
+      if (!state.map) return "noMap";
+      if (!hasLevel(state.map, token.levelId)) return "unknownLevel";
+      return {
+        state: withScene(state, { tokens: [...scene.tokens, token] }),
+        events: [{ type: "token.added", tokenId: token.id }],
+      };
+    }
+    case "token.remove": {
+      if (!scene.tokens.some((each) => each.id === command.tokenId))
+        return "unknownToken";
+      return {
+        state: withScene(state, {
+          tokens: scene.tokens.filter((each) => each.id !== command.tokenId),
+        }),
+        events: [{ type: "token.removed", tokenId: command.tokenId }],
+      };
+    }
     case "token.move": {
       const token = scene.tokens.find(
         (candidate) => candidate.id === command.tokenId,

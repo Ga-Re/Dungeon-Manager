@@ -7,9 +7,11 @@ import {
   MeshGeometry,
   Shader,
   Sprite,
+  Text,
   Texture,
   UniformGroup,
 } from "pixi.js";
+import { TOKEN_RING, tokenColor, tokenInitials } from "./token-look.js";
 import type { Camera, Size } from "./camera.js";
 import { disposeFog } from "./fog-dispose.js";
 import { easeOut, fadeProgress } from "./fog-fade.js";
@@ -54,6 +56,18 @@ export interface RendererOptions {
   readonly background?: string;
   /** Milliseconds for fog animations; tests freeze it for screenshots mid-spread. */
   readonly now?: () => number;
+}
+
+/** A token as the renderer draws it (T-107a): where, how big, and what it shows. */
+export interface TokenShape {
+  readonly id: string;
+  /** Its name, for the initials; absent when this viewer may not see it. */
+  readonly name?: string | undefined;
+  /** Its footprint's top left corner and size, in map pixels. */
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 /** A map's grid, in map pixels (the sidecar's calibration), and how its lines look. */
@@ -117,6 +131,11 @@ export interface Renderer {
    * included. `null` removes them.
    */
   setGrid(grid: GridLines | null): void;
+  /**
+   * Draws tokens (T-107a) over the map and grid, under the fog: a token in fog stays covered
+   * on the TV. Replaces the tokens drawn before.
+   */
+  setTokens(tokens: readonly TokenShape[]): void;
   setCamera(camera: Camera): void;
   resize(size: Size): void;
   /** Resolves after the next draw has been submitted (for screenshots and tests). */
@@ -156,6 +175,44 @@ export async function createRenderer(
   const gridLayer = new Graphics();
   world.addChild(gridLayer);
   let gridInput: GridLines | null = null;
+  // Tokens (T-107a): above the grid, below the fog.
+  const tokenLayer = new Container();
+  world.addChild(tokenLayer);
+  let tokensBuiltFrom: string | null = null;
+  const drawTokens = (tokens: readonly TokenShape[]) => {
+    const key = JSON.stringify(tokens);
+    if (key === tokensBuiltFrom) return;
+    tokensBuiltFrom = key;
+    for (const child of tokenLayer.removeChildren())
+      child.destroy({ children: true, context: true });
+    for (const token of tokens) {
+      const radius = Math.min(token.width, token.height) / 2;
+      const centerX = token.x + token.width / 2;
+      const centerY = token.y + token.height / 2;
+      // A little inside its footprint, so neighbours never touch.
+      const disc = new Graphics()
+        .circle(centerX, centerY, radius * 0.9)
+        .fill(tokenColor(token.id))
+        .stroke({ width: radius * 0.08, color: TOKEN_RING });
+      tokenLayer.addChild(disc);
+      const initials = tokenInitials(token.name);
+      if (initials !== "") {
+        const label = new Text({
+          text: initials,
+          style: {
+            fill: "#ffffff",
+            fontFamily: "system-ui, sans-serif",
+            fontWeight: "600",
+            fontSize: radius * (initials.length > 2 ? 0.55 : 0.8),
+          },
+          resolution: 2,
+        });
+        label.anchor.set(0.5);
+        label.position.set(centerX, centerY);
+        tokenLayer.addChild(label);
+      }
+    }
+  };
   // What the drawn lines were built from: an equal request (the player view gets the whole
   // state with every message) keeps them instead of rebuilding.
   let gridBuiltFrom: string | null = null;
@@ -429,6 +486,10 @@ export async function createRenderer(
       gate.fogSet();
       requestDraw();
     },
+    setTokens(next) {
+      drawTokens(next);
+      requestDraw();
+    },
     setGrid(next) {
       gridInput = next;
       drawGrid();
@@ -461,6 +522,7 @@ export async function createRenderer(
       replaceFog(null);
       world.removeChild(gridLayer);
       gridLayer.destroy({ context: true });
+      drawTokens([]);
       gate.destroyed();
       hideVideo();
       video?.removeEventListener("resize", onVideoResize);

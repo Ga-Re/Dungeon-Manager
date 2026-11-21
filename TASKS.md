@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
+**Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233, T-111, T-112, T-113. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
 
@@ -406,17 +406,26 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Screenshot test of the player view in both modes
 - **Notes:** DM requirement from T-007 (4K Samsung The Frame, should also run in Full HD). The T-007 spike measures both modes.
 
-### T-107 Tokens: create, place, move
+### T-107a Tokens: create and draw
 
-- **Status:** todo · **Depends on:** T-102b, T-106a, T-172a, T-174, T-180a · **Refs:** SPEC 5
-- Tokens with D&D size categories; tap-token-tap-cell, drag, keyboard shortcuts, group move; snapping.
+- **Status:** done · **Depends on:** T-102b, T-106a, T-172a, T-174, T-180a · **Refs:** SPEC 5
+- "Token anlegen …" (scene ribbon, group "Token"): name and D&D size; the token appears on the free cell nearest the map's middle, on the level the DM works on, as one undoable step. Drawn in the DM view and on the TV between the grid and the fog.
+- **Acceptance criteria**
+  - [x] Core `token.add`/`token.remove` with their checks; `nearestFreeCell` (unit tests)
+  - [x] Created tokens are drawn, saved and undone; the TV draws the projected ones of its level (component tests; renderer screenshots)
+- **Notes:** Split from T-107 (2026-11-21). DM decisions (2026-11-21): until the creature library (T-180) a token is a placeholder – a disc in a colour from its id with its initials and a ring (round tokens). Tiny tokens take the middle half of their cell. Tokens and `token.added`/`token.removed` never reach the players' log.
+
+### T-107b Tokens: select, move, delete, hide
+
+- **Status:** todo · **Depends on:** T-107a · **Refs:** SPEC 5
+- Select tokens on the map; move them by drag, tap-token-tap-cell, keyboard shortcuts and as a group; snap to cells; delete; invisible in the player view.
 - **Acceptance criteria**
   - [ ] All move modes covered by component/E2E tests
   - [ ] Invisible-in-player-view tokens supported
 
 ### T-233 Free movement outside combat, grid in combat
 
-- **Status:** todo · **Depends on:** T-107 · **Refs:** SPEC §2.4, §5
+- **Status:** todo · **Depends on:** T-107b · **Refs:** SPEC §2.4, §5
 - Each scene has a grid mode: "always on the grid", "free, on the grid in combat" or "always free"; new scenes take the campaign's default. It applies to all tokens (player characters and creatures); holding Alt places a token freely at any time.
 - A combat switch in the play ribbon (the Game-Orchestrator once T-171 builds it), independent of the initiative tracker, starts and ends combat. On start, every token on the level snaps (animated) to the nearest free cell in one undoable command: one token per cell (up to four Tiny tokens may share one), a larger token claims its whole footprint, and walls are respected once they exist. During combat, a token dropped on an occupied cell goes to the nearest free one. Ending combat leaves the tokens where they are.
 - **Acceptance criteria**
@@ -465,7 +474,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-110 Per-element visibility with type defaults
 
-- **Status:** todo · **Depends on:** T-102b, T-107 · **Refs:** SPEC 6
+- **Status:** todo · **Depends on:** T-102b, T-107b · **Refs:** SPEC 6
 - Visible / hidden / approximate per element; defaults per element type in campaign settings.
 - **Acceptance criteria**
   - [ ] Approximate HP rendering ("unhurt / wounded / badly wounded")
@@ -1086,7 +1095,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-180 Creature library: player characters and creatures
 
-- **Status:** todo · **Depends on:** T-107, T-172a, T-180a · **Refs:** SPEC §2.5, §5, §11
+- **Status:** todo · **Depends on:** T-107a, T-172a, T-180a · **Refs:** SPEC §2.5, §5, §11
 - Global creatures (DM decision: player characters too, campaigns refer to them). Values follow a D&D 5e core that the DM can extend with own fields: HP with dice formula, AC, initiative modifier, speeds, size with grid footprint and pivot, senses (sight, darkvision) for vision; actions, spells and tactics go into a Markdown note. The DM maintains the player characters' values (players keep paper sheets). Look per creature: a round token with ring or a cut-out top-down figure; token picture and portrait. Per-session state (HP, conditions) stays in the scene/session state.
 - **Acceptance criteria**
   - [ ] Create and edit a creature; a token placed from it carries its values (component + E2E test)
@@ -1273,7 +1282,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-142 Dynamic vision with raycasting
 
-- **Status:** todo · **Depends on:** T-140, T-109, T-107 · **Refs:** SPEC 4, ARCHITECTURE §8
+- **Status:** todo · **Depends on:** T-140, T-109, T-107b · **Refs:** SPEC 4, ARCHITECTURE §8
 - Pure visibility polygon per viewer token against resolved walls and closed doors (asset blockers join in T-144); the TV shows the union of all player tokens' vision; memory fog for visited areas; per-map setting whether movement auto-reveals.
 - **Acceptance criteria**
   - [ ] `computeVisibilityPolygon` unit tests incl. pillars, doors opening, collinear and touching walls (≥ 80 %)

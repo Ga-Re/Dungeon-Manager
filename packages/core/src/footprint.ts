@@ -73,3 +73,45 @@ export function canOccupy(
     (cell) => (load.get(key(cell)) ?? 0) + footprint.share <= 1 + 1e-9,
   );
 }
+
+/**
+ * The free cell nearest to `wanted` where a token with `footprint` fits completely inside the
+ * map (`bounds` in cells), searched in growing rings (T-107a, and T-233's snap); `null` if none.
+ */
+export function nearestFreeCell(
+  wanted: GridCell,
+  footprint: GridFootprint,
+  others: readonly Occupant[],
+  bounds: { readonly cols: number; readonly rows: number },
+): GridCell | null {
+  const maxCol = bounds.cols - footprint.cols;
+  const maxRow = bounds.rows - footprint.rows;
+  if (maxCol < 0 || maxRow < 0) return null;
+  const start = {
+    col: Math.min(Math.max(wanted.col, 0), maxCol),
+    row: Math.min(Math.max(wanted.row, 0), maxRow),
+  };
+  const reach = Math.max(bounds.cols, bounds.rows);
+  for (let ring = 0; ring <= reach; ring++) {
+    let best: GridCell | null = null;
+    let bestDistance = Infinity;
+    for (let row = start.row - ring; row <= start.row + ring; row++)
+      for (let col = start.col - ring; col <= start.col + ring; col++) {
+        // Only the ring's edge: the inside was searched before.
+        const onRing =
+          Math.max(Math.abs(col - start.col), Math.abs(row - start.row)) ===
+          ring;
+        if (!onRing || col < 0 || row < 0 || col > maxCol || row > maxRow)
+          continue;
+        const cell = { col, row };
+        if (!canOccupy(others, cell, footprint)) continue;
+        const distance = Math.hypot(col - start.col, row - start.row);
+        if (distance < bestDistance) {
+          best = cell;
+          bestDistance = distance;
+        }
+      }
+    if (best) return best;
+  }
+  return null;
+}

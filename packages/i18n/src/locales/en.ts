@@ -266,6 +266,23 @@ export const en: Messages = {
     tvFrame: "The TV's view – drag its border or move it with the arrow keys",
     tvFrameRole: "movable frame",
   },
+  token: {
+    group: "Token",
+    new: "New token …",
+    name: "Name",
+    size: "Size",
+    create: "Create",
+    noFreeCell: "No cell is free on this level.",
+    notCreated: "The token could not be created.",
+    sizes: {
+      tiny: "Tiny",
+      small: "Small",
+      medium: "Medium",
+      large: "Large",
+      huge: "Huge",
+      gargantuan: "Gargantuan",
+    },
+  },
   level: {
     group: "Level",
     pick: "Level to edit",

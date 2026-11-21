@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { canOccupy, gridFootprint, occupiedCells } from "./footprint.js";
+import {
+  canOccupy,
+  gridFootprint,
+  nearestFreeCell,
+  occupiedCells,
+} from "./footprint.js";
 
 // The grid footprint of tokens (T-180a) and T-233's rule: one token per cell, up to four Tiny
 // ones share a cell, a larger token claims every cell of its footprint.
@@ -68,5 +73,42 @@ describe("free cells (T-233)", () => {
     const others = [{ position: at(1, 1), footprint: medium }];
     expect(canOccupy(others, at(0, 0), large)).toBe(false);
     expect(canOccupy(others, at(2, 0), large)).toBe(true);
+  });
+});
+
+describe("nearest free cell (T-107a; also for T-233's snap)", () => {
+  const medium = gridFootprint("medium");
+  const at = (col: number, row: number) => ({ col, row });
+  const bounds = { cols: 10, rows: 10 };
+
+  test("is the wanted cell when it is free", () => {
+    expect(nearestFreeCell(at(4, 4), medium, [], bounds)).toEqual(at(4, 4));
+  });
+
+  test("is the closest free one around a taken cell, nearest first", () => {
+    const taken = [{ position: at(4, 4), footprint: medium }];
+    const found = nearestFreeCell(at(4, 4), medium, taken, bounds);
+    expect(found).not.toEqual(at(4, 4));
+    expect(
+      Math.max(
+        Math.abs((found?.col ?? 0) - 4),
+        Math.abs((found?.row ?? 0) - 4),
+      ),
+    ).toBe(1);
+  });
+
+  test("keeps a large footprint inside the map", () => {
+    const found = nearestFreeCell(at(9, 9), gridFootprint("large"), [], bounds);
+    expect(found).toEqual(at(8, 8));
+  });
+
+  test("is none when nothing is free", () => {
+    const full = Array.from({ length: 4 }, (_, index) => ({
+      position: at(index % 2, Math.floor(index / 2)),
+      footprint: medium,
+    }));
+    expect(
+      nearestFreeCell(at(0, 0), medium, full, { cols: 2, rows: 2 }),
+    ).toBeNull();
   });
 });

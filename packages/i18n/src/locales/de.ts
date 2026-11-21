@@ -268,6 +268,23 @@ export const de = {
       "Ausschnitt des TVs – am Rand ziehen oder mit den Pfeiltasten verschieben",
     tvFrameRole: "verschiebbarer Rahmen",
   },
+  token: {
+    group: "Token",
+    new: "Token anlegen …",
+    name: "Name",
+    size: "Größe",
+    create: "Anlegen",
+    noFreeCell: "Auf dieser Ebene ist kein Feld mehr frei.",
+    notCreated: "Das Token konnte nicht angelegt werden.",
+    sizes: {
+      tiny: "Winzig",
+      small: "Klein",
+      medium: "Mittel",
+      large: "Groß",
+      huge: "Riesig",
+      gargantuan: "Gigantisch",
+    },
+  },
   level: {
     group: "Ebene",
     pick: "Ebene zum Bearbeiten",

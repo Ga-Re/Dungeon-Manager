@@ -2,6 +2,7 @@ import type {
   Combatant,
   GridCell,
   Polygon,
+  Token,
   Visibility,
   VisibilityElementType,
 } from "@dungeon-manager/schema";
@@ -14,6 +15,9 @@ export type VisibilityTarget =
 
 /** Everything that can change session state (ARCHITECTURE §5.1). */
 export type Command =
+  /** Puts a new token on the map (T-107a). */
+  | { readonly type: "token.add"; readonly token: Token }
+  | { readonly type: "token.remove"; readonly tokenId: string }
   | {
       readonly type: "token.move";
       readonly tokenId: string;
@@ -60,6 +64,8 @@ export type Command =
 
 /** What happened, for the session log (ARCHITECTURE §5.1). `at` comes from the injected clock. */
 export type DomainEvent = { readonly at: number } & (
+  | { readonly type: "token.added"; readonly tokenId: string }
+  | { readonly type: "token.removed"; readonly tokenId: string }
   | {
       readonly type: "token.moved";
       readonly tokenId: string;
@@ -97,6 +103,7 @@ export type DomainEvent = { readonly at: number } & (
 /** Why a command was not applied; the UI translates the reason. */
 export type RejectionReason =
   | "unknownToken"
+  | "duplicateToken"
   | "unknownLevel"
   | "noMap"
   | "unknownCombatant"

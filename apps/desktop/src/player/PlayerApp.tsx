@@ -8,6 +8,7 @@ import {
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { levelMedia } from "../level-media.js";
+import { tokenShapes } from "../token-shapes.js";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
 import type { PlayerFeedReceiver } from "../platform/player-feed.js";
 import {
@@ -149,6 +150,12 @@ export function PlayerApp({
       showCheckSquare();
       // Grid lines only when the DM switched them on for the TV (T-106b); under the fog.
       view.setGrid(map && next.showGrid === true ? map.grid : null);
+      // The projected tokens of the level on the TV (T-107a), under the fog too.
+      view.setTokens(
+        map && next.scene
+          ? tokenShapes(next.scene.tokens, map.grid, map.currentLevelId)
+          : [],
+      );
       // Fog first: everything not revealed on the shown level stays covered.
       applyFog(view, next, sameScene);
       if (!map || !media) {
