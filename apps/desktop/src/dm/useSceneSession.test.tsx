@@ -316,7 +316,14 @@ describe("editing the fog", () => {
       expect(maps.view.setTokens.mock.lastCall?.[0]).toHaveLength(2);
     });
     const [first, second] = maps.view.setTokens.mock.lastCall?.[0] ?? [];
-    expect(second?.x === first?.x && second?.y === first?.y).toBe(false);
+    if (!first || !second) throw new Error("two tokens expected");
+    // Their footprints never overlap (the Large one's first choice would cover the Goblin).
+    const apart =
+      second.x >= first.x + first.width ||
+      first.x >= second.x + second.width ||
+      second.y >= first.y + first.height ||
+      first.y >= second.y + second.height;
+    expect(apart).toBe(true);
 
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     await waitFor(() => {

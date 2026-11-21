@@ -419,6 +419,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 - **Status:** todo · **Depends on:** T-107a · **Refs:** SPEC 5
 - Select tokens on the map; move them by drag, tap-token-tap-cell, keyboard shortcuts and as a group; snap to cells; delete; invisible in the player view.
+- From the T-107a review: the renderer rebuilds every token on any change (fine for creating, too slow while dragging – update tokens in place by id), and the initials are drawn at a fixed resolution (blurry at high zoom in the DM view – follow the zoom or use a bitmap/MSDF font).
 - **Acceptance criteria**
   - [ ] All move modes covered by component/E2E tests
   - [ ] Invisible-in-player-view tokens supported

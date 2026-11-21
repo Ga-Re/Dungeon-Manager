@@ -184,7 +184,7 @@ export async function createRenderer(
     if (key === tokensBuiltFrom) return;
     tokensBuiltFrom = key;
     for (const child of tokenLayer.removeChildren())
-      child.destroy({ children: true, context: true });
+      child.destroy({ children: true, context: true, style: true });
     for (const token of tokens) {
       const radius = Math.min(token.width, token.height) / 2;
       const centerX = token.x + token.width / 2;

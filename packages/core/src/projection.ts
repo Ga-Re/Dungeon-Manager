@@ -105,6 +105,8 @@ export function projectForViewer(
  *   same coarse state still passes: that a creature was hit is seen at the table anyway.
  * - `visibility.changed` and `initiative.combatantRemoved` never pass: the first is the DM's
  *   setup, the second concerns a combatant no longer in the state to judge it by.
+ * - `token.added` and `token.removed` never pass (T-107a): tokens appear and go in the projected
+ *   view itself; the players' log names neither (a removed one is gone from the state).
  */
 export function projectEvents(
   events: readonly DomainEvent[],

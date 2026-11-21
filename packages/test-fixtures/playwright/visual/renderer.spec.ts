@@ -60,7 +60,7 @@ for (const scenario of ["grid", "grid-zoomed", "grid-rotated", "player-grid"]) {
 }
 
 // Tokens (T-107a): placeholder discs with initials and a ring; under the fog on the TV.
-for (const scenario of ["tokens", "tokens-zoomed", "player-tokens"]) {
+for (const scenario of ["tokens", "tokens-rotated", "player-tokens"]) {
   test(`tokens: ${scenario}`, async ({ page }) => {
     await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
     await expect(page.locator("body")).toHaveAttribute("data-ready", "true");

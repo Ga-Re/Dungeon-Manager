@@ -1,6 +1,8 @@
 import {
   addLevel,
+  gridBounds,
   gridFootprint,
+  middleCell,
   nearestFreeCell,
   renameLevel,
   tableLevels,
@@ -261,11 +263,7 @@ export function OpenScenePanel({
   const [creatingToken, setCreatingToken] = useState(false);
   const addToken = (name: string, size: TokenSize): boolean => {
     if (!map || !mapSize || levelId === undefined) return false;
-    const cell = map.grid.cellSizePx;
-    const bounds = {
-      cols: Math.floor((mapSize.width - map.grid.offsetXPx) / cell),
-      rows: Math.floor((mapSize.height - map.grid.offsetYPx) / cell),
-    };
+    const bounds = gridBounds(mapSize, map.grid);
     const footprint = gridFootprint(size);
     const others = scene.tokens
       .filter((token) => token.levelId === levelId)
@@ -274,10 +272,7 @@ export function OpenScenePanel({
         footprint: gridFootprint(token.size),
       }));
     const position = nearestFreeCell(
-      {
-        col: Math.floor((bounds.cols - footprint.cols) / 2),
-        row: Math.floor((bounds.rows - footprint.rows) / 2),
-      },
+      middleCell(bounds, footprint),
       footprint,
       others,
       bounds,
@@ -290,7 +285,8 @@ export function OpenScenePanel({
       type: "token.add",
       token: { id: newId(), name, size, position, levelId },
     });
-    setError(added ? "" : t("token.notCreated"));
+    // Other messages (e.g. a failed map change) stay.
+    if (!added) setError(t("token.notCreated"));
     return added;
   };
 

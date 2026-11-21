@@ -78,6 +78,27 @@ describe("projectEvents", () => {
     ]);
   });
 
+  test("never names tokens added or removed in the players' log (T-107a)", () => {
+    expect(
+      projected(
+        [revealAll],
+        [
+          {
+            type: "token.add",
+            token: {
+              id: "token-new",
+              name: "Secret Name",
+              size: "medium",
+              position: { col: 1, row: 1 },
+              levelId: "ground",
+            },
+          },
+          { type: "token.remove", tokenId: "token-goblin" },
+        ],
+      ),
+    ).toEqual([]);
+  });
+
   test("drops moves of hidden tokens and of tokens ending in fog", () => {
     expect(projected([revealAll, hideGoblin], [moveGoblin(2, 1)])).toEqual([]);
     expect(projected([revealAll], [moveGoblin(8, 8)])).toEqual([]);

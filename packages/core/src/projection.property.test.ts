@@ -426,9 +426,37 @@ const move = fc.record({
   levelId: level,
 });
 
+/** A token appearing (T-107a): anywhere, any size, maybe hidden – or one going away. */
+const tokenAdded = fc
+  .record({
+    n: fc.integer({ min: 0, max: 99 }),
+    levelId: level,
+    col: fc.integer({ min: 0, max: 9 }),
+    row: fc.integer({ min: 0, max: 9 }),
+    size: fc.constantFrom("tiny" as const, "medium" as const, "large" as const),
+    hidden: fc.boolean(),
+  })
+  .map(({ n, levelId, col, row, size, hidden }): Command => ({
+    type: "token.add",
+    token: {
+      id: `secret-added-token-${String(n)}`,
+      name: `Secret Name added token ${String(n)}`,
+      size,
+      position: { col, row },
+      levelId,
+      ...(hidden && { visibility: { token: "hidden" as const } }),
+    },
+  }));
+const tokenRemoved = index.map((i): Command => ({
+  type: "token.remove",
+  tokenId: `secret-token-${String(i)}`,
+}));
+
 // Moves weigh most: a leak in them needs a token to pass through fog within one sequence.
 const command: fc.Arbitrary<Command> = fc.oneof(
   { arbitrary: move, weight: 4 },
+  { arbitrary: tokenAdded, weight: 2 },
+  { arbitrary: tokenRemoved, weight: 1 },
   { arbitrary: added, weight: 2 },
   fc.record({ type: fc.constant("fog.reveal" as const), levelId: level, area }),
   fc.record({
