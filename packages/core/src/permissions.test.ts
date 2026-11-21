@@ -31,7 +31,11 @@ const everyCommand: Command[] = [
       levelId: "ground",
     },
   },
-  { type: "token.remove", tokenId: "token-aria" },
+  { type: "token.remove", tokenIds: ["token-aria"] },
+  {
+    type: "token.moveMany",
+    moves: [{ tokenId: "token-aria", to: { col: 4, row: 4 } }],
+  },
   { type: "fog.reveal", levelId: "ground", area: square(0, 0, 10) },
   {
     type: "fog.hide",
@@ -43,6 +47,12 @@ const everyCommand: Command[] = [
     type: "visibility.set",
     target: { kind: "campaign" },
     elementType: "hp",
+    visibility: "hidden",
+  },
+  {
+    type: "visibility.setTokens",
+    tokenIds: ["token-aria"],
+    elementType: "token",
     visibility: "hidden",
   },
   { type: "initiative.add", combatant: goblin },

@@ -255,7 +255,7 @@ export const de = {
   },
   mapView: {
     label: "Karte der Szene „{{name}}“",
-    help: "Mausrad oder + und − zoomen, ziehen oder Pfeiltasten verschieben, R dreht, 0 passt die Karte ein.",
+    help: "Mausrad oder + und − zoomen, ziehen oder Pfeiltasten verschieben, R dreht, 0 passt die Karte ein. Ein Token anklicken wählt es aus, mit Umschalt mehrere; ausgewählte Tokens ziehen, mit den Pfeiltasten feldweise bewegen, Entf löscht sie, Escape hebt die Auswahl auf. Mit Touch: Token antippen, dann das Zielfeld.",
     loading: "Karte wird geladen …",
     error:
       "Die Karte konnte nicht geladen werden. Ist die Datei noch in der Bibliothek und heruntergeladen?",
@@ -276,6 +276,9 @@ export const de = {
     create: "Anlegen",
     noFreeCell: "Auf dieser Ebene ist kein Feld mehr frei.",
     notCreated: "Das Token konnte nicht angelegt werden.",
+    hideOnTv: "Auf dem TV verbergen",
+    delete: "Löschen",
+    notMoved: "Die Tokens konnten nicht bewegt werden.",
     sizes: {
       tiny: "Winzig",
       small: "Klein",

@@ -799,7 +799,7 @@ describe("token.add and token.remove (T-107a)", () => {
 
   test("removes a token", () => {
     const result = ok(
-      apply(state, { type: "token.remove", tokenId: goblinToken.id }, ctx),
+      apply(state, { type: "token.remove", tokenIds: [goblinToken.id] }, ctx),
     );
     expect(result.state.scene.tokens.some((t) => t.id === goblinToken.id)).toBe(
       false,
@@ -808,7 +808,128 @@ describe("token.add and token.remove (T-107a)", () => {
       { at: ctx.now(), type: "token.removed", tokenId: goblinToken.id },
     ]);
     expect(
-      apply(state, { type: "token.remove", tokenId: "nobody" }, ctx),
+      apply(state, { type: "token.remove", tokenIds: ["nobody"] }, ctx),
     ).toEqual({ ok: false, reason: "unknownToken" });
+  });
+});
+
+describe("token.moveMany and removing several tokens (T-107b)", () => {
+  test("moves a group as one step, each token by its own target", () => {
+    const result = ok(
+      apply(
+        state,
+        {
+          type: "token.moveMany",
+          moves: [
+            { tokenId: "token-goblin", to: { col: 5, row: 5 } },
+            { tokenId: "token-aria", to: { col: 6, row: 6 } },
+          ],
+        },
+        ctx,
+      ),
+    );
+    expect(result.state.scene.tokens.map((t) => t.position)).toEqual([
+      { col: 5, row: 5 },
+      { col: 6, row: 6 },
+    ]);
+    expect(result.events.map((event) => event.type)).toEqual([
+      "token.moved",
+      "token.moved",
+    ]);
+  });
+
+  test("refuses a group with an unknown, repeated or misplaced token, or none", () => {
+    const refused = (
+      moves: { tokenId: string; to: { col: number; row: number } }[],
+    ) => apply(state, { type: "token.moveMany", moves }, ctx);
+    expect(refused([])).toEqual({ ok: false, reason: "unknownToken" });
+    expect(refused([{ tokenId: "nobody", to: { col: 1, row: 1 } }])).toEqual({
+      ok: false,
+      reason: "unknownToken",
+    });
+    expect(
+      refused([
+        { tokenId: "token-aria", to: { col: 1, row: 1 } },
+        { tokenId: "token-aria", to: { col: 2, row: 1 } },
+      ]),
+    ).toEqual({ ok: false, reason: "unknownToken" });
+    expect(
+      refused([{ tokenId: "token-aria", to: { col: -1, row: 1 } }]),
+    ).toEqual({
+      ok: false,
+      reason: "invalidCell",
+    });
+  });
+
+  test("removes several tokens as one step", () => {
+    const result = ok(
+      apply(
+        state,
+        { type: "token.remove", tokenIds: ["token-goblin", "token-aria"] },
+        ctx,
+      ),
+    );
+    expect(result.state.scene.tokens).toEqual([]);
+    expect(apply(state, { type: "token.remove", tokenIds: [] }, ctx)).toEqual({
+      ok: false,
+      reason: "unknownToken",
+    });
+  });
+});
+
+describe("visibility.setTokens (T-107b)", () => {
+  test("hides several tokens as one step, and shows them again", () => {
+    const hidden = ok(
+      apply(
+        state,
+        {
+          type: "visibility.setTokens",
+          tokenIds: ["token-goblin", "token-aria"],
+          elementType: "token",
+          visibility: "hidden",
+        },
+        ctx,
+      ),
+    );
+    expect(hidden.state.scene.tokens.map((t) => t.visibility)).toEqual([
+      { token: "hidden" },
+      { token: "hidden" },
+    ]);
+    expect(hidden.events.map((event) => event.type)).toEqual([
+      "visibility.changed",
+      "visibility.changed",
+    ]);
+    const shown = ok(
+      apply(
+        hidden.state,
+        {
+          type: "visibility.setTokens",
+          tokenIds: ["token-goblin", "token-aria"],
+          elementType: "token",
+          visibility: null,
+        },
+        ctx,
+      ),
+    );
+    expect(shown.state.scene.tokens.map((t) => t.visibility)).toEqual([{}, {}]);
+  });
+
+  test("changes nothing when one token is unknown, or none is given", () => {
+    const change = (tokenIds: string[]) =>
+      apply(
+        state,
+        {
+          type: "visibility.setTokens",
+          tokenIds,
+          elementType: "token",
+          visibility: "hidden",
+        },
+        ctx,
+      );
+    expect(change(["token-goblin", "nobody"])).toEqual({
+      ok: false,
+      reason: "unknownToken",
+    });
+    expect(change([])).toEqual({ ok: false, reason: "unknownToken" });
   });
 });

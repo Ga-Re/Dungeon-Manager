@@ -17,7 +17,16 @@ export type VisibilityTarget =
 export type Command =
   /** Puts a new token on the map (T-107a). */
   | { readonly type: "token.add"; readonly token: Token }
-  | { readonly type: "token.remove"; readonly tokenId: string }
+  /** Removes tokens, all in one step (T-107b: a selection). */
+  | { readonly type: "token.remove"; readonly tokenIds: readonly string[] }
+  /** Moves several tokens at once, as one step (T-107b: a selection, a group). */
+  | {
+      readonly type: "token.moveMany";
+      readonly moves: readonly {
+        readonly tokenId: string;
+        readonly to: GridCell;
+      }[];
+    }
   | {
       readonly type: "token.move";
       readonly tokenId: string;
@@ -41,6 +50,13 @@ export type Command =
   | {
       readonly type: "visibility.set";
       readonly target: VisibilityTarget;
+      readonly elementType: VisibilityElementType;
+      readonly visibility: Visibility | null;
+    }
+  /** `visibility.set` for several tokens at once, as one step (T-107b: hiding a selection). */
+  | {
+      readonly type: "visibility.setTokens";
+      readonly tokenIds: readonly string[];
       readonly elementType: VisibilityElementType;
       readonly visibility: Visibility | null;
     }

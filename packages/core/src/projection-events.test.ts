@@ -93,7 +93,7 @@ describe("projectEvents", () => {
               levelId: "ground",
             },
           },
-          { type: "token.remove", tokenId: "token-goblin" },
+          { type: "token.remove", tokenIds: ["token-goblin"] },
         ],
       ),
     ).toEqual([]);

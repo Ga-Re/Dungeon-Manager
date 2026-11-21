@@ -11,6 +11,7 @@ import {
   type ViewerToken,
   type Visibility,
   type VisibilityElementType,
+  type VisibilityRules,
 } from "@dungeon-manager/schema";
 import type { DomainEvent } from "./commands.js";
 import { gridFootprint } from "./footprint.js";
@@ -239,6 +240,17 @@ function visibilityOf(
     token?.visibility?.[elementType] ??
     fallback
   );
+}
+
+/**
+ * Whether the players see `token` at all as far as its visibility goes (T-107b): its own
+ * setting, else the campaign's default (`defaults`), else visible. Fog and levels come on top.
+ */
+export function tokenVisibility(
+  defaults: VisibilityRules,
+  token: Pick<Token, "visibility">,
+): Visibility {
+  return token.visibility?.token ?? defaults.token ?? "visible";
 }
 
 function ownedBy(token: Token | undefined, viewer: Viewer): boolean {

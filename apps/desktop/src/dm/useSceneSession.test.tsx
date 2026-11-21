@@ -162,6 +162,8 @@ const box = {
 
 describe("editing the fog", () => {
   beforeAll(() => {
+    // jsdom implements no pointer capture.
+    HTMLElement.prototype.setPointerCapture = () => undefined;
     Object.defineProperty(HTMLElement.prototype, "clientWidth", {
       configurable: true,
       get: () => 1000,
@@ -328,6 +330,137 @@ describe("editing the fog", () => {
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     await waitFor(() => {
       expect(maps.view.setTokens.mock.lastCall?.[0]).toHaveLength(1);
+    });
+  });
+
+  test("the DM selects tokens on the map, moves them as one step, hides them on the TV and deletes them (T-107b)", async () => {
+    const twoTokens: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "goblin",
+          name: "Goblin",
+          size: "medium",
+          position: { col: 1, row: 1 },
+          levelId: "ground",
+        },
+        {
+          id: "ogre",
+          name: "Oger",
+          size: "large",
+          position: { col: 8, row: 3 },
+          levelId: "ground",
+        },
+      ],
+    };
+    const { tv, library, maps } = renderScene(
+      { "campaigns/mine/campaign.json": campaign },
+      twoTokens,
+    );
+    const saved = () =>
+      (
+        JSON.parse(
+          library.fs.files().get("campaigns/mine/scenes/s.json") ?? "{}",
+        ) as Scene
+      ).tokens;
+    // The players see tokens in revealed fog only.
+    fireEvent.click(await enabled("Alles aufdecken"));
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.tokens).toHaveLength(2);
+    });
+    // The 1000 × 500 map fills the 1000 × 500 view: screen pixels are map pixels.
+    const map = screen.getByRole("application", { name: /Höhle/ });
+    fireEvent.pointerDown(map, { clientX: 150, clientY: 150, pointerId: 1 });
+    fireEvent.pointerUp(map, { clientX: 150, clientY: 150, pointerId: 1 });
+    fireEvent.pointerDown(map, {
+      clientX: 900,
+      clientY: 400,
+      pointerId: 1,
+      shiftKey: true,
+    });
+    fireEvent.pointerUp(map, { clientX: 900, clientY: 400, pointerId: 1 });
+    await waitFor(() => {
+      expect(
+        maps.view.setTokens.mock.lastCall?.[0].map((token) => token.selected),
+      ).toEqual([true, true]);
+    });
+
+    // The Ogre stands at the right edge: the group stops there, keeping its formation.
+    fireEvent.keyDown(map, { key: "ArrowRight" });
+    fireEvent.keyDown(map, { key: "ArrowUp" });
+    await waitFor(() => {
+      expect(saved().map((token) => token.position)).toEqual([
+        { col: 1, row: 0 },
+        { col: 8, row: 2 },
+      ]);
+    });
+    // One step per move, for the whole group.
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    await waitFor(() => {
+      expect(saved().map((token) => token.position)).toEqual([
+        { col: 1, row: 1 },
+        { col: 8, row: 3 },
+      ]);
+    });
+
+    fireEvent.click(await enabled("Auf dem TV verbergen"));
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.tokens).toEqual([]);
+    });
+    expect(
+      maps.view.setTokens.mock.lastCall?.[0].map((token) => token.hidden),
+    ).toEqual([true, true]);
+    expect(
+      screen
+        .getByRole("button", { name: "Auf dem TV verbergen" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Löschen" }));
+    await waitFor(() => {
+      expect(saved()).toEqual([]);
+    });
+    expect(maps.view.setTokens).toHaveBeenLastCalledWith([]);
+  });
+
+  test("a campaign that hides tokens by default: they show faded, and showing one sets it visible (T-107b)", async () => {
+    const hiding = JSON.stringify({
+      ...(JSON.parse(campaign) as object),
+      visibilityDefaults: { token: "hidden" },
+    });
+    const oneToken: Scene = {
+      ...mapped,
+      tokens: [
+        {
+          id: "goblin",
+          name: "Goblin",
+          size: "medium",
+          position: { col: 1, row: 1 },
+          levelId: "ground",
+        },
+      ],
+    };
+    const { tv, library, maps } = renderScene(
+      { "campaigns/mine/campaign.json": hiding },
+      oneToken,
+    );
+    fireEvent.click(await enabled("Alles aufdecken"));
+    await waitFor(() => {
+      expect(maps.view.setTokens.mock.lastCall?.[0][0]?.hidden).toBe(true);
+    });
+    const map = screen.getByRole("application", { name: /Höhle/ });
+    fireEvent.pointerDown(map, { clientX: 150, clientY: 150, pointerId: 1 });
+    fireEvent.pointerUp(map, { clientX: 150, clientY: 150, pointerId: 1 });
+    const hide = await enabled("Auf dem TV verbergen");
+    expect(hide.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(hide);
+    await waitFor(() => {
+      expect(tv.shown.at(-1)?.tokens).toHaveLength(1);
+    });
+    await waitFor(() => {
+      expect(library.fs.files().get("campaigns/mine/scenes/s.json")).toContain(
+        '"visible"',
+      );
     });
   });
 

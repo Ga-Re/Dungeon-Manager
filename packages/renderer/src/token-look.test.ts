@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { TOKEN_COLORS, tokenColor, tokenInitials } from "./token-look.js";
+import {
+  TOKEN_COLORS,
+  labelResolution,
+  tokenColor,
+  tokenInitials,
+} from "./token-look.js";
 
 // Placeholder tokens (T-107a): a disc in a colour of its own, with initials.
 
@@ -36,5 +41,16 @@ describe("token look", () => {
     };
     for (const colour of TOKEN_COLORS)
       expect(1.05 / (luminance(colour) + 0.05)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("labelResolution (T-107b)", () => {
+  test("rasterises labels for the zoom, in doublings from 1 to 8", () => {
+    expect(labelResolution(0.25, 1)).toBe(1);
+    expect(labelResolution(1, 1)).toBe(1);
+    expect(labelResolution(1.2, 1)).toBe(2);
+    expect(labelResolution(1, 2)).toBe(2);
+    expect(labelResolution(3, 1)).toBe(4);
+    expect(labelResolution(40, 2)).toBe(8);
   });
 });
