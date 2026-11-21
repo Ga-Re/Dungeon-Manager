@@ -1,6 +1,7 @@
 import {
   addLevel,
   clampGroupShift,
+  discRadius,
   rollInitiative,
   type Command,
   tokenVisibility,
@@ -334,10 +335,15 @@ export function OpenScenePanel({
     const footprint = gridFootprint(size);
     const others = scene.tokens
       .filter((token) => token.levelId === levelId)
-      .map((token) => ({
-        position: token.position,
-        footprint: gridFootprint(token.size),
-      }));
+      .map((token) => {
+        const own = gridFootprint(token.size);
+        // A free token blocks the cells its drawn disc reaches into (T-242).
+        return {
+          position: token.position,
+          footprint: own,
+          radius: discRadius(token.size, own),
+        };
+      });
     const position = nearestFreeCell(
       middleCell(bounds, footprint),
       footprint,

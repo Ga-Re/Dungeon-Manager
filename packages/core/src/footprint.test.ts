@@ -362,3 +362,34 @@ describe("placeOnCells (T-233c)", () => {
     ).toBeNull();
   });
 });
+
+describe("free tokens take the cells their disc reaches into (T-242)", () => {
+  const bounds = { firstCol: 0, firstRow: 0, cols: 10, rows: 8 };
+  const medium = gridFootprint("medium");
+
+  test("a Medium at col 2.4 takes cells 2 and 3: a grid move onto 3 goes on", () => {
+    const free = [{ position: { col: 2.4, row: 1 }, footprint: medium }];
+    expect(canOccupy(free, { col: 3, row: 1 }, medium)).toBe(false);
+    expect(canOccupy(free, { col: 2, row: 1 }, medium)).toBe(false);
+    expect(canOccupy(free, { col: 4, row: 1 }, medium)).toBe(true);
+    expect(
+      nearestFreeCell({ col: 3, row: 1 }, medium, free, bounds),
+    ).not.toEqual({ col: 3, row: 1 });
+  });
+
+  test("barely touching a cell does not take it", () => {
+    // Reaches 0.05 into cell 3: not noticeably.
+    const free = [{ position: { col: 2.05, row: 1 }, footprint: medium }];
+    expect(canOccupy(free, { col: 3, row: 1 }, medium)).toBe(true);
+  });
+
+  test("a small disc reaches less far than its footprint", () => {
+    // A Tiny token's disc (radius 1/4) centred at 2.9 reaches 0.15 into cell 3.
+    const tiny = gridFootprint("tiny");
+    const free = [
+      { position: { col: 2.4, row: 1 }, footprint: tiny, radius: 0.25 },
+    ];
+    expect(canOccupy(free, { col: 3, row: 1 }, medium)).toBe(false);
+    expect(canOccupy(free, { col: 4, row: 1 }, medium)).toBe(true);
+  });
+});

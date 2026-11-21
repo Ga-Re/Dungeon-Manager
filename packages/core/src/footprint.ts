@@ -59,26 +59,62 @@ export function occupiedCells(
 
 /** A token already on the grid, as far as space goes. */
 export interface Occupant {
-  readonly position: GridCell;
+  readonly position: TokenPosition;
   readonly footprint: GridFootprint;
+  /** Its disc's radius in cells, when it stands freely (`discRadius`); else half its footprint. */
+  readonly radius?: number;
 }
+
+/** How far a free disc must reach into a cell to take it, in cells (T-242: "noticeably"). */
+const REACH_INTO = 0.1;
 
 /**
  * How much of each cell `others` take (T-233's load: a Tiny token a quarter, others all). A
- * token placed freely counts as standing on its nearest cell (T-233b).
+ * token placed freely takes every cell its disc reaches into noticeably (T-242, DM decision
+ * 2026-11-21), so a token on the grid never overlaps it.
  */
 function cellLoads(others: readonly Occupant[]): Map<string, number> {
   const load = new Map<string, number>();
-  for (const other of others)
-    for (const cell of occupiedCells(
-      {
-        col: Math.round(other.position.col),
-        row: Math.round(other.position.row),
-      },
-      other.footprint,
-    ))
-      load.set(key(cell), (load.get(key(cell)) ?? 0) + other.footprint.share);
+  const add = (cell: GridCell, share: number) => {
+    load.set(key(cell), (load.get(key(cell)) ?? 0) + share);
+  };
+  for (const other of others) {
+    const { position, footprint } = other;
+    if (Number.isInteger(position.col) && Number.isInteger(position.row)) {
+      for (const cell of occupiedCells(position, footprint))
+        add(cell, footprint.share);
+      continue;
+    }
+    for (const cell of reachedCells(other)) add(cell, footprint.share);
+  }
   return load;
+}
+
+/** The cells a free token's disc reaches into by more than `REACH_INTO` (T-242). */
+function reachedCells(occupant: Occupant): GridCell[] {
+  const { position, footprint } = occupant;
+  const radius =
+    occupant.radius ?? Math.min(footprint.cols, footprint.rows) / 2;
+  const x = position.col + footprint.cols / 2;
+  const y = position.row + footprint.rows / 2;
+  const cells: GridCell[] = [];
+  for (let row = Math.floor(y - radius); row <= Math.floor(y + radius); row++)
+    for (
+      let col = Math.floor(x - radius);
+      col <= Math.floor(x + radius);
+      col++
+    ) {
+      // The nearest point of the cell to the disc's centre.
+      const nearX = Math.min(Math.max(x, col), col + 1);
+      const nearY = Math.min(Math.max(y, row), row + 1);
+      if (
+        col >= 0 &&
+        row >= 0 &&
+        Math.hypot(x - nearX, y - nearY) < radius - REACH_INTO
+      )
+        cells.push({ col, row });
+    }
+  return cells;
 }
 
 const key = (cell: GridCell) => `${String(cell.col)},${String(cell.row)}`;
@@ -290,6 +326,8 @@ export function snapToCells<T extends string>(
 /** A token being moved onto the grid, or one standing there (`placeOnCells`). */
 interface Placing {
   readonly footprint: GridFootprint;
+  /** A standing token's disc, when it stands freely (T-242). */
+  readonly radius?: number;
   /** Whether the table sees it: one it does not see never redirects one it sees. */
   readonly seen: boolean;
 }
@@ -471,7 +509,7 @@ export function placeFree<T extends string>(
     x: centre?.col ?? position.col + token.footprint.cols / 2,
     y: centre?.row ?? position.row + token.footprint.rows / 2,
     r: token.radius,
-    occupant: { position, footprint: token.footprint },
+    occupant: { position, footprint: token.footprint, radius: token.radius },
   });
   const result = new Map<T, TokenPosition>();
   const placedSeen: Disc[] = [];

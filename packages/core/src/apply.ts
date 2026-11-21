@@ -631,11 +631,15 @@ function onCells(
       moving,
       onLevel
         .filter((each) => !wanted.has(each.id))
-        .map((each) => ({
-          position: each.position,
-          footprint: gridFootprint(each.size),
-          seen: seenByTable(state, each),
-        })),
+        .map((each) => {
+          const footprint = gridFootprint(each.size);
+          return {
+            position: each.position,
+            footprint,
+            radius: discRadius(each.size, footprint),
+            seen: seenByTable(state, each),
+          };
+        }),
       bounds,
     );
     if (!cells) return null;
