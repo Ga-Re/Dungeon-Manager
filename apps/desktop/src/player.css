@@ -6,3 +6,8 @@
 body {
   margin: 0;
 }
+
+/* No mouse cursor on the TV (only there: the DM window's preview keeps it). */
+.player {
+  cursor: none;
+}

@@ -326,12 +326,21 @@ export function PlayerApp({
         embedded ? "player-frame player-frame-embedded" : "player-frame"
       }
     >
-      <main
-        ref={host}
-        {...(!embedded && { id: "player-view" })}
-        className="player"
-        aria-label={t(embedded ? "player.preview" : "player.windowTitle")}
-      />
+      {embedded ? (
+        // Inside the DM window's own <main>: a region, not a second main landmark.
+        <section
+          ref={host}
+          className="player"
+          aria-label={t("player.preview")}
+        />
+      ) : (
+        <main
+          ref={host}
+          id="player-view"
+          className="player"
+          aria-label={t("player.windowTitle")}
+        />
+      )}
       {bar && (
         <InitiativeBar initiative={bar.initiative} rotation={bar.rotation} />
       )}

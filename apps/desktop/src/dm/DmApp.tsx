@@ -35,8 +35,6 @@ type DisplayState =
   | { readonly status: "error"; readonly error: unknown };
 
 /** DM window: choose a display and open the player view on it; manage the library. */
-/** The TV the preview models until one is chosen (T-113b). */
-const DEFAULT_TV = { width: 1920, height: 1080 } as const;
 
 export function DmApp({
   displayService,
@@ -377,11 +375,7 @@ export function DmApp({
             gets, a scale model of the chosen TV. */}
         {playerFeed && mapViewService && (
           <ShellPortal slot="preview">
-            <TvPreview
-              feed={playerFeed}
-              maps={mapViewService}
-              tv={tvDisplay ?? DEFAULT_TV}
-            />
+            <TvPreview feed={playerFeed} maps={mapViewService} tv={tvDisplay} />
           </ShellPortal>
         )}
         {/* The TV in the dock (T-131): its rotation and what happened to the player view. */}

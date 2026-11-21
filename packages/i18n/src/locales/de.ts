@@ -40,6 +40,8 @@ export const de = {
       remove: "Kalibrierung entfernen",
     },
     blackout: "TV schwarz (.)",
+    previewNoTv:
+      "Kein TV gewählt: die Vorschau zeigt einen TV mit 1920 × 1080.",
     rotateTv: "TV-Ansicht drehen (jetzt {{degrees}}°)",
     refreshDisplays: "Displays neu suchen",
     error: "Das hat nicht geklappt: {{message}}",
