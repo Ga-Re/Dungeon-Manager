@@ -19,6 +19,7 @@ renderDmWindow({
   // `?levelFiles`: the file dialog returns a map of another size, then one that fits (T-118d).
   // `?failSaves`: saving a scene fails, as on a full disk (T-223b).
   // `?freeToken`: the scene has a token standing between cells (T-233b).
+  // `?tv`: a TV is connected; what it is sent is noted on the page (T-233b).
   libraryService: options.has("firstStart")
     ? createFirstStartLibrary()
     : await createE2eLibrary({
@@ -30,6 +31,6 @@ renderDmWindow({
         freeToken: options.has("freeToken"),
       }),
   mapViewService: e2eMapView,
-  playerFeed: e2ePlayerFeed,
+  playerFeed: options.has("tv") ? e2ePlayerFeed : null,
   newId: () => `e2e-${String(++nextId)}`,
 });

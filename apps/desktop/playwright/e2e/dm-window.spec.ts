@@ -576,7 +576,7 @@ test("the dock zooms and fits the DM's view of the map (T-131)", async ({
     .poll(async () => (await camera())?.zoom)
     .toBeCloseTo(fitted?.zoom ?? 0, 5);
 
-  await dock.getByRole("button", { name: "Drehen", exact: true }).click();
+  await dock.getByRole("button", { name: "Drehen" }).click();
   await expect.poll(async () => (await camera())?.rotation).toBe(90);
 });
 
@@ -1210,7 +1210,7 @@ test("the DM drags a token by mouse, moves it with the keys and deletes it (T-10
 test("the DM starts a combat: tokens snap onto cells, and the TV learns of it (T-233b)", async ({
   page,
 }) => {
-  await page.goto(`${HARNESS}?freeToken`);
+  await page.goto(`${HARNESS}?freeToken&tv`);
   await closeWelcome(page);
   await page.getByRole("button", { name: "Fluch der Krypta" }).click();
   await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
