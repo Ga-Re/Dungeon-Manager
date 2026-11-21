@@ -390,8 +390,10 @@ describe("PlayerApp", () => {
       expect(overlay()?.hidden).toBe(false);
     });
     expect(blackWhenDrawn).toBe(true);
-    // Above everything: the body's last child, outside the player view and its bar.
-    expect(document.body.lastElementChild).toBe(overlay());
+    // In the frame with the view and its bar, above both (z-index in player-view.css).
+    expect(overlay()?.parentElement?.classList.contains("player-frame")).toBe(
+      true,
+    );
     feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
     await waitFor(() => {
       expect(overlay()?.hidden).toBe(true);

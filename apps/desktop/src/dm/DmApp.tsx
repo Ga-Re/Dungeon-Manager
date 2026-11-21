@@ -15,6 +15,8 @@ import { DmShell } from "./shell/DmShell.js";
 import { ShellPortal } from "./shell/slots.js";
 import { deviceStorage } from "./shell/theme.js";
 import { TvCalibration } from "./TvCalibration.js";
+import { MapViewContext } from "./MapView.js";
+import { TvPreview } from "./TvPreview.js";
 import { TvViewContext, type TvView } from "./tv-view-context.js";
 import {
   calibrationKey,
@@ -33,6 +35,7 @@ type DisplayState =
   | { readonly status: "error"; readonly error: unknown };
 
 /** DM window: choose a display and open the player view on it; manage the library. */
+
 export function DmApp({
   displayService,
   libraryService,
@@ -145,6 +148,7 @@ export function DmApp({
     [tvDisplay, tvInchPx, cellSize, rotation],
   );
 
+  const mapViewService = useContext(MapViewContext);
   // Players sit around the table; the TV view turns in quarter steps (SPEC 2.2).
   const rotateTv = () => {
     const next = ((rotation + 90) % 360) as typeof rotation;
@@ -367,6 +371,13 @@ export function DmApp({
             </div>
           </fieldset>
         </ShellPortal>
+        {/* The TV preview (T-113b): the player view drawn from exactly the messages the TV
+            gets, a scale model of the chosen TV. */}
+        {playerFeed && mapViewService && (
+          <ShellPortal slot="preview">
+            <TvPreview feed={playerFeed} maps={mapViewService} tv={tvDisplay} />
+          </ShellPortal>
+        )}
         {/* The TV in the dock (T-131): its rotation and what happened to the player view. */}
         <ShellPortal slot="dock">
           {playerFeed && (

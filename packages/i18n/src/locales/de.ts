@@ -40,6 +40,8 @@ export const de = {
       remove: "Kalibrierung entfernen",
     },
     blackout: "TV schwarz (.)",
+    previewNoTv:
+      "Kein TV gewählt: die Vorschau zeigt einen TV mit 1920 × 1080.",
     rotateTv: "TV-Ansicht drehen (jetzt {{degrees}}°)",
     refreshDisplays: "Displays neu suchen",
     error: "Das hat nicht geklappt: {{message}}",
@@ -573,6 +575,7 @@ export const de = {
       browser: "Browser",
       details: "Eigenschaften",
       initiative: "Initiative",
+      preview: "TV-Vorschau",
     },
     workspace: {
       label: "Arbeitsbereich",
@@ -688,6 +691,7 @@ export const de = {
     notShown:
       "Die Szene kann nicht auf dem TV gezeigt werden (ist die Kampagnendatei lesbar?). Der TV bleibt schwarz.",
     windowTitle: "Spieleransicht",
+    preview: "Vorschau der Spieleransicht",
     initiative: {
       label: "Initiative",
       round: "Runde {{round}}",

@@ -1581,3 +1581,22 @@ button.dm-welcome-campaign:hover {
   display: grid;
   gap: var(--dm-space-3);
 }
+
+/* The TV preview (T-113b): the TV's shape, as large as the panel allows (width from the
+   component: the smaller of the panel's width and its height times the TV's aspect). */
+.dm-preview-panel {
+  display: grid;
+}
+
+.dm-tv-preview-panel {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--dm-space-2);
+  container-type: size;
+  min-height: 0;
+}
+
+.dm-tv-preview {
+  border: 1px solid var(--dm-border-subtle);
+}

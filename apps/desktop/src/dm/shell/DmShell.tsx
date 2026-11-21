@@ -106,6 +106,7 @@ const PANEL_COMMAND = {
   browser: "toggleBrowser",
   details: "toggleDetails",
   initiative: "toggleInitiative",
+  preview: "togglePreview",
 } as const satisfies Record<PanelId, AppCommand>;
 
 const MODES = ["scene", "fog", "display"] as const;
@@ -132,6 +133,7 @@ interface PanelHosts {
   readonly browser: HTMLElement;
   readonly details: HTMLElement;
   readonly initiative: HTMLElement;
+  readonly preview: HTMLElement;
   readonly notices: HTMLElement;
   readonly dock: HTMLElement;
 }
@@ -301,6 +303,12 @@ const PANEL_COMPONENTS: Record<
       className="dm-panel-body dm-initiative-panel"
     />
   ),
+  preview: () => (
+    <SlotHost
+      element={usePanelHosts().preview}
+      className="dm-panel-body dm-preview-panel"
+    />
+  ),
 };
 
 /** Cmd+B on macOS, Ctrl+B elsewhere; not in rich-text fields, where it means bold. */
@@ -406,6 +414,7 @@ export function DmShell({
       browser: createHost("dm-browser"),
       details: createHost("dm-details"),
       initiative: createHost("dm-initiative"),
+      preview: createHost("dm-preview"),
       notices: createHost("dm-notices"),
       dock: createHost("dm-dock"),
     }),
@@ -423,6 +432,7 @@ export function DmShell({
       browser: hosts.browser,
       details: hosts.details,
       initiative: hosts.initiative,
+      preview: hosts.preview,
       notices: hosts.notices,
       dock: hosts.dock,
     }),
@@ -451,6 +461,7 @@ export function DmShell({
       browser: t("shell.panels.browser"),
       details: t("shell.panels.details"),
       initiative: t("shell.panels.initiative"),
+      preview: t("shell.panels.preview"),
     }),
     [t],
   );

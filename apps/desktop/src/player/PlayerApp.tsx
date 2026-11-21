@@ -41,14 +41,22 @@ export function PlayerApp({
   feed,
   maps,
   storage = deviceStorage(),
+  embedded,
 }: {
   readonly feed: PlayerFeedReceiver;
   readonly maps: MapViewService;
   /** Device-local settings (soft fog edges), shared with the DM window. */
   readonly storage?: Storage | undefined;
+  /**
+   * Shown inside the DM window as its preview (T-113b) instead of filling a window: it fills
+   * its box, a scale model of a TV `tvWidthPx` physical pixels wide.
+   */
+  readonly embedded?: { readonly tvWidthPx: number } | undefined;
 }) {
   const { t } = useTranslation();
   const host = useRef<HTMLElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
+  const tvWidthPx = embedded?.tvWidthPx;
   // The initiative bar (T-111c): the projected initiative and how the TV is turned.
   const [bar, setBar] = useState<{
     readonly initiative: NonNullable<ViewerScene["initiative"]>;
@@ -57,7 +65,18 @@ export function PlayerApp({
 
   useEffect(() => {
     const element = host.current;
-    if (!element) return;
+    const box = frame.current;
+    if (!element || !box) return;
+    // The TV's window, or the preview's box (T-113b), and how many of its CSS pixels one of
+    // the TV's physical pixels makes – so the calibration (in physical pixels) scales along.
+    const viewSize = (): Size =>
+      tvWidthPx === undefined
+        ? windowSize()
+        : { width: box.clientWidth, height: box.clientHeight };
+    const perTvPixel = () =>
+      tvWidthPx === undefined
+        ? 1 / window.devicePixelRatio
+        : box.clientWidth / tvWidthPx;
     let active = true;
     let renderer: Renderer | null = null;
     let message: PlayerViewMessage | null = null;
@@ -82,13 +101,13 @@ export function PlayerApp({
     mark("none");
 
     // A square of a known number of pixels for the DM to measure (T-106d).
-    // Blackout (T-113a): black over everything – the body's last child, above the initiative bar
-    // too – while the scene stays loaded beneath. Set at once, not through React's next render.
+    // Blackout (T-113a): black over everything in the frame, the initiative bar too (z-index),
+    // while the scene stays loaded beneath. Set at once, not through React's next render.
     const blackout = document.createElement("div");
     blackout.className = "player-blackout";
     blackout.dataset["testid"] = "blackout";
     blackout.hidden = true;
-    document.body.appendChild(blackout);
+    box.appendChild(blackout);
     const checkSquare = document.createElement("div");
     checkSquare.className = "player-check-square";
     // Black until the first message (fail closed): no square before the DM asks for one.
@@ -99,7 +118,7 @@ export function PlayerApp({
       checkSquare.hidden = sidePx === undefined;
       if (sidePx === undefined) return;
       // The page works in CSS pixels; the square is given in physical ones.
-      const side = sidePx / window.devicePixelRatio;
+      const side = sidePx * perTvPixel();
       checkSquare.style.width = `${String(side)}px`;
       checkSquare.style.height = `${String(side)}px`;
     };
@@ -116,11 +135,11 @@ export function PlayerApp({
                 mapSize,
                 message.rotation,
                 cellSizePx,
-                (scale.inchPx * scale.cellInches) / window.devicePixelRatio,
+                scale.inchPx * scale.cellInches * perTvPixel(),
                 // Where the DM moved the TV's view (T-106c); the map's middle by default.
                 message.viewCenter,
               )
-            : fitCamera(mapSize, windowSize(), message.rotation),
+            : fitCamera(mapSize, viewSize(), message.rotation),
         );
       }
     };
@@ -247,7 +266,7 @@ export function PlayerApp({
     };
 
     const rendererReady = maps
-      .createRenderer(canvas, windowSize())
+      .createRenderer(canvas, viewSize())
       .then((created) => {
         if (!active) {
           created.destroy();
@@ -269,15 +288,22 @@ export function PlayerApp({
       show(next);
     });
     const onResize = () => {
-      renderer?.resize(windowSize());
+      renderer?.resize(viewSize());
       fit();
     };
     window.addEventListener("resize", onResize);
+    // Embedded, the box changes with its panel, not with the window.
+    const observer =
+      tvWidthPx !== undefined && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(onResize)
+        : null;
+    observer?.observe(box);
 
     return () => {
       active = false;
       stopSettings();
       window.removeEventListener("resize", onResize);
+      observer?.disconnect();
       void unsubscribe.then((stop) => {
         stop();
       });
@@ -290,19 +316,34 @@ export function PlayerApp({
       blackout.remove();
       releaseVideo(video);
     };
-  }, [feed, maps, storage]);
+  }, [feed, maps, storage, tvWidthPx]);
 
+  // The frame holds the view, the initiative bar and the black layer; its size is theirs.
   return (
-    <>
-      <main
-        ref={host}
-        id="player-view"
-        className="player"
-        aria-label={t("player.windowTitle")}
-      />
+    <div
+      ref={frame}
+      className={
+        embedded ? "player-frame player-frame-embedded" : "player-frame"
+      }
+    >
+      {embedded ? (
+        // Inside the DM window's own <main>: a region, not a second main landmark.
+        <section
+          ref={host}
+          className="player"
+          aria-label={t("player.preview")}
+        />
+      ) : (
+        <main
+          ref={host}
+          id="player-view"
+          className="player"
+          aria-label={t("player.windowTitle")}
+        />
+      )}
       {bar && (
         <InitiativeBar initiative={bar.initiative} rotation={bar.rotation} />
       )}
-    </>
+    </div>
   );
 }

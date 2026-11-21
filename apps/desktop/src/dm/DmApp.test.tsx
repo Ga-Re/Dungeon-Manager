@@ -201,6 +201,7 @@ describe("DmApp", () => {
             showGrid,
             setViewCenter: vi.fn(),
             blackout: vi.fn(),
+            watch: () => () => undefined,
           }}
         >
           <DmApp
@@ -233,6 +234,7 @@ describe("DmApp", () => {
             showGrid: vi.fn(),
             setViewCenter: vi.fn(),
             blackout: vi.fn(),
+            watch: () => () => undefined,
           }}
         >
           <DmApp
@@ -266,6 +268,7 @@ describe("DmApp", () => {
             showGrid: vi.fn(),
             setViewCenter: vi.fn(),
             blackout,
+            watch: () => () => undefined,
           }}
         >
           <DmApp
@@ -314,6 +317,7 @@ describe("DmApp", () => {
             showGrid: vi.fn(),
             setViewCenter: vi.fn(),
             blackout: vi.fn(),
+            watch: () => () => undefined,
           }}
         >
           <DmApp

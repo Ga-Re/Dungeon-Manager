@@ -41,6 +41,7 @@ export const en: Messages = {
       remove: "Remove calibration",
     },
     blackout: "TV black (.)",
+    previewNoTv: "No TV chosen: the preview shows a 1920 × 1080 TV.",
     rotateTv: "Rotate TV view (now {{degrees}}°)",
     refreshDisplays: "Search displays again",
     error: "That did not work: {{message}}",
@@ -565,6 +566,7 @@ export const en: Messages = {
       browser: "Browser",
       details: "Properties",
       initiative: "Initiative",
+      preview: "TV preview",
     },
     workspace: {
       label: "Workspace",
@@ -680,6 +682,7 @@ export const en: Messages = {
     notShown:
       "The scene cannot be shown on the TV (is the campaign file readable?). The TV stays black.",
     windowTitle: "Player view",
+    preview: "Preview of the player view",
     initiative: {
       label: "Initiative",
       round: "Round {{round}}",

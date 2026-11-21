@@ -611,10 +611,10 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-113b DM preview of the player view
 
-- **Status:** todo · **Depends on:** T-113a, T-172a · **Refs:** ARCHITECTURE §15
+- **Status:** done · **Depends on:** T-113a, T-172a · **Refs:** ARCHITECTURE §15
 - A small live preview of the player view in the DM window, as a dockable panel "TV-Vorschau" (DM decision 2026-11-21: in the default layout a tab next to Eigenschaften), drawn from exactly the message the TV gets.
 - **Acceptance criteria**
-  - [ ] The preview shows exactly the projected player view (incl. blackout), never DM-only data; component/E2E test
+  - [x] The preview shows exactly the projected player view (incl. blackout), never DM-only data; component/E2E test
 - **Notes:** Preview placement decided by the DM (2026-11-18, PR #27; 2026-11-21).
 
 ### T-133 Player-view preview on an additional DM monitor

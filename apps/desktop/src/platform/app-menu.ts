@@ -12,6 +12,7 @@ export const APP_COMMANDS = [
   "toggleBrowser",
   "toggleDetails",
   "toggleInitiative",
+  "togglePreview",
   "resetLayout",
   // Named layouts (T-172c): save the current one; choosing one is `onLayout`.
   "saveLayout",

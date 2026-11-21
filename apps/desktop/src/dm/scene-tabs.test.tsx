@@ -53,6 +53,7 @@ function renderCampaign() {
     showGrid: vi.fn(),
     setViewCenter: vi.fn(),
     blackout: vi.fn(),
+    watch: () => () => undefined,
   };
   render(
     <I18nextProvider i18n={createI18n("de")}>
