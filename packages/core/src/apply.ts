@@ -1,12 +1,13 @@
 import type {
   Combatant,
-  GridCell,
   InitiativeState,
   LevelFog,
   Polygon,
   Scene,
   Token,
+  TokenPosition,
 } from "@dungeon-manager/schema";
+import { gridFootprint, snapToCells } from "./footprint.js";
 import type { Command, DomainEvent, RejectionReason } from "./commands.js";
 import { EMPTY_LEVEL_FOG, hideArea, revealArea } from "./fog.js";
 import { tableLevels } from "./projection.js";
@@ -90,7 +91,7 @@ function applyChange(state: SessionState, command: Command): Change {
       if (moves.length === 0) return "unknownToken";
       if (new Set(moves.map((move) => move.tokenId)).size !== moves.length)
         return "unknownToken";
-      const moved = new Map<string, GridCell>();
+      const moved = new Map<string, TokenPosition>();
       for (const move of moves) {
         if (!scene.tokens.some((each) => each.id === move.tokenId))
           return "unknownToken";
@@ -185,6 +186,63 @@ function applyChange(state: SessionState, command: Command): Change {
           table: { levelId: command.levelId, shownLevelIds: [...shown] },
         }),
         events: [{ type: "level.shown", levelId: command.levelId }],
+      };
+    }
+    case "combat.start": {
+      // Level by level: tokens on different levels never share space.
+      const cells = new Map<string, TokenPosition>();
+      for (const levelId of new Set(scene.tokens.map((each) => each.levelId))) {
+        const snapped = snapToCells(
+          scene.tokens
+            .filter((each) => each.levelId === levelId)
+            .map((each) => ({
+              id: each.id,
+              position: each.position,
+              footprint: gridFootprint(each.size),
+            })),
+          command.bounds,
+        );
+        if (!snapped) return "noFreeCell";
+        for (const [id, cell] of snapped) cells.set(id, cell);
+      }
+      const moves = scene.tokens.flatMap((each) => {
+        const to = cells.get(each.id);
+        return to &&
+          (to.col !== each.position.col || to.row !== each.position.row)
+          ? [{ token: each, to }]
+          : [];
+      });
+      // Started again with every token on its cell: nothing changes, no undo step.
+      if (scene.combat === true && moves.length === 0)
+        return { state, events: [] };
+      const movedTo = new Map(moves.map(({ token, to }) => [token.id, to]));
+      return {
+        state: withScene(state, {
+          combat: true,
+          tokens: scene.tokens.map((each) => {
+            const to = movedTo.get(each.id);
+            return to ? { ...each, position: to } : each;
+          }),
+        }),
+        events: [
+          { type: "combat.changed", combat: true },
+          ...moves.map(({ token, to }) => ({
+            type: "token.moved" as const,
+            tokenId: token.id,
+            from: token.position,
+            to,
+            levelId: token.levelId,
+          })),
+        ],
+      };
+    }
+    case "combat.end": {
+      if (scene.combat !== true) return { state, events: [] };
+      const ended: Scene = { ...scene };
+      delete ended.combat;
+      return {
+        state: { ...state, scene: ended },
+        events: [{ type: "combat.changed", combat: false }],
       };
     }
     case "visibility.setTokens": {
@@ -283,13 +341,16 @@ function hasLevel(map: ResolvedMap, levelId: string): boolean {
   return map.levels.some((level) => level.id === levelId);
 }
 
-/** Grid cells are non-negative integers; anything else would corrupt the scene file. */
-function isCell(cell: GridCell): boolean {
+/**
+ * Positions are finite and non-negative; fractional when placed freely (T-233). Anything else
+ * would corrupt the scene file.
+ */
+function isCell(position: TokenPosition): boolean {
   return (
-    Number.isInteger(cell.col) &&
-    Number.isInteger(cell.row) &&
-    cell.col >= 0 &&
-    cell.row >= 0
+    Number.isFinite(position.col) &&
+    Number.isFinite(position.row) &&
+    position.col >= 0 &&
+    position.row >= 0
   );
 }
 

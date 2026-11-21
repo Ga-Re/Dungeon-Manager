@@ -1,11 +1,12 @@
 import type {
   Combatant,
-  GridCell,
   Polygon,
+  TokenPosition,
   Token,
   Visibility,
   VisibilityElementType,
 } from "@dungeon-manager/schema";
+import type { CellBounds } from "./footprint.js";
 
 /** Where a visibility setting applies: one token, or the campaign default for an element type. */
 export type VisibilityTarget =
@@ -24,13 +25,13 @@ export type Command =
       readonly type: "token.moveMany";
       readonly moves: readonly {
         readonly tokenId: string;
-        readonly to: GridCell;
+        readonly to: TokenPosition;
       }[];
     }
   | {
       readonly type: "token.move";
       readonly tokenId: string;
-      readonly to: GridCell;
+      readonly to: TokenPosition;
       readonly levelId?: string;
     }
   /** Reveal `area` (map pixels); clears memory fog there. */
@@ -62,6 +63,13 @@ export type Command =
     }
   /** Shows `levelId` on the TV; from then on players may see it (released). */
   | { readonly type: "level.show"; readonly levelId: string }
+  /**
+   * Starts a combat (T-233): every token snaps to the nearest free cell inside `bounds` (the
+   * map's whole cells), level by level, in one step. Rejected if a token finds no room.
+   */
+  | { readonly type: "combat.start"; readonly bounds: Required<CellBounds> }
+  /** Ends the combat; tokens stay where they are. */
+  | { readonly type: "combat.end" }
   | { readonly type: "initiative.add"; readonly combatant: Combatant }
   | { readonly type: "initiative.remove"; readonly combatantId: string }
   /** Ends the current turn; starts round 1 if combat has not started. */
@@ -85,10 +93,11 @@ export type DomainEvent = { readonly at: number } & (
   | {
       readonly type: "token.moved";
       readonly tokenId: string;
-      readonly from: GridCell;
-      readonly to: GridCell;
+      readonly from: TokenPosition;
+      readonly to: TokenPosition;
       readonly levelId: string;
     }
+  | { readonly type: "combat.changed"; readonly combat: boolean }
   | { readonly type: "fog.revealed"; readonly levelId: string }
   | { readonly type: "fog.hidden"; readonly levelId: string }
   | { readonly type: "level.shown"; readonly levelId: string }
@@ -129,4 +138,5 @@ export type RejectionReason =
   | "hpNotTracked"
   | "invalidAmount"
   | "invalidArea"
-  | "invalidCell";
+  | "invalidCell"
+  | "noFreeCell";

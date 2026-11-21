@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   assetRefSchema,
-  gridCellSchema,
+  tokenPositionSchema,
   idSchema,
   polygonSchema,
   visibilitySchema,
@@ -80,7 +80,7 @@ export const tokenSchema = z.looseObject({
   id: idSchema,
   name: z.string().min(1),
   size: tokenSizeSchema,
-  position: gridCellSchema,
+  position: tokenPositionSchema,
   levelId: idSchema,
   image: assetRefSchema.optional(),
   /** The player who may move this token from their companion (SPEC §2.4); absent for DM-only tokens. */

@@ -457,6 +457,17 @@ const command: fc.Arbitrary<Command> = fc.oneof(
   { arbitrary: move, weight: 4 },
   { arbitrary: tokenAdded, weight: 2 },
   { arbitrary: tokenRemoved, weight: 1 },
+  // Combat's snap moves hidden tokens too: their new cells must not leak (T-233).
+  {
+    arbitrary: fc.constantFrom<Command>(
+      {
+        type: "combat.start",
+        bounds: { firstCol: 0, firstRow: 0, cols: 12, rows: 12 },
+      },
+      { type: "combat.end" },
+    ),
+    weight: 1,
+  },
   {
     arbitrary: fc
       .uniqueArray(index, { minLength: 1, maxLength: 3 })

@@ -27,6 +27,22 @@ export const gridCellSchema = z.looseObject({
   row: z.number().int().nonnegative(),
 });
 
+/**
+ * Where a token stands (T-233): its top left corner in cells from the grid's origin. Whole on
+ * the grid, fractional when placed freely (DM decision, 2026-11-21: cells, not map pixels, so
+ * a position does not depend on the image's resolution).
+ */
+export const tokenPositionSchema = z.looseObject({
+  col: z.number().nonnegative(),
+  row: z.number().nonnegative(),
+});
+
+/**
+ * How tokens stand on a scene's grid (T-233): always on cells, freely but on cells during
+ * combat, or always freely. Holding Alt places a token freely in every mode.
+ */
+export const gridModeSchema = z.enum(["grid", "gridInCombat", "free"]);
+
 /** A point in map pixels. */
 export const pointSchema = z.tuple([z.number(), z.number()]);
 
@@ -110,6 +126,8 @@ export const assetRefSchema = z.looseObject({
 export const visibilitySchema = z.enum(["visible", "hidden", "approximate"]);
 
 export type GridCell = z.infer<typeof gridCellSchema>;
+export type TokenPosition = z.infer<typeof tokenPositionSchema>;
+export type GridMode = z.infer<typeof gridModeSchema>;
 export type Point = z.infer<typeof pointSchema>;
 export type Ring = z.infer<typeof ringSchema>;
 export type Polygon = z.infer<typeof polygonSchema>;

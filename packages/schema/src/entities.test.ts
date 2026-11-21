@@ -81,9 +81,9 @@ describe("validation", () => {
       { ...samples.token, position: { col: -1, row: 0 } },
     ],
     [
-      "a fractional grid cell",
+      "an endless position",
       tokenSchema,
-      { ...samples.token, position: { col: 1.5, row: 0 } },
+      { ...samples.token, position: { col: Infinity, row: 0 } },
     ],
     [
       "an unknown token size",
@@ -232,6 +232,17 @@ describe("validation", () => {
       initiativeStateSchema.safeParse(
         initiativeWith({ round: 0, activeCombatantId: null }),
       ).success,
+    ).toBe(true);
+  });
+});
+
+describe("token positions (T-233)", () => {
+  test("may be fractional: a token placed freely between cells", () => {
+    expect(
+      tokenSchema.safeParse({
+        ...samples.token,
+        position: { col: 1.5, row: 0.25 },
+      }).success,
     ).toBe(true);
   });
 });

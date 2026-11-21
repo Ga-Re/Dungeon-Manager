@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { idSchema, noteLinksSchema } from "./common.js";
+import { gridModeSchema, idSchema, noteLinksSchema } from "./common.js";
 import {
   fogStateSchema,
   initiativeStateSchema,
@@ -36,6 +36,8 @@ export const campaignSchema = z.looseObject({
   /** Default player visibility per element type (SPEC §6); missing types are visible. */
   visibilityDefaults: visibilityRulesSchema,
   notes: noteLinksSchema,
+  /** The grid mode of scenes without their own (T-233); absent: "gridInCombat". Additive. */
+  gridMode: gridModeSchema.optional(),
 });
 
 /**
@@ -43,7 +45,9 @@ export const campaignSchema = z.looseObject({
  * `parentSceneId`: optional and additive, so no version bump – older readers keep it (DM
  * decision, 2026-11-19). It is its own scene with its own map, fog and tokens. `table` (T-118a),
  * optional and additive too: the level on the TV and every level shown there so far, which
- * players may see from then on; without it the TV shows the map's first level.
+ * players may see from then on; without it the TV shows the map's first level. `gridMode` and
+ * `combat` (T-233), optional and additive (DM decision, 2026-11-21): the scene's own grid mode
+ * (else the campaign's), and whether a combat is running (game state, so it survives a restart).
  */
 export const sceneSchema = z.looseObject({
   schemaVersion: z.literal(SCENE_VERSION),
@@ -62,6 +66,8 @@ export const sceneSchema = z.looseObject({
       shownLevelIds: z.array(idSchema),
     })
     .optional(),
+  gridMode: gridModeSchema.optional(),
+  combat: z.boolean().optional(),
 });
 
 /** A calendar day as `YYYY-MM-DD` that really exists (no 30 February). */
