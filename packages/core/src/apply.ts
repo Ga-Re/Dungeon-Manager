@@ -13,6 +13,7 @@ import {
   placeFree,
   placeOnCells,
   snapToCells,
+  tinyCentres,
   type CellBounds,
 } from "./footprint.js";
 import type { Command, DomainEvent, RejectionReason } from "./commands.js";
@@ -459,15 +460,20 @@ function freely(
       ];
     });
     if (moving.length === 0) continue;
+    const staying = onLevel.filter((each) => !wanted.has(each.id));
+    // Tiny tokens sharing a cell are kept apart where they are drawn, off its middle.
+    const centres = tinyCentres(staying);
     const placed = placeFree(
       moving,
-      onLevel
-        .filter((each) => !wanted.has(each.id))
-        .map((each) => ({
+      staying.map((each) => {
+        const centre = centres.get(each.id);
+        return {
           position: each.position,
           ...shape(each),
+          ...(centre && { centre }),
           seen: seenByTable(state, each),
-        })),
+        };
+      }),
       bounds,
     );
     if (!placed) return null;

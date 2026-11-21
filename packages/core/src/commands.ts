@@ -25,7 +25,8 @@ export type Command =
    * Moves several tokens at once, as one step (T-107b: a selection, a group). With `bounds` (the
    * map's whole cells) they go onto cells, a token whose cell is taken onto the nearest free one
    * (T-233c); with `free` too they stay where they are put, pushed just far enough off others
-   * (T-233d). Rejected if one finds no room.
+   * (T-233d); `free` without `bounds` (no map size known) takes the moves as they are. Rejected
+   * if one finds no room.
    */
   | {
       readonly type: "token.moveMany";

@@ -254,7 +254,7 @@ export const en: Messages = {
   },
   mapView: {
     label: "Map of the scene “{{name}}”",
-    help: "Mouse wheel or + and − zoom, drag or arrow keys pan, R rotates, 0 fits the map. Click a token to select it, Shift-click for several; drag selected tokens, move them cell by cell with the arrow keys, Delete removes them, Escape clears the selection. On touch: tap a token, then its target cell. Hold Alt to place freely instead of on the grid.",
+    help: "Mouse wheel or + and − zoom, drag or arrow keys pan, R rotates, 0 fits the map. Click a token to select it, Shift-click for several; drag selected tokens, move them cell by cell with the arrow keys, Delete removes them, Escape clears the selection. On touch: tap a token, then its target cell. Hold Alt while dragging or tapping to place freely instead of on the grid.",
     loading: "Loading map …",
     error:
       "The map could not be loaded. Is the file still in the library and downloaded?",
@@ -268,7 +268,7 @@ export const en: Messages = {
   },
   gridMode: {
     group: "Grid",
-    pick: "Moving on the grid",
+    pick: "How tokens move",
     asCampaign: "As the campaign ({{mode}})",
     modes: {
       grid: "Always on the grid",

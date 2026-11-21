@@ -405,6 +405,14 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] A token whose creature has a custom footprint claims all of it when snapping and placing (unit test)
 - **Notes:** From the T-233a review (2026-11-21).
 
+### T-242 Grid moves next to free tokens
+
+- **Status:** todo · **Depends on:** T-233d · **Refs:** SPEC §2.4
+- On the grid a free token counts as standing on its nearest cell (T-233c), so a token moved onto the cell beside a free one may overlap its disc (e.g. a Medium at col 2.4 and one moved onto cell 3). Decide with the DM whether grid moves should also keep clear of free tokens' discs (e.g. a cell counts as taken when a free disc reaches into it).
+- **Acceptance criteria**
+  - [ ] The DM's choice is implemented and covered by unit tests
+- **Notes:** From the T-233d review (2026-11-21).
+
 ### T-106c Move the TV's view
 
 - **Status:** done · **Depends on:** T-106a · **Refs:** SPEC 2.2
@@ -468,11 +476,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-233d Free movement and the scene's grid mode
 
-- **Status:** in-progress · **Depends on:** T-233c · **Refs:** SPEC §2.4, §5
+- **Status:** done · **Depends on:** T-233c · **Refs:** SPEC §2.4, §5
 - Each scene has a grid mode, chosen in the Szene ribbon: "as the campaign", "always on the grid", "free, on the grid in combat" or "always free"; it applies to all tokens (player characters and creatures). Holding Alt places a token freely at any time. Free tokens never overlap others: a token dropped onto another is pushed just far enough away (DM decision, 2026-11-21).
 - **Acceptance criteria**
-  - [ ] Free moves outside combat and snapped moves in combat, per grid mode, with Alt override (component tests)
-  - [ ] Free tokens never overlap (unit + property tests)
+  - [x] Free moves outside combat and snapped moves in combat, per grid mode, with Alt override (component tests)
+  - [x] Free tokens never overlap (unit + property tests)
 - **Notes:** DM request (2026-11-20); DM decisions (2026-11-21). Free positions affect camera tracking (SPEC §5.1): outside combat the detected position is used as is. Walls are respected once they exist. From the T-233c review: `bounds` with every move snaps a free token on its next move – with free movement the placement depends on the grid mode, combat and Alt. Split from T-233d (agent, 2026-11-21): the campaign default is T-233e.
 
 ### T-233e The campaign's default grid mode in the settings

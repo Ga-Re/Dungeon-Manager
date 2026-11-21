@@ -6,6 +6,7 @@ import {
   discRadius,
   gridFootprint,
   placeFree,
+  tinyCentres,
   type ApplyResult,
 } from "./index.js";
 import { ctx, state } from "./test-data.test-data.js";
@@ -112,45 +113,152 @@ describe("placeFree", () => {
     ).toEqual({ col: 3, row: 3 });
   });
 
-  test("property: no two placed or standing discs overlap", () => {
+  test("keeps clear of Tiny tokens where they are drawn, off their cell's middle (T-233d review)", () => {
+    // Two Tiny tokens on (5, 5) are drawn side by side, centred at 5.25 and 5.75.
+    const start = withTokens(
+      { ...token("rat-1", 5, 5), size: "tiny" },
+      { ...token("rat-2", 5, 5), size: "tiny" },
+      token("hero", 1, 1),
+    );
+    const result = ok(
+      apply(
+        start,
+        {
+          type: "token.moveMany",
+          moves: [{ tokenId: "hero", to: { col: 4.25, row: 5 } }],
+          bounds,
+          free: true,
+        },
+        ctx,
+      ),
+    );
+    const hero = result.state.scene.tokens[2]?.position;
+    if (!hero) throw new Error("no hero");
+    // The hero's centre is 0.5 + 0.25 away from the left rat's drawn centre at least.
+    expect(
+      Math.hypot(hero.col + 0.5 - 5.25, hero.row + 0.5 - 5.5),
+    ).toBeGreaterThanOrEqual(0.749);
+  });
+
+  test("finds an exact gap of one cell between tokens on cells: never stricter than the grid", () => {
+    // A ring of tokens around the free cell (3, 3).
+    const ring = [-1, 0, 1].flatMap((dc) =>
+      [-1, 0, 1]
+        .filter((dr) => dc !== 0 || dr !== 0)
+        .map((dr) => ({
+          position: { col: 3 + dc, row: 3 + dr },
+          ...disc("medium"),
+          seen: true,
+        })),
+    );
+    expect(
+      placeFree(
+        [
+          {
+            id: "a",
+            wanted: { col: 3.3, row: 3.2 },
+            ...disc("medium"),
+            seen: true,
+          },
+        ],
+        ring,
+        bounds,
+      )?.get("a"),
+    ).toEqual({ col: 3, row: 3 });
+  });
+
+  test("tinyCentres arranges Tiny tokens on a cell by count, a free one in its middle", () => {
+    const tiny = (id: string, col: number, row: number) => ({
+      id,
+      size: "tiny" as const,
+      position: { col, row },
+    });
+    const centres = tinyCentres([
+      tiny("a", 2, 2),
+      tiny("b", 2, 2),
+      tiny("c", 2, 2),
+      tiny("free", 4.3, 1.2),
+    ]);
+    expect([...centres.values()]).toEqual([
+      { col: 2.25, row: 2.25 },
+      { col: 2.75, row: 2.25 },
+      { col: 2.5, row: 2.75 },
+      { col: 4.8, row: 1.7 },
+    ]);
+  });
+
+  test("property: seen tokens clear seen ones, unseen ones clear all; room is found on a roomy map", () => {
     const sizes = ["tiny", "small", "medium", "large"] as const;
+    const spec = fc.record({
+      size: fc.constantFrom(...sizes),
+      col: fc.double({ min: 0, max: 8, noNaN: true }),
+      row: fc.double({ min: 0, max: 6, noNaN: true }),
+      seen: fc.boolean(),
+    });
     fc.assert(
       fc.property(
-        fc.array(
-          fc.record({
-            size: fc.constantFrom(...sizes),
-            col: fc.double({ min: 0, max: 8, noNaN: true }),
-            row: fc.double({ min: 0, max: 6, noNaN: true }),
-          }),
-          { minLength: 1, maxLength: 8 },
-        ),
-        (wanted) => {
+        fc.array(spec, { minLength: 1, maxLength: 6 }),
+        fc.array(spec, { maxLength: 6 }),
+        (wanted, standingSpecs) => {
+          // Standing tokens never overlap one another: placed first, freely.
+          const standingPlaced = placeFree(
+            standingSpecs.map((each, index) => ({
+              id: `s${String(index)}`,
+              wanted: { col: each.col, row: each.row },
+              ...disc(each.size),
+              seen: true,
+            })),
+            [],
+            bounds,
+          );
+          expect(standingPlaced).not.toBeNull();
+          const standing = standingSpecs.map((each, index) => {
+            const position = standingPlaced?.get(`s${String(index)}`);
+            if (!position) throw new Error("missing");
+            return { position, ...disc(each.size), seen: each.seen };
+          });
           const moving = wanted.map((each, index) => ({
             id: String(index),
             wanted: { col: each.col, row: each.row },
             ...disc(each.size),
-            seen: true,
+            seen: each.seen,
           }));
-          const placed = placeFree(moving, [], bounds);
-          if (!placed) return;
-          const discs = moving.map((each) => {
-            const at = placed.get(each.id);
-            if (!at) throw new Error("missing");
-            expect(at.col).toBeGreaterThanOrEqual(0);
-            expect(at.col + each.footprint.cols).toBeLessThanOrEqual(
-              bounds.cols,
-            );
-            return {
-              x: at.col + each.footprint.cols / 2,
-              y: at.row + each.footprint.rows / 2,
-              r: each.radius,
-            };
+          const placed = placeFree(moving, standing, bounds);
+          // At most twelve tokens on a 10 × 8 map: there is always room.
+          expect(placed).not.toBeNull();
+          const discOf = (
+            at: { col: number; row: number },
+            each: { footprint: { cols: number; rows: number }; radius: number },
+          ) => ({
+            x: at.col + each.footprint.cols / 2,
+            y: at.row + each.footprint.rows / 2,
+            r: each.radius,
           });
-          for (let i = 0; i < discs.length; i++)
-            for (let j = i + 1; j < discs.length; j++) {
-              const a = discs[i];
-              const b = discs[j];
-              if (!a || !b) continue;
+          const all = [
+            ...standing.map((each) => ({
+              ...discOf(each.position, each),
+              seen: each.seen,
+              moved: false,
+            })),
+            ...moving.map((each) => {
+              const at = placed?.get(each.id);
+              if (!at) throw new Error("missing");
+              expect(at.col).toBeGreaterThanOrEqual(0);
+              expect(at.col + each.footprint.cols).toBeLessThanOrEqual(
+                bounds.cols,
+              );
+              expect(at.row + each.footprint.rows).toBeLessThanOrEqual(
+                bounds.rows,
+              );
+              return { ...discOf(at, each), seen: each.seen, moved: true };
+            }),
+          ];
+          for (const a of all)
+            for (const b of all) {
+              if (a === b || !a.moved) continue;
+              // A seen mover ignores unseen tokens; an unseen one clears everything.
+              if (a.seen && !b.seen) continue;
+              // Movers are placed one after another; a seen one does not see unseen movers.
               expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(
                 a.r + b.r - 2e-3,
               );

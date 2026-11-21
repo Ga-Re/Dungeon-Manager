@@ -255,7 +255,7 @@ export const de = {
   },
   mapView: {
     label: "Karte der Szene „{{name}}“",
-    help: "Mausrad oder + und − zoomen, ziehen oder Pfeiltasten verschieben, R dreht, 0 passt die Karte ein. Ein Token anklicken wählt es aus, mit Umschalt mehrere; ausgewählte Tokens ziehen, mit den Pfeiltasten feldweise bewegen, Entf löscht sie, Escape hebt die Auswahl auf. Mit Touch: Token antippen, dann das Zielfeld. Mit gehaltener Alt-Taste frei statt auf dem Raster.",
+    help: "Mausrad oder + und − zoomen, ziehen oder Pfeiltasten verschieben, R dreht, 0 passt die Karte ein. Ein Token anklicken wählt es aus, mit Umschalt mehrere; ausgewählte Tokens ziehen, mit den Pfeiltasten feldweise bewegen, Entf löscht sie, Escape hebt die Auswahl auf. Mit Touch: Token antippen, dann das Zielfeld. Mit gehaltener Alt-Taste setzt Ziehen oder Antippen frei statt auf das Raster.",
     loading: "Karte wird geladen …",
     error:
       "Die Karte konnte nicht geladen werden. Ist die Datei noch in der Bibliothek und heruntergeladen?",
@@ -270,7 +270,7 @@ export const de = {
   },
   gridMode: {
     group: "Raster",
-    pick: "Bewegen auf dem Raster",
+    pick: "Wie Tokens sich bewegen",
     asCampaign: "Wie Kampagne ({{mode}})",
     modes: {
       grid: "Immer Raster",

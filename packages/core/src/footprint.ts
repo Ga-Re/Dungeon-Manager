@@ -359,6 +359,69 @@ export function discRadius(size: TokenSize, footprint: GridFootprint): number {
   return Math.min(footprint.cols, footprint.rows) / 2;
 }
 
+/**
+ * Where Tiny tokens sharing a cell sit, by how many share it (T-233c): the centres of their
+ * discs, in parts of the cell – one in the middle, two side by side, three in a triangle, four
+ * in the quarters.
+ */
+const TINY_SLOTS: readonly (readonly (readonly [number, number])[])[] = [
+  [[0.5, 0.5]],
+  [
+    [0.25, 0.5],
+    [0.75, 0.5],
+  ],
+  [
+    [0.25, 0.25],
+    [0.75, 0.25],
+    [0.5, 0.75],
+  ],
+  [
+    [0.25, 0.25],
+    [0.75, 0.25],
+    [0.25, 0.75],
+    [0.75, 0.75],
+  ],
+];
+
+/**
+ * The centres of Tiny tokens' discs, in cells (T-233c): Tiny tokens on one whole cell arrange
+ * by how many share it, in the given order; a Tiny token placed freely sits in the middle of
+ * its square. One definition for drawing (DM window, TV) and for keeping free tokens apart.
+ */
+export function tinyCentres<T extends string>(
+  tokens: readonly {
+    readonly id: T;
+    readonly size: TokenSize;
+    readonly position: TokenPosition;
+  }[],
+): Map<T, TokenPosition> {
+  const sharing = new Map<string, T[]>();
+  const onCell = (position: TokenPosition) =>
+    Number.isInteger(position.col) && Number.isInteger(position.row);
+  for (const token of tokens)
+    if (token.size === "tiny" && onCell(token.position)) {
+      const key = `${String(token.position.col)},${String(token.position.row)}`;
+      const together = sharing.get(key);
+      if (together) together.push(token.id);
+      else sharing.set(key, [token.id]);
+    }
+  const centres = new Map<T, TokenPosition>();
+  for (const token of tokens) {
+    if (token.size !== "tiny") continue;
+    const key = `${String(token.position.col)},${String(token.position.row)}`;
+    const together = onCell(token.position) ? sharing.get(key) : undefined;
+    const slots = TINY_SLOTS[Math.min(together?.length ?? 1, 4) - 1] ?? [];
+    const [x, y] = slots[
+      (together?.indexOf(token.id) ?? 0) % Math.max(1, slots.length)
+    ] ?? [0.5, 0.5];
+    centres.set(token.id, {
+      col: token.position.col + x,
+      row: token.position.row + y,
+    });
+  }
+  return centres;
+}
+
 /** A token placed freely, or one standing, as far as free space goes (`placeFree`). */
 interface FreePlacing {
   readonly footprint: GridFootprint;
@@ -366,7 +429,7 @@ interface FreePlacing {
   readonly seen: boolean;
 }
 
-/** How finely free positions are searched and kept, in cells. */
+/** How finely free positions are searched, in cells, and in how many directions. */
 const FREE_STEP = 0.05;
 const FREE_ANGLES = 32;
 /** Free positions are kept to a thousandth of a cell, so files stay readable. */
@@ -374,10 +437,13 @@ const roundFree = (value: number) => Math.round(value * 1000) / 1000;
 
 /**
  * Where tokens moved freely end up (T-233d): where wanted if their disc overlaps no other and
- * stays on the map, else pushed just far enough away – the nearest spot that fits, of equally
- * near ones the one nearest to where the token came from. Like `placeOnCells`, tokens the table
- * sees go first and only among seen ones; unseen ones then fit around everything. `null` when one
- * finds no room.
+ * stays on the map, else pushed away to the nearest spot found that fits – touching the token
+ * in the way, a free cell, or a point on rings around the wanted spot (so a spot within a
+ * twentieth of a cell of the nearest possible one); of equally near spots the one nearest to
+ * where the token came from. Never stricter than the grid: a free cell always counts. Like
+ * `placeOnCells`, tokens the table sees go first and only among seen ones; unseen ones then fit
+ * around everything. A standing token's disc may be given by its `centre` (Tiny ones sharing a
+ * cell sit off its middle). `null` when one finds no room.
  */
 export function placeFree<T extends string>(
   moving: readonly (FreePlacing & {
@@ -385,14 +451,27 @@ export function placeFree<T extends string>(
     readonly wanted: TokenPosition;
     readonly from?: TokenPosition;
   })[],
-  standing: readonly (FreePlacing & { readonly position: TokenPosition })[],
+  standing: readonly (FreePlacing & {
+    readonly position: TokenPosition;
+    readonly centre?: TokenPosition;
+  })[],
   bounds: Required<CellBounds>,
 ): Map<T, TokenPosition> | null {
-  type Disc = { readonly x: number; readonly y: number; readonly r: number };
-  const discAt = (position: TokenPosition, token: FreePlacing): Disc => ({
-    x: position.col + token.footprint.cols / 2,
-    y: position.row + token.footprint.rows / 2,
+  type Disc = {
+    readonly x: number;
+    readonly y: number;
+    readonly r: number;
+    readonly occupant: Occupant;
+  };
+  const discOf = (
+    position: TokenPosition,
+    token: FreePlacing,
+    centre?: TokenPosition,
+  ): Disc => ({
+    x: centre?.col ?? position.col + token.footprint.cols / 2,
+    y: centre?.row ?? position.row + token.footprint.rows / 2,
     r: token.radius,
+    occupant: { position, footprint: token.footprint },
   });
   const result = new Map<T, TokenPosition>();
   const placedSeen: Disc[] = [];
@@ -402,6 +481,9 @@ export function placeFree<T extends string>(
     blockers: readonly Disc[],
   ): boolean => {
     const { cols, rows } = token.footprint;
+    const halfCols = cols / 2;
+    const halfRows = rows / 2;
+    // Positions are top left corners; discs are kept apart by their centres.
     const fits = (col: number, row: number) => {
       if (
         col < bounds.firstCol ||
@@ -410,51 +492,91 @@ export function placeFree<T extends string>(
         row + rows > bounds.rows
       )
         return false;
-      const disc = discAt({ col, row }, token);
+      const x = col + halfCols;
+      const y = row + halfRows;
       // A thousandth of tolerance: positions are rounded to it.
       return blockers.every(
         (other) =>
-          Math.hypot(disc.x - other.x, disc.y - other.y) >=
-          disc.r + other.r - 1e-3,
+          Math.hypot(x - other.x, y - other.y) >= token.radius + other.r - 1e-3,
       );
     };
-    let found: TokenPosition | null = null;
     const wanted = {
       col: roundFree(token.wanted.col),
       row: roundFree(token.wanted.row),
     };
-    if (fits(wanted.col, wanted.row)) found = wanted;
-    const reach = Math.ceil((bounds.cols + bounds.rows) / FREE_STEP);
-    for (let step = 1; !found && step <= reach; step++) {
-      const distance = step * FREE_STEP;
-      let best: TokenPosition | null = null;
-      let bestToOrigin = Infinity;
-      for (let index = 0; index < FREE_ANGLES; index++) {
-        const angle = (index / FREE_ANGLES) * 2 * Math.PI;
-        const col = roundFree(wanted.col + Math.cos(angle) * distance);
-        const row = roundFree(wanted.row + Math.sin(angle) * distance);
-        if (!fits(col, row)) continue;
-        const toOrigin = token.from
-          ? Math.hypot(col - token.from.col, row - token.from.row)
+    let found: TokenPosition | null = fits(wanted.col, wanted.row)
+      ? wanted
+      : null;
+    if (!found) {
+      const away = (spot: TokenPosition) =>
+        Math.hypot(spot.col - wanted.col, spot.row - wanted.row);
+      const toOrigin = (spot: TokenPosition) =>
+        token.from
+          ? Math.hypot(spot.col - token.from.col, spot.row - token.from.row)
           : 0;
-        if (toOrigin < bestToOrigin) {
-          best = { col, row };
-          bestToOrigin = toOrigin;
+      // In an object: TypeScript does not follow assignments made inside `consider`.
+      const choice: { best: TokenPosition | null } = { best: null };
+      const consider = (col: number, row: number) => {
+        const spot = { col: roundFree(col), row: roundFree(row) };
+        if (!fits(spot.col, spot.row)) return;
+        const { best } = choice;
+        if (
+          !best ||
+          away(spot) < away(best) - 1e-9 ||
+          (Math.abs(away(spot) - away(best)) <= 1e-9 &&
+            toOrigin(spot) < toOrigin(best))
+        )
+          choice.best = spot;
+      };
+      // Touching each token in the way, on the line from it through the wanted spot.
+      const x = wanted.col + halfCols;
+      const y = wanted.row + halfRows;
+      for (const other of blockers) {
+        const dx = x - other.x;
+        const dy = y - other.y;
+        const length = Math.hypot(dx, dy);
+        const ux = length > 1e-9 ? dx / length : 1;
+        const uy = length > 1e-9 ? dy / length : 0;
+        const gap = token.radius + other.r + 1e-3;
+        consider(other.x + ux * gap - halfCols, other.y + uy * gap - halfRows);
+      }
+      // The nearest free cell: free placement is never stricter than the grid.
+      const cell = nearestFreeCell(
+        { col: Math.round(wanted.col), row: Math.round(wanted.row) },
+        token.footprint,
+        blockers.map((each) => each.occupant),
+        bounds,
+        token.from,
+      );
+      if (cell) consider(cell.col, cell.row);
+      // Rings around the wanted spot, out to the best spot so far or the map's far corner.
+      const corner = Math.hypot(bounds.cols, bounds.rows);
+      for (let step = 1; step * FREE_STEP <= corner; step++) {
+        const distance = step * FREE_STEP;
+        if (choice.best && distance >= away(choice.best)) break;
+        for (let index = 0; index < FREE_ANGLES; index++) {
+          const angle = (index / FREE_ANGLES) * 2 * Math.PI;
+          consider(
+            wanted.col + Math.cos(angle) * distance,
+            wanted.row + Math.sin(angle) * distance,
+          );
         }
       }
-      found = best;
+      found = choice.best;
     }
     if (!found) return false;
-    const disc = discAt(found, token);
+    const disc = discOf(found, token);
     if (token.seen) placedSeen.push(disc);
     placedAll.push(disc);
     result.set(token.id, found);
     return true;
   };
-  const standingAll = standing.map((each) => discAt(each.position, each));
+  const standingAll = standing.map((each) =>
+    discOf(each.position, each, each.centre),
+  );
   const standingSeen = standing
     .filter((each) => each.seen)
-    .map((each) => discAt(each.position, each));
+    .map((each) => discOf(each.position, each, each.centre));
   for (const token of moving.filter((each) => each.seen))
     if (!place(token, [...standingSeen, ...placedSeen])) return null;
   for (const token of moving.filter((each) => !each.seen))

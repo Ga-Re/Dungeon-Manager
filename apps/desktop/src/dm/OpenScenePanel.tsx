@@ -81,6 +81,8 @@ const rectangle = (size: Size): Polygon => ({
 /** One shared empty list, so an unrevealed level does not rebuild the fog on every render. */
 const NOTHING_REVEALED: readonly Polygon[] = [];
 const NOTHING_SELECTED: ReadonlySet<string> = new Set();
+/** The grid modes a scene can have (T-233d), in the Raster menu's order. */
+const GRID_MODES = ["grid", "gridInCombat", "free"] as const;
 
 /** Undo/redo keys, unless the DM is typing in a field (where they edit the text). */
 function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
@@ -344,6 +346,10 @@ export function OpenScenePanel({
   // How tokens move (T-233d): the scene's grid mode, else the campaign's, else free outside
   // combat and on cells in it.
   const gridMode = scene.gridMode ?? session.campaignGridMode ?? "gridInCombat";
+  // What "as the campaign" means right now, for the Raster menu.
+  const asCampaign = t("gridMode.asCampaign", {
+    mode: t(`gridMode.modes.${session.campaignGridMode ?? "gridInCombat"}`),
+  });
   const movesFreely =
     gridMode === "free" ||
     (gridMode === "gridInCombat" && scene.combat !== true);
@@ -758,28 +764,19 @@ export function OpenScenePanel({
         {map && (
           <RibbonGroup caption={t("gridMode.group")}>
             <Menu
-              label={t(
+              label={
                 scene.gridMode === undefined
-                  ? "gridMode.asCampaign"
-                  : `gridMode.modes.${scene.gridMode}`,
-                {
-                  mode: t(
-                    `gridMode.modes.${session.campaignGridMode ?? "gridInCombat"}`,
-                  ),
-                },
-              )}
+                  ? asCampaign
+                  : t(`gridMode.modes.${scene.gridMode}`)
+              }
               menuLabel={t("gridMode.pick")}
               items={[
                 {
                   id: "campaign",
-                  label: t("gridMode.asCampaign", {
-                    mode: t(
-                      `gridMode.modes.${session.campaignGridMode ?? "gridInCombat"}`,
-                    ),
-                  }),
+                  label: asCampaign,
                   checked: scene.gridMode === undefined,
                 },
-                ...(["grid", "gridInCombat", "free"] as const).map((mode) => ({
+                ...GRID_MODES.map((mode) => ({
                   id: mode,
                   label: t(`gridMode.modes.${mode}`),
                   checked: scene.gridMode === mode,
@@ -789,10 +786,7 @@ export function OpenScenePanel({
                 if (busy) return;
                 session.run({
                   type: "scene.setGridMode",
-                  gridMode:
-                    id === "grid" || id === "gridInCombat" || id === "free"
-                      ? id
-                      : null,
+                  gridMode: GRID_MODES.find((mode) => mode === id) ?? null,
                 });
               }}
             />

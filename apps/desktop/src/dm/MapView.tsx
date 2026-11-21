@@ -600,6 +600,13 @@ export function MapView({
     if (press) {
       setDragShift(null);
       if (press.moved) {
+        // Alt pressed or let go after the last move counts as well.
+        const mapPoint = onMapPoint(local(event));
+        if (grid && mapPoint) {
+          press.free = tokenControl?.free === true || event.altKey;
+          const wanted = dragCells(press.start, mapPoint, grid, press.free);
+          press.shift = tokenControl?.clampShift?.(press.ids, wanted) ?? wanted;
+        }
         if (press.shift.col !== 0 || press.shift.row !== 0)
           tokenControl?.onMove(press.ids, press.shift, press.free);
       } else if (press.wasSelected) clickSelected(press);
