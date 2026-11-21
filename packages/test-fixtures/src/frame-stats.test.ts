@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { percentile, summarize, verdict } from "./stats.js";
+import { percentile, summarize, verdict } from "./frame-stats.js";
 
 describe("percentile", () => {
   test("uses the nearest rank", () => {

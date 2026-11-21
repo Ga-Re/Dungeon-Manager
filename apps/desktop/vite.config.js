@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { spikeResults } from "./spike/vite-plugin-spike-results.js";
+import { benchResults } from "./bench/vite-plugin-bench-results.js";
 
-// SPIKE (T-007): `pnpm spike:desktop` sets VITE_SPIKE=1 to serve the performance spike.
-const spike = process.env["VITE_SPIKE"] === "1";
+// Renderer benchmark (T-105d): `pnpm bench` sets VITE_BENCH=1 to serve the benchmark page.
+const bench = process.env["VITE_BENCH"] === "1";
 
 // Two entry points: the DM window and the player window (SPEC 2.1–2.2). In `e2e` mode the
 // build is the E2E harness instead (T-130a): the DM window with in-memory platform services,
@@ -12,9 +12,9 @@ const spike = process.env["VITE_SPIKE"] === "1";
 export default defineConfig(({ mode }) => {
   const e2e = mode === "e2e";
   return {
-    plugins: [react(), ...(spike ? [spikeResults()] : [])],
-    // The spike's test video is served only in spike mode, so it never ends up in an app build.
-    publicDir: spike ? "spike-assets" : false,
+    plugins: [react(), ...(bench ? [benchResults()] : [])],
+    // The benchmark's video map is served only in bench mode, so it never ends up in an app build.
+    publicDir: bench ? "bench-assets" : false,
     // Tauri expects a fixed port and shows its own errors (tauri.conf.json → build.devUrl).
     clearScreen: false,
     server: { port: 1420, strictPort: true },

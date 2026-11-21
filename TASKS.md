@@ -332,12 +332,13 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-105d Renderer benchmark and spike removal
 
-- **Status:** todo · **Depends on:** T-105c, T-108a · **Refs:** ARCHITECTURE §11, ADR-0010
+- **Status:** done · **Depends on:** T-105c, T-108a · **Refs:** ARCHITECTURE §11, ADR-0010
 - Benchmark scene in `test-fixtures` (4K video map, realistic fog, 20 tokens once T-107 exists, DM window open, animated camera) with the frame statistics from the spike; remove the T-007 spike.
 - **Acceptance criteria**
-  - [ ] Benchmark scene added to `test-fixtures`; ≤ 1 % missed refreshes at 4K/60 Hz on the reference notebook (DM measures)
-  - [ ] Spike code removed; `pixi.js` only in `packages/renderer`
-- **Notes:** Judge video smoothness separately and investigate the hitches seen in the spike (ADR-0010).
+  - [x] Benchmark scene added to `test-fixtures`
+  - [ ] ≤ 1 % missed refreshes at 4K/60 Hz on the reference notebook (DM measures with `pnpm bench`)
+  - [x] Spike code removed; `pixi.js` only in `packages/renderer`
+- **Notes:** Judge video smoothness separately and investigate the hitches seen in the spike (ADR-0010). The benchmark (`pnpm bench`, README) draws the scene with the real renderer in the player window; the DM's measurement is on the list of manual checks.
 
 ### T-127 Maps larger than the GPU texture limit
 

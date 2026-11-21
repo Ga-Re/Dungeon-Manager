@@ -116,42 +116,37 @@ pnpm dev:companion
 
 Builds the packages it needs and serves the companion at <http://localhost:5174> (currently a placeholder page). `pnpm --filter @dungeon-manager/companion build` writes static files with relative paths to `apps/companion/dist/`; the desktop backend will serve them on the LAN (ADR-0007). The E2E test checks that production build via `vite preview`.
 
-## Performance spike (T-007, temporary)
+## Renderer benchmark (`pnpm bench`, T-105d)
 
-Measures whether a 4K video map + fog + 20 tokens reaches 60 FPS in the player window (ARCHITECTURE §11). Run it on the reference notebook with the table TV connected.
+Measures whether the TV keeps 60 FPS with the benchmark scene (ARCHITECTURE §11): a 4K video map, soft fog with holes, 20 tokens and a camera that keeps moving – drawn by the real renderer in the player window while the DM window is open. Run it on the reference notebook with the table TV connected. Budget: at most 1 % missed refreshes at 4K/60 Hz.
 
 **Before measuring**
 
-- Update and install: `git pull`, then `pnpm install` (the spike adds PixiJS).
 - Plug in the charger and switch off Low Power Mode (System Settings → Battery).
-- TV in System Settings → Displays: 3840 × 2160 at **60 Hz**. 4K at 60 Hz needs a USB-C/HDMI adapter and cable supporting HDMI 2.0 or newer – many adapters only carry 4K at 30 Hz, and the report then says "display below 60 Hz".
-- Close other heavy apps. Don't touch the windows while the spike runs.
+- TV in System Settings → Displays: 3840 × 2160 at **60 Hz** (4K at 60 Hz needs an adapter and cable supporting HDMI 2.0 or newer; otherwise the report says "display below 60 Hz").
+- Close other heavy apps. Don't touch the windows while it runs.
 
-**1. Provide the test videos (once; again after updates)** – generate a synthetic 4K video plus a 1080p version (needs `brew install ffmpeg`):
-
-```bash
-pnpm --filter @dungeon-manager/desktop spike:video
-```
-
-…or use your own animated map instead (stays local, never committed). Use the full path – easiest: type the command, a space, then drag the file into the terminal:
+**1. Provide the video map (once)** – a synthetic 4K video (needs `brew install ffmpeg`):
 
 ```bash
-pnpm --filter @dungeon-manager/desktop spike:video /Users/you/Maps/animated-map.mp4
+pnpm --filter @dungeon-manager/desktop bench:video
 ```
 
-**2. Start the app in spike mode**, choose the TV and click **Spieleransicht öffnen**:
+…or use your own animated map (stays local, never committed; use the full path, at least 30 s long):
 
 ```bash
-pnpm spike:desktop
+pnpm --filter @dungeon-manager/desktop bench:video /Users/you/Maps/animated-map.mp4
 ```
 
-**3. Wait about four minutes.** The spike first measures the display refresh rate, then runs eight 25-second scenarios (A–H) comparing ways to show the video map: as a WebGL texture (4K and 1080p video), as a WebGPU texture, and as a plain video element under a transparent PixiJS canvas – plus Full HD renders and a repeat to spot thermal throttling. The result appears on the TV and in the terminal between `===== SPIKE RESULTS` and `===== END` – copy that block. It is also saved in `apps/desktop/spike-results/`. Close the app with the DM window to run again.
+Without a video the scene runs without its map.
 
-While scenarios E and F run ("HTML video element"), watch the TV: does the video look smooth, or does it judder? Please mention it with the results – the spike cannot measure that part itself.
+**2. Start the app in benchmark mode**, choose the TV and click **Spieleransicht öffnen**:
 
-With your own map: use a video that is at least 30 s long (shorter ones restart during a measurement); a `.webm` map is compared against an H.264 1080p version, so codecs differ too.
+```bash
+pnpm bench
+```
 
-For the 4K scenarios the TV must receive a 4K signal: in System Settings → Displays, the TV should offer 3840 × 2160 (or a "(HiDPI)" mode). If only 1920 × 1080 is offered, the cable or adapter limits the connection.
+**3. Wait about 40 seconds** (refresh rate, 5 s warm-up, 30 s measurement; `VITE_BENCH_SECONDS` changes the measurement). The verdict and the frame statistics appear on the TV and in the terminal between `===== BENCH RESULTS` and `===== END`; they are also saved in `apps/desktop/bench-results/`. Watch the TV meanwhile: does the video look smooth? The benchmark cannot judge that itself (ADR-0010).
 
 ## Repository layout
 

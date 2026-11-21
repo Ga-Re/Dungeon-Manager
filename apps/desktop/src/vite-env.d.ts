@@ -2,8 +2,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** SPIKE (T-007): "1" when started via `pnpm spike:desktop`. */
-  readonly VITE_SPIKE?: string;
-  /** SPIKE (T-007): seconds measured per scenario (default 20). */
-  readonly VITE_SPIKE_SECONDS?: string;
+  /** Renderer benchmark (T-105d): "1" when started via `pnpm bench`. */
+  readonly VITE_BENCH?: string;
+  /** Renderer benchmark (T-105d): seconds measured (default 30). */
+  readonly VITE_BENCH_SECONDS?: string;
 }

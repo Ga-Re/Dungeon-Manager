@@ -15,6 +15,6 @@ coverage/
 test-results/
 playwright-report/
 
-# Performance spike (T-007): local test video and measurement results.
-apps/desktop/spike-assets/
-apps/desktop/spike-results/
+# Renderer benchmark (T-105d): local video map and measurement results.
+apps/desktop/bench-assets/
+apps/desktop/bench-results/

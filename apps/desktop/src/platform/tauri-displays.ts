@@ -14,7 +14,7 @@ export function detectPlatformFamily(userAgent: string): PlatformFamily {
 
 /**
  * Displays and the player window via the Tauri window API.
- * @param playerPage page loaded in the player window (the performance spike swaps it, T-007)
+ * @param playerPage page loaded in the player window (the renderer benchmark swaps it, T-105d)
  */
 export function createTauriDisplayService(
   platform: PlatformFamily,

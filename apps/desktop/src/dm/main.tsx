@@ -9,9 +9,9 @@ import { createTauriPlayerFeedSender } from "../platform/tauri-player-feed.js";
 import { tauriPreviousSessionCrashed } from "../platform/tauri-session.js";
 import { renderDmWindow } from "./render.js";
 
-// SPIKE (T-007): `pnpm spike:desktop` opens the performance spike instead of the player view.
+// `pnpm bench` opens the renderer benchmark (T-105d) instead of the player view.
 const playerPage =
-  import.meta.env.VITE_SPIKE === "1" ? "spike.html" : "player.html";
+  import.meta.env.VITE_BENCH === "1" ? "bench.html" : "player.html";
 
 const platform = detectPlatformFamily(navigator.userAgent);
 

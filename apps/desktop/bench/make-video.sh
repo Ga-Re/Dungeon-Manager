@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# SPIKE (T-007): provides the test videos for the performance spike – a 4K version and,
-# if ffmpeg is installed, a 1080p version of the same content.
-#   pnpm --filter @dungeon-manager/desktop spike:video                 → generates a synthetic 4K H.264 video (needs ffmpeg)
-#   pnpm --filter @dungeon-manager/desktop spike:video /full/path.mp4  → uses your own MP4/WebM map instead (stays local)
-# Options: SPIKE_VIDEO_SECONDS (default 40), SPIKE_VIDEO_FPS (default 30; animated maps are often 30, some 60).
-# The videos are stored in apps/desktop/spike-assets/ (git-ignored) and never committed.
+# Renderer benchmark (T-105d): provides the benchmark's 4K video map and, if ffmpeg is installed,
+# a 1080p version of the same content.
+#   pnpm --filter @dungeon-manager/desktop bench:video                 → generates a synthetic 4K H.264 video (needs ffmpeg)
+#   pnpm --filter @dungeon-manager/desktop bench:video /full/path.mp4  → uses your own MP4/WebM map instead (stays local)
+# Options: BENCH_VIDEO_SECONDS (default 40), BENCH_VIDEO_FPS (default 30; animated maps are often 30, some 60).
+# The videos are stored in apps/desktop/bench-assets/ (git-ignored) and never committed.
 set -euo pipefail
 
-DIR="$(cd "$(dirname "$0")/.." && pwd)/spike-assets/spike"
+DIR="$(cd "$(dirname "$0")/.." && pwd)/bench-assets/bench"
 # 40 s: longer than warm-up + measurement, so the loop restart never falls into a measurement.
-LENGTH="${SPIKE_VIDEO_SECONDS:-40}"
-FPS="${SPIKE_VIDEO_FPS:-30}"
+LENGTH="${BENCH_VIDEO_SECONDS:-40}"
+FPS="${BENCH_VIDEO_FPS:-30}"
 mkdir -p "$DIR"
 uhd_tmp="$DIR/.incoming-uhd"
 fhd_tmp="$DIR/.incoming-fhd.mp4"
