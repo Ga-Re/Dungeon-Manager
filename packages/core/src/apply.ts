@@ -10,7 +10,7 @@ import type {
 import { gridFootprint, snapToCells } from "./footprint.js";
 import type { Command, DomainEvent, RejectionReason } from "./commands.js";
 import { EMPTY_LEVEL_FOG, hideArea, revealArea } from "./fog.js";
-import { tableLevels, tokenVisibility } from "./projection.js";
+import { seenByTable, tableLevels } from "./projection.js";
 import type { ResolvedMap } from "./map.js";
 import type { Ctx, SessionState } from "./state.js";
 
@@ -189,11 +189,10 @@ function applyChange(state: SessionState, command: Command): Change {
       };
     }
     case "combat.start": {
-      // Level by level: tokens on different levels never share space. Visible tokens first,
-      // among themselves: a hidden one never pushes a visible one aside, which would give it
-      // away (DM decision, 2026-11-21); hidden ones then fit around them.
+      // Level by level: tokens on different levels never share space. Tokens the table sees
+      // first, among themselves: one it does not see (hidden, or in fog) never pushes a seen one
+      // aside, which would give it away (DM decision, 2026-11-21); the others fit around them.
       const cells = new Map<string, TokenPosition>();
-      const defaults = state.campaign.visibilityDefaults;
       const placing = (tokens: readonly Token[]) =>
         tokens.map((each) => ({
           id: each.id,
@@ -202,8 +201,7 @@ function applyChange(state: SessionState, command: Command): Change {
         }));
       for (const levelId of new Set(scene.tokens.map((each) => each.levelId))) {
         const onLevel = scene.tokens.filter((each) => each.levelId === levelId);
-        const hidden = (each: Token) =>
-          tokenVisibility(defaults, each) === "hidden";
+        const hidden = (each: Token) => !seenByTable(state, each);
         const shown = placing(onLevel.filter((each) => !hidden(each)));
         const visible = snapToCells(shown, command.bounds);
         if (!visible) return "noFreeCell";

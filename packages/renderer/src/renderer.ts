@@ -291,6 +291,14 @@ export async function createRenderer(
         y: token.y + token.height / 2,
       };
       const moves = shownAt && (shownAt.x !== to.x || shownAt.y !== to.y);
+      const running = glides.get(token.id);
+      // Already on its way there (another message during the glide): it goes on as it was.
+      if (
+        running?.view === built.view &&
+        running.to.x === to.x &&
+        running.to.y === to.y
+      )
+        return;
       if (glide > 0 && moves) {
         glides.set(token.id, {
           view: built.view,

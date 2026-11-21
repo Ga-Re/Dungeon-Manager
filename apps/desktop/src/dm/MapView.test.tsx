@@ -711,6 +711,8 @@ describe("MapView tokens (T-107b)", () => {
         { ...ogre, x: 800, y: 300 },
       ]);
     });
+    // The preview follows the pointer at once, it never glides.
+    expect(view.fake.view.setTokens.mock.lastCall?.[1]).toEqual({ glide: 0 });
     fireEvent.pointerUp(area(), { clientX: 245, clientY: 155, pointerId: 1 });
     expect(view.onMove).toHaveBeenCalledExactlyOnceWith(["ogre", "goblin"], {
       col: 2,

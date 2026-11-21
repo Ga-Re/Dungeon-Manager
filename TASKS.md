@@ -450,12 +450,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-233b Combat switch and snap: UI and TV
 
-- **Status:** in-progress · **Depends on:** T-233a · **Refs:** SPEC §2.4, §5
+- **Status:** done · **Depends on:** T-233a · **Refs:** SPEC §2.4, §5
 - A combat switch in the play ribbon (Game-Orchestrator), independent of the initiative tracker, starts and ends combat (`combat.start`/`combat.end` from T-233a). On start the tokens snap animated, in the DM window and on the TV. Ending combat leaves the tokens where they are. Hidden tokens do not block visible ones when snapping; free tokens count as standing on their nearest cell.
 - **Acceptance criteria**
-  - [ ] Combat on/off and the snap reach the TV (E2E)
-  - [ ] Hidden tokens never push a visible one aside (unit test)
-- **Notes:** Split from T-233b (agent, 2026-11-21). DM decision (2026-11-21): hidden tokens do not block visible ones – nothing is given away; a visible token may end up on a hidden one's cell. From the T-233a review: occupancy assumed whole cells, but `TokenPosition` and `GridCell` share one TypeScript type.
+  - [x] Combat on/off and the snap reach the TV (E2E)
+  - [x] Hidden tokens never push a visible one aside (unit test)
+- **Notes:** Split from T-233b (agent, 2026-11-21). DM decision (2026-11-21): hidden tokens do not block visible ones – nothing is given away; a visible token may end up on a hidden one's cell. Read as "what the table sees" (T-233b review): a token in fog counts like a hidden one, as its push would give it away just the same. From the T-233a review: occupancy assumed whole cells, but `TokenPosition` and `GridCell` share one TypeScript type.
 
 ### T-233c Grid mode setting and free movement
 
