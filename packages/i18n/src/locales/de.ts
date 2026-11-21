@@ -378,6 +378,8 @@ export const de = {
     },
     campaignSettingsHint:
       "Gilt für die geöffnete Kampagne und wird in ihr gespeichert.",
+    noCampaignOpen:
+      "Keine Kampagne geöffnet: Öffne eine Kampagne, um ihre Einstellungen zu ändern.",
     uiScale: {
       label: "Größe der Oberfläche",
       percent: "{{percent}} %",

@@ -8,6 +8,7 @@ import type {
   Scene,
   Session,
 } from "@dungeon-manager/schema";
+import { gridModeSchema } from "@dungeon-manager/schema";
 import {
   ContextMenu,
   IconButton,
@@ -107,7 +108,6 @@ import {
   type SceneSlot,
 } from "./tree-ids.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
-import { gridModeSchema } from "@dungeon-manager/schema";
 
 /** The grid modes (T-233d), in the order the settings list them. */
 const GRID_MODES = gridModeSchema.options;
@@ -356,19 +356,40 @@ export function CampaignPanel({
   );
   // The campaign's default grid mode (T-233e): written into its file, read back at once, so
   // open scenes "as the campaign" follow it.
-  const saveGridMode = async (gridMode: GridMode) => {
-    try {
-      const loaded = await loadCampaign(service.fs, slug);
-      if (loaded.status !== "ok") {
-        setNotice(t("library.campaign.invalid", { slug }));
-        return;
+  // Changes of campaign.json run one after another (load, change, save, read back): two of
+  // them at once (a note link and the grid mode) would each save the copy they loaded and lose
+  // the other's change. Resolves to a translated problem, or `null`.
+  const campaignWrites = useRef<Promise<unknown>>(Promise.resolve());
+  const updateCampaign = (
+    change: (campaign: Campaign) => Campaign,
+  ): Promise<string | null> => {
+    const run = async () => {
+      try {
+        const loaded = await loadCampaign(service.fs, slug);
+        if (loaded.status !== "ok")
+          return t("library.campaign.invalid", { slug });
+        await saveCampaign(service.fs, slug, change(loaded.value));
+        await readCampaign();
+        return null;
+      } catch (error) {
+        return describeLibraryError(t, error);
       }
-      await saveCampaign(service.fs, slug, { ...loaded.value, gridMode });
-      await readCampaign();
-    } catch (error) {
-      setNotice(`${t("gridMode.notSaved")} ${describeLibraryError(t, error)}`);
-    }
+    };
+    const result = campaignWrites.current.then(run, run);
+    campaignWrites.current = result;
+    return result;
   };
+  const [savingGridMode, setSavingGridMode] = useState(false);
+  const saveGridMode = async (gridMode: GridMode) => {
+    setSavingGridMode(true);
+    const problem = await updateCampaign((campaign) => ({
+      ...campaign,
+      gridMode,
+    }));
+    setSavingGridMode(false);
+    if (problem) setNotice(`${t("gridMode.notSaved")} ${problem}`);
+  };
+  const gridModeHint = useId();
 
   // The inspected note's text, read as it is (T-161b); re-read when that file changes.
   const inspectedNote = (() => {
@@ -852,12 +873,7 @@ export function CampaignPanel({
         await reloadScenes();
         return null;
       }
-      const loaded = await loadCampaign(service.fs, slug);
-      if (loaded.status !== "ok")
-        return t("library.campaign.invalid", { slug });
-      await saveCampaign(service.fs, slug, change(loaded.value));
-      await readCampaign();
-      return null;
+      return await updateCampaign((campaign) => change(campaign));
     } catch (error) {
       return describeLibraryError(t, error);
     }
@@ -1159,8 +1175,9 @@ export function CampaignPanel({
           <legend>{t("gridMode.campaignDefault")}</legend>
           <select
             aria-label={t("gridMode.campaignDefault")}
+            aria-describedby={gridModeHint}
             value={campaignFile?.gridMode ?? "gridInCombat"}
-            disabled={!campaignFile}
+            disabled={!campaignFile || savingGridMode}
             onChange={(event) => {
               const gridMode = GRID_MODES.find(
                 (mode) => mode === event.target.value,
@@ -1174,8 +1191,10 @@ export function CampaignPanel({
               </option>
             ))}
           </select>
-          <p className="dm-settings-hint">
-            {t("gridMode.campaignDefaultHint")}
+          <p id={gridModeHint} className="dm-settings-hint">
+            {campaignFile
+              ? t("gridMode.campaignDefaultHint")
+              : t("library.campaign.invalid", { slug })}
           </p>
         </fieldset>
       </ShellPortal>

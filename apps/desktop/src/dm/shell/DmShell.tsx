@@ -860,7 +860,14 @@ export function DmShell({
       content: (
         <>
           <p className="dm-settings-hint">{t("shell.campaignSettingsHint")}</p>
-          <div ref={slotRefs.settingsCampaign} />
+          <div
+            ref={slotRefs.settingsCampaign}
+            className="dm-settings-campaign"
+          />
+          {/* Hidden by CSS once the open campaign puts its settings into the slot. */}
+          <p className="dm-settings-hint dm-settings-no-campaign">
+            {t("shell.noCampaignOpen")}
+          </p>
         </>
       ),
     },

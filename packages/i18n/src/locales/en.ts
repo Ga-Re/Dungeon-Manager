@@ -373,6 +373,7 @@ export const en: Messages = {
       campaign: "Campaign",
     },
     campaignSettingsHint: "Applies to the open campaign and is saved in it.",
+    noCampaignOpen: "No campaign open: open a campaign to change its settings.",
     uiScale: {
       label: "Interface size",
       percent: "{{percent}}%",

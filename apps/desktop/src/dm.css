@@ -1437,3 +1437,8 @@ button.dm-welcome-campaign:hover {
   width: 1em;
   height: 1em;
 }
+
+/* The settings dialog's Kampagne tab (T-233e): its hint shows only while no campaign fills it. */
+.dm-settings-campaign:not(:empty) ~ .dm-settings-no-campaign {
+  display: none;
+}
