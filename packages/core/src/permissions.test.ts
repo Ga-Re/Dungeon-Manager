@@ -78,6 +78,7 @@ const everyCommand: Command[] = [
   { type: "initiative.ready", combatantId: "goblin", ready: true },
   { type: "initiative.move", combatantId: "goblin", index: 0 },
   { type: "initiative.setValue", combatantId: "goblin", initiative: 3 },
+  { type: "initiative.enterRolls", add: [], values: [] },
 ];
 
 describe("canApply", () => {

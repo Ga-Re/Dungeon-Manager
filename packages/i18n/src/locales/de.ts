@@ -300,6 +300,17 @@ export const de = {
     up: "{{name}} nach oben",
     down: "{{name}} nach unten",
     remove: "{{name}} entfernen",
+    playerRolls: "Spielerwürfe eintragen …",
+    enterRolls: "Eintragen",
+    rollsHint:
+      "Charaktere ohne eigenes Token bleiben auf dem TV verborgen, bis du sie freigibst.",
+    noPlayers: "Die Kampagne hat noch keine Spieler.",
+    newEntry: "Eintrag hinzufügen …",
+    entryName: "Name",
+    entryValue: "Initiative",
+    entryHint:
+      "Zum Beispiel eine Hort-Aktion. Ohne Token bleibt der Eintrag auf dem TV verborgen, bis du ihn freigibst.",
+    addEntry: "Hinzufügen",
     notApplied: "Die Initiative konnte nicht geändert werden.",
     noRoom:
       "Nicht jedes Token findet ein freies Feld: der Kampf beginnt nicht.",

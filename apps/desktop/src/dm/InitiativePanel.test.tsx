@@ -30,6 +30,11 @@ function renderPanel(
 ) {
   const onCommand = vi.fn<(command: Command) => void>();
   const onStart = vi.fn<() => void>();
+  const onPlayerRolls =
+    vi.fn<
+      (rolls: readonly { playerId: string; initiative: number }[]) => void
+    >();
+  const onAddEntry = vi.fn<(name: string, initiative: number) => void>();
   render(
     <I18nextProvider i18n={createI18n("de")}>
       <InitiativePanel
@@ -40,10 +45,16 @@ function renderPanel(
         onAddSelected={() => undefined}
         onStart={onStart}
         onCommand={onCommand}
+        players={[
+          { playerId: "p1", name: "Aria", initiative: 15 },
+          { playerId: "p2", name: "Bran" },
+        ]}
+        onPlayerRolls={onPlayerRolls}
+        onAddEntry={onAddEntry}
       />
     </I18nextProvider>,
   );
-  return { onCommand, onStart };
+  return { onCommand, onStart, onPlayerRolls, onAddEntry };
 }
 
 describe("InitiativePanel", () => {
@@ -104,5 +115,59 @@ describe("InitiativePanel", () => {
     expect(
       screen.getByRole("button", { name: "Initiative starten" }),
     ).toHaveProperty("disabled", true);
+  });
+
+  test("quick entry of the players' rolls by keyboard only (T-111d)", () => {
+    const { onPlayerRolls } = renderPanel();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Spielerwürfe eintragen …" }),
+    );
+    // The first field has the focus and the value already in the order.
+    const aria = screen.getByLabelText("Aria");
+    expect(document.activeElement).toBe(aria);
+    expect((aria as HTMLInputElement).value).toBe("15");
+    fireEvent.change(aria, { target: { value: "17" } });
+    const bran = screen.getByLabelText("Bran");
+    fireEvent.change(bran, { target: { value: "9" } });
+    fireEvent.submit(bran);
+    expect(onPlayerRolls).toHaveBeenCalledExactlyOnceWith([
+      { playerId: "p1", initiative: 17 },
+      { playerId: "p2", initiative: 9 },
+    ]);
+    // The form closes after entering.
+    expect(screen.queryByLabelText("Bran")).toBeNull();
+  });
+
+  test("a free entry needs a name and a value (T-111d)", () => {
+    const { onAddEntry } = renderPanel();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Eintrag hinzufügen …" }),
+    );
+    const name = screen.getByLabelText("Name");
+    expect(document.activeElement).toBe(name);
+    fireEvent.change(name, { target: { value: "Hort-Aktion" } });
+    fireEvent.submit(name);
+    expect(onAddEntry).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Initiative" }), {
+      target: { value: "20" },
+    });
+    fireEvent.submit(name);
+    expect(onAddEntry).toHaveBeenCalledExactlyOnceWith("Hort-Aktion", 20);
+  });
+
+  test("dragging a row onto another moves it to that place (T-111d)", () => {
+    const { onCommand } = renderPanel();
+    const rows = document.querySelectorAll("li.dm-initiative-row");
+    const [aria, goblin] = [...rows];
+    if (!aria || !goblin) throw new Error("rows missing");
+    const dataTransfer = { effectAllowed: "", setData: () => undefined };
+    fireEvent.dragStart(goblin, { dataTransfer });
+    fireEvent.dragOver(aria, { dataTransfer });
+    fireEvent.drop(aria, { dataTransfer });
+    expect(onCommand).toHaveBeenCalledExactlyOnceWith({
+      type: "initiative.move",
+      combatantId: "goblin",
+      index: 0,
+    });
   });
 });

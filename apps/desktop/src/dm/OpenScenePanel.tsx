@@ -16,8 +16,10 @@ import { viewArea, type Point, type Size } from "@dungeon-manager/renderer";
 import { gridModeSchema } from "@dungeon-manager/schema";
 import type {
   AssetRef,
+  Combatant,
   GridCell,
   GridMode,
+  Player,
   Polygon,
   Scene,
   TokenSize,
@@ -86,6 +88,7 @@ const rectangle = (size: Size): Polygon => ({
 /** One shared empty list, so an unrevealed level does not rebuild the fog on every render. */
 const NOTHING_REVEALED: readonly Polygon[] = [];
 const NOTHING_SELECTED: ReadonlySet<string> = new Set();
+const NO_PLAYERS: readonly Player[] = [];
 /** The grid modes a scene can have (T-233d), in the Raster menu's order. */
 const GRID_MODES = gridModeSchema.options;
 
@@ -145,6 +148,7 @@ export function OpenScenePanel({
   tabs,
   campaignGridMode,
   random = Math.random,
+  players = NO_PLAYERS,
 }: {
   readonly service: LibraryService;
   readonly slug: string;
@@ -187,6 +191,8 @@ export function OpenScenePanel({
   readonly campaignGridMode?: GridMode | undefined;
   /** Dice for the initiative (T-111b); tests pass a fixed one. */
   readonly random?: () => number;
+  /** The campaign's players, for the quick entry of their rolls (T-111d). */
+  readonly players?: readonly Player[];
 }) {
   const { t } = useTranslation();
   const fogLook = useContext(FogLookContext);
@@ -427,6 +433,79 @@ export function OpenScenePanel({
       })),
     });
     if (!added) setError(t("initiative.notApplied"));
+  };
+  // The players' rolls (T-111d): a character already in the order gets its new value, the
+  // others join – with their token on this scene if they have one.
+  // A player's character in the order: marked with the player, or found by the player's token.
+  const characterOf = (playerId: string) =>
+    scene.initiative?.combatants.find(
+      (each) =>
+        each.playerId === playerId ||
+        (each.playerId === undefined &&
+          each.tokenId !== undefined &&
+          scene.tokens.find((token) => token.id === each.tokenId)
+            ?.ownerPlayerId === playerId),
+    );
+  const playerCharacters = players.map((player) => ({
+    playerId: player.id,
+    name: player.characterName ?? player.name,
+    initiative: characterOf(player.id)?.initiative,
+  }));
+  // The token a joining character brings: the player's on the shown level first, then one named
+  // like the character; never one already in the order.
+  const tokenOf = (player: Player) => {
+    const own = scene.tokens.filter(
+      (token) =>
+        token.ownerPlayerId === player.id && !inInitiative.has(token.id),
+    );
+    const rank = (token: (typeof own)[number]) =>
+      (token.levelId === levelId ? 0 : 2) +
+      (token.name === (player.characterName ?? player.name) ? 0 : 1);
+    return [...own].sort((a, b) => rank(a) - rank(b))[0];
+  };
+  const enterPlayerRolls = (
+    rolls: readonly {
+      readonly playerId: string;
+      readonly initiative: number;
+    }[],
+  ) => {
+    const add: Combatant[] = [];
+    const values: {
+      combatantId: string;
+      initiative: number;
+      playerId?: string;
+    }[] = [];
+    for (const roll of rolls) {
+      const existing = characterOf(roll.playerId);
+      if (existing) {
+        values.push({
+          combatantId: existing.id,
+          initiative: roll.initiative,
+          ...(existing.playerId === undefined && { playerId: roll.playerId }),
+        });
+        continue;
+      }
+      const player = players.find((each) => each.id === roll.playerId);
+      if (!player) continue;
+      const token = tokenOf(player);
+      add.push({
+        id: newId(),
+        name: player.characterName ?? player.name,
+        playerId: player.id,
+        ...(token && { tokenId: token.id }),
+        initiative: roll.initiative,
+        initiativeBonus: 0,
+        conditions: [],
+      });
+    }
+    // All of it as one step (one undo).
+    initiativeCommand({ type: "initiative.enterRolls", add, values });
+  };
+  const addInitiativeEntry = (name: string, initiative: number) => {
+    initiativeCommand({
+      type: "initiative.add",
+      combatant: { id: newId(), name, initiative, conditions: [] },
+    });
   };
   const initiativeCommand = (command: Command) => {
     if (!session.run(command)) setError(t("initiative.notApplied"));
@@ -950,6 +1029,9 @@ export function OpenScenePanel({
               setError(t("initiative.noRoom"));
           }}
           onCommand={initiativeCommand}
+          players={playerCharacters}
+          onPlayerRolls={enterPlayerRolls}
+          onAddEntry={addInitiativeEntry}
         />
       </ShellPortal>
       <ShellPortal slot="notices">

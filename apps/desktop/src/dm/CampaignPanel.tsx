@@ -1255,6 +1255,7 @@ export function CampaignPanel({
           slug={slug}
           scene={each}
           campaignGridMode={campaignFile?.gridMode}
+          players={players}
           newId={newId}
           active={each.id === activeSceneId}
           onTv={each.id === tvSceneId}

@@ -1450,14 +1450,16 @@ button.dm-welcome-campaign:hover {
   padding: var(--dm-space-2);
 }
 
+/* The round on a line of its own, the actions below it: a narrow panel never wraps the text. */
 .dm-initiative-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--dm-space-1);
 }
 
 .dm-initiative-round {
-  flex: 1;
+  flex: 1 0 100%;
   font-size: var(--dm-font-size-sm);
   color: var(--dm-text-secondary);
 }
@@ -1517,4 +1519,22 @@ button.dm-welcome-campaign:hover {
 .dm-initiative-actions {
   display: flex;
   gap: 0;
+}
+
+.dm-initiative-form {
+  display: grid;
+  gap: var(--dm-space-2);
+}
+
+.dm-initiative-form label {
+  display: grid;
+  gap: var(--dm-space-1);
+}
+
+.dm-initiative-row[draggable="true"] {
+  cursor: grab;
+}
+
+.dm-initiative-row[data-dragging] {
+  opacity: 0.5;
 }

@@ -494,6 +494,46 @@ function applyChange(state: SessionState, command: Command): Change {
         events: [{ type: "initiative.changed" }],
       };
     }
+    case "initiative.enterRolls": {
+      let current = state;
+      const events: DomainEventBody[] = [];
+      const steps: Command[] = [
+        ...(command.add.length > 0
+          ? [{ type: "initiative.addMany" as const, combatants: command.add }]
+          : []),
+        ...command.values.map((value) => ({
+          type: "initiative.setValue" as const,
+          combatantId: value.combatantId,
+          initiative: value.initiative,
+        })),
+      ];
+      for (const step of steps) {
+        const change = applyChange(current, step);
+        if (typeof change === "string") return change;
+        current = change.state;
+        events.push(...change.events);
+      }
+      // A character found by its token is marked as its player's from now on (ties).
+      const owners = new Map(
+        command.values.flatMap((value) =>
+          value.playerId === undefined
+            ? []
+            : [[value.combatantId, value.playerId] as const],
+        ),
+      );
+      const initiative = current.scene.initiative;
+      if (owners.size > 0 && initiative)
+        current = withInitiative(current, {
+          ...initiative,
+          combatants: initiative.combatants.map((each) => {
+            const playerId = owners.get(each.id);
+            return playerId === undefined ? each : { ...each, playerId };
+          }),
+        });
+      return current === state
+        ? { state, events: [] }
+        : { state: current, events };
+    }
     case "initiative.setValue": {
       const initiative = state.scene.initiative;
       if (!initiative) return "noInitiative";

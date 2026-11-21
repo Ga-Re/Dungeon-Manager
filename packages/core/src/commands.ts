@@ -82,7 +82,7 @@ export type Command =
   /** Ends the combat; tokens stay where they are. */
   | { readonly type: "combat.end" }
   | { readonly type: "initiative.add"; readonly combatant: Combatant }
-  /** Adds several combatants as one step (T-111: selected tokens, the players' quick entry). */
+  /** Adds several combatants as one step (T-111b: the selected tokens). */
   | {
       readonly type: "initiative.addMany";
       readonly combatants: readonly Combatant[];
@@ -112,6 +112,19 @@ export type Command =
       readonly type: "initiative.setValue";
       readonly combatantId: string;
       readonly initiative: number;
+    }
+  /**
+   * The players' rolls (T-111d), as one step: `add` join, `values` give combatants already in the
+   * order their new initiative (and, with `playerId`, mark them as that player's).
+   */
+  | {
+      readonly type: "initiative.enterRolls";
+      readonly add: readonly Combatant[];
+      readonly values: readonly {
+        readonly combatantId: string;
+        readonly initiative: number;
+        readonly playerId?: string;
+      }[];
     }
   /** Moves a combatant to `index` in turn order (reordering by hand). */
   | {

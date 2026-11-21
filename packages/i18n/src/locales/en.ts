@@ -298,6 +298,17 @@ export const en: Messages = {
     up: "Move {{name}} up",
     down: "Move {{name}} down",
     remove: "Remove {{name}}",
+    playerRolls: "Enter the players' rolls …",
+    enterRolls: "Enter",
+    rollsHint:
+      "Characters without a token of their own stay hidden on the TV until you release them.",
+    noPlayers: "The campaign has no players yet.",
+    newEntry: "Add an entry …",
+    entryName: "Name",
+    entryValue: "Initiative",
+    entryHint:
+      "For example a lair action. Without a token the entry stays hidden on the TV until you release it.",
+    addEntry: "Add",
     notApplied: "The initiative could not be changed.",
     noRoom: "Not every token finds a free cell: the combat does not start.",
   },

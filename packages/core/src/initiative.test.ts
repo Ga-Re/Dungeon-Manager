@@ -402,4 +402,41 @@ describe("initiative commands", () => {
       ),
     ).toEqual({ ok: false, reason: "noInitiative" });
   });
+
+  test("enterRolls: joining and new values as one step, all or nothing (T-111d)", () => {
+    const start = run(state, {
+      type: "initiative.addMany",
+      combatants: [fighter("goblin", 12), fighter("hero", 5)],
+    });
+    const entered = execute(
+      start,
+      createHistory(),
+      {
+        type: "initiative.enterRolls",
+        add: [fighter("aria", 14, { playerId: "p1" })],
+        values: [{ combatantId: "hero", initiative: 16, playerId: "p2" }],
+      },
+      ctx,
+    );
+    if (!entered.ok) throw new Error("rejected");
+    expect(order(entered.state)).toEqual(["hero", "aria", "goblin"]);
+    expect(combatant(entered.state, "hero")?.playerId).toBe("p2");
+    expect(undo(entered.state, entered.history)?.state).toEqual(start);
+    // One unknown combatant: nothing at all changes.
+    expect(
+      apply(
+        start,
+        {
+          type: "initiative.enterRolls",
+          add: [fighter("aria", 14)],
+          values: [{ combatantId: "nobody", initiative: 3 }],
+        },
+        ctx,
+      ),
+    ).toEqual({ ok: false, reason: "unknownCombatant" });
+    const nothing = ok(
+      apply(start, { type: "initiative.enterRolls", add: [], values: [] }, ctx),
+    );
+    expect(nothing.state).toBe(start);
+  });
 });
