@@ -30,7 +30,8 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .map(|directory| session::start(&directory))
-                .unwrap_or(false);
+                // Not known: like after a crash, the TV stays dark until the DM sends a scene.
+                .unwrap_or(true);
             app.manage(session::SessionState { previous_crashed });
             Ok(())
         })

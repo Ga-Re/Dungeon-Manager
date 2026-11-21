@@ -69,14 +69,18 @@ export function renderDmWindow(services: DmWindowServices): void {
   // Once per window, outside React (StrictMode would run an initialiser twice).
   const { previousSessionCrashed } = services;
   if (previousSessionCrashed) {
-    previousSessionCrashed().then(mount, (error: unknown) => {
-      // Not known: like after a crash, the TV stays dark until the DM sends a scene.
-      console.error(
-        "Whether the last session ended cleanly is unknown.",
-        error,
-      );
-      mount(true);
-    });
+    previousSessionCrashed()
+      .then(mount, (error: unknown) => {
+        // Not known: like after a crash, the TV stays dark until the DM sends a scene.
+        console.error(
+          "Whether the last session ended cleanly is unknown.",
+          error,
+        );
+        mount(true);
+      })
+      .catch((error: unknown) => {
+        console.error("The DM window could not be set up.", error);
+      });
     return;
   }
   // Without the backend: a marker in device storage, cleared when the page goes (T-114a).

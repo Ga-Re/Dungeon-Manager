@@ -8,22 +8,27 @@ use std::path::Path;
 
 const MARKER: &str = "session-running";
 
-/// Marks the session as running. Returns whether the previous one never ended. A marker that
-/// cannot be written only means the next start cannot tell (it then counts as clean).
+/// Marks the session as running. Returns whether the previous one never ended – or cannot be
+/// known (the marker cannot be written): like after a crash, the TV then stays dark.
 pub fn start(directory: &Path) -> bool {
     let marker = directory.join(MARKER);
     let crashed = marker.exists();
-    if let Err(error) =
-        std::fs::create_dir_all(directory).and_then(|()| std::fs::write(&marker, b""))
-    {
-        eprintln!("The session marker could not be written: {error}");
+    match std::fs::create_dir_all(directory).and_then(|()| std::fs::write(&marker, b"")) {
+        Ok(()) => crashed,
+        Err(error) => {
+            eprintln!("The session marker could not be written: {error}");
+            true
+        }
     }
-    crashed
 }
 
 /// Marks the session as ended cleanly.
 pub fn end(directory: &Path) {
-    let _ = std::fs::remove_file(directory.join(MARKER));
+    match std::fs::remove_file(directory.join(MARKER)) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => eprintln!("The session marker could not be removed: {error}"),
+    }
 }
 
 /// What `start` found when this session began, for the DM window to ask.
