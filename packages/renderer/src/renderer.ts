@@ -69,6 +69,12 @@ export interface FogOptions {
    * spot takes to turn over; an infinite speed turns everything over together. None spreads over
    * `fade` as T-167 did.
    */
+  /**
+   * Where hiding everything starts when no fog is left to come from (T-249): the map's middle
+   * (the default) or a point that looks random but is the same in every window for the same
+   * fog (derived from what was revealed).
+   */
+  readonly coverFrom?: "middle" | "random";
   readonly speed?: {
     readonly cellsPerSecond: number;
     readonly cellSizePx: number;
@@ -513,6 +519,10 @@ export async function createRenderer(
             seed: speed.seed ?? mapSeed(mapSize),
           }
         : undefined,
+      // Everything hidden: from the point the device chose (T-249).
+      target.options.coverFrom === "random" && target.revealed.length === 0
+        ? shareOf(JSON.stringify(previous.revealed), mapSeed(mapSize))
+        : undefined,
     );
     const timing = speed
       ? spreadAtSpeed(
@@ -574,6 +584,7 @@ export async function createRenderer(
             fade: undefined,
             // How fast a change travels is how to get there too (T-246).
             speed: undefined,
+            coverFrom: undefined,
             // The drift's speed is read every frame; changing it rebuilds nothing.
             living: fogInput.options.living && {
               ...fogInput.options.living,
@@ -1001,6 +1012,16 @@ interface Fade {
 function fadeMix(fade: Fade, at: number): number {
   const progress = fadeProgress(fade.start, fade.duration, at);
   return fade.eased ? easeOut(progress) : progress;
+}
+
+/** A share 0…1 from `text` and `seed` (FNV-1a): random-looking, the same in every window. */
+function shareOf(text: string, seed: number): number {
+  let hash = (0x811c9dc5 ^ seed) | 0;
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0) / 4294967296;
 }
 
 /** A seed from the map's size, when the caller gives none. */

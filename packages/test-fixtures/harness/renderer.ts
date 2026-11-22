@@ -407,6 +407,11 @@ async function fadeFailClosedScenario(canvas: HTMLCanvasElement) {
 const LEFT_ROOM = { outer: rect(100, 100, 500, 400), holes: [] };
 const CORRIDOR = { outer: rect(600, 250, 400, 100), holes: [] };
 const RIGHT_ROOM = { outer: rect(1000, 100, 500, 800), holes: [] };
+/** The right room with a square in it hidden again (T-249). */
+const RIGHT_ROOM_HOLE = {
+  outer: RIGHT_ROOM.outer,
+  holes: [rect(1100, 400, 300, 300)],
+};
 
 /**
  * Before and after of the "spread-" scenarios (T-167), and two map points that half-way must
@@ -433,6 +438,14 @@ const SPREADS = {
     after: [LEFT_ROOM],
     open: [1250, 450],
     fogged: [1040, 140],
+  },
+  // An isolated hide (T-249): a square inside the revealed right room closes from its middle –
+  // half-way its middle is fogged and its edge still open.
+  "spread-hide-isolated": {
+    before: [RIGHT_ROOM],
+    after: [RIGHT_ROOM_HOLE],
+    open: [1110, 410],
+    fogged: [1250, 550],
   },
   // At a speed (T-246): the same reveal at 10 cells of 100 px per second with a ragged front,
   // 700 ms in – the corridor is open, the far corner of the right room still fogged.

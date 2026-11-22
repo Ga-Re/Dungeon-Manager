@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { memoryStorage } from "./dm/memory-storage.test-data.js";
 import {
   FOG_SPEED,
+  readCoverFrom,
+  saveCoverFrom,
   fogSpeed,
   livingFog,
   readFogSpeed,
@@ -89,7 +91,13 @@ describe("fog settings", () => {
     window.dispatchEvent(
       new StorageEvent("storage", { key: "dm.theme", newValue: "light" }),
     );
-    const living = { quality: "medium", edge: 1.2, motion: 1, speed: 5 };
+    const living = {
+      quality: "medium",
+      edge: 1.2,
+      motion: 1,
+      speed: 5,
+      coverFrom: "middle",
+    };
     expect(listener.mock.calls).toEqual([
       [{ softEdges: false, fadeSeconds: 0.65, ...living }],
       [{ softEdges: false, fadeSeconds: 2, ...living }],
@@ -177,5 +185,15 @@ describe("fog settings", () => {
     expect(stepOfSpeed(4.4)).toBe(stepOfSpeed(4));
     for (let step = 0; step < FOG_SPEED.steps; step++)
       expect(speedOfStep(step + 1)).toBeGreaterThan(speedOfStep(step));
+  });
+
+  it("starts covering everything at the map's middle unless chosen otherwise (T-249)", () => {
+    const storage = memoryStorage();
+    expect(readCoverFrom(storage)).toBe("middle");
+    saveCoverFrom(storage, "random");
+    expect(readCoverFrom(storage)).toBe("random");
+    expect(readCoverFrom(memoryStorage({ "dm.fog.coverFrom": "edge" }))).toBe(
+      "middle",
+    );
   });
 });

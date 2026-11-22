@@ -171,6 +171,8 @@ export function PlayerApp({
                 mediaOf(map)?.path ?? "",
               ),
             }),
+          ...(fades &&
+            look.coverFrom === "random" && { coverFrom: "random" as const }),
           ...(living && { living }),
         },
       );

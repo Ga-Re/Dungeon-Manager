@@ -54,6 +54,7 @@ for (const scenario of [
   "spread-adjacent",
   "spread-isolated",
   "spread-hide",
+  "spread-hide-isolated",
   "spread-ragged",
 ]) {
   test(`fog change: ${scenario}`, async ({ page }) => {

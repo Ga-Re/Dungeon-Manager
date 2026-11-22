@@ -1049,13 +1049,15 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-249 An isolated hide closes from its middle
 
-- **Status:** todo · **Depends on:** T-246 · **Refs:** SPEC §4, ARCHITECTURE §8, ADR-0019
+- **Status:** done · **Depends on:** T-246 · **Refs:** SPEC §4, ARCHITECTURE §8, ADR-0019
 - DM request (2026-11-22): hiding an area that touches no fogged area spreads from the area's middle outward, not from its edge inward – like an isolated reveal. A hide that touches fog still comes in from the fog side.
 - **Acceptance criteria**
-  - [ ] Spread order: an isolated hide starts in its middle; a hide touching fog still starts at the fog (unit tests of the pure function; the T-167 cases updated)
-  - [ ] Screenshot test of an isolated hide frozen half-way; fail-closed as in T-167
-  - [ ] SPEC §4 and ARCHITECTURE §8 updated (also what "Alles verdecken" on a fully revealed map does)
+  - [x] Spread order: an isolated hide starts in its middle; a hide touching fog still starts at the fog (unit tests of the pure function; the T-167 cases updated)
+  - [x] Screenshot test of an isolated hide frozen half-way; fail-closed as in T-167
+  - [x] SPEC §4 and ARCHITECTURE §8 updated (also what "Alles verdecken" on a fully revealed map does)
 - **Notes:** From the DM (2026-11-22). Changes the T-167 rule "a hide from the fog it touches, else from its edge inward".
+- DM decision (2026-11-22): "Alles verdecken" on a fully revealed map starts at the map's middle or at a random point, set per device in the settings dialog (default: middle).
+- Done in T-249: unsourced hides are middle-first like reveals; `originShare` picks a start among the changed texels; the renderer's `coverFrom` option hashes the previous revealed polygons into that share, so both windows agree.
 
 ### T-168 Fog biomes per map
 

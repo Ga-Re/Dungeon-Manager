@@ -62,6 +62,12 @@ export interface SpreadOptions {
    * change spreads over the whole duration on its own (T-167).
    */
   readonly atSpeed?: boolean;
+  /**
+   * Where a hide that touches no fog starts (T-249): the changed texel at this share (0…1) of
+   * all changed texels in reading order; the hide then spreads from there. None: from the
+   * hide's middle.
+   */
+  readonly originShare?: number;
 }
 // Chamfer steps (3 straight, 4 diagonal ≈ 3·√2): fronts close to round, in integers.
 const STRAIGHT = 3;
@@ -112,7 +118,7 @@ export function spreadTiming(
   to: Uint8Array,
   options: SpreadOptions = {},
 ): { readonly order: Uint8Array; readonly longest: number } {
-  const { weights, atSpeed = false } = options;
+  const { weights, atSpeed = false, originShare } = options;
   const count = width * height;
   const kind = new Uint8Array(count);
   for (let index = 0; index < count; index++) {
@@ -153,8 +159,20 @@ export function spreadTiming(
   }
   // Changes that touch nothing to spread from start at their edge instead (and are reversed
   // below for reveals: middle first).
-  for (const index of edges)
-    if (!sourced.has(component[index] ?? 0)) seeds.push(index);
+  // A chosen start (T-249): the hide containing it spreads from there instead of its middle.
+  const fromOrigin = new Set<number>();
+  if (originShare !== undefined) {
+    const origin = changedAt(kind, originShare);
+    const label = origin === -1 ? 0 : (component[origin] ?? 0);
+    if (label !== 0 && kind[origin] === HIDE && !sourced.has(label)) {
+      seeds.push(origin);
+      fromOrigin.add(label);
+    }
+  }
+  for (const index of edges) {
+    const label = component[index] ?? 0;
+    if (!sourced.has(label) && !fromOrigin.has(label)) seeds.push(index);
+  }
   const { distance, plain } = distances(
     width,
     height,
@@ -186,7 +204,8 @@ export function spreadTiming(
     // A change with no length (one texel, a one-texel line) turns over at once.
     if (max === 0) continue;
     const own = distance[index] ?? 0;
-    const middleFirst = kind[index] === REVEAL && !sourced.has(label);
+    // A change that touches nothing to spread from starts in its middle (T-249: hides too).
+    const middleFirst = !sourced.has(label) && !fromOrigin.has(label);
     const along = middleFirst ? max - own : own;
     order[index] = Math.round((255 * along) / (atSpeed ? overall : max));
   }
@@ -209,6 +228,21 @@ export function spreadTiming(
     order: padded,
     longest: overallPlain / STRAIGHT,
   };
+}
+
+/** The changed texel at `share` (0…1) of all changed texels in reading order; -1 if none. */
+function changedAt(kind: Uint8Array, share: number): number {
+  let count = 0;
+  for (const each of kind) if (each !== UNCHANGED) count++;
+  if (count === 0) return -1;
+  const wanted = Math.min(count - 1, Math.max(0, Math.floor(share * count)));
+  let seen = 0;
+  for (let index = 0; index < kind.length; index++) {
+    if (kind[index] === UNCHANGED) continue;
+    if (seen === wanted) return index;
+    seen++;
+  }
+  return -1;
 }
 
 /** Costs of the ragged front: 1 (fast) … {@link RAGGED_MAX} (slow). */
@@ -299,6 +333,8 @@ export function coarseSpreadOrder(
    * ragged, and every change spreads at the same speed. None spreads as T-167 did.
    */
   ragged?: { readonly cellsPerTexel: number; readonly seed: number },
+  /** Where a hide that touches no fog starts (T-249), see {@link SpreadOptions}. */
+  originShare?: number,
 ): Grid & {
   /** The longest change in mask texels (with `ragged`; its weighted length). */
   readonly longest: number;
@@ -314,17 +350,18 @@ export function coarseSpreadOrder(
     coarseTo.height,
     coarseFrom.data,
     coarseTo.data,
-    ragged
-      ? {
-          atSpeed: true,
-          weights: raggedWeights(
-            coarseTo.width,
-            coarseTo.height,
-            ragged.cellsPerTexel * factor,
-            ragged.seed,
-          ),
-        }
-      : {},
+    {
+      ...(ragged && {
+        atSpeed: true,
+        weights: raggedWeights(
+          coarseTo.width,
+          coarseTo.height,
+          ragged.cellsPerTexel * factor,
+          ragged.seed,
+        ),
+      }),
+      ...(originShare !== undefined && { originShare }),
+    },
   );
   return {
     width: coarseTo.width,

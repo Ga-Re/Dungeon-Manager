@@ -142,6 +142,7 @@ export function MapView({
   fade = 0,
   living,
   speed,
+  coverFrom = "middle",
   onArea,
   onMapSize,
   grid = null,
@@ -170,6 +171,8 @@ export function MapView({
   readonly living?: LivingFog | undefined;
   /** How fast fog changes spread (T-246); none spreads over `fade` as before. */
   readonly speed?: FogOptions["speed"];
+  /** Where hiding everything starts on a fully revealed map (T-249). */
+  readonly coverFrom?: "middle" | "random";
   /** An area the DM marked with the reveal or hide tool, in map pixels. */
   readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
   readonly onMapSize?: (size: Size) => void;
@@ -401,6 +404,8 @@ export function MapView({
   fadeNow.current = fade;
   const speedNow = useRef(speed);
   speedNow.current = speed;
+  const coverFromNow = useRef(coverFrom);
+  coverFromNow.current = coverFrom;
   // The living fog by value: a new object with the same settings redraws nothing.
   const livingNow = useRef(living);
   livingNow.current = living;
@@ -414,6 +419,9 @@ export function MapView({
       softEdge,
       fade: fadeNow.current,
       ...(speedNow.current && { speed: speedNow.current }),
+      ...(coverFromNow.current === "random" && {
+        coverFrom: "random" as const,
+      }),
       ...(current && { living: current }),
     });
   }, [fog, softEdge, livingKey]);
