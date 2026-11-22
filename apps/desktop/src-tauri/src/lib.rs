@@ -46,6 +46,8 @@ pub fn run() {
             commands::library_make_directory,
             commands::library_import_map,
             commands::library_move_to_trash,
+            commands::library_hash,
+            commands::library_write_preview,
             commands::session_previous_crashed,
         ])
         .on_page_load(|webview, payload| {

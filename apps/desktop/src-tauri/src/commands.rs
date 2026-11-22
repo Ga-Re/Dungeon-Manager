@@ -259,6 +259,34 @@ pub async fn library_import_map(
     .map_err(|error| LibraryError::Io(error.to_string()))?
 }
 
+/// The content hash of a map already in the library (T-124), so the DM can pick it from the
+/// catalog. Hashing a large video takes a moment, so it runs off the main thread.
+#[tauri::command]
+pub async fn library_hash(
+    app: AppHandle,
+    window: WebviewWindow,
+    path: String,
+) -> Result<ImportedAsset, LibraryError> {
+    require_dm(&window)?;
+    let root = app.state::<LibraryState>().root()?;
+    tauri::async_runtime::spawn_blocking(move || import::hash_library_file(&root, &path))
+        .await
+        .map_err(|error| LibraryError::Io(error.to_string()))?
+}
+
+/// Stores a catalog preview the webview made (T-124): a small JPEG, only in
+/// `library/.previews/`, named after the hash of the file it shows.
+#[tauri::command]
+pub fn library_write_preview(
+    window: WebviewWindow,
+    state: State<LibraryState>,
+    hash: String,
+    bytes: Vec<u8>,
+) -> Result<(), LibraryError> {
+    require_dm(&window)?;
+    import::write_preview(&state.root()?, &hash, &bytes)
+}
+
 /// Moves a campaign file into the campaign's trash (ARCHITECTURE §6.6); never deletes.
 #[tauri::command]
 pub fn library_move_to_trash(

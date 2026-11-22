@@ -13,6 +13,14 @@ import { CampaignPanel } from "./CampaignPanel.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
 
+/** In the map picker (T-124): imports a new file, as the old direct import did. */
+async function importInPicker() {
+  const picker = await screen.findByRole("dialog", { name: "Karte wählen" });
+  fireEvent.click(
+    within(picker).getByRole("button", { name: "Karte importieren …" }),
+  );
+}
+
 const sceneFile = (id: string, name: string) =>
   JSON.stringify({
     schemaVersion: 2,
@@ -172,6 +180,7 @@ describe("CampaignPanel", () => {
 
     const popover = askForNewScene();
     fireEvent.click(popover.getByRole("button", { name: "Karte wählen …" }));
+    await importInPicker();
     expect(
       await popover.findByText("Karte für die neue Szene: hoehle.webp"),
     ).toBeTruthy();
@@ -198,6 +207,83 @@ describe("CampaignPanel", () => {
     });
   });
 
+  test("creates a scene with a map picked from the library's catalog (T-124)", async () => {
+    const library = fakeLibraryService("/lib", {
+      "library/maps/Höhlen/see.png": "png",
+      "library/maps/turm.png": "png",
+    });
+    renderCampaign(library);
+    await screen.findByText("Noch keine Szenen in dieser Kampagne.");
+
+    const popover = askForNewScene();
+    fireEvent.click(popover.getByRole("button", { name: "Karte wählen …" }));
+    const picker = await screen.findByRole("dialog", { name: "Karte wählen" });
+    fireEvent.click(
+      await within(picker).findByRole("button", { name: /see\.png/ }),
+    );
+    expect(
+      await popover.findByText("Karte für die neue Szene: see.png"),
+    ).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Karte wählen" })).toBeNull();
+    expect(library.service.importMap).not.toHaveBeenCalled();
+    fireEvent.change(popover.getByLabelText("Name der neuen Szene"), {
+      target: { value: "See" },
+    });
+    fireEvent.click(popover.getByRole("button", { name: "Szene anlegen" }));
+
+    expect(await screen.findByText("Karte: see.png")).toBeTruthy();
+    const saved = JSON.parse(
+      library.fs.files().get("campaigns/mine/scenes/new-1.json") ?? "{}",
+    ) as { map: { asset: unknown } };
+    expect(saved.map.asset).toEqual({
+      path: "library/maps/Höhlen/see.png",
+      hash: `sha256:${"b".repeat(64)}`,
+    });
+  });
+
+  test("Enter in the map picker's search does not create the scene", async () => {
+    const library = fakeLibraryService("/lib", {
+      "library/maps/turm.png": "png",
+    });
+    renderCampaign(library);
+    await screen.findByText("Noch keine Szenen in dieser Kampagne.");
+    const popover = askForNewScene();
+    fireEvent.change(popover.getByLabelText("Name der neuen Szene"), {
+      target: { value: "Turm" },
+    });
+    fireEvent.click(popover.getByRole("button", { name: "Karte wählen …" }));
+    const search = await screen.findByRole("searchbox", {
+      name: "Karten suchen",
+    });
+    // Implicit submission: a form submits on Enter in a text field (jsdom does not).
+    expect(search.closest("form")).toBeNull();
+    fireEvent.keyDown(search, { key: "Enter" });
+    expect(screen.getByRole("dialog", { name: "Karte wählen" })).toBeTruthy();
+    expect(library.fs.files().has("campaigns/mine/scenes/new-1.json")).toBe(
+      false,
+    );
+  });
+
+  test("explains when a catalog map cannot be read", async () => {
+    const library = fakeLibraryService("/lib", {
+      "library/maps/turm.png": "png",
+    });
+    library.service.hashFile.mockRejectedValue(
+      new LibraryError("io", "Permission denied"),
+    );
+    renderCampaign(library);
+    await screen.findByText("Noch keine Szenen in dieser Kampagne.");
+    fireEvent.click(
+      askForNewScene().getByRole("button", { name: "Karte wählen …" }),
+    );
+    const picker = await screen.findByRole("dialog", { name: "Karte wählen" });
+    fireEvent.click(
+      await within(picker).findByRole("button", { name: /turm\.png/ }),
+    );
+    expect(await within(picker).findByText(/Permission denied/)).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Karte wählen" })).toBeTruthy();
+  });
+
   test("explains a refused map file", async () => {
     const library = fakeLibraryService("/lib");
     library.service.importMap.mockRejectedValue(
@@ -208,6 +294,7 @@ describe("CampaignPanel", () => {
     fireEvent.click(
       askForNewScene().getByRole("button", { name: "Karte wählen …" }),
     );
+    await importInPicker();
     expect(
       await screen.findByText(
         "Diese Datei ist kein PNG-, JPG- oder WebP-Bild und kein MP4- oder WebM-Video.",
@@ -307,11 +394,14 @@ describe("CampaignPanel", () => {
 
     // Cancelling changes nothing.
     fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+    await importInPicker();
     fireEvent.click(await screen.findByRole("button", { name: "Abbrechen" }));
     expect(saved().map.asset).not.toEqual(asset);
     expect(document.activeElement?.textContent).toBe("Karte ändern …");
 
     fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+
+    await importInPicker();
     const fog = await screen.findByRole<HTMLInputElement>("checkbox", {
       name: "Nebel zurücksetzen (alles wieder verdeckt)",
     });
@@ -351,7 +441,26 @@ describe("CampaignPanel", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Karte für diese Szene wählen …" }),
     );
+    await importInPicker();
     expect(await screen.findByText("Karte: neu.webp")).toBeTruthy();
+  });
+
+  test("a scene's map is changed to one picked from the catalog (T-124)", async () => {
+    const library = fakeLibraryService("/lib", {
+      "campaigns/mine/scenes/a.json": sceneFile("a", "Leer"),
+      "library/maps/Stadt/markt.png": "png",
+    });
+    renderCampaign(library);
+    await openScene("Leer");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Karte für diese Szene wählen …" }),
+    );
+    const picker = await screen.findByRole("dialog", { name: "Karte wählen" });
+    fireEvent.click(
+      await within(picker).findByRole("button", { name: /markt\.png/ }),
+    );
+    expect(await screen.findByText("Karte: markt.png")).toBeTruthy();
+    expect(library.service.importMap).not.toHaveBeenCalled();
   });
 
   test("deletes a scene only after confirming, into the trash", async () => {

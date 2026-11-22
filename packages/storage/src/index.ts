@@ -9,3 +9,4 @@ export * from "./documents.js";
 export * from "./create.js";
 export * from "./notes.js";
 export * from "./sidecars.js";
+export * from "./catalog.js";

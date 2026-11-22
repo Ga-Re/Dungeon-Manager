@@ -51,6 +51,7 @@ import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
 import { MapChangeChoice } from "./MapChangeChoice.js";
+import { MapPicker } from "./MapPicker.js";
 import { levelMedia } from "../level-media.js";
 import { LevelGroup, type LevelFile } from "./LevelGroup.js";
 import {
@@ -209,6 +210,7 @@ export function OpenScenePanel({
   const [keepSubScenes, setKeepSubScenes] = useState(true);
   const [error, setError] = useState("");
   const [pendingMap, setPendingMap] = useState<AssetRef | null>(null);
+  const [pickingMap, setPickingMap] = useState(false);
   const session = useSceneSession(service, slug, opened, sceneOnTv);
   const rescue = useContext(SceneRescueContext);
   const reportSaveState = useRef(onSaveState);
@@ -651,10 +653,9 @@ export function OpenScenePanel({
       onChanged(changed);
     });
 
-  const changeMap = () =>
+  const changeMap = (asset: AssetRef) =>
     run(async () => {
-      const asset = await service.importMap(t("campaign.mapFilter"));
-      if (!asset) return;
+      setPickingMap(false);
       // Without a map there is nothing to keep or reset.
       if (scene.map) setPendingMap(asset);
       else await applyMap(asset, {});
@@ -807,7 +808,9 @@ export function OpenScenePanel({
               scene.map ? t("campaign.changeMap") : t("campaign.chooseSceneMap")
             }
             disabled={busy}
-            onClick={() => void changeMap()}
+            onClick={() => {
+              setPickingMap(true);
+            }}
           />
           {onShowOnTv && (
             <IconButton
@@ -823,6 +826,15 @@ export function OpenScenePanel({
               ? t("campaign.map", { file: fileName(scene.map.asset.path) })
               : t("campaign.noMap")}
           </p>
+          <MapPicker
+            service={service}
+            open={pickingMap}
+            returnFocus={changeMapButton}
+            onClose={() => {
+              setPickingMap(false);
+            }}
+            onChoose={(asset) => void changeMap(asset)}
+          />
           <Popover
             open={pendingMap !== null}
             onClose={() => {

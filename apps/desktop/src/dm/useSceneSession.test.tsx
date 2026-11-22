@@ -5,7 +5,13 @@ import type {
   Scene,
   ViewerScene,
 } from "@dungeon-manager/schema";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { fakeMapService } from "../fake-renderer.test-data.js";
@@ -20,6 +26,14 @@ import { RELOAD_DELAY_MS } from "./useLibraryChanges.js";
 import { ActiveWorkspaceContext, type Workspace } from "./shell/workspace.js";
 import { SceneRescueContext, type SceneRescue } from "./rescue-copies.js";
 import { TvViewContext, type TvView } from "./tv-view-context.js";
+
+/** In the map picker (T-124): imports a new file, as the old direct import did. */
+async function importInPicker() {
+  const picker = await screen.findByRole("dialog", { name: "Karte wählen" });
+  fireEvent.click(
+    within(picker).getByRole("button", { name: "Karte importieren …" }),
+  );
+}
 
 const campaign = JSON.stringify({
   schemaVersion: 2,
@@ -1227,6 +1241,7 @@ describe("editing the fog", () => {
       hash: `sha256:${"b".repeat(64)}`,
     });
     fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+    await importInPicker();
     fireEvent.click(
       await screen.findByRole("button", { name: "Karte übernehmen" }),
     );
@@ -1459,6 +1474,7 @@ describe("hints about the map's data (T-134d)", () => {
       hash,
     });
     fireEvent.click(screen.getByRole("button", { name: "Karte ändern …" }));
+    await importInPicker();
     fireEvent.click(
       await screen.findByRole("button", { name: "Karte übernehmen" }),
     );

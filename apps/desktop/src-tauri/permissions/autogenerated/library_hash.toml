@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-library-hash"
+description = "Enables the library_hash command without any pre-configured scope."
+commands.allow = ["library_hash"]
+
+[[permission]]
+identifier = "deny-library-hash"
+description = "Denies the library_hash command without any pre-configured scope."
+commands.deny = ["library_hash"]

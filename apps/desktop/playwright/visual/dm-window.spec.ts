@@ -45,6 +45,8 @@ async function openHarness(page: Page, search = "") {
   await expect(welcome).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(welcome).toBeHidden();
+  // The data panel's catalog draws its map preview once it is on screen (T-124).
+  await expect(page.locator(".dm-catalog .dm-map-thumb img")).toBeVisible();
 }
 
 test("zone layout with an open scene", async ({ page }) => {
@@ -65,6 +67,21 @@ test("a campaign note rendered as Markdown", async ({ page }) => {
   await page.evaluate(() => document.fonts.ready);
 
   await expect(page).toHaveScreenshot("dm-window-note.png");
+});
+
+test("the map picker with previews (T-124)", async ({ page }) => {
+  await openHarness(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Fluch der Krypta" }).focus();
+  await page.keyboard.press("Shift+F10");
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Karte wählen …" }).click();
+  const picker = page.getByRole("dialog", { name: "Karte wählen" });
+  await expect(picker.locator(".dm-map-thumb img")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+
+  // The dialog alone: the tree behind it is covered by the other screenshots.
+  await expect(picker).toHaveScreenshot("dm-window-map-picker.png");
 });
 
 test("the settings dialog", async ({ page }) => {
@@ -101,6 +118,7 @@ test("the welcome dialog with recent campaigns", async ({ page }) => {
   await expect(
     page.getByRole("list", { name: "Zuletzt bearbeitet" }),
   ).toBeVisible();
+  await expect(page.locator(".dm-catalog .dm-map-thumb img")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 
   await expect(page).toHaveScreenshot("dm-window-welcome.png");

@@ -20,6 +20,8 @@
     "allow-library-make-directory",
     "allow-library-import-map",
     "allow-library-move-to-trash",
+    "allow-library-hash",
+    "allow-library-write-preview",
     "allow-library-subscribe",
     "allow-session-previous-crashed"
   ]

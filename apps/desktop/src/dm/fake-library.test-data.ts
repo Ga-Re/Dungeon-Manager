@@ -26,6 +26,14 @@ export function fakeLibraryService(
       if (file.kind !== "ok") throw new Error(`no image at ${path}`);
       return new Blob([file.text], { type: "image/png" });
     }),
+    hashFile: vi.fn(async (path: string) => {
+      if ((await fs.read(path)).kind !== "ok")
+        throw new Error(`no file at ${path}`);
+      return { path, hash: `sha256:${"b".repeat(64)}` };
+    }),
+    writePreview: vi.fn<LibraryService["writePreview"]>(() =>
+      Promise.resolve(),
+    ),
     onChange: vi.fn((listener: (paths: readonly string[]) => void) => {
       listeners.add(listener);
       return Promise.resolve(() => listeners.delete(listener));

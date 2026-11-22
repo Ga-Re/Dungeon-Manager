@@ -5,12 +5,14 @@ import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
+import { useMapCatalog } from "./map-catalog.js";
+import { MapCatalogGrid } from "./MapCatalogGrid.js";
 
-const GROUPS = ["maps", "tokens", "assets"] as const;
+const LATER_GROUPS = ["tokens", "assets"] as const;
 
 /**
- * The data panel: the library's map and asset catalogue (DM decision, T-130c). Only the frame
- * and the map import for now; T-124 lists the maps with previews, later tasks tokens and assets.
+ * The data panel: the library's map and asset catalogue (DM decision, T-130c). The maps of all
+ * campaigns with previews (T-124); tokens and assets follow in later tasks.
  */
 export function CatalogPanel({
   service,
@@ -24,13 +26,16 @@ export function CatalogPanel({
   const headingId = useId();
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState("");
+  const catalog = useMapCatalog(service, ready);
 
   const importMap = async () => {
     setImporting(true);
     try {
       const asset = await service.importMap(t("campaign.mapFilter"));
-      if (asset)
+      if (asset) {
         setNotice(t("catalog.mapImported", { file: fileName(asset.path) }));
+        catalog.reload();
+      }
     } catch (error) {
       setNotice(describeLibraryError(t, error));
     } finally {
@@ -50,7 +55,17 @@ export function CatalogPanel({
         />
       </header>
       {!ready && <p className="dm-catalog-notice">{t("catalog.noLibrary")}</p>}
-      {GROUPS.map((group) => (
+      <section className="dm-catalog-group">
+        <h3>{t("catalog.groups.maps")}</h3>
+        {ready && catalog.status === "loading" && <p>{t("catalog.loading")}</p>}
+        {ready && catalog.status === "error" && (
+          <p role="alert">{describeLibraryError(t, catalog.error)}</p>
+        )}
+        {ready && catalog.status === "ok" && (
+          <MapCatalogGrid service={service} maps={catalog.maps} />
+        )}
+      </section>
+      {LATER_GROUPS.map((group) => (
         <section key={group} className="dm-catalog-group">
           <h3>{t(`catalog.groups.${group}`)}</h3>
           <p>{t(`catalog.empty.${group}`)}</p>

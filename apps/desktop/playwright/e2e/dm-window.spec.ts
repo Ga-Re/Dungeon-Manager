@@ -191,6 +191,46 @@ test("the DM creates a scene from the browser's context menu, by keyboard", asyn
   await expect(page.getByText("Szene „Grabkammer“ angelegt.")).toBeVisible();
 });
 
+test("the DM picks a scene's map from the library catalog; deleting the scene keeps the map (T-124)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  const campaign = page.getByRole("treeitem", { name: "Fluch der Krypta" });
+  await campaign.focus();
+  await page.keyboard.press("Shift+F10");
+  await page.keyboard.press("Enter");
+  await page.getByLabel("Name der neuen Szene").fill("Gruft");
+  await page.getByRole("button", { name: "Karte wählen …" }).click();
+
+  const picker = page.getByRole("dialog", { name: "Karte wählen" });
+  const tile = picker.getByRole("button", { name: /krypta\.png/ });
+  // The preview is drawn in the webview from the map itself.
+  await expect(tile.locator("img")).toBeVisible();
+  await tile.click();
+  await expect(picker).toBeHidden();
+  await expect(
+    page.getByText("Karte für die neue Szene: krypta.png"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Szene anlegen" }).click();
+  await page.getByRole("tab", { name: "Szene" }).click();
+  await expect(page.getByText("Karte: krypta.png")).toBeVisible();
+
+  await page.getByRole("button", { name: "Szene", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Szene löschen …" }).click();
+  await page.getByRole("button", { name: "Ja, löschen" }).click();
+  await expect(
+    page.getByText("Szene „Gruft“ ist im Papierkorb der Kampagne."),
+  ).toBeVisible();
+  // The data panel's catalog still has the map, for every campaign.
+  await expect(
+    page
+      .getByRole("list", { name: "Karten" })
+      .getByRole("listitem")
+      .filter({ hasText: "krypta.png" }),
+  ).toBeVisible();
+});
+
 test("panels are hidden and shown from the View menu; the layout survives a restart (T-172a)", async ({
   page,
 }) => {

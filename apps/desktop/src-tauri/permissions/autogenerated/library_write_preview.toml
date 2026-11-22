@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-library-write-preview"
+description = "Enables the library_write_preview command without any pre-configured scope."
+commands.allow = ["library_write_preview"]
+
+[[permission]]
+identifier = "deny-library-write-preview"
+description = "Denies the library_write_preview command without any pre-configured scope."
+commands.deny = ["library_write_preview"]

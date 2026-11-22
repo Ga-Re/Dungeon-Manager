@@ -276,14 +276,24 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-124 Global map and asset catalog
 
-- **Status:** todo · **Depends on:** T-104b · **Refs:** SPEC 8.2, ARCHITECTURE §6.2
+- **Status:** done · **Depends on:** T-104b · **Refs:** SPEC 8.2, ARCHITECTURE §6.2
 - One catalog of everything in `library/` (maps now; tokens, assets, sounds later), shared by all campaigns. When creating a scene or changing its map, the DM picks from the catalog (with previews) or imports a new file into it. Deleting a scene never removes anything from the catalog.
 - **Acceptance criteria**
-  - [ ] Catalog lists all maps in the library with a preview, across campaigns
-  - [ ] DM picks a map from the catalog for a new scene and when changing a scene's map
-  - [ ] Deleting a scene leaves its map in the catalog
-  - [ ] The catalog ignores sidecars (`*.dm.json`) and maps sidecar conflict copies back to their original (`listSidecarConflicts`; from T-134b)
+  - [x] Catalog lists all maps in the library with a preview, across campaigns
+  - [x] DM picks a map from the catalog for a new scene and when changing a scene's map
+  - [x] Deleting a scene leaves its map in the catalog
+  - [x] The catalog ignores sidecars (`*.dm.json`) and maps sidecar conflict copies back to their original (`listSidecarConflicts`; from T-134b)
+- DM decisions (2026-11-22): previews are downscaled in the webview (canvas) and written by a narrow new backend command into `library/.previews/` only (no new dependency); video maps are in the catalog with a still frame; the DM picks a map in a dialog with a grid of previews (with search and import), the data panel shows the same grid.
 - **Notes:** DM request (2026-11-17). Previews go to `library/.previews/` as ARCHITECTURE §6.5 already plans (shared with the web app and handouts); maps picked but not used (e.g. a cancelled map change) simply stay in the catalog.
+
+### T-250 Catalog at scale: lasting hashes, virtual grid
+
+- **Status:** todo · **Depends on:** T-124 · **Refs:** SPEC 8.2, ARCHITECTURE §6.5
+- The catalog (T-124) hashes a map in full the first time its tile is on screen in a session. With whole asset packs (thousands of files, online-only files of sync clients) that costs time and downloads. Keep a path → hash record keyed by size and modification time (e.g. with the T-125 metadata in the sidecar, or a device cache), and render only the visible tiles of a long grid.
+- **Acceptance criteria**
+  - [ ] A map unchanged since the last session is not read again to show its preview
+  - [ ] A grid of 10 000 maps scrolls smoothly and keeps only visible tiles in the DOM
+- **Notes:** From the T-124 review (2026-11-22). Needs a DM decision where the record lives (sidecar vs. device cache); placeholders of sync clients should not be downloaded just for a preview.
 
 ### T-125 Asset metadata: scale, name, origin
 

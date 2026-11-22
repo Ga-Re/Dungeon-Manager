@@ -11,8 +11,13 @@ export interface MapViewService {
   /**
    * Loads a video map (`library/…`), muted and looping, playing once loaded. The caller puts
    * it under the canvas and hands it to the renderer, which decides when it may be seen.
+   * With `still`, it loads CORS-clean and does not play: its first frame is drawn into a
+   * canvas that must stay readable (catalog previews, T-124).
    */
-  loadVideo(path: string): Promise<HTMLVideoElement>;
+  loadVideo(
+    path: string,
+    options?: { readonly still?: boolean },
+  ): Promise<HTMLVideoElement>;
   createRenderer(canvas: HTMLCanvasElement, size: Size): Promise<Renderer>;
 }
 

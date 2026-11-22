@@ -65,6 +65,14 @@ export function createTauriLibraryService(): LibraryService {
       const bytes = await call<ArrayBuffer>("library_read_image", { path });
       return new Blob([bytes]);
     },
+    async hashFile(path) {
+      return assetRefSchema.parse(
+        await call<unknown>("library_hash", { path }),
+      );
+    },
+    // A plain number array: JSON has no bytes, and a preview is only a few kilobytes.
+    writePreview: (hash, bytes) =>
+      call("library_write_preview", { hash, bytes: Array.from(bytes) }),
     async onChange(listener) {
       // One channel per DM window, opened on first use and shared by all listeners. A channel,
       // not a global event: the player window can hear every global event (ARCHITECTURE §8).
