@@ -482,6 +482,13 @@ export const en: Messages = {
       qualities: { high: "High", medium: "Medium", off: "Off" },
       qualityHint:
         "The fog drifts and its edges move – on this device and the TV, only into revealed areas. High looks finest, Medium needs less power, Off shows still fog.",
+      coverFrom: "Cover all starts",
+      coverFromOptions: {
+        middle: "at the map's middle",
+        random: "at a random point",
+      },
+      coverFromHint:
+        "When no fog is left for “Cover all” to creep in from, the fog grows from here – also on the TV. Isolated areas always close from their middle.",
       edge: "Edge wobble",
       motion: "Movement",
       factor: "{{factor, number(minimumFractionDigits: 1)}}×",

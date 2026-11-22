@@ -731,4 +731,26 @@ describe("PlayerApp", () => {
       fade: 650,
     });
   });
+
+  test("covers everything from the point the DM chose, only within a scene (T-249)", async () => {
+    const { maps, feed } = renderPlayer(() => Promise.resolve(image), {
+      "dm.fog.quality": "off",
+      "dm.fog.coverFrom": "random",
+    });
+    await waitFor(() => {
+      expect(maps.view.setFog).toHaveBeenCalled();
+    });
+    const scene = sceneWith("library/maps/a.png");
+    feed.send({ v: 1, scene, rotation: 0 });
+    // The first fog of a scene never spreads, from anywhere.
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(
+      revealed,
+      expect.not.objectContaining({ coverFrom: "random" }),
+    );
+    feed.send({ v: 1, scene: { ...scene }, rotation: 0 });
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(
+      revealed,
+      expect.objectContaining({ coverFrom: "random" }),
+    );
+  });
 });

@@ -1122,6 +1122,7 @@ export function OpenScenePanel({
               fade={fogLook.fadeSeconds * 1000}
               living={livingFog(fogLook, map.grid.cellSizePx)}
               speed={fogSpeed(fogLook, map.grid.cellSizePx, media.path)}
+              coverFrom={fogLook.coverFrom}
               onArea={(area, kind) => {
                 if (!busy)
                   fogCommand(

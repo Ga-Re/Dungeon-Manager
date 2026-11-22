@@ -58,7 +58,7 @@ export interface FogOptions {
   /**
    * Animate from the fog shown now to this one, in milliseconds (T-136b); 0 or none switches at
    * once. The change spreads (T-167): a reveal from the revealed area it touches, else from its
-   * middle; a hide from the fog it touches, else from its edge. Only within the same map: the
+   * middle; a hide from the fog it touches, else from its middle (T-249). Only within the same map: the
    * first fog and the fog of a new map never animate. A pixel fogged before and after stays
    * fogged throughout.
    */
@@ -75,6 +75,12 @@ export interface FogOptions {
     /** The same for the same map (e.g. from its path), so its fronts look alike; by size if none. */
     readonly seed?: number;
   };
+  /**
+   * Where hiding everything starts when no fog is left to come from (T-249): the map's middle
+   * (the default) or a point that looks random, derived from what was revealed before, so the
+   * DM window and the TV practically always pick the same one.
+   */
+  readonly coverFrom?: "middle" | "random";
   /**
    * Living fog (T-245, ADR-0019): the fog drifts and its edge wobbles, only ever into revealed
    * area (the player view keeps the exact hard fog underneath). Needs the map's size; replaces
@@ -513,6 +519,11 @@ export async function createRenderer(
             seed: speed.seed ?? mapSeed(mapSize),
           }
         : undefined,
+      // From the point the device chose (T-249); used only when the whole map ends fogged –
+      // decided on the mask, so revealed slivers beyond the map's border do not count.
+      target.options.coverFrom === "random"
+        ? shareOf(JSON.stringify(previous.revealed), mapSeed(mapSize))
+        : undefined,
     );
     const timing = speed
       ? spreadAtSpeed(
@@ -574,6 +585,7 @@ export async function createRenderer(
             fade: undefined,
             // How fast a change travels is how to get there too (T-246).
             speed: undefined,
+            coverFrom: undefined,
             // The drift's speed is read every frame; changing it rebuilds nothing.
             living: fogInput.options.living && {
               ...fogInput.options.living,
@@ -1001,6 +1013,16 @@ interface Fade {
 function fadeMix(fade: Fade, at: number): number {
   const progress = fadeProgress(fade.start, fade.duration, at);
   return fade.eased ? easeOut(progress) : progress;
+}
+
+/** A share 0…1 from `text` and `seed` (FNV-1a): random-looking, the same in every window. */
+function shareOf(text: string, seed: number): number {
+  let hash = (0x811c9dc5 ^ seed) | 0;
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0) / 4294967296;
 }
 
 /** A seed from the map's size, when the caller gives none. */

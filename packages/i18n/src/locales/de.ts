@@ -490,6 +490,13 @@ export const de = {
       qualities: { high: "Hoch", medium: "Mittel", off: "Aus" },
       qualityHint:
         "Der Nebel wabert und seine Ränder bewegen sich – auf diesem Gerät und dem TV, nur in aufgedeckte Bereiche hinein. Hoch sieht am feinsten aus, Mittel braucht weniger Leistung, Aus zeigt ruhigen Nebel.",
+      coverFrom: "Alles verdecken beginnt",
+      coverFromOptions: {
+        middle: "in der Kartenmitte",
+        random: "an einem zufälligen Punkt",
+      },
+      coverFromHint:
+        "Wenn kein Nebel mehr da ist, von dem aus „Alles verdecken“ hereinkriechen kann, wächst der Nebel von hier aus – auch auf dem TV. Freistehende Flächen verdecken sich immer aus ihrer Mitte.",
       edge: "Randwabern",
       motion: "Bewegung",
       factor: "{{factor, number(minimumFractionDigits: 1)}}×",

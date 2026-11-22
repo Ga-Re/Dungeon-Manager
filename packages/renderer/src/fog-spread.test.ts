@@ -64,7 +64,7 @@ describe("spreadOrder", () => {
       expect(at(order, 16, x, 4)).toBeLessThan(at(order, 16, x + 1, 4));
   });
 
-  it("closes a hide with no fog next to it from its edge inward", () => {
+  it("closes a hide with no fog next to it from its middle outward (T-249)", () => {
     const from = mask(17, 17, () => true);
     const to = mask(
       17,
@@ -72,8 +72,8 @@ describe("spreadOrder", () => {
       (x, y) => !(x >= 4 && x <= 12 && y >= 4 && y <= 12),
     );
     const order = spreadOrder(17, 17, from, to);
-    expect(at(order, 17, 4, 8)).toBe(0);
-    expect(at(order, 17, 8, 8)).toBe(255);
+    expect(at(order, 17, 8, 8)).toBe(0);
+    expect(at(order, 17, 4, 8)).toBe(255);
   });
 
   it("follows the shape around corners, not straight through the fog", () => {
@@ -97,15 +97,16 @@ describe("spreadOrder", () => {
       expect(at(order, 20, x, 3)).toBeLessThan(at(order, 20, x - 1, 3));
   });
 
-  it("clears a reveal of the whole map from its middle, and hides it from the border", () => {
+  it("clears and hides the whole map from its middle", () => {
     const fogged = mask(17, 17, () => false);
     const open = mask(17, 17, () => true);
     const reveal = spreadOrder(17, 17, fogged, open);
     expect(at(reveal, 17, 8, 8)).toBe(0);
     expect(at(reveal, 17, 0, 8)).toBe(255);
+    // Nothing fogged to come from: the hide grows from the map's middle too (T-249).
     const hide = spreadOrder(17, 17, open, fogged);
-    expect(at(hide, 17, 0, 8)).toBe(0);
-    expect(at(hide, 17, 8, 8)).toBe(255);
+    expect(at(hide, 17, 8, 8)).toBe(0);
+    expect(at(hide, 17, 0, 8)).toBe(255);
   });
 
   it("turns a change without length over at once", () => {
@@ -354,5 +355,36 @@ describe("spreadAtSpeed", () => {
     expect([...spreadMix(from, to, order, 0.5)]).toEqual([
       ...spreadMix(from, to, order, 0.5, DURATION_SHARES),
     ]);
+  });
+});
+
+describe("spreading from a chosen point (T-249)", () => {
+  it("covers an isolated hide from the point given by its share of the changed texels", () => {
+    const open = mask(20, 20, () => true);
+    const fogged = mask(20, 20, () => false);
+    // Share 0: the first changed texel in reading order, the top left corner.
+    const order = spreadOrder(20, 20, open, fogged, { originShare: 0 });
+    expect(at(order, 20, 0, 0)).toBe(0);
+    expect(at(order, 20, 19, 19)).toBe(255);
+    // Another share, another start.
+    const other = spreadOrder(20, 20, open, fogged, { originShare: 0.999 });
+    expect(at(other, 20, 19, 19)).toBe(0);
+    expect(at(other, 20, 0, 0)).toBe(255);
+  });
+
+  it("ignores the point unless the whole map ends fogged", () => {
+    const open = mask(20, 20, () => true);
+    // A sliver stays revealed: an isolated hide again, from its middle.
+    const almost = mask(20, 20, (x, y) => x === 19 && y === 0);
+    const order = spreadOrder(20, 20, open, almost, { originShare: 0 });
+    expect(at(order, 20, 0, 0)).not.toBe(0);
+  });
+
+  it("still comes in from the fog a hide touches", () => {
+    const from = mask(16, 8, (x) => x >= 2);
+    const to = mask(16, 8, (x) => x >= 10);
+    const order = spreadOrder(16, 8, from, to, { originShare: 0.9 });
+    expect(at(order, 16, 2, 4)).toBe(0);
+    expect(at(order, 16, 9, 4)).toBe(255);
   });
 });

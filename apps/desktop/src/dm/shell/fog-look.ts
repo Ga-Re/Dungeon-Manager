@@ -12,6 +12,7 @@ export const FogLookContext = createContext<FogLook>({
   edge: 0,
   motion: 0,
   speed: Infinity,
+  coverFrom: "middle",
 });
 
 /**

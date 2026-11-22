@@ -10,6 +10,7 @@ const QUALITY_KEY = "dm.fog.quality";
 const EDGE_KEY = "dm.fog.edge";
 const MOTION_KEY = "dm.fog.motion";
 const SPEED_KEY = "dm.fog.speed";
+const COVER_FROM_KEY = "dm.fog.coverFrom";
 const KEYS = [
   SOFT_EDGES_KEY,
   FADE_KEY,
@@ -17,6 +18,7 @@ const KEYS = [
   EDGE_KEY,
   MOTION_KEY,
   SPEED_KEY,
+  COVER_FROM_KEY,
 ];
 
 /**
@@ -56,6 +58,25 @@ export interface FogLook {
   readonly motion: number;
   /** How fast a fog change spreads, in grid cells per second; `Infinity` is "Sofort" (T-246). */
   readonly speed: number;
+  /** Where "Alles verdecken" starts when no fog is left (T-249). */
+  readonly coverFrom: CoverFrom;
+}
+
+/** Where hiding everything starts on a fully revealed map (DM decision, 2026-11-22). */
+export const COVER_FROM = ["middle", "random"] as const;
+export type CoverFrom = (typeof COVER_FROM)[number];
+
+/** The start of "Alles verdecken" on this device: the map's middle unless chosen. */
+export function readCoverFrom(storage: Storage | undefined): CoverFrom {
+  const value = readItem(storage, COVER_FROM_KEY);
+  return COVER_FROM.find((each) => each === value) ?? "middle";
+}
+
+export function saveCoverFrom(
+  storage: Storage | undefined,
+  coverFrom: CoverFrom,
+): void {
+  saveItem(storage, COVER_FROM_KEY, coverFrom);
 }
 
 /**
@@ -292,6 +313,7 @@ export function readFogLook(storage: Storage | undefined): FogLook {
     edge: readFogEdge(storage),
     motion: readFogMotion(storage),
     speed: readFogSpeed(storage),
+    coverFrom: readCoverFrom(storage),
   };
 }
 

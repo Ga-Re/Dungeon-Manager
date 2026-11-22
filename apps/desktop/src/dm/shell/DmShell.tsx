@@ -71,6 +71,8 @@ import {
   FOG_EDGE,
   FOG_MOTION,
   FOG_QUALITIES,
+  COVER_FROM,
+  saveCoverFrom,
   readFogLook,
   saveFadeSeconds,
   saveFogEdge,
@@ -957,6 +959,26 @@ export function DmShell({
             </output>
           </div>
           <p className="dm-settings-hint">{t("shell.fogLook.livingHint")}</p>
+          <fieldset className="dm-settings-group">
+            <legend>{t("shell.fogLook.coverFrom")}</legend>
+            <div className="dm-settings-choices">
+              {COVER_FROM.map((each) => (
+                <label key={each}>
+                  <input
+                    type="radio"
+                    name={`${idPrefix}-fog-cover-from`}
+                    checked={fogLook.coverFrom === each}
+                    onChange={() => {
+                      setFogLook((look) => ({ ...look, coverFrom: each }));
+                      saveCoverFrom(storage, each);
+                    }}
+                  />
+                  {t(`shell.fogLook.coverFromOptions.${each}`)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <p className="dm-settings-hint">{t("shell.fogLook.coverFromHint")}</p>
         </fieldset>
       ),
     },
