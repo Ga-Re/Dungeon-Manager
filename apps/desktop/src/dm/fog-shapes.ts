@@ -1,5 +1,5 @@
 import {
-  circleArea,
+  ellipseArea,
   ringArea,
   roundedRectArea,
   strokeArea,
@@ -12,8 +12,8 @@ import {
 } from "@dungeon-manager/renderer";
 import type { Polygon } from "@dungeon-manager/schema";
 
-/** How the DM marks an area to reveal or hide (SPEC 4). */
-export type FogShape = "rectangle" | "circle" | "polygon" | "brush";
+/** How the DM marks an area to reveal or hide (SPEC 4; ellipse and lasso since T-247). */
+export type FogShape = "rectangle" | "ellipse" | "polygon" | "lasso" | "brush";
 
 /** Polygons smaller than this (square map pixels) enclose nothing worth a command. */
 const MIN_POLYGON_AREA = 1;
@@ -27,28 +27,38 @@ const toMap = (camera: Camera, view: Size, point: Point): [number, number] => {
 };
 
 /**
- * The area of a rectangle or circle dragged from `start` to `end` (screen pixels): the rectangle
- * between them, its corners rounded by `cornerRadius` map pixels (T-170), or the circle around
- * `start` through `end`. `null` for a slip.
+ * The end of a drag from `start` made square (Shift with the ellipse: a circle), on the longer
+ * side of the dragged box, in the direction dragged.
+ */
+export function squareEnd(start: Point, end: Point): Point {
+  const side = Math.max(Math.abs(end.x - start.x), Math.abs(end.y - start.y));
+  return {
+    x: start.x + (end.x < start.x ? -side : side),
+    y: start.y + (end.y < start.y ? -side : side),
+  };
+}
+
+/**
+ * The area of a rectangle or ellipse dragged from `start` to `end` (screen pixels): the
+ * rectangle between them, its corners rounded by `cornerRadius` map pixels (T-170), or the
+ * ellipse filling that box (T-247). `null` for a slip.
  */
 export function dragArea(
-  shape: "rectangle" | "circle",
+  shape: "rectangle" | "ellipse",
   start: Point,
   end: Point,
   camera: Camera,
   view: Size,
   cornerRadius = 0,
 ): Polygon | null {
-  if (shape === "circle") {
-    const radius = Math.hypot(end.x - start.x, end.y - start.y);
-    if (radius < MIN_DRAG_PX) return null;
-    return circleArea(toMap(camera, view, start), radius / camera.zoom);
-  }
   if (
     Math.abs(end.x - start.x) < MIN_DRAG_PX ||
     Math.abs(end.y - start.y) < MIN_DRAG_PX
   )
     return null;
+  // The view turns in quarter turns only, so the dragged box is an axis-aligned box on the map.
+  if (shape === "ellipse")
+    return ellipseArea(toMap(camera, view, start), toMap(camera, view, end));
   // The view turns in quarter turns only, so the dragged corners are opposite corners of an
   // axis-aligned rectangle on the map too.
   if (cornerRadius > 0)
@@ -82,6 +92,28 @@ export function brushArea(
     points.map((point) => toMap(camera, view, point)),
     radius,
   );
+}
+
+/** Lasso points closer than this (screen pixels) to the last one add nothing. */
+const LASSO_STEP_PX = 3;
+
+/**
+ * The area a freehand loop along `points` (screen pixels) encloses, closed from its last point
+ * back to its first (T-247); `null` if it encloses nothing.
+ */
+export function lassoArea(
+  points: readonly Point[],
+  camera: Camera,
+  view: Size,
+): Polygon | null {
+  const kept: Point[] = [];
+  for (const point of points) {
+    const last = kept.at(-1);
+    if (last && Math.hypot(point.x - last.x, point.y - last.y) < LASSO_STEP_PX)
+      continue;
+    kept.push(point);
+  }
+  return polygonArea(kept.map((point) => toMap(camera, view, point)));
 }
 
 /** A clicked polygon (map pixels), if it has enough corners to enclose anything. */

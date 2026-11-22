@@ -490,10 +490,10 @@ describe("MapView", () => {
     fireEvent.pointerUp(area(), { pointerId: 1 });
   };
 
-  test("the circle tool draws from the centre outwards", async () => {
+  test("the ellipse tool fills the dragged box; with Shift a circle (T-247)", async () => {
     const fake = fakeMapService(() => Promise.resolve(image));
     const onArea = vi.fn();
-    renderView(fake.service, { tool: "reveal", shape: "circle", onArea });
+    renderView(fake.service, { tool: "reveal", shape: "ellipse", onArea });
     await waitFor(() => {
       expect(fake.camera()).toBeDefined();
     });
@@ -504,16 +504,79 @@ describe("MapView", () => {
       clientY: 200,
       pointerId: 1,
     });
-    fireEvent.pointerMove(area(), { clientX: 430, clientY: 240, pointerId: 1 });
+    fireEvent.pointerMove(area(), { clientX: 500, clientY: 240, pointerId: 1 });
+    // The preview shows the ellipse while dragging.
+    expect(document.querySelector(".map-view-preview ellipse")).toBeTruthy();
     fireEvent.pointerUp(area(), { pointerId: 1 });
-    const [circle, tool] = onArea.mock.calls[0] as [
+    const [ellipse, tool] = onArea.mock.calls[0] as [
       { outer: [number, number][] },
       string,
     ];
     expect(tool).toBe("reveal");
-    // 50 screen pixels = 100 map pixels around map point (800, 400).
+    // The box is map (800, 400) to (1000, 480): centre (900, 440), radii 100 and 40.
+    for (const [x, y] of ellipse.outer)
+      expect(((x - 900) / 100) ** 2 + ((y - 440) / 40) ** 2).toBeCloseTo(1, 6);
+
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 400,
+      clientY: 200,
+      pointerId: 2,
+    });
+    fireEvent.pointerMove(area(), {
+      clientX: 500,
+      clientY: 240,
+      shiftKey: true,
+      pointerId: 2,
+    });
+    fireEvent.pointerUp(area(), { pointerId: 2 });
+    const [circle] = onArea.mock.calls[1] as [{ outer: [number, number][] }];
+    // Square on the longer side: map (800, 400) to (1000, 600).
     for (const [x, y] of circle.outer)
-      expect(Math.hypot(x - 800, y - 400)).toBeCloseTo(100, 6);
+      expect(Math.hypot(x - 900, y - 500)).toBeCloseTo(100, 6);
+  });
+
+  test("the lasso closes a freehand loop on release; Escape drops it (T-247)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, { tool: "hide", shape: "lasso", onArea });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    const loop = (pointerId: number) => {
+      fireEvent.pointerDown(area(), {
+        button: 0,
+        clientX: 400,
+        clientY: 200,
+        pointerId,
+      });
+      for (const [x, y] of [
+        [500, 200],
+        [500, 300],
+        [400, 300],
+      ])
+        fireEvent.pointerMove(area(), { clientX: x, clientY: y, pointerId });
+    };
+    loop(1);
+    expect(document.querySelector(".map-view-preview-lasso")).toBeTruthy();
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    expect(onArea).toHaveBeenCalledWith(
+      {
+        outer: [
+          [800, 400],
+          [1000, 400],
+          [1000, 600],
+          [800, 600],
+        ],
+        holes: [],
+      },
+      "hide",
+    );
+
+    loop(2);
+    fireEvent.keyDown(area(), { key: "Escape" });
+    fireEvent.pointerUp(area(), { pointerId: 2 });
+    expect(onArea).toHaveBeenCalledTimes(1);
   });
 
   test("the polygon tool: clicked corners, closed by Enter, the first corner or a double click", async () => {

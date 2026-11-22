@@ -1,13 +1,16 @@
 import type { Point } from "@dungeon-manager/renderer";
+import { squareEnd } from "./fog-shapes.js";
 
 type Drawing =
   | {
       readonly kind: "drag";
-      readonly shape: "rectangle" | "circle";
+      readonly shape: "rectangle" | "ellipse";
       readonly start: Point;
       readonly end: Point;
+      readonly square?: boolean;
     }
-  | { readonly kind: "brush"; readonly points: readonly Point[] };
+  | { readonly kind: "brush"; readonly points: readonly Point[] }
+  | { readonly kind: "lasso"; readonly points: readonly Point[] };
 
 const points = (list: readonly Point[]) =>
   list.map(({ x, y }) => `${String(x)},${String(y)}`).join(" ");
@@ -52,14 +55,27 @@ export function FogPreview({
           )}
         />
       )}
-      {drawing?.kind === "drag" && drawing.shape === "circle" && (
-        <circle
-          cx={drawing.start.x}
-          cy={drawing.start.y}
-          r={Math.hypot(
-            drawing.end.x - drawing.start.x,
-            drawing.end.y - drawing.start.y,
-          )}
+      {drawing?.kind === "drag" &&
+        drawing.shape === "ellipse" &&
+        (() => {
+          // Shift: a circle on the box's longer side, as the area will be (T-247).
+          const end =
+            drawing.square === true
+              ? squareEnd(drawing.start, drawing.end)
+              : drawing.end;
+          return (
+            <ellipse
+              cx={(drawing.start.x + end.x) / 2}
+              cy={(drawing.start.y + end.y) / 2}
+              rx={Math.abs(end.x - drawing.start.x) / 2}
+              ry={Math.abs(end.y - drawing.start.y) / 2}
+            />
+          );
+        })()}
+      {drawing?.kind === "lasso" && (
+        <polygon
+          className="map-view-preview-lasso"
+          points={points(drawing.points)}
         />
       )}
       {drawing?.kind === "brush" &&

@@ -3,6 +3,7 @@ import {
   Brush,
   Circle,
   CloudFog,
+  Lasso,
   Eye,
   EyeOff,
   Hand,
@@ -23,8 +24,9 @@ const TOOLS: readonly { id: MapTool; icon: ReactNode }[] = [
 ];
 const SHAPES: readonly { id: FogShape; icon: ReactNode }[] = [
   { id: "rectangle", icon: <Square /> },
-  { id: "circle", icon: <Circle /> },
+  { id: "ellipse", icon: <Circle /> },
   { id: "polygon", icon: <Pentagon /> },
+  { id: "lasso", icon: <Lasso /> },
   { id: "brush", icon: <Brush /> },
 ];
 

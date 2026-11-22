@@ -1,24 +1,54 @@
 import type { Camera } from "@dungeon-manager/renderer";
 import { describe, expect, test } from "vitest";
-import { brushArea, dragArea, polygonArea } from "./fog-shapes.js";
+import {
+  brushArea,
+  dragArea,
+  lassoArea,
+  polygonArea,
+  squareEnd,
+} from "./fog-shapes.js";
 
 const view = { width: 800, height: 400 };
 // Map point (800, 400) in the view centre, 2 screen pixels per map pixel.
 const camera: Camera = { centerX: 800, centerY: 400, zoom: 2, rotation: 0 };
 
 describe("dragArea", () => {
-  test("a circle is centred where the drag started, its radius in map pixels", () => {
-    const circle = dragArea(
-      "circle",
+  test("an ellipse fills the dragged box, in map pixels (T-247)", () => {
+    const ellipse = dragArea(
+      "ellipse",
       { x: 400, y: 200 },
-      { x: 460, y: 280 },
+      { x: 600, y: 280 },
       camera,
       view,
     );
-    // 100 screen pixels = 50 map pixels.
+    // The box is map (800, 400) to (900, 440): centre (850, 420), radii 50 and 20.
+    for (const [x, y] of ellipse?.outer ?? [])
+      expect(((x - 850) / 50) ** 2 + ((y - 420) / 20) ** 2).toBeCloseTo(1, 6);
+    expect(ellipse?.outer.length).toBeGreaterThan(16);
+  });
+
+  test("with Shift the ellipse is a circle on the box's longer side", () => {
+    const end = squareEnd({ x: 400, y: 200 }, { x: 600, y: 160 });
+    expect(end).toEqual({ x: 600, y: 0 });
+    const circle = dragArea("ellipse", { x: 400, y: 200 }, end, camera, view);
     for (const [x, y] of circle?.outer ?? [])
-      expect(Math.hypot(x - 800, y - 400)).toBeCloseTo(50, 6);
-    expect(circle?.outer.length).toBeGreaterThan(16);
+      expect(Math.hypot(x - 850, y - 350)).toBeCloseTo(50, 6);
+  });
+
+  test("an ellipse in a turned view still fills the box on the map", () => {
+    const turned: Camera = { ...camera, rotation: 90 };
+    const ellipse = dragArea(
+      "ellipse",
+      { x: 400, y: 200 },
+      { x: 600, y: 280 },
+      turned,
+      view,
+    );
+    // A quarter turn swaps the box's sides on the map: radii 20 and 50.
+    const xs = (ellipse?.outer ?? []).map(([x]) => x);
+    const ys = (ellipse?.outer ?? []).map(([, y]) => y);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(40, 6);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(100, 6);
   });
 
   test("a rectangle spans the drag; slips mark nothing", () => {
@@ -43,7 +73,7 @@ describe("dragArea", () => {
       dragArea("rectangle", { x: 0, y: 0 }, { x: 2, y: 50 }, camera, view),
     ).toBeNull();
     expect(
-      dragArea("circle", { x: 0, y: 0 }, { x: 2, y: 2 }, camera, view),
+      dragArea("ellipse", { x: 0, y: 0 }, { x: 2, y: 50 }, camera, view),
     ).toBeNull();
   });
 });
@@ -142,5 +172,54 @@ describe("brushArea and polygonArea", () => {
       ],
       holes: [],
     });
+  });
+});
+
+describe("lassoArea (T-247)", () => {
+  test("a freehand loop becomes a closed polygon in map pixels", () => {
+    const area = lassoArea(
+      [
+        { x: 400, y: 200 },
+        { x: 500, y: 200 },
+        { x: 500, y: 300 },
+        { x: 400, y: 300 },
+      ],
+      camera,
+      view,
+    );
+    expect(area).toEqual({
+      outer: [
+        [800, 400],
+        [850, 400],
+        [850, 450],
+        [800, 450],
+      ],
+      holes: [],
+    });
+  });
+
+  test("drops points on the same spot, and a stroke that encloses nothing", () => {
+    const area = lassoArea(
+      [
+        { x: 400, y: 200 },
+        { x: 401, y: 200 },
+        { x: 500, y: 200 },
+        { x: 500, y: 300 },
+      ],
+      camera,
+      view,
+    );
+    expect(area?.outer).toHaveLength(3);
+    expect(
+      lassoArea(
+        [
+          { x: 400, y: 200 },
+          { x: 500, y: 200 },
+          { x: 600, y: 200 },
+        ],
+        camera,
+        view,
+      ),
+    ).toBeNull();
   });
 });

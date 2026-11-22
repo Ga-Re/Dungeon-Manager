@@ -26,6 +26,29 @@ export function circleArea(
   return { outer, holes: [] };
 }
 
+/**
+ * The ellipse inside the axis-aligned box between two opposite corners (map pixels, in any
+ * order) as a polygon with all corners on the ellipse (T-247); a square box gives a circle.
+ */
+export function ellipseArea(
+  [ax, ay]: readonly [number, number],
+  [bx, by]: readonly [number, number],
+  segments = CIRCLE_SEGMENTS,
+): Polygon {
+  const cx = (ax + bx) / 2;
+  const cy = (ay + by) / 2;
+  const rx = Math.abs(bx - ax) / 2;
+  const ry = Math.abs(by - ay) / 2;
+  const outer = Array.from(
+    { length: segments },
+    (_, index): [number, number] => {
+      const angle = (2 * Math.PI * index) / segments;
+      return [cx + rx * Math.cos(angle), cy + ry * Math.sin(angle)];
+    },
+  );
+  return { outer, holes: [] };
+}
+
 /** Corners per rounded corner of a rectangle (a quarter circle). */
 const ROUNDED_CORNER_SEGMENTS = 8;
 

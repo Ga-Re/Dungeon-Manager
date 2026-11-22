@@ -38,7 +38,9 @@ import { TvFrame } from "./TvFrame.js";
 import {
   brushArea,
   dragArea,
+  lassoArea,
   polygonArea,
+  squareEnd,
   type FogShape,
 } from "./fog-shapes.js";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
@@ -72,11 +74,14 @@ const SAME_SPOT_PX = 4;
 type Drawing =
   | {
       readonly kind: "drag";
-      readonly shape: "rectangle" | "circle";
+      readonly shape: "rectangle" | "ellipse";
       readonly start: Point;
       readonly end: Point;
+      /** Shift held: the ellipse is a circle (T-247). */
+      readonly square?: boolean;
     }
-  | { readonly kind: "brush"; readonly points: readonly Point[] };
+  | { readonly kind: "brush"; readonly points: readonly Point[] }
+  | { readonly kind: "lasso"; readonly points: readonly Point[] };
 
 const NO_TOKENS: readonly TokenShape[] = [];
 const NOTHING_SELECTED: ReadonlySet<string> = new Set();
@@ -571,8 +576,15 @@ export function MapView({
       emptyPress.current = { pointerId: event.pointerId, at: point };
     } else if (shape === "brush")
       setDrawing({ kind: "brush", points: [point] });
+    else if (shape === "lasso") setDrawing({ kind: "lasso", points: [point] });
     else if (shape !== "polygon")
-      setDrawing({ kind: "drag", shape, start: point, end: point });
+      setDrawing({
+        kind: "drag",
+        shape,
+        start: point,
+        end: point,
+        square: event.shiftKey,
+      });
   };
   const onPointerMove = (event: PointerEvent) => {
     const point = local(event);
@@ -605,11 +617,11 @@ export function MapView({
     // Touch has no hover: the outline would only sit under the finger.
     if (brushing && event.pointerType !== "touch") setPointer(point);
     if (drawing?.kind === "drag") {
-      setDrawing({ ...drawing, end: point });
+      setDrawing({ ...drawing, end: point, square: event.shiftKey });
       return;
     }
-    if (drawing?.kind === "brush") {
-      setDrawing({ kind: "brush", points: [...drawing.points, point] });
+    if (drawing?.kind === "brush" || drawing?.kind === "lasso") {
+      setDrawing({ kind: drawing.kind, points: [...drawing.points, point] });
       return;
     }
     if (corners.length > 0) setHover(point);
@@ -654,9 +666,18 @@ export function MapView({
       if (!stroke)
         console.warn("A brush stroke could not be turned into an area.");
       mark(stroke);
-    } else
+    } else if (done.kind === "lasso")
+      mark(lassoArea(done.points, camera, view));
+    else
       mark(
-        dragArea(done.shape, done.start, done.end, camera, view, cornerRadius),
+        dragArea(
+          done.shape,
+          done.start,
+          done.square === true ? squareEnd(done.start, done.end) : done.end,
+          camera,
+          view,
+          cornerRadius,
+        ),
       );
   };
   const onPointerCancel = () => {
