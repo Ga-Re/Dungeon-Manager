@@ -1263,11 +1263,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-252 Ribbon tabs per workspace and the command panel
 
-- **Status:** todo · **Depends on:** T-176a · **Refs:** ADR-0020, ADR-0017, SPEC §2.5
-- Ribbon tabs for every workspace (today only the Game-Orchestrator has them), groups with quick-access icons and the caption's drop-down with all commands, and a `CommandPanel` primitive in `@dungeon-manager/ui`: floating over the map panel (top right), movable, not modal, one at a time, OK (Enter) and Abbrechen (Escape), focus moves in and back. The Map Forge gets its tabs KARTE · RÄUME · NEBEL.
+- **Status:** done · **Depends on:** T-176a · **Refs:** ADR-0020, ADR-0017, SPEC §2.5
+- Ribbon tabs for every workspace (today only the Game-Orchestrator has them), groups with quick-access icons and the caption's drop-down with all commands, and a `CommandPanel` primitive in `@dungeon-manager/ui`: floating over the map panel (top right), movable, not modal, one at a time, OK (Enter) and Abbrechen (Escape), focus moves in and back. The Map Forge gets its first tab KARTE with RASTER › "Raster kalibrieren" (T-177 moved out of the Eigenschaften panel); RÄUME and NEBEL follow with their tools (T-254, T-253).
 - **Acceptance criteria**
-  - [ ] Each workspace shows its own ribbon tabs; groups have quick-access tools and a drop-down with all commands (component + E2E test)
-  - [ ] A command panel opens from a ribbon tool, stays usable while the DM works on the map, applies on OK/Enter and discards on Abbrechen/Escape; only one is open at a time (component test)
+  - [x] Each workspace shows its own ribbon tabs; groups have quick-access tools and a drop-down with all commands (component + E2E test)
+  - [x] A command panel opens from a ribbon tool, stays usable while the DM works on the map, applies on OK/Enter and discards on Abbrechen/Escape; only one is open at a time (component test)
 - **Notes:** DM decision 2026-11-22 (ADR-0020).
 
 ### T-253 Map Forge: new map, map at the top of the browser, "Karteneinstellungen" dialog
@@ -1282,7 +1282,7 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-254 Map Forge: grid calibration and rooms as ribbon tools with command panels
 
 - **Status:** todo · **Depends on:** T-252 · **Refs:** ADR-0020, T-177, T-108c1
-- KARTE › RASTER › "Raster kalibrieren" opens a command panel (box or move, cells, the resulting numbers; OK saves, Abbrechen discards). RÄUME › "Raum anlegen" opens a command panel with rectangle, polygon, ellipse and lasso and the level; the DM draws (and may redraw), OK creates the room, which appears in the browser. A double-click or the context menu on a room opens "Raum bearbeiten" (name, secret; delete from the context menu, after confirming).
+- (Calibration moved to the ribbon with T-252.) RÄUME › "Raum anlegen" opens a command panel with rectangle, polygon, ellipse and lasso and the level; the DM draws (and may redraw), OK creates the room, which appears in the browser. A double-click or the context menu on a room opens "Raum bearbeiten" (name, secret; delete from the context menu, after confirming).
 - **Acceptance criteria**
   - [ ] Calibration and room drawing start only from the ribbon and finish with OK/Abbrechen (component + E2E test)
   - [ ] Rooms are edited and deleted from the browser (double-click, context menu, keyboard)

@@ -129,6 +129,25 @@ test("a room drawn in the Map Forge (T-108c1)", async ({ page }) => {
   await expect(page).toHaveScreenshot("dm-window-forge-room.png");
 });
 
+test("a ribbon tool's command panel over the map (T-252)", async ({ page }) => {
+  await openHarness(page);
+  await page
+    .getByRole("list", { name: "Karten" })
+    .getByRole("button", { name: /krypta\.png/ })
+    .dblclick();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  await page
+    .getByRole("group", { name: "Raster" })
+    .getByRole("button", { name: "Raster kalibrieren" })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Raster kalibrieren" }),
+  ).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+
+  await expect(page).toHaveScreenshot("dm-window-command-panel.png");
+});
+
 test("the settings dialog", async ({ page }) => {
   await openHarness(page);
   await page.getByRole("button", { name: "Einstellungen" }).click();

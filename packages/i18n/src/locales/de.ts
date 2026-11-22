@@ -236,6 +236,11 @@ export const de = {
     caseDuplicate:
       "Alte Datei {{file}} neben {{current}} – nach dem Vergleich zusammenführen oder löschen",
   },
+  command: {
+    ok: "OK",
+    cancel: "Abbrechen",
+    move: "Fenster verschieben",
+  },
   forgeRooms: {
     title: "Räume",
     kind: "Raum",
@@ -283,6 +288,8 @@ export const de = {
     save: "Kartendaten speichern",
     discard: "Verwerfen",
     calibrate: "Raster kalibrieren",
+    gridGroup: "Raster",
+    calibrationMode: "Art der Kalibrierung",
     calibration: {
       box: "Box aufziehen",
       move: "Raster verschieben",
@@ -732,6 +739,7 @@ export const de = {
       scene: "Szene",
       fog: "Nebel",
       display: "Anzeige",
+      forgeMap: "Karte",
     },
     noScene: "Keine Szene geöffnet. Wähle im Browser eine Szene.",
     settings: "Einstellungen",

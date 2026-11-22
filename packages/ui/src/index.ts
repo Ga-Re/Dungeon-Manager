@@ -1,3 +1,4 @@
+export { CommandPanel, type CommandPanelProps } from "./CommandPanel.js";
 export { Dialog, type DialogProps } from "./Dialog.js";
 export { FloatingPanel, type FloatingPanelProps } from "./FloatingPanel.js";
 export { createI18n } from "./i18n.js";

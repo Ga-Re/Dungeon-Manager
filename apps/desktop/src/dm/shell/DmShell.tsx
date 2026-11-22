@@ -102,6 +102,7 @@ import {
   ActiveWorkspaceContext,
   ChooseWorkspaceContext,
 } from "./workspace.js";
+import { CommandRegistryContext, createCommandRegistry } from "./command.js";
 
 /** The panels' look comes from the design tokens; the colour scheme follows the app's theme. */
 const PANEL_THEME: DockviewTheme = {
@@ -119,13 +120,35 @@ const PANEL_COMMAND = {
   preview: "togglePreview",
 } as const satisfies Record<PanelId, AppCommand>;
 
-const MODES = ["scene", "fog", "display"] as const;
-type Mode = (typeof MODES)[number];
-
-const MODE_SLOT: Record<Mode, ShellSlot> = {
-  scene: "ribbonScene",
-  fog: "ribbonFog",
-  display: "ribbonDisplay",
+/**
+ * Each workspace's ribbon tabs and the slots their tools render into (ADR-0020). A workspace
+ * without tabs yet shows what is coming. Tabs are added as their tools move in: the Map Forge's
+ * RÄUME and NEBEL follow with T-253/T-254.
+ */
+const RIBBON_TABS: Record<
+  Workspace,
+  readonly { readonly id: string; readonly slot: ShellSlot }[]
+> = {
+  mapForge: [{ id: "forgeMap", slot: "ribbonForgeMap" }],
+  assetVault: [],
+  creatures: [],
+  campaignAtlas: [],
+  gameOrchestrator: [
+    { id: "scene", slot: "ribbonScene" },
+    { id: "fog", slot: "ribbonFog" },
+    { id: "display", slot: "ribbonDisplay" },
+  ],
+};
+const ALL_TABS = Object.entries(RIBBON_TABS).flatMap(([workspace, tabs]) =>
+  tabs.map((tab) => ({ ...tab, workspace: workspace as Workspace })),
+);
+/** The tab each workspace starts on. */
+const FIRST_TAB: Record<Workspace, string> = {
+  mapForge: "forgeMap",
+  assetVault: "",
+  creatures: "",
+  campaignAtlas: "",
+  gameOrchestrator: "display",
 };
 
 const WORKSPACE_ICON: Record<Workspace, ReactNode> = {
@@ -146,6 +169,7 @@ interface PanelHosts {
   readonly preview: HTMLElement;
   readonly notices: HTMLElement;
   readonly dock: HTMLElement;
+  readonly command: HTMLElement;
 }
 
 function createHost(className: string): HTMLElement {
@@ -168,6 +192,10 @@ function MapPanel() {
   return (
     <div className="dm-stage">
       <SlotHost element={hosts.canvas} />
+      {/* A ribbon tool's command panel floats at the top right (ADR-0020). */}
+      <div className="dm-stage-command">
+        <SlotHost element={hosts.command} />
+      </div>
       <div className="dm-stage-bottom">
         <SlotHost element={hosts.notices} />
         <SlotHost element={hosts.dock} />
@@ -360,9 +388,14 @@ export function DmShell({
   const { t } = useTranslation();
   const [panels, setPanels] = useState<DockviewApi | null>(null);
   const [shown, setShown] = useState<ReadonlySet<PanelId>>(new Set());
-  const [mode, setMode] = useState<Mode>("display");
+  // The shown ribbon tab of each workspace, kept while another workspace shows.
+  const [tabOf, setTabOf] = useState<Record<Workspace, string>>(FIRST_TAB);
   const [workspace, setWorkspace] = useState(() => readWorkspace(storage));
-  const inGame = workspace === "gameOrchestrator";
+  const ribbonTabs = RIBBON_TABS[workspace];
+  const mode = tabOf[workspace];
+  const setMode = (id: string) => {
+    setTabOf((current) => ({ ...current, [workspace]: id }));
+  };
   // The DM's named layouts of the current workspace (T-172c).
   const [namedLayouts, setNamedLayouts] = useState(() =>
     readNamedLayouts(storage, workspace),
@@ -380,6 +413,8 @@ export function DmShell({
   const [saveLayoutOpen, setSaveLayoutOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const commands = useMemo(createAppCommands, []);
+  // One ribbon command at a time (ADR-0020).
+  const toolCommands = useMemo(createCommandRegistry, []);
   // With a menu service, whether it shows a menu bar is open until it says so: no menu button
   // flashes up on macOS before the menu bar is there.
   const [nativeMenu, setNativeMenu] = useState<boolean | "pending">(
@@ -398,7 +433,7 @@ export function DmShell({
   const [slots, setSlots] = useState<Partial<Record<ShellSlot, HTMLElement>>>(
     {},
   );
-  const tabs = useRef(new Map<Mode, HTMLButtonElement>());
+  const tabs = useRef(new Map<string, HTMLButtonElement>());
   const settingsButton = useRef<HTMLButtonElement>(null);
   const panelButton = useRef<HTMLButtonElement>(null);
   const idPrefix = useId();
@@ -411,6 +446,7 @@ export function DmShell({
       "ribbonScene",
       "ribbonFog",
       "ribbonDisplay",
+      "ribbonForgeMap",
       "settings",
       "settingsTv",
       "settingsCampaign",
@@ -438,6 +474,7 @@ export function DmShell({
       preview: createHost("dm-preview"),
       notices: createHost("dm-notices"),
       dock: createHost("dm-dock"),
+      command: createHost("dm-command"),
     }),
     [],
   );
@@ -456,6 +493,7 @@ export function DmShell({
       preview: hosts.preview,
       notices: hosts.notices,
       dock: hosts.dock,
+      command: hosts.command,
     }),
     [slots, hosts],
   );
@@ -784,12 +822,13 @@ export function DmShell({
   }, [appMenu, commands, t, titles, shown, namedLayouts, applyNamedLayout]);
 
   const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    const index = MODES.indexOf(mode);
+    const ids = ribbonTabs.map((tab) => tab.id);
+    const index = ids.indexOf(mode);
     const next =
       event.key === "ArrowRight"
-        ? MODES[(index + 1) % MODES.length]
+        ? ids[(index + 1) % ids.length]
         : event.key === "ArrowLeft"
-          ? MODES[(index + MODES.length - 1) % MODES.length]
+          ? ids[(index + ids.length - 1) % ids.length]
           : undefined;
     if (!next) return;
     event.preventDefault();
@@ -1181,13 +1220,13 @@ export function DmShell({
                   />
                 </div>
                 <div className="dm-ribbon-body">
-                  {inGame ? (
+                  {ribbonTabs.length > 0 ? (
                     <div
                       role="tablist"
                       aria-label={t("shell.modes")}
                       className="dm-ribbon-tabs"
                     >
-                      {MODES.map((each) => (
+                      {ribbonTabs.map(({ id: each }) => (
                         <button
                           key={each}
                           ref={(element) => {
@@ -1214,21 +1253,28 @@ export function DmShell({
                     <div className="dm-ribbon-tabs" />
                   )}
                   {/* Always mounted, only hidden: the tools portaled here keep their state. */}
-                  {MODES.map((each) => (
-                    <div
-                      key={each}
-                      ref={slotRefs[MODE_SLOT[each]]}
-                      id={`${idPrefix}-mode-${each}`}
-                      role={inGame ? "tabpanel" : undefined}
-                      aria-labelledby={
-                        inGame ? `${idPrefix}-tab-${each}` : undefined
-                      }
-                      hidden={!inGame || mode !== each}
-                      className="dm-ribbon-panel"
-                      data-empty={t("shell.noScene")}
-                    />
-                  ))}
-                  {!inGame && (
+                  {ALL_TABS.map((each) => {
+                    const shownHere = each.workspace === workspace;
+                    return (
+                      <div
+                        key={each.id}
+                        ref={slotRefs[each.slot]}
+                        id={`${idPrefix}-mode-${each.id}`}
+                        role={shownHere ? "tabpanel" : undefined}
+                        aria-labelledby={
+                          shownHere ? `${idPrefix}-tab-${each.id}` : undefined
+                        }
+                        hidden={!shownHere || mode !== each.id}
+                        className="dm-ribbon-panel"
+                        data-empty={t(
+                          each.workspace === "mapForge"
+                            ? "forge.noMap"
+                            : "shell.noScene",
+                        )}
+                      />
+                    );
+                  })}
+                  {ribbonTabs.length === 0 && (
                     <p className="dm-ribbon-panel dm-ribbon-coming">
                       {t(`shell.workspace.coming.${workspace}`)}
                     </p>
@@ -1266,7 +1312,9 @@ export function DmShell({
                   <SetFogSpeedContext value={setFogSpeed}>
                     <ActiveWorkspaceContext value={workspace}>
                       <ChooseWorkspaceContext value={chooseWorkspace}>
-                        {children}
+                        <CommandRegistryContext value={toolCommands}>
+                          {children}
+                        </CommandRegistryContext>
                       </ChooseWorkspaceContext>
                     </ActiveWorkspaceContext>
                   </SetFogSpeedContext>

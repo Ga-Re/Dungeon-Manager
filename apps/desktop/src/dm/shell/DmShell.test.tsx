@@ -99,16 +99,27 @@ describe("DmShell", () => {
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Map Forge" }));
 
     expect(workspaceMenu().textContent).toBe("Map Forge");
+    // The Map Forge has its own ribbon tabs (ADR-0020, T-252): KARTE so far.
+    const forgeTabs = screen.getByRole("tablist", { name: "Werkzeugleisten" });
+    expect(
+      within(forgeTabs)
+        .getAllByRole("tab")
+        .map((tab) => [tab.textContent, tab.getAttribute("aria-selected")]),
+    ).toEqual([["Karte", "true"]]);
+    expect(screen.queryByRole("button", { name: "Aufdecken" })).toBeNull();
+    expect(storage.getItem("dm.workspace")).toBe("mapForge");
+
+    // A workspace without tools yet says what is coming instead of tabs.
+    fireEvent.click(workspaceMenu());
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Asset Vault" }));
     expect(
       screen.queryByRole("tablist", { name: "Werkzeugleisten" }),
     ).toBeNull();
     expect(
       screen.getByText(
-        "Karte öffnen: Doppelklick auf eine Kachel im Katalog. Werkzeuge der Map Forge folgen.",
+        "Hier verwaltest du bald Requisiten, Handouts und Sounds.",
       ),
     ).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Aufdecken" })).toBeNull();
-    expect(storage.getItem("dm.workspace")).toBe("mapForge");
 
     fireEvent.click(workspaceMenu());
     fireEvent.click(

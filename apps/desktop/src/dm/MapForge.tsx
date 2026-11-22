@@ -22,14 +22,30 @@ import {
   SIDECAR_SUFFIX,
   updateMapData,
 } from "@dungeon-manager/storage";
-import { IconButton, TreeList, type TreeNode } from "@dungeon-manager/ui";
-import { DoorOpen, Folder, Layers, Map as MapIcon, X } from "lucide-react";
+import {
+  IconButton,
+  RibbonGroup,
+  TreeList,
+  type TreeNode,
+} from "@dungeon-manager/ui";
+import {
+  DoorOpen,
+  Folder,
+  Grid3x3,
+  Layers,
+  Map as MapIcon,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { fileName } from "./file-name.js";
 import { ItemInfoEditor } from "./ItemInfoEditor.js";
-import { MapDataEditor, type CalibrationChoice } from "./MapDataEditor.js";
+import { MapDataEditor } from "./MapDataEditor.js";
+import {
+  CalibrateCommand,
+  type CalibrationChoice,
+} from "./CalibrateCommand.js";
 import { MapView } from "./MapView.js";
 import { describeLibraryError } from "./describe-error.js";
 import { RoomEditor, RoomTools } from "./ForgeRooms.js";
@@ -113,12 +129,15 @@ export function MapForge({
   const { t } = useTranslation();
   const shown = useActiveWorkspace() === "mapForge";
   const loaded = useSidecar(service, path);
-  // Grid calibration (T-177): how the DM calibrates, the last grid calibrated on the map and
-  // the grid the fields describe, shown on the map until saved or discarded.
+  // Grid calibration (T-177), a ribbon tool with its command panel (ADR-0020): whether it runs,
+  // how the DM calibrates, the last grid calibrated on the map and the grid shown until OK.
+  const [calibrating, setCalibrating] = useState(false);
   const [calibration, setCalibration] = useState<CalibrationChoice>({
-    mode: null,
+    mode: "box",
     cells: CALIBRATION_CELLS.default,
   });
+  const [gridBusy, setGridBusy] = useState(false);
+  const [gridProblem, setGridProblem] = useState("");
   const [proposal, setProposal] = useState<{
     readonly grid: Grid;
     readonly seq: number;
@@ -129,19 +148,25 @@ export function MapForge({
   const gridNow = useRef<Grid | "invalid" | null>(null);
   // A grid drag moves the grid it started from by the whole way since its start.
   const dragBase = useRef<Grid | null>(null);
-  useEffect(() => {
-    setCalibration((current) => ({ ...current, mode: null }));
+  const endCalibration = useCallback(() => {
+    setCalibrating(false);
     setProposal(null);
     setPreview(null);
+    setGridProblem("");
     gridNow.current = null;
-  }, [path]);
+  }, []);
+  useEffect(() => {
+    endCalibration();
+  }, [path, endCalibration]);
   const propose = useCallback((grid: Grid | null) => {
     if (!grid) return;
     gridNow.current = grid;
+    setPreview(grid);
     setProposal((current) => ({ grid, seq: (current?.seq ?? 0) + 1 }));
   }, []);
-  const onTyped = useCallback((grid: Grid | null | undefined) => {
-    gridNow.current = grid === undefined ? null : (grid ?? "invalid");
+  const onTyped = useCallback((grid: Grid | null) => {
+    gridNow.current = grid ?? "invalid";
+    if (grid) setPreview(grid);
   }, []);
 
   // Rooms (T-108c1): the level shown and drawn on, the shape being drawn, the selected room.
@@ -174,13 +199,13 @@ export function MapForge({
     setRoomProblem("");
   }, [path]);
   // Drawing a room and calibrating both take the map's pointer: one at a time.
-  const chooseCalibration = useCallback((choice: CalibrationChoice) => {
-    setCalibration(choice);
-    if (choice.mode) setShape(null);
-  }, []);
+  const startCalibration = () => {
+    setShape(null);
+    setCalibrating(true);
+  };
   const chooseShape = (next: RoomShape | null) => {
     setShape(next);
-    if (next) setCalibration((current) => ({ ...current, mode: null }));
+    if (next) endCalibration();
   };
 
   if (!shown) return null;
@@ -215,39 +240,75 @@ export function MapForge({
   const levelRooms = roomsOnLevel(data.rooms, data.levels, levelId);
   const room = data.rooms.find((each) => each.id === selectedRoom) ?? null;
 
-  /** Saves a change of the rooms; `expected` keeps a change made elsewhere from being lost. */
-  const changeRooms = async (change: (rooms: readonly Room[]) => Room[]) => {
-    setRoomBusy(true);
-    setRoomProblem("");
+  /**
+   * Saves a change of the map's data; `expected` keeps a change made elsewhere from being lost.
+   * @returns whether it was saved; else `report` got why not.
+   */
+  const changeData = async (
+    change: (current: MapData) => MapData,
+    report: (problem: string) => void,
+  ) => {
     try {
       const written = await updateMapData(
         service.fs,
         await catalogAsset(service, path),
         defaults,
-        (current: MapData) => ({ ...current, rooms: change(current.rooms) }),
+        change,
         data,
       );
       if (written) ownWrite.current = { data: written, before: sidecar };
       loaded.reload();
       return true;
     } catch (error) {
-      setRoomProblem(
+      report(
         error instanceof MapDataChangedError
           ? t("forgeRooms.changedMeanwhile")
           : describeLibraryError(t, error),
       );
       loaded.reload();
       return false;
+    }
+  };
+  const changeRooms = async (change: (rooms: readonly Room[]) => Room[]) => {
+    setRoomBusy(true);
+    setRoomProblem("");
+    try {
+      return await changeData(
+        (current) => ({ ...current, rooms: change(current.rooms) }),
+        setRoomProblem,
+      );
     } finally {
       setRoomBusy(false);
+    }
+  };
+  const saveGrid = async (grid: Grid) => {
+    setGridBusy(true);
+    setGridProblem("");
+    try {
+      const saved = await changeData(
+        // Unknown grid fields (loose schema) stay.
+        (current) => ({
+          ...current,
+          grid: {
+            ...current.grid,
+            cellSizePx: grid.cellSizePx,
+            offsetXPx: grid.offsetXPx,
+            offsetYPx: grid.offsetYPx,
+          },
+        }),
+        setGridProblem,
+      );
+      if (saved) endCalibration();
+    } finally {
+      setGridBusy(false);
     }
   };
   // `free`: Alt was held as the shape was finished (taken from that event, so an Alt+Tab
   // never leaves rooms unsnapped).
   const addRoom = async (area: Polygon, free: boolean) => {
     if (!shape || roomBusy) return;
-    // The grid the DM sees: an unsaved calibration included.
-    const fitted = free ? area : snapArea(area, preview ?? data.grid, shape);
+    // The saved grid: drawing a room ends a running calibration (one command at a time).
+    const fitted = free ? area : snapArea(area, data.grid, shape);
     if (!fitted) {
       setRoomProblem(t("forgeRooms.tooSmall"));
       return;
@@ -314,6 +375,50 @@ export function MapForge({
 
   return (
     <>
+      {/* KARTE › RASTER (ADR-0020): the quick tool, and every command in the caption's menu. */}
+      <ShellPortal slot="ribbonForgeMap">
+        <RibbonGroup
+          caption={t("forge.gridGroup")}
+          menu={{
+            items: [
+              {
+                id: "calibrate",
+                label: t("forge.calibrate"),
+                icon: <Grid3x3 />,
+                disabled: loaded.status !== "ok",
+              },
+            ],
+            onSelect: (id) => {
+              if (id === "calibrate") startCalibration();
+            },
+          }}
+        >
+          <IconButton
+            showLabel
+            icon={<Grid3x3 />}
+            label={t("forge.calibrate")}
+            disabled={loaded.status !== "ok"}
+            pressed={calibrating}
+            onClick={() => {
+              if (calibrating) endCalibration();
+              else startCalibration();
+            }}
+          />
+        </RibbonGroup>
+      </ShellPortal>
+      {calibrating && loaded.status === "ok" && (
+        <CalibrateCommand
+          stored={data.grid}
+          choice={calibration}
+          onChoice={setCalibration}
+          proposal={proposal}
+          onTyped={onTyped}
+          busy={gridBusy}
+          problem={gridProblem}
+          onOk={(grid) => void saveGrid(grid)}
+          onCancel={endCalibration}
+        />
+      )}
       <ShellPortal slot="titleScene">
         <span
           role="group"
@@ -357,7 +462,7 @@ export function MapForge({
           // Placeholder data is no grid of this map: none until its sidecar is read.
           grid={loaded.status === "ok" ? (preview ?? data.grid) : null}
           calibration={
-            loaded.status === "ok" && calibration.mode
+            loaded.status === "ok" && calibrating
               ? {
                   mode: calibration.mode,
                   cells: calibration.cells,
@@ -473,11 +578,6 @@ export function MapForge({
                 data={data}
                 defaults={defaults}
                 onSaved={loaded.reload}
-                proposal={proposal}
-                onPreview={setPreview}
-                onTyped={onTyped}
-                calibration={calibration}
-                onCalibration={chooseCalibration}
               />
             </>
           )}
