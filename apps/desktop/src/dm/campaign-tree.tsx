@@ -20,6 +20,7 @@ import {
   type NotesIndex,
   type SceneEntry,
   type SessionEntry,
+  type Problem,
 } from "./campaign-data.js";
 import { fileName, linkedNotes, noteTitle } from "./file-name.js";
 import { sceneContentNodes } from "./scene-tree.js";
@@ -80,6 +81,37 @@ export function scenesInSessions(
   );
 }
 
+/** Why a scene or session cannot be shown, naming the two ids of a collision (T-234). */
+function problemLabel(
+  t: TFunction,
+  prefix: "campaign.scene" | "shell.tree.session",
+  entry: {
+    readonly id: string;
+    readonly problem: Problem | null;
+    readonly collision?: readonly [string, string];
+  },
+): string {
+  const [first, second] = entry.collision ?? ["", ""];
+  return t(`${prefix}.${entry.problem ?? "invalid"}`, {
+    id: entry.id,
+    first,
+    second,
+  });
+}
+
+/** A warning under a scene or session for each old file that differs only in case (T-234). */
+function duplicateNodes(
+  t: TFunction,
+  parentId: string,
+  entry: { readonly id: string; readonly duplicates?: readonly string[] },
+): TreeNode[] {
+  return (entry.duplicates ?? []).map((file) => ({
+    id: `${parentId}:duplicate:${file}`,
+    label: t("campaign.caseDuplicate", { file, current: `${entry.id}.json` }),
+    icon: <CircleAlert />,
+  }));
+}
+
 /**
  * The browser tree (T-158, T-160b): campaign › Kampagneneinstellungen, Sessions (each with its
  * scenes in order, then "Ohne Session"), Karten, Spieler & Charaktere, Handouts & Hinweise,
@@ -111,13 +143,17 @@ export function buildCampaignTree(
         : []),
       ...subScenes,
     ];
+    const duplicates = duplicateNodes(t, id, entry);
     return {
       id,
       label: entry.scene
         ? (open?.scene.name ?? entry.scene.name)
-        : t(`campaign.scene.${entry.problem ?? "invalid"}`, { id: entry.id }),
+        : problemLabel(t, "campaign.scene", entry),
       icon: <ScrollText />,
-      children: children.length > 0 ? children : undefined,
+      children:
+        duplicates.length + children.length > 0
+          ? [...duplicates, ...children]
+          : undefined,
     };
   };
 
@@ -125,10 +161,11 @@ export function buildCampaignTree(
     if (!entry.session)
       return {
         id: sessionNodeId(entry.id),
-        label: t(`shell.tree.session.${entry.problem ?? "invalid"}`, {
-          id: entry.id,
-        }),
+        label: problemLabel(t, "shell.tree.session", entry),
         icon: <CircleAlert />,
+        ...(entry.duplicates && {
+          children: duplicateNodes(t, sessionNodeId(entry.id), entry),
+        }),
       };
     const session = entry.session;
     const slot = { sessionId: session.id };
@@ -149,7 +186,10 @@ export function buildCampaignTree(
         sessionNodeId(session.id),
         session.name,
         <CalendarDays />,
-        sessionScenes,
+        [
+          ...duplicateNodes(t, sessionNodeId(session.id), entry),
+          ...sessionScenes,
+        ],
         t("shell.tree.emptySession"),
       ),
       ...(session.date && sessionScenes.length > 0

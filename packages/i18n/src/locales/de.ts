@@ -91,6 +91,8 @@ export const de = {
     newCampaign: "Neue Kampagne …",
     campaign: {
       notAvailable: "{{slug}} (noch nicht heruntergeladen)",
+      idCollision:
+        "{{slug}}: „{{first}}“ und „{{second}}“ unterscheiden sich nur in Groß-/Kleinschreibung – benenne eine davon in campaign.json um",
       invalid: "{{slug}} (kann nicht gelesen werden)",
     },
     errors: {
@@ -228,7 +230,11 @@ export const de = {
     scene: {
       notAvailable: "{{id}} (noch nicht heruntergeladen)",
       invalid: "{{id}} (kann nicht gelesen werden)",
+      idCollision:
+        "{{id}}: „{{first}}“ und „{{second}}“ unterscheiden sich nur in Groß-/Kleinschreibung – benenne eine davon in der Datei um",
     },
+    caseDuplicate:
+      "Alte Datei {{file}} neben {{current}} – nach dem Vergleich zusammenführen oder löschen",
   },
   catalog: {
     title: "Katalog",
@@ -703,6 +709,8 @@ export const de = {
       session: {
         notAvailable: "{{id}} (noch nicht heruntergeladen)",
         invalid: "{{id}} (kann nicht gelesen werden)",
+        idCollision:
+          "{{id}}: „{{first}}“ und „{{second}}“ unterscheiden sich nur in Groß-/Kleinschreibung – benenne eine davon in der Datei um",
       },
       browserTitle: "Browser",
       switchCampaign: "Kampagne wechseln",

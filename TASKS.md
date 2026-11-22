@@ -194,10 +194,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-234 Leftovers of version 1 ids with capitals
 
-- **Status:** todo · **Depends on:** T-119 · **Refs:** ARCHITECTURE §6.3
+- **Status:** done · **Depends on:** T-119 · **Refs:** ARCHITECTURE §6.3
 - From the T-119 review; all only concern hand-edited version 1 files. (1) A document refused with `idCollision` shows the generic "invalid" message: name the two ids so the DM can fix the file. (2) On a case-sensitive file system, `Turm.json` next to `turm.json` lists only the lowercase one; report the other like a conflict copy instead of hiding it. (3) Own notes (`notes/scenes/<id>.md`) of a renamed scene are not found ignoring case on Linux.
 - **Acceptance criteria**
-  - [ ] Each of the three cases is shown to the DM with an actionable, translated message or handled (storage + component tests)
+  - [x] Each of the three cases is shown to the DM with an actionable, translated message or handled (storage + component tests)
+- Done in T-234: (1) `MigrationError` carries the two ids; storage returns them with `idCollision`; the scene and session tree and the library list name them with an instruction (the welcome dialog still says "cannot be read"). (2) `listScenes`/`listSessions` report a capitalised name next to the lowercase file as a conflict with `provider: "capitals"`; the tree shows it under its scene or session. (3) `listNoteOwners` lowercases; `readNote` finds an own note ignoring case and moves it to the lowercase name.
 
 ### T-103a Storage package: layout, documents, conflict copies
 

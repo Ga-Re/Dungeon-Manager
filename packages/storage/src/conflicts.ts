@@ -3,8 +3,17 @@ export interface ConflictCopy {
   readonly copy: string;
   /** The file name the copy belongs to. */
   readonly original: string;
+  /**
+   * The sync client that made the copy, or `capitals`: a version 1 name that differs from the
+   * current file's only in case (T-234).
+   */
   readonly provider:
-    "Dropbox" | "OneDrive" | "Google Drive" | "iCloud" | "Syncthing";
+    | "Dropbox"
+    | "OneDrive"
+    | "Google Drive"
+    | "iCloud"
+    | "Syncthing"
+    | "capitals";
 }
 
 interface Pattern {

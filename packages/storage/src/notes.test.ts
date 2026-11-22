@@ -99,3 +99,66 @@ describe("note files (T-161)", () => {
     });
   });
 });
+
+describe("own notes under version 1 names with capitals (T-234)", () => {
+  test("are listed under their lowercase id", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/scenes/Turm.md": "x",
+      "campaigns/mine/notes/sessions/Abend.md": "x",
+    });
+    expect(await listNoteOwners(fs, "mine")).toEqual({
+      sessions: ["abend"],
+      scenes: ["turm"],
+    });
+  });
+
+  test("are read ignoring case and moved to the lowercase name", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/scenes/Turm.md": "# Turm",
+    });
+    expect(await readNote(fs, "mine", "notes/scenes/turm.md")).toEqual({
+      status: "ok",
+      text: "# Turm",
+    });
+    const files = [...fs.files().keys()];
+    expect(files).toContain("campaigns/mine/notes/scenes/turm.md");
+    expect(files).not.toContain("campaigns/mine/notes/scenes/Turm.md");
+  });
+
+  test("a linked note keeps its exact name: only own notes are looked up ignoring case", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/Orte/Turm.md": "x",
+    });
+    expect(await readNote(fs, "mine", "notes/Orte/turm.md")).toEqual({
+      status: "missing",
+    });
+  });
+
+  test("starting the own note keeps and moves the old one instead of shadowing it", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/scenes/Turm.md": "# Turm\nAlter Text",
+    });
+    expect(await createNote(fs, "mine", "notes/scenes/turm.md", "Turm")).toBe(
+      false,
+    );
+    expect(await readNote(fs, "mine", "notes/scenes/turm.md")).toEqual({
+      status: "ok",
+      text: "# Turm\nAlter Text",
+    });
+  });
+
+  test("never overwrites a lowercase note that exists, and still reads when the trash fails", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/sessions/Abend.md": "alt",
+    });
+    fs.moveToTrash = () => Promise.reject(new Error("denied"));
+    expect(await readNote(fs, "mine", "notes/sessions/abend.md")).toEqual({
+      status: "ok",
+      text: "alt",
+    });
+    // Written to the lowercase name although the old one could not go to the trash.
+    expect(fs.files().get("campaigns/mine/notes/sessions/abend.md")).toBe(
+      "alt",
+    );
+  });
+});

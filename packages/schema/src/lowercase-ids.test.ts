@@ -154,7 +154,7 @@ describe("lowercase ids", () => {
         },
         sceneDocument,
       ),
-    ).toThrow(new MigrationError("idCollision", 1));
+    ).toThrow(new MigrationError("idCollision", 1, ["Goblin", "goblin"]));
   });
 
   test("two fog levels whose ids differ only in case are refused instead of merged", () => {
@@ -176,6 +176,6 @@ describe("lowercase ids", () => {
         },
         sceneDocument,
       ),
-    ).toThrow(new MigrationError("idCollision", 1));
+    ).toThrow(new MigrationError("idCollision", 1, ["A", "a"]));
   });
 });

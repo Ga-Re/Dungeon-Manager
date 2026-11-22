@@ -32,6 +32,8 @@ export class MigrationError extends Error {
     readonly reason: MigrationErrorReason,
     /** The version the document had when the error occurred, if known. */
     readonly version: number | null,
+    /** With `idCollision`: the two ids that differ only in case (T-234), as in the file. */
+    readonly ids?: readonly [string, string],
   ) {
     super(
       `${reason}${version === null ? "" : ` (version ${String(version)})`}`,

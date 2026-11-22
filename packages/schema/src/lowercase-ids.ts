@@ -19,7 +19,7 @@ function lowercaser(): Lower {
     const lower = value.toLowerCase();
     const earlier = seen.get(lower);
     if (earlier !== undefined && earlier !== value)
-      throw new MigrationError("idCollision", 1);
+      throw new MigrationError("idCollision", 1, [earlier, value]);
     seen.set(lower, value);
     return lower;
   };
