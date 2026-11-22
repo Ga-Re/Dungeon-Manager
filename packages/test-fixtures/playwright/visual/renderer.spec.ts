@@ -166,3 +166,14 @@ test("living fog never shows what the hard fog covers", async ({ page }) => {
   await expect(body).toHaveAttribute("data-violations", "0");
   expect(Number(await body.getAttribute("data-living"))).toBeGreaterThan(0);
 });
+
+// "Alles verdecken" from a random point (T-249): used even when a revealed sliver beyond the
+// map's border is left – the frames from the middle and from the random point differ.
+test("cover-all starts at the chosen point even with slivers beyond the map", async ({
+  page,
+}) => {
+  await page.goto(`${fixturePage("renderer.html")}#cover-random`);
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true");
+  await expect(body).toHaveAttribute("data-cover-differs", "yes");
+});

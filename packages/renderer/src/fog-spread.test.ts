@@ -369,6 +369,15 @@ describe("spreading from a chosen point (T-249)", () => {
     // Another share, another start.
     const other = spreadOrder(20, 20, open, fogged, { originShare: 0.999 });
     expect(at(other, 20, 19, 19)).toBe(0);
+    expect(at(other, 20, 0, 0)).toBe(255);
+  });
+
+  it("ignores the point unless the whole map ends fogged", () => {
+    const open = mask(20, 20, () => true);
+    // A sliver stays revealed: an isolated hide again, from its middle.
+    const almost = mask(20, 20, (x, y) => x === 19 && y === 0);
+    const order = spreadOrder(20, 20, open, almost, { originShare: 0 });
+    expect(at(order, 20, 0, 0)).not.toBe(0);
   });
 
   it("still comes in from the fog a hide touches", () => {

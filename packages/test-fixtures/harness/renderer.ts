@@ -522,6 +522,57 @@ async function spreadScenario(
 }
 
 /**
+ * "cover-random" (T-249): a map revealed beyond its border (a sliver outside stays revealed),
+ * then everything hidden at a speed, frozen early – once from the middle, once from the random
+ * point. The two frames must differ (`data-cover-differs`): the random start is used although
+ * a revealed polygon is left outside the map.
+ */
+async function coverRandomScenario() {
+  const frames: Uint8ClampedArray[] = [];
+  for (const coverFrom of ["middle", "random"] as const) {
+    let time = 0;
+    // A canvas each: a second renderer on the same canvas would share the first one's context.
+    const canvas = document.createElement("canvas");
+    const renderer = await createRenderer({
+      canvas,
+      size: view,
+      resolution: 1,
+      now: () => time,
+    });
+    const beyond = [{ outer: rect(-50, -50, 1700, 1100), holes: [] }];
+    const all = [{ outer: rect(0, 0, 1600, 1000), holes: [] }];
+    renderer.setFog(beyond, { opacity: 1 });
+    renderer.setMap(drawFixtureMap());
+    renderer.setCamera(cameraFor("fit"));
+    await renderer.drawn();
+    // Hiding the map leaves the sliver beyond its border revealed (polygons are not clipped).
+    renderer.setFog(polygonsWithout(all), {
+      opacity: 1,
+      fade: 100,
+      speed: { cellsPerSecond: 10, cellSizePx: 100 },
+      coverFrom,
+    });
+    time = 400;
+    await renderer.drawn();
+    frames.push(capture(canvas));
+    renderer.destroy();
+  }
+  const [middle, random] = frames;
+  let differs = 0;
+  if (middle && random)
+    for (let index = 0; index < middle.length; index++)
+      if (middle[index] !== random[index]) differs++;
+  document.body.dataset["coverDiffers"] = differs > 0 ? "yes" : "no";
+}
+
+/** The sliver of `beyond` around the map once the map itself is hidden. */
+function polygonsWithout(all: { outer: Ring; holes: never[] }[]) {
+  return [
+    { outer: rect(-50, -50, 1700, 1100), holes: all.map((each) => each.outer) },
+  ];
+}
+
+/**
  * "tokens-glide" (T-233b): Aria glides from the left room towards the pool, frozen half-way;
  * the Goblin, which did not move, stays put.
  */
@@ -622,6 +673,11 @@ async function main() {
   }
   if (scenario === "tiles") {
     await tilesScenario(canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
+  if (scenario === "cover-random") {
+    await coverRandomScenario();
     document.body.dataset["ready"] = "true";
     return;
   }

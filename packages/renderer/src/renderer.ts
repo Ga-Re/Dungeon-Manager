@@ -58,7 +58,7 @@ export interface FogOptions {
   /**
    * Animate from the fog shown now to this one, in milliseconds (T-136b); 0 or none switches at
    * once. The change spreads (T-167): a reveal from the revealed area it touches, else from its
-   * middle; a hide from the fog it touches, else from its edge. Only within the same map: the
+   * middle; a hide from the fog it touches, else from its middle (T-249). Only within the same map: the
    * first fog and the fog of a new map never animate. A pixel fogged before and after stays
    * fogged throughout.
    */
@@ -69,18 +69,18 @@ export interface FogOptions {
    * spot takes to turn over; an infinite speed turns everything over together. None spreads over
    * `fade` as T-167 did.
    */
-  /**
-   * Where hiding everything starts when no fog is left to come from (T-249): the map's middle
-   * (the default) or a point that looks random but is the same in every window for the same
-   * fog (derived from what was revealed).
-   */
-  readonly coverFrom?: "middle" | "random";
   readonly speed?: {
     readonly cellsPerSecond: number;
     readonly cellSizePx: number;
     /** The same for the same map (e.g. from its path), so its fronts look alike; by size if none. */
     readonly seed?: number;
   };
+  /**
+   * Where hiding everything starts when no fog is left to come from (T-249): the map's middle
+   * (the default) or a point that looks random, derived from what was revealed before, so the
+   * DM window and the TV practically always pick the same one.
+   */
+  readonly coverFrom?: "middle" | "random";
   /**
    * Living fog (T-245, ADR-0019): the fog drifts and its edge wobbles, only ever into revealed
    * area (the player view keeps the exact hard fog underneath). Needs the map's size; replaces
@@ -519,8 +519,9 @@ export async function createRenderer(
             seed: speed.seed ?? mapSeed(mapSize),
           }
         : undefined,
-      // Everything hidden: from the point the device chose (T-249).
-      target.options.coverFrom === "random" && target.revealed.length === 0
+      // From the point the device chose (T-249); used only when the whole map ends fogged –
+      // decided on the mask, so revealed slivers beyond the map's border do not count.
+      target.options.coverFrom === "random"
         ? shareOf(JSON.stringify(previous.revealed), mapSeed(mapSize))
         : undefined,
     );

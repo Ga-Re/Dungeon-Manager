@@ -63,9 +63,9 @@ export interface SpreadOptions {
    */
   readonly atSpeed?: boolean;
   /**
-   * Where a hide that touches no fog starts (T-249): the changed texel at this share (0…1) of
-   * all changed texels in reading order; the hide then spreads from there. None: from the
-   * hide's middle.
+   * Where a hide that touches no fog starts when it leaves the whole mask fogged (T-249): the
+   * changed texel at this share (0…1) of all changed texels in reading order; the hide then
+   * spreads from there. Otherwise, or with none: from the hide's middle.
    */
   readonly originShare?: number;
 }
@@ -93,7 +93,7 @@ const HIDE = 2;
  * (connected texels changing the same way), over its whole length:
  *
  * - a reveal from the revealed area it touches, else from its middle outward;
- * - a hide from the fog it touches, else from its edge inward.
+ * - a hide from the fog it touches, else from its middle outward (T-249).
  *
  * Distances run inside the change, so a spread follows the shape around corners.
  */
@@ -157,11 +157,12 @@ export function spreadTiming(
     }
     if (onEdge) edges.push(index);
   }
-  // Changes that touch nothing to spread from start at their edge instead (and are reversed
-  // below for reveals: middle first).
+  // Changes that touch nothing to spread from start at their edge instead, reversed below so
+  // they run middle first.
   // A chosen start (T-249): the hide containing it spreads from there instead of its middle.
   const fromOrigin = new Set<number>();
-  if (originShare !== undefined) {
+  // Only when the whole mask ends fogged: "Alles verdecken" with no fog left to come from.
+  if (originShare !== undefined && to.every((alpha) => alpha >= FOGGED)) {
     const origin = changedAt(kind, originShare);
     const label = origin === -1 ? 0 : (component[origin] ?? 0);
     if (label !== 0 && kind[origin] === HIDE && !sourced.has(label)) {
