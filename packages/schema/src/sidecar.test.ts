@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
 import {
+  ITEM_NAME_MAX,
+  ITEM_TEXT_MAX,
+  itemInfoSchema,
   mapOverridesSchema,
   migrateDocument,
   sidecarDocument,
@@ -108,12 +111,22 @@ describe("item info", () => {
     expect(sidecarSchema.parse(tower).info).toBeUndefined();
   });
 
-  test("an empty name and overlong texts are refused", () => {
+  test("invalid info never hides the map: the block is dropped on reading", () => {
+    // A hand edit or a future app may write what this one does not accept.
+    for (const info of [{ name: "" }, { license: "x".repeat(1001) }, "Turm"]) {
+      const parsed = sidecarSchema.parse({ ...tower, info });
+      expect(parsed.info).toBeUndefined();
+      expect(parsed.map?.grid).toEqual(tower.map.grid);
+    }
+  });
+
+  test("an empty name and overlong texts are refused on writing", () => {
+    expect(itemInfoSchema.safeParse({ name: "" }).success).toBe(false);
     expect(
-      sidecarSchema.safeParse({ ...tower, info: { name: "" } }).success,
+      itemInfoSchema.safeParse({ name: "x".repeat(ITEM_NAME_MAX + 1) }).success,
     ).toBe(false);
     expect(
-      sidecarSchema.safeParse({ ...tower, info: { license: "x".repeat(1001) } })
+      itemInfoSchema.safeParse({ license: "x".repeat(ITEM_TEXT_MAX + 1) })
         .success,
     ).toBe(false);
   });

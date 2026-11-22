@@ -333,7 +333,9 @@ export function CampaignPanel({
   const players: readonly Player[] = campaignFile?.players ?? [];
   // What the details panel shows: a tree item id (T-159).
   const [inspected, setInspected] = useState<string | null>(null);
-  // Whichever was selected last – here or in the catalog (T-125) – fills the Eigenschaften panel.
+  // Whichever was selected last – here or in the catalog (T-125) – fills the Eigenschaften panel:
+  // anything the browser comes to show (a click, a new scene, a note opened from a link) takes
+  // the panel back. `onSelect` also clears it, for a click on the item already selected here.
   const catalogSelection = useContext(CatalogSelectionContext);
   const clearCatalogSelection = catalogSelection?.select;
   useEffect(() => {

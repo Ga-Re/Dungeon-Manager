@@ -414,21 +414,25 @@ export async function updateMapData(
 
 /** The fields of an item's info the DM edits (T-125); blank ones are left out of the file. */
 export interface ItemInfoInput {
-  readonly name?: string;
-  readonly origin?: string;
-  readonly license?: string;
+  readonly name?: string | undefined;
+  readonly origin?: string | undefined;
+  readonly license?: string | undefined;
 }
 
 /**
  * Sets a catalog item's name and origin/license in its sidecar (T-125), creating the sidecar if
  * the file has none; everything else in it is kept. Texts are trimmed, blank ones left out.
+ * `expected` is the info the DM began editing from: if the sidecar holds another (a change from
+ * another device or by hand meanwhile), nothing is written.
  * @returns the info written. @throws `MapDataUnavailableError` when the sidecar is not
- *   downloaded yet, unreadable or broken – it is never overwritten; on invalid input
+ *   downloaded yet, unreadable or broken – it is never overwritten; `MapDataChangedError`; on
+ *   invalid input
  */
 export async function updateItemInfo(
   fs: FileSystem,
   asset: AssetRef,
   input: ItemInfoInput,
+  expected?: ItemInfoInput,
 ): Promise<ItemInfo> {
   const loaded = await loadSidecar(fs, asset.path);
   if (loaded.status !== "ok" && loaded.status !== "missing")
@@ -437,7 +441,8 @@ export async function updateItemInfo(
     loaded.status === "ok"
       ? loaded.value
       : { schemaVersion: 1 as const, original: { hash: asset.hash } };
-  // Fields this app does not know yet (loose schema) stay as they are.
+  if (expected && editedFields(sidecar.info ?? {}) !== editedFields(expected))
+    throw new MapDataChangedError(asset.path);
   // Fields this app does not know yet (loose schema) stay as they are; the three it edits are
   // replaced by the input.
   const info: Record<string, unknown> = Object.fromEntries(
@@ -452,4 +457,13 @@ export async function updateItemInfo(
   const parsed = itemInfoSchema.parse(info);
   await saveSidecar(fs, asset.path, { ...sidecar, info: parsed });
   return parsed;
+}
+
+/** The three fields the DM edits, trimmed, as one comparable string. */
+function editedFields(info: ItemInfoInput): string {
+  return JSON.stringify(
+    (["name", "origin", "license"] as const).map(
+      (key) => info[key]?.trim() ?? "",
+    ),
+  );
 }

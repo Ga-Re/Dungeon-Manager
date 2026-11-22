@@ -1,6 +1,6 @@
 import { IconButton } from "@dungeon-manager/ui";
 import { ImagePlus } from "lucide-react";
-import { useContext, useId, useState } from "react";
+import { useContext, useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
@@ -39,6 +39,13 @@ export function CatalogPanel({
     catalog.status === "ok"
       ? catalog.maps.find((map) => map.path === selected)
       : undefined;
+  // A selected map that is gone (deleted or renamed on disk) is no longer selected, so the
+  // Eigenschaften panel never stays empty.
+  const gone =
+    selected !== null && catalog.status !== "loading" && !selectedMap;
+  useEffect(() => {
+    if (gone) select(null);
+  }, [gone, select]);
 
   const importMap = async () => {
     setImporting(true);
@@ -79,7 +86,8 @@ export function CatalogPanel({
             maps={catalog.maps}
             selected={selected}
             onPick={(map) => {
-              select(map.path);
+              // A second click on the selected map gives the panel back to the browser.
+              select(map.path === selected ? null : map.path);
             }}
           />
         )}

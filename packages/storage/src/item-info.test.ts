@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   createMemoryFileSystem,
   loadSidecar,
+  MapDataChangedError,
   MapDataUnavailableError,
   updateItemInfo,
 } from "./index.js";
@@ -71,5 +72,25 @@ describe("updateItemInfo", () => {
       updateItemInfo(fs, asset, { name: "Turm" }),
     ).rejects.toBeInstanceOf(MapDataUnavailableError);
     expect(fs.files().get(`${asset.path}.dm.json`)).toBe("{ broken");
+  });
+
+  test("refuses when the info changed since the DM began editing", async () => {
+    const fs = createMemoryFileSystem({
+      [asset.path]: "png",
+      [`${asset.path}.dm.json`]: JSON.stringify({
+        schemaVersion: 1,
+        original: { hash: asset.hash },
+        info: { name: "Von anderswo" },
+      }),
+    });
+    await expect(
+      updateItemInfo(fs, asset, { name: "Turm" }, { name: "Alt" }),
+    ).rejects.toBeInstanceOf(MapDataChangedError);
+    // What the DM saw is what is there: written.
+    await updateItemInfo(fs, asset, { name: "Turm" }, { name: "Von anderswo" });
+    const loaded = await loadSidecar(fs, asset.path);
+    expect(loaded.status === "ok" && loaded.value.info).toEqual({
+      name: "Turm",
+    });
   });
 });

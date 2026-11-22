@@ -1,6 +1,10 @@
 import type { CatalogMap } from "@dungeon-manager/storage";
 import { updateItemInfo } from "@dungeon-manager/storage";
-import { ITEM_TEXT_MAX } from "@dungeon-manager/schema";
+import {
+  ITEM_NAME_MAX,
+  ITEM_TEXT_MAX,
+  type ItemInfo,
+} from "@dungeon-manager/schema";
 import { useId, useState, type SyntheticEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
@@ -10,6 +14,13 @@ import { catalogAsset } from "./map-catalog.js";
 
 const FIELDS = ["name", "origin", "license"] as const;
 type Field = (typeof FIELDS)[number];
+type Values = Record<Field, string>;
+
+const valuesOf = (info: ItemInfo | undefined): Values => ({
+  name: info?.name ?? "",
+  origin: info?.origin ?? "",
+  license: info?.license ?? "",
+});
 
 /**
  * A catalog map's name and origin/license (T-125, SPEC 8.2), edited in the Eigenschaften panel
@@ -26,18 +37,27 @@ export function ItemInfoEditor({
 }) {
   const { t } = useTranslation();
   const id = useId();
-  const initial = (field: Field) => map.info?.[field] ?? "";
-  const [values, setValues] = useState<Record<Field, string>>({
-    name: initial("name"),
-    origin: initial("origin"),
-    license: initial("license"),
-  });
+  // `base` is what the DM began editing from; saving checks the sidecar still holds it.
+  const [base, setBase] = useState<Values>(() => valuesOf(map.info));
+  const [values, setValues] = useState<Values>(base);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [problem, setProblem] = useState("");
   const changed = FIELDS.some(
-    (field) => values[field].trim() !== initial(field),
+    (field) => values[field].trim() !== base[field].trim(),
   );
+
+  // A change on disk (another device, a hand edit) shows at once while nothing is typed; with
+  // unsaved edits the save is refused instead of overwriting it.
+  const onDisk = JSON.stringify(valuesOf(map.info));
+  const [seen, setSeen] = useState(onDisk);
+  if (onDisk !== seen) {
+    setSeen(onDisk);
+    if (!changed) {
+      setBase(valuesOf(map.info));
+      setValues(valuesOf(map.info));
+    }
+  }
 
   const save = async (event: SyntheticEvent) => {
     event.preventDefault();
@@ -50,7 +70,9 @@ export function ItemInfoEditor({
         service.fs,
         await catalogAsset(service, map.path),
         values,
+        base,
       );
+      setBase(values);
       setStatus(t("catalog.info.saved"));
       onSaved();
     } catch (error) {
@@ -79,7 +101,7 @@ export function ItemInfoEditor({
             <input
               id={`${id}-${field}`}
               value={values[field]}
-              maxLength={200}
+              maxLength={ITEM_NAME_MAX}
               placeholder={fileName(map.path)}
               onChange={(event) => {
                 setValues({ ...values, [field]: event.target.value });
