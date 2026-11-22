@@ -177,3 +177,34 @@ test("cover-all starts at the chosen point even with slivers beyond the map", as
   await expect(body).toHaveAttribute("data-ready", "true");
   await expect(body).toHaveAttribute("data-cover-differs", "yes");
 });
+
+// Biomes (T-168), frozen at one moment over the fixture map: colours, wind streaks, particles
+// and underglow; particles only over the fog and next to its edge.
+for (const biome of [
+  "nebel",
+  "schnee",
+  "wueste",
+  "asche",
+  "sumpf",
+  "kueste",
+  "arkan",
+  "dunkel",
+]) {
+  test(`fog biome: ${biome}`, async ({ page }) => {
+    await page.goto(`${fixturePage("renderer.html")}#living-biome-${biome}`);
+    await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
+    await expect(page).toHaveScreenshot(`living-biome-${biome}.png`);
+  });
+}
+
+// A biome change blends over (T-168): half-way it is neither the old nor the new biome, and
+// nothing hidden shows.
+test("a biome change blends over without showing what is hidden", async ({
+  page,
+}) => {
+  await page.goto(`${fixturePage("renderer.html")}#biome-blend`);
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true", { timeout: 60_000 });
+  await expect(body).toHaveAttribute("data-blends", "yes");
+  await expect(body).toHaveAttribute("data-violations", "0");
+});

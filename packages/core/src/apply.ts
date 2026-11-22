@@ -293,6 +293,33 @@ function applyChange(state: SessionState, command: Command): Change {
         events: [{ type: "gridMode.changed", gridMode: command.gridMode }],
       };
     }
+    case "scene.setFogEffect": {
+      // A strength outside 0…1 would make the scene file invalid (e.g. from a remote).
+      if (
+        command.fogEffect !== null &&
+        !(command.fogEffect.strength >= 0 && command.fogEffect.strength <= 1)
+      )
+        return "invalidAmount";
+      const before = scene.fogEffect ?? null;
+      const same =
+        before === command.fogEffect ||
+        (before !== null &&
+          command.fogEffect !== null &&
+          before.biome === command.fogEffect.biome &&
+          before.strength === command.fogEffect.strength);
+      if (same) return { state, events: [] };
+      const changed: Scene = { ...scene };
+      if (command.fogEffect === null) delete changed.fogEffect;
+      else
+        changed.fogEffect = {
+          biome: command.fogEffect.biome,
+          strength: command.fogEffect.strength,
+        };
+      return {
+        state: { ...state, scene: changed },
+        events: [{ type: "fogEffect.changed" }],
+      };
+    }
     case "visibility.setTokens": {
       if (command.tokenIds.length === 0) return "unknownToken";
       let current = state;

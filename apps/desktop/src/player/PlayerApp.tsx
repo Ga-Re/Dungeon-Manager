@@ -154,7 +154,9 @@ export function PlayerApp({
     ) => {
       const map = shown.scene?.map ?? null;
       const level = map?.currentLevelId;
-      const living = map ? livingFog(look, map.grid.cellSizePx) : undefined;
+      const living = map
+        ? livingFog(look, map.grid.cellSizePx, shown.scene?.fogEffect ?? null)
+        : undefined;
       view.setFog(
         level === undefined ? [] : (shown.scene?.fog[level]?.revealed ?? []),
         {

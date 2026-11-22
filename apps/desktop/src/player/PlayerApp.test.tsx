@@ -753,4 +753,29 @@ describe("PlayerApp", () => {
       expect.objectContaining({ coverFrom: "random" }),
     );
   });
+
+  test("draws the scene's biome on the TV (T-168)", async () => {
+    const snowy: unknown = expect.objectContaining({
+      biome: "schnee",
+      strength: 0.5,
+    });
+    const { maps, feed } = renderPlayer(() => Promise.resolve(image), {});
+    await waitFor(() => {
+      expect(maps.view.setFog).toHaveBeenCalled();
+    });
+    feed.send({
+      v: 1,
+      scene: {
+        ...sceneWith("library/maps/a.png"),
+        fogEffect: { biome: "schnee", strength: 0.5 },
+      },
+      rotation: 0,
+    });
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(
+      revealed,
+      expect.objectContaining({
+        living: snowy,
+      }),
+    );
+  });
 });

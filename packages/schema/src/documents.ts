@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { gridModeSchema, idSchema, noteLinksSchema } from "./common.js";
+import {
+  fogEffectSchema,
+  gridModeSchema,
+  idSchema,
+  noteLinksSchema,
+} from "./common.js";
 import {
   fogStateSchema,
   initiativeStateSchema,
@@ -68,6 +73,11 @@ export const sceneSchema = z.looseObject({
     .optional(),
   gridMode: gridModeSchema.optional(),
   combat: z.boolean().optional(),
+  /**
+   * The fog's biome chosen live during play (T-168, DM decision 2026-11-22): overrides the
+   * map's; optional and additive, so no version bump.
+   */
+  fogEffect: fogEffectSchema.optional(),
 });
 
 /** A calendar day as `YYYY-MM-DD` that really exists (no 30 February). */

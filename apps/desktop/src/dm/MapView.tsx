@@ -410,7 +410,14 @@ export function MapView({
   const livingNow = useRef(living);
   livingNow.current = living;
   const livingKey = living
-    ? [living.quality, living.cellSizePx, living.edge, living.motion].join()
+    ? [
+        living.quality,
+        living.cellSizePx,
+        living.edge,
+        living.motion,
+        living.biome,
+        living.strength,
+      ].join()
     : "";
   useEffect(() => {
     const current = livingNow.current;

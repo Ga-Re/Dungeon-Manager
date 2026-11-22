@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  fogBiomeSchema,
   assetRefSchema,
   tokenPositionSchema,
   idSchema,
@@ -101,6 +102,13 @@ export const viewerSceneSchema = z.strictObject({
   initiative: viewerInitiativeSchema.optional(),
   /** Set while a combat runs (T-233): tokens stand on cells, the TV may show the grid. */
   combat: z.literal(true).optional(),
+  /** The fog's biome (T-168): only known biomes, so a viewer never gets an unknown name. */
+  fogEffect: z
+    .strictObject({
+      biome: fogBiomeSchema,
+      strength: z.number().min(0).max(1),
+    })
+    .optional(),
 });
 
 const viewerEventBase = { at: z.number() };

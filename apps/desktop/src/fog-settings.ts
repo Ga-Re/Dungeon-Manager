@@ -3,6 +3,7 @@
 // so the player window follows a change through the `storage` event.
 
 import { LIVING_EDGE_MAX, type LivingFog } from "@dungeon-manager/renderer";
+import type { FogEffect } from "@dungeon-manager/schema";
 
 const SOFT_EDGES_KEY = "dm.fog.softEdges";
 const FADE_KEY = "dm.fog.fadeSeconds";
@@ -321,6 +322,8 @@ export function readFogLook(storage: Storage | undefined): FogLook {
 export function livingFog(
   look: FogLook,
   cellSizePx: number,
+  /** The fog's biome as played (T-168); none: Bodennebel. */
+  effect: FogEffect | null = null,
 ): LivingFog | undefined {
   if (look.quality === "off") return undefined;
   return {
@@ -328,6 +331,7 @@ export function livingFog(
     cellSizePx,
     edge: look.edge,
     motion: look.motion,
+    ...(effect && { biome: effect.biome, strength: effect.strength }),
   };
 }
 

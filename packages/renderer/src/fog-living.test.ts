@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LIVING_EDGE_MAX, livingReach, type LivingFog } from "./fog-living.js";
+import {
+  BIOMES,
+  biomeOf,
+  LIVING_EDGE_MAX,
+  livingReach,
+  type LivingFog,
+} from "./fog-living.js";
 
 const living = (edge: number, cellSizePx = 100): LivingFog => ({
   quality: "medium",
@@ -39,5 +45,26 @@ describe("livingReach", () => {
 
   it("scales with the grid, not the map image", () => {
     expect(reach(living(1.2, 200))).toBeCloseTo(2 * reach(living(1.2, 100)));
+  });
+});
+
+describe("biomes (T-168)", () => {
+  it("has the eight biomes and falls back to Bodennebel", () => {
+    expect(Object.keys(BIOMES)).toEqual([
+      "nebel",
+      "schnee",
+      "wueste",
+      "asche",
+      "sumpf",
+      "kueste",
+      "arkan",
+      "dunkel",
+    ]);
+    expect(biomeOf(undefined)).toBe(BIOMES["nebel"]);
+    expect(biomeOf("vulkan2")).toBe(BIOMES["nebel"]);
+    expect(biomeOf("schnee").particles).toBe(1);
+    // Names in files are open: built-in object keys are no biomes.
+    expect(biomeOf("constructor")).toBe(BIOMES["nebel"]);
+    expect(biomeOf("toString")).toBe(BIOMES["nebel"]);
   });
 });
