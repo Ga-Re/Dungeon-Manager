@@ -393,3 +393,24 @@ describe("free tokens take the cells their disc reaches into (T-242)", () => {
     expect(canOccupy(free, { col: 4, row: 1 }, medium)).toBe(true);
   });
 });
+
+describe("a free Tiny token next to Tiny tokens on the grid (T-243)", () => {
+  test("takes the cells it reaches into whole: no Tiny token is arranged over it", () => {
+    const tiny = gridFootprint("tiny");
+    // A free Tiny disc centred at (2.9, 1.5) reaches 0.15 into cell 3.
+    const free = [
+      { position: { col: 2.4, row: 1 }, footprint: tiny, radius: 0.25 },
+    ];
+    expect(canOccupy(free, { col: 3, row: 1 }, tiny)).toBe(false);
+    expect(canOccupy(free, { col: 4, row: 1 }, tiny)).toBe(true);
+  });
+
+  test("Tiny tokens on whole cells still share them by quarters", () => {
+    const tiny = gridFootprint("tiny");
+    const three = [0, 1, 2].map(() => ({
+      position: { col: 3, row: 1 },
+      footprint: tiny,
+    }));
+    expect(canOccupy(three, { col: 3, row: 1 }, tiny)).toBe(true);
+  });
+});

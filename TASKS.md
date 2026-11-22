@@ -416,11 +416,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-243 Free Tiny tokens next to Tiny tokens sharing a cell
 
-- **Status:** todo · **Depends on:** T-242 · **Refs:** SPEC §2.4
+- **Status:** done · **Depends on:** T-242 · **Refs:** SPEC §2.4
 - A free Tiny token reaching into a cell (or standing in it) leaves three quarters of it for Tiny tokens on the grid, which `tinyCentres` lays out without regard to the free disc – they can be drawn over it. Keep the arranged slots clear of free discs (or count a free Tiny as a whole cell for Tiny ones).
 - **Acceptance criteria**
-  - [ ] Tiny tokens on a cell are never drawn over a free Tiny token's disc (unit test)
-- **Notes:** From the T-242 review (2026-11-21).
+  - [x] Tiny tokens on a cell are never drawn over a free Tiny token's disc (unit test)
+- **Notes:** From the T-242 review (2026-11-21). Done by counting a free Tiny token's cells whole (`cellLoads`): a Tiny token moved or placed on the grid no longer goes into a cell a free disc reaches into by more than 0.1 cell (the tolerance of T-242); free tokens already keep clear of arranged ones (T-233d). Scenes saved before keep their positions until a token moves.
 
 ### T-244 Exhaustion levels
 
