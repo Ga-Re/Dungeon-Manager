@@ -167,6 +167,9 @@ describe("TreeList", () => {
     );
     fireEvent.doubleClick(screen.getByText("Grabkammer"));
     expect(onItemActivate).toHaveBeenLastCalledWith("chamber");
+    const toggle = item("Krypta").querySelector(".dm-tree-toggle");
+    if (!toggle) throw new Error("no toggle");
+    fireEvent.doubleClick(toggle);
     expect(onItemActivate).toHaveBeenCalledTimes(1);
   });
 

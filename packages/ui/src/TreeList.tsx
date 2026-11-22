@@ -294,9 +294,11 @@ export function TreeList({
           onDoubleClick={
             onItemActivate &&
             ((event) => {
+              // A double-click on a folder's chevron only folds it twice.
               if (
                 !(event.target instanceof Element) ||
-                event.target.closest(".dm-tree-item") !== event.currentTarget
+                event.target.closest(".dm-tree-item") !== event.currentTarget ||
+                event.target.closest(".dm-tree-toggle")
               )
                 return;
               onItemActivate(node.id);

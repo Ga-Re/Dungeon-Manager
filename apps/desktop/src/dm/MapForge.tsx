@@ -206,9 +206,12 @@ export function MapForge({
   useEffect(() => {
     if (!focusTree) return;
     setFocusTree(false);
-    browser.current
-      ?.querySelector<HTMLElement>('[role="treeitem"][aria-selected="true"]')
-      ?.focus();
+    // The selected item, or – if it lies in a collapsed folder – the map at the top.
+    (
+      browser.current?.querySelector<HTMLElement>(
+        '[role="treeitem"][aria-selected="true"]',
+      ) ?? browser.current?.querySelector<HTMLElement>('[role="treeitem"]')
+    )?.focus();
   }, [focusTree]);
   const [roomBusy, setRoomBusy] = useState(false);
   const [roomProblem, setRoomProblem] = useState("");
@@ -223,6 +226,7 @@ export function MapForge({
     setRoomCommand(null);
     setDrawn(null);
     setRoomProblem("");
+    setRoomMenu(null);
   }, []);
   useEffect(() => {
     setLevelChoice(null);
@@ -273,6 +277,15 @@ export function MapForge({
     roomCommand && roomCommand.kind !== "add"
       ? roomOf(roomCommand.id)
       : undefined;
+  // Another level: nothing of the old one stays selected or drawn.
+  const showLevel = (next: string) => {
+    setLevelChoice(next);
+    setSelectedRoom(null);
+    setDrawn(null);
+  };
+  // A room being edited or deleted that is gone (e.g. on another device): its command ends.
+  if (roomCommand && roomCommand.kind !== "add" && !commandRoom)
+    setRoomCommand(null);
   const startAddRoom = () => {
     setDrawn(null);
     setRoomProblem("");
@@ -524,10 +537,7 @@ export function MapForge({
         <AddRoomCommand
           levels={levels}
           levelId={levelId}
-          onLevel={(next) => {
-            setLevelChoice(next);
-            setDrawn(null);
-          }}
+          onLevel={showLevel}
           shape={roomShape}
           onShape={setRoomShape}
           drawn={drawn !== null}
@@ -672,8 +682,7 @@ export function MapForge({
             }
             onSelect={(id) => {
               if (id.startsWith("forge:level:")) {
-                setLevelChoice(id.slice("forge:level:".length));
-                setSelectedRoom(null);
+                showLevel(id.slice("forge:level:".length));
               } else if (id.startsWith("forge:room:")) {
                 const picked = roomOf(id.slice("forge:room:".length));
                 if (!picked) return;

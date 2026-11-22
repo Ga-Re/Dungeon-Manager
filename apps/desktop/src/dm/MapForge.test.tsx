@@ -106,10 +106,13 @@ function renderForge(
 /** Like `renderForge`, and can show another workspace and come back. */
 function renderForgeSwitchable(files: Record<string, MemoryFileContent>) {
   const library = fakeLibraryService("/lib", { [MAP]: "png", ...files });
+  const registry = createCommandRegistry();
   const tree = (workspace: Workspace) => (
     <I18nextProvider i18n={createI18n("de")}>
       <ActiveWorkspaceContext value={workspace}>
-        <MapForge service={library.service} path={MAP} onClose={vi.fn()} />
+        <CommandRegistryContext value={registry}>
+          <MapForge service={library.service} path={MAP} onClose={vi.fn()} />
+        </CommandRegistryContext>
       </ActiveWorkspaceContext>
     </I18nextProvider>
   );
@@ -524,6 +527,49 @@ describe("MapForge", () => {
     fireEvent.click(screen.getByRole("button", { name: "Raster kalibrieren" }));
     expect(screen.queryByRole("dialog", { name: "Raum anlegen" })).toBeNull();
     expect(view.tool).toBe("pan");
+  });
+
+  test("another level, or leaving the Map Forge, drops a room drawn but not confirmed", async () => {
+    const { library, rerenderIn } = renderForgeSwitchable({
+      [SIDECAR]: sidecar({
+        levels: [
+          { id: "ground", name: "Erdgeschoss" },
+          { id: "cellar", name: "Keller" },
+        ],
+        rooms: [
+          {
+            id: "hall",
+            name: "Halle",
+            area: square(0, 0, 70),
+            levelId: "ground",
+          },
+        ],
+      }),
+    });
+    const tree = await screen.findByRole("tree", { name: "Karte" });
+    fireEvent.click(within(tree).getByText("Halle"));
+    fireEvent.click(screen.getByRole("button", { name: "Raum anlegen" }));
+    const panel = screen.getByRole("dialog", { name: "Raum anlegen" });
+    act(() => {
+      view.onArea?.(square(0, 0, 140), "reveal", false);
+    });
+    fireEvent.change(within(panel).getByLabelText("Ebene"), {
+      target: { value: "cellar" },
+    });
+    // Nothing of the old level stays drawn or selected.
+    expect(view.outlines).toEqual([]);
+    expect(
+      within(panel).getByRole<HTMLButtonElement>("button", { name: "OK" })
+        .disabled,
+    ).toBe(true);
+
+    act(() => {
+      view.onArea?.(square(0, 0, 140), "reveal", false);
+    });
+    rerenderIn("gameOrchestrator");
+    rerenderIn("mapForge");
+    expect(screen.queryByRole("dialog", { name: "Raum anlegen" })).toBeNull();
+    expect(saved(library).map?.rooms).toHaveLength(1);
   });
 
   test("Abbrechen discards a drawn room", async () => {
