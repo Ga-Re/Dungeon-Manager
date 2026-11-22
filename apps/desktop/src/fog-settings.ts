@@ -2,7 +2,7 @@
 // theme, so no file format changes. The DM window and the player window share that storage,
 // so the player window follows a change through the `storage` event.
 
-import type { LivingFog } from "@dungeon-manager/renderer";
+import { LIVING_EDGE_MAX, type LivingFog } from "@dungeon-manager/renderer";
 
 const SOFT_EDGES_KEY = "dm.fog.softEdges";
 const FADE_KEY = "dm.fog.fadeSeconds";
@@ -27,7 +27,11 @@ export const FOG_QUALITIES = ["high", "medium", "off"] as const;
 export type FogQuality = (typeof FOG_QUALITIES)[number];
 
 /** The living fog's sliders (ADR-0019): range, step and default. */
-export const FOG_EDGE = { max: 2.5, step: 0.1, default: 1.2 } as const;
+export const FOG_EDGE = {
+  max: LIVING_EDGE_MAX,
+  step: 0.1,
+  default: 1.2,
+} as const;
 export const FOG_MOTION = { max: 3, step: 0.1, default: 1 } as const;
 /** The drift with "reduce motion" on in the system and nothing chosen here. */
 const REDUCED_MOTION = 0.2;

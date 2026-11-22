@@ -8,15 +8,18 @@ const living = (edge: number, cellSizePx = 100): LivingFog => ({
   motion: 1,
 });
 
-/** How far the fog may creep into revealed area: the band plus half the warp. */
+/**
+ * How far the fog may creep into revealed area: the band plus the longest shift, √½ of the warp
+ * (both noise components at ±0.5, i.e. diagonally).
+ */
 const reach = (fog: LivingFog) => {
   const { band, warp } = livingReach(fog);
-  return band + warp / 2;
+  return band + warp * Math.SQRT1_2;
 };
 
 describe("livingReach", () => {
   it("keeps a one-cell corridor open in its middle at the largest edge wobble", () => {
-    expect(reach(living(LIVING_EDGE_MAX))).toBeLessThanOrEqual(45);
+    expect(reach(living(LIVING_EDGE_MAX))).toBeLessThanOrEqual(45 + 1e-9);
     // From both walls together, less than the corridor's width.
     expect(2 * reach(living(LIVING_EDGE_MAX))).toBeLessThan(100);
   });

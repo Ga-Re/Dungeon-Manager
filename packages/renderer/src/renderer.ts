@@ -467,6 +467,9 @@ export async function createRenderer(
     const previous = shownFog;
     if (duration <= 0 || !previous || !mapSize || !fog) return null;
     if (!sameSize(previous.map, mapSize)) return null;
+    // Only the look changed (soft edges, living fog): nothing spreads, it switches at once.
+    if (JSON.stringify(previous.revealed) === JSON.stringify(target.revealed))
+      return null;
     const to = fogMask(target.revealed, mapSize, maskEdge(target.options));
     // From what is on screen: mid-fade, the mix reached so far.
     const from = fade

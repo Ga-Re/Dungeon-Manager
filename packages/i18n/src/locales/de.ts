@@ -472,6 +472,8 @@ export const de = {
       softEdges: "Weiche Kanten",
       softEdgesHint:
         "Der Nebel läuft an den Rändern aufgedeckter Bereiche sanft aus – auf diesem Gerät und dem TV. Er zeigt dabei nie mehr als mit harten Kanten.",
+      softEdgesLiving:
+        "Der lebendige Nebel hat immer weiche Kanten. Stelle ihn auf „Aus“, um harte Kanten zu wählen.",
       fade: "Übergangsdauer",
       fadeHint:
         "Wie lange Aufdecken und Verdecken weich überblenden – auch auf dem TV. 0 s schaltet sofort um.",

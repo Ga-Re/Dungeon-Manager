@@ -53,8 +53,12 @@ export function livingReach(living: LivingFog): {
     living.cellSizePx *
     (REACH_MIN_CELLS +
       ((REACH_MAX_CELLS - REACH_MIN_CELLS) * edge) / LIVING_EDGE_MAX);
-  // A shifted sample moves at most half the warp (the noise lies within ±0.5).
-  return { band: reach * 0.65, warp: edge > 0 ? reach * 0.7 : 0 };
+  // A shifted sample moves by the warp times a noise vector of components within ±0.5, so at
+  // most √½ of the warp (diagonally): the shift stays within 0.35 of the reach.
+  return {
+    band: reach * 0.65,
+    warp: edge > 0 ? (reach * 0.35) / Math.SQRT1_2 : 0,
+  };
 }
 
 /** Bodennebel (ADR-0019): deep, body and highlight of the fog, until biomes arrive (T-168). */
@@ -222,7 +226,12 @@ export function drawLivingFog({
     indices: new Uint32Array([0, 1, 2, 0, 2, 3]),
   });
   const shader = Shader.from({
-    gl: { vertex: VERTEX, fragment: fragment(quality.octaves) },
+    gl: {
+      vertex: VERTEX,
+      fragment: fragment(quality.octaves),
+      // Map pixels and noise need more than mediump's 16 bits on GPUs that honour it.
+      preferredFragmentPrecision: "highp",
+    },
     resources: {
       uFrom: from.source,
       uTo: to.source,

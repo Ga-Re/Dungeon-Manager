@@ -1019,7 +1019,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] The three settings are stored per device and apply in the DM and the player window at once (component tests)
   - [ ] With Qualität "Mittel" the benchmark scene stays within ARCHITECTURE §11, measured by the DM on the reference notebook
 - **Notes:** From the DM interview (2026-11-22). Animation time is injected (frozen for screenshots). Reduced motion (OS setting) starts with a low Bewegung.
-- Done in T-245: one shader layer draws the living fog and the spread (`fog-living.ts`); the wobble reaches at most 0.45 cells into revealed area; Mittel is the default (DM, 2026-11-22). The DM-window E2E and visual specs run with still fog (real clock); the renderer harness covers the living fog at a frozen moment and the fail-closed check at several. The benchmark criterion stays open until the DM has measured it on the reference notebook.
+- Done in T-245: one shader layer draws the living fog and the spread (`fog-living.ts`); the wobble reaches at most 0.45 cells (plus a mask texel of rounding) into revealed area; Mittel is the default (DM, 2026-11-22). The DM-window E2E and visual specs run with still fog (real clock); the renderer harness covers the living fog at a frozen moment and the fail-closed check at several. The benchmark criterion stays open until the DM has measured it on the reference notebook.
 
 ### T-246 Fog spreads at a speed with a ragged front
 

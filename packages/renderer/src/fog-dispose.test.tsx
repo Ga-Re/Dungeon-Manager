@@ -8,6 +8,7 @@ import {
 } from "pixi.js";
 import { describe, expect, it, vi } from "vitest";
 import { disposeFog } from "./fog-dispose.js";
+import { drawLivingFog } from "./fog-living.js";
 
 describe("disposeFog (T-165)", () => {
   it("frees the graphics contexts and own textures of a fog layer, never shared ones", () => {
@@ -52,6 +53,34 @@ describe("disposeFog (T-165)", () => {
 
     expect(target.destroyed && source.destroyed).toBe(true);
     expect(freeGeometry).toHaveBeenCalled();
+    expect(Texture.WHITE.destroyed).toBe(false);
+  });
+
+  it("frees a living fog layer: its masks, order, geometry, shader and filter (T-245)", () => {
+    const layer = new Container();
+    const to = Texture.from(document.createElement("canvas"));
+    const from = Texture.from(document.createElement("canvas"));
+    const order = Texture.from(document.createElement("canvas"));
+    const handle = drawLivingFog({
+      from,
+      to,
+      order,
+      maskSize: { width: 10, height: 10 },
+      map: { width: 10, height: 10 },
+      margin: 10,
+      living: { quality: "medium", cellSizePx: 5, edge: 1.2, motion: 1 },
+      opacity: 1,
+      rootResolution: 1,
+    });
+    const [filter] = handle.mesh.filters;
+    if (!filter) throw new Error("The living fog renders through a filter.");
+    const freeFilter = vi.spyOn(filter, "destroy");
+    layer.addChild(handle.mesh);
+
+    disposeFog(layer);
+
+    expect(to.destroyed && from.destroyed && order.destroyed).toBe(true);
+    expect(freeFilter).toHaveBeenCalled();
     expect(Texture.WHITE.destroyed).toBe(false);
   });
 });

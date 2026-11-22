@@ -166,9 +166,11 @@ function plainMap(colour: string): HTMLCanvasElement {
 
 /**
  * "living-fail-closed" (T-245): the nested fog drawn hard marks what is hidden; then the living
- * fog with the largest edge wobble, in both qualities and at several moments, over a black and a
- * white map. A hidden pixel that differs between the two shows the map (`data-violations`, must
- * be none); revealed pixels the living fog changes (`data-living`) show that it was drawn.
+ * fog with the largest edge wobble, in both qualities and at several moments of its drift (the
+ * clock only moves forward, so each run draws later moments), over a black and a white map. A
+ * hidden pixel that differs between the two shows the map (`data-violations`, must be none);
+ * revealed pixels the living fog changes (`data-living`) show that it was drawn. Then the same
+ * during a spread (`livingSpreadViolations`).
  */
 async function livingFailClosedScenario(canvas: HTMLCanvasElement) {
   let time = 0;
@@ -211,8 +213,78 @@ async function livingFailClosedScenario(canvas: HTMLCanvasElement) {
         if (!hidden(index) && white[index] !== 255) living++;
       }
     }
+  const hiddenAfter = await hardCapture(REVEALED);
+  violations += await livingSpreadViolations(hard, hiddenAfter);
   document.body.dataset["violations"] = String(violations);
   document.body.dataset["living"] = String(living);
+}
+
+/** The hard fog `revealed` over a white map, zoomed in (black = hidden). */
+async function hardCapture(
+  revealed: typeof REVEALED,
+): Promise<Uint8ClampedArray> {
+  const canvas = document.createElement("canvas");
+  const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
+  renderer.setFog(revealed, { opacity: 1 });
+  renderer.setMap(plainMap("#ffffff"));
+  renderer.setCamera(cameraFor("zoomed"));
+  await renderer.drawn();
+  const pixels = capture(canvas);
+  renderer.destroy();
+  return pixels;
+}
+
+/**
+ * A living spread from the nested fog to the plain one, at the largest edge wobble, over a black
+ * and a white map with the same frozen clock: a pixel hidden before and after that differs
+ * between the two shows the map. Returns how many such pixels the frames had.
+ */
+async function livingSpreadViolations(
+  before: Uint8ClampedArray,
+  after: Uint8ClampedArray,
+): Promise<number> {
+  const moments = [0, 150, 400, 700, 1100];
+  const frames: Uint8ClampedArray[][] = [];
+  for (const colour of ["#000000", "#ffffff"]) {
+    let time = 0;
+    const canvas = document.createElement("canvas");
+    const renderer = await createRenderer({
+      canvas,
+      size: view,
+      resolution: 1,
+      now: () => time,
+    });
+    const living = livingFog("medium", 2.5);
+    renderer.setFog(REVEALED_NESTED, { opacity: 1, living });
+    renderer.setMap(plainMap(colour));
+    renderer.setCamera(cameraFor("zoomed"));
+    await renderer.drawn();
+    renderer.setFog(REVEALED, { opacity: 1, living, fade: 1000 });
+    const shots: Uint8ClampedArray[] = [];
+    for (const moment of moments) {
+      time = moment;
+      await renderer.drawn();
+      shots.push(capture(canvas));
+    }
+    frames.push(shots);
+    renderer.destroy();
+  }
+  let violations = 0;
+  moments.forEach((_, frame) => {
+    const black = frames[0]?.[frame];
+    const white = frames[1]?.[frame];
+    if (!black || !white) throw new Error("capture missing");
+    for (let index = 0; index < black.length; index += 4) {
+      if (before[index] !== 0 || after[index] !== 0) continue;
+      if (
+        black[index] !== white[index] ||
+        black[index + 1] !== white[index + 1] ||
+        black[index + 2] !== white[index + 2]
+      )
+        violations++;
+    }
+  });
+  return violations;
 }
 
 /** The video fixture (`pages/media/fixture-map.webm`, 320 × 200) and what is revealed of it. */

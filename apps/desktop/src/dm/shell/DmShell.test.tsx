@@ -255,6 +255,10 @@ describe("DmShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
     fireEvent.click(screen.getByRole("tab", { name: "Nebel & Animation" }));
     const soft = screen.getByRole("switch", { name: "Weiche Kanten" });
+    // The living fog (on by default) always has soft edges.
+    expect((soft as HTMLInputElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("radio", { name: "Aus" }));
+    expect((soft as HTMLInputElement).disabled).toBe(false);
     expect((soft as HTMLInputElement).checked).toBe(true);
     fireEvent.click(soft);
     expect((soft as HTMLInputElement).checked).toBe(false);

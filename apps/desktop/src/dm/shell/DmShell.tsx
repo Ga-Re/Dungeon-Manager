@@ -840,6 +840,8 @@ export function DmShell({
               type="checkbox"
               role="switch"
               checked={fogLook.softEdges}
+              // The living fog always has its own soft edge (T-245).
+              disabled={fogLook.quality !== "off"}
               onChange={(event) => {
                 const softEdges = event.target.checked;
                 setFogLook((look) => ({ ...look, softEdges }));
@@ -848,7 +850,13 @@ export function DmShell({
             />
             {t("shell.fogLook.softEdges")}
           </label>
-          <p className="dm-settings-hint">{t("shell.fogLook.softEdgesHint")}</p>
+          <p className="dm-settings-hint">
+            {t(
+              fogLook.quality === "off"
+                ? "shell.fogLook.softEdgesHint"
+                : "shell.fogLook.softEdgesLiving",
+            )}
+          </p>
           <div className="dm-settings-range">
             <span id={`${idPrefix}-fade`}>{t("shell.fogLook.fade")}</span>
             <input
