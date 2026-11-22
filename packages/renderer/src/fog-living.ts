@@ -22,7 +22,115 @@ export interface LivingFog {
   readonly edge: number;
   /** Speed of the drift, 0 (still) … 3. */
   readonly motion: number;
+  /** The biome (T-168): colours, wind, streaks and particles; Bodennebel if none or unknown. */
+  readonly biome?: string;
+  /** How strong the biome's wind, particles and glow are, 0 … 1 (1 if none). */
+  readonly strength?: number;
 }
+
+/**
+ * One biome's look (T-168, from the Nebelweber prototype): deep, body and highlight colours, the
+ * particles' colour, its wind (direction and strength), and its effects at full strength:
+ * particles (0 none, 1 snow, 2 embers, 3 motes, 4 sand) and how many, wind streaks, underglow.
+ */
+interface Biome {
+  readonly colours: readonly [string, string, string];
+  readonly particle: string;
+  readonly wind: readonly [number, number];
+  readonly particles: 0 | 1 | 2 | 3 | 4;
+  readonly amount: number;
+  readonly streaks: number;
+  readonly glow: number;
+}
+
+export const BIOMES: Readonly<Record<string, Biome>> = {
+  nebel: {
+    colours: ["#2a3238", "#66737c", "#b9c5cc"],
+    particle: "#dfe6ea",
+    wind: [0.4, 0.1],
+    particles: 0,
+    amount: 0,
+    streaks: 0.2,
+    glow: 0,
+  },
+  schnee: {
+    colours: ["#6f7e8e", "#bcc8d3", "#f4f8fb"],
+    particle: "#ffffff",
+    wind: [1.3, 0.25],
+    particles: 1,
+    amount: 1,
+    streaks: 0.85,
+    glow: 0,
+  },
+  wueste: {
+    colours: ["#6e4f31", "#bf935c", "#efd5a2"],
+    particle: "#f3dfb2",
+    wind: [1.6, 0.05],
+    particles: 4,
+    amount: 0.7,
+    streaks: 1,
+    glow: 0,
+  },
+  asche: {
+    colours: ["#141010", "#3a2f2a", "#7a695e"],
+    particle: "#ff8a3a",
+    wind: [0.3, -0.4],
+    particles: 2,
+    amount: 0.95,
+    streaks: 0.35,
+    glow: 0.6,
+  },
+  sumpf: {
+    colours: ["#16210f", "#46612e", "#9fbf68"],
+    particle: "#d8ff8c",
+    wind: [0.25, 0.05],
+    particles: 3,
+    amount: 0.6,
+    streaks: 0.1,
+    glow: 0.25,
+  },
+  kueste: {
+    colours: ["#1c2b30", "#577479", "#b6cfcf"],
+    particle: "#e6f2f2",
+    wind: [0.9, 0.1],
+    particles: 0,
+    amount: 0,
+    streaks: 0.55,
+    glow: 0,
+  },
+  arkan: {
+    colours: ["#1a1230", "#4a3577", "#a08ad8"],
+    particle: "#f2e6ff",
+    wind: [0.3, -0.1],
+    particles: 3,
+    amount: 0.85,
+    streaks: 0.2,
+    glow: 0.2,
+  },
+  dunkel: {
+    colours: ["#060708", "#15181c", "#2c3239"],
+    particle: "#000000",
+    wind: [0.2, 0],
+    particles: 0,
+    amount: 0,
+    streaks: 0,
+    glow: 0,
+  },
+};
+
+/** The biome named `name`, Bodennebel for none or an unknown one. */
+export function biomeOf(name: string | undefined): Biome {
+  return (
+    (name !== undefined ? BIOMES[name] : undefined) ??
+    (BIOMES["nebel"] as Biome)
+  );
+}
+
+const rgb = (hex: string): [number, number, number] => [
+  parseInt(hex.slice(1, 3), 16) / 255,
+  parseInt(hex.slice(3, 5), 16) / 255,
+  parseInt(hex.slice(5, 7), 16) / 255,
+];
 
 export const LIVING_EDGE_MAX = 2.5;
 
@@ -61,13 +169,6 @@ export function livingReach(living: LivingFog): {
   };
 }
 
-/** Bodennebel (ADR-0019): deep, body and highlight of the fog, until biomes arrive (T-168). */
-const COLOURS = [
-  [0x2a / 255, 0x32 / 255, 0x38 / 255],
-  [0x66 / 255, 0x73 / 255, 0x7c / 255],
-  [0xb9 / 255, 0xc5 / 255, 0xcc / 255],
-] as const;
-
 const VERTEX = `in vec2 aPosition;
 out vec2 vPos;
 uniform mat3 uProjectionMatrix;
@@ -95,6 +196,10 @@ uniform vec2 uMaskSize;
 uniform vec3 uDeep;
 uniform vec3 uBody;
 uniform vec3 uLight;
+uniform vec3 uParticle;
+uniform vec2 uWind;
+// Particles kind, their amount, wind streaks and underglow (T-168), strength applied.
+uniform vec4 uFx;
 out vec4 finalColor;
 
 float hash(vec2 p) {
@@ -120,6 +225,35 @@ float fbm(vec2 p) {
   }
   return s / (1.0 - pow(0.5, ${octaves.toFixed(1)}));
 }
+// One layer of particles: a point per grid square of \`size\` cells, moving at \`vel\` cells per
+// second, swaying, optionally flickering (\`tw\`); \`dens\` of the squares carry one.
+float layer(vec2 pos, float size, vec2 vel, float t, float radius, float dens, float sway, float tw) {
+  vec2 q = (pos / uCell - vel * t) / size;
+  vec2 id = mod(floor(q), 997.0);
+  float h = hash(id);
+  if (h > dens) return 0.0;
+  vec2 o = (vec2(hash(id + 3.1), hash(id + 7.7)) - 0.5) * 0.6;
+  o.x += sway * sin(t * 1.7 + h * 40.0);
+  float d = length(fract(q) - 0.5 - o);
+  float v = smoothstep(radius, radius * 0.3, d);
+  float flick = mix(1.0, pow(0.5 + 0.5 * sin(t * (2.0 + h * 5.0) + h * 60.0), 4.0) * 1.6, tw);
+  return v * flick;
+}
+float particles(vec2 pos, float t) {
+  if (uFx.x < 0.5) return 0.0;
+  if (uFx.x < 1.5)   // snow
+    return layer(pos, 0.3, vec2(uWind.x, 1.2), t, 0.1, 0.5, 0.25, 0.0) * 0.7
+         + layer(pos, 0.5, vec2(uWind.x * 1.5, 1.8), t, 0.12, 0.45, 0.2, 0.0) * 0.85
+         + layer(pos, 0.8, vec2(uWind.x * 2.3, 2.8), t, 0.14, 0.35, 0.15, 0.0);
+  if (uFx.x < 2.5)   // embers
+    return layer(pos, 0.45, vec2(0.35 + uWind.x * 0.35, -1.0), t, 0.08, 0.25, 0.3, 1.0)
+         + layer(pos, 0.75, vec2(0.6 + uWind.x * 0.5, -1.6), t, 0.09, 0.2, 0.25, 1.0);
+  if (uFx.x < 3.5)   // motes, will-o'-wisps
+    return layer(pos, 0.6, vec2(0.13, -0.1), t, 0.09, 0.3, 0.35, 1.0)
+         + layer(pos, 1.07, vec2(-0.17, 0.07), t, 0.1, 0.22, 0.3, 1.0);
+  return (layer(pos, 0.15, vec2(uWind.x * 3.7, 0.3), t, 0.14, 0.35, 0.0, 0.0)   // sand
+        + layer(pos, 0.25, vec2(uWind.x * 5.0, 0.43), t, 0.12, 0.3, 0.0, 0.0)) * 0.55;
+}
 // Fog alpha at a map point, mid-spread as the fade shader mixes it; fog beyond the map.
 float fogAt(vec2 pos) {
   vec2 uv = pos / uMaskSize;
@@ -130,10 +264,12 @@ float fogAt(vec2 pos) {
 void main() {
   vec2 p = vPos / (uCell * 4.0);
   float t = uTime;
-  vec2 q = vec2(fbm(p + vec2(0.0, t * 0.035)), fbm(p + vec2(5.2, 1.3) + vec2(t * 0.03, 0.0)));
+  vec2 drift = uWind * t * 0.05;
+  vec2 q = vec2(fbm(p + vec2(0.0, t * 0.035) - drift),
+                fbm(p + vec2(5.2, 1.3) + vec2(t * 0.03, 0.0) - drift));
   vec2 r = vec2(fbm(p + 2.6 * q + vec2(1.7, 9.2) + t * 0.045),
                 fbm(p + 2.6 * q + vec2(8.3, 2.8) - t * 0.04));
-  float f = fbm(p * 1.3 + 2.2 * r);
+  float f = fbm(p * 1.3 + 2.2 * r - drift * 1.4);
   // Faster, finer turbulence that only shows where the fog has an edge.
   vec2 e = vec2(fbm(p * 2.4 + 1.2 * r + vec2(t * 0.21, 0.0)),
                 fbm(p * 2.4 + 1.2 * r + vec2(4.1, 7.3 - t * 0.19))) - 0.5;
@@ -146,9 +282,21 @@ void main() {
   vec3 colour = mix(uDeep, uBody, smoothstep(0.22, 0.88, f));
   float wisp = smoothstep(0.48, 0.95, fbm(p * 0.7 + r * 1.5 + vec2(t * 0.06, -t * 0.02)));
   colour = mix(colour, uLight, wisp * 0.5);
+  // Wind streaks along the wind (T-168).
+  vec2 wd = normalize(uWind + vec2(1e-4, 0.0));
+  vec2 sp = vec2(dot(vPos, wd), dot(vPos, vec2(-wd.y, wd.x))) / uCell;
+  float st = fbm(vec2(sp.x / 5.0 - t * 0.9 * length(uWind), sp.y / 0.55) + r * 0.6);
+  colour = mix(colour, uLight, smoothstep(0.55, 0.9, st) * uFx.z * 0.4);
+  // Underglow: embers or light from below in the dark parts.
+  colour = mix(colour, uParticle * 0.8, uFx.w * smoothstep(0.45, 0.85, 1.0 - f) * 0.55);
   colour = mix(colour, uLight, edge * 0.3);
   float alpha = a * uOpacity;
-  finalColor = vec4(colour * alpha, alpha);
+  vec3 premultiplied = colour * alpha;
+  // Particles over the fog and in its band next to the edge (DM, 2026-11-22): they never make
+  // fog transparent, they only add.
+  float pa = clamp(particles(vPos, t) * clamp(a + m * 1.5, 0.0, 1.0) * uFx.y, 0.0, 1.0)
+             * min(1.0, uOpacity + 0.3);
+  finalColor = vec4(uParticle * pa + premultiplied * (1.0 - pa), pa + alpha * (1.0 - pa));
 }`;
 
 /** A living fog layer's controls: the spread's mix (fades) and the animation time. */
@@ -189,6 +337,8 @@ export function drawLivingFog({
 }): LivingHandle {
   const { warp } = livingReach(living);
   const quality = LIVING_QUALITY[living.quality];
+  const biome = biomeOf(living.biome);
+  const strength = Math.min(1, Math.max(0, living.strength ?? 1));
   const uniforms = new UniformGroup({
     uMix: { value: 1, type: "f32" },
     uSpread: { value: DURATION_SHARES.spread, type: "f32" },
@@ -205,9 +355,32 @@ export function drawLivingFog({
       value: new Float32Array([maskSize.width, maskSize.height]),
       type: "vec2<f32>",
     },
-    uDeep: { value: new Float32Array(COLOURS[0]), type: "vec3<f32>" },
-    uBody: { value: new Float32Array(COLOURS[1]), type: "vec3<f32>" },
-    uLight: { value: new Float32Array(COLOURS[2]), type: "vec3<f32>" },
+    uDeep: {
+      value: new Float32Array(rgb(biome.colours[0])),
+      type: "vec3<f32>",
+    },
+    uBody: {
+      value: new Float32Array(rgb(biome.colours[1])),
+      type: "vec3<f32>",
+    },
+    uLight: {
+      value: new Float32Array(rgb(biome.colours[2])),
+      type: "vec3<f32>",
+    },
+    uParticle: {
+      value: new Float32Array(rgb(biome.particle)),
+      type: "vec3<f32>",
+    },
+    uWind: { value: new Float32Array(biome.wind), type: "vec2<f32>" },
+    uFx: {
+      value: new Float32Array([
+        biome.particles,
+        biome.amount * strength,
+        biome.streaks * strength,
+        biome.glow * strength,
+      ]),
+      type: "vec4<f32>",
+    },
   });
   const left = -margin;
   const top = -margin;

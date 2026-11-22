@@ -43,6 +43,33 @@ export const tokenPositionSchema = z.looseObject({
  */
 export const gridModeSchema = z.enum(["grid", "gridInCombat", "free"]);
 
+/**
+ * The fog's biomes (T-168, ADR-0019): Bodennebel, Schneesturm, Hitzeflimmern, Glutasche,
+ * Sumpfmiasma, Seenebel, Arkaner Dunst, Finsternis.
+ */
+export const FOG_BIOMES = [
+  "nebel",
+  "schnee",
+  "wueste",
+  "asche",
+  "sumpf",
+  "kueste",
+  "arkan",
+  "dunkel",
+] as const;
+export const fogBiomeSchema = z.enum(FOG_BIOMES);
+export type FogBiome = z.infer<typeof fogBiomeSchema>;
+
+/**
+ * A fog effect (T-168): a biome and its strength 0…1. In files the biome is any name, so a
+ * newer app's biome survives a round trip; only known biomes reach the TV.
+ */
+export const fogEffectSchema = z.looseObject({
+  biome: z.string().min(1),
+  strength: z.number().min(0).max(1),
+});
+export type FogEffect = z.infer<typeof fogEffectSchema>;
+
 /** A point in map pixels. */
 export const pointSchema = z.tuple([z.number(), z.number()]);
 

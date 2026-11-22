@@ -1,4 +1,6 @@
-import { IconButton, RibbonGroup } from "@dungeon-manager/ui";
+import { FOG_BIOMES, type FogEffect } from "@dungeon-manager/schema";
+import { IconButton, Menu, RibbonGroup } from "@dungeon-manager/ui";
+import { useState } from "react";
 import {
   Brush,
   Circle,
@@ -47,6 +49,9 @@ export function FogToolbar({
   onCoverAll,
   speed,
   onSpeed,
+  fogEffect,
+  ownFogEffect,
+  onFogEffect,
 }: {
   readonly tool: MapTool;
   readonly onTool: (tool: MapTool) => void;
@@ -62,6 +67,12 @@ export function FogToolbar({
   /** How fast fog changes spread, in grid cells per second; `Infinity` is "Sofort" (T-246). */
   readonly speed: number;
   readonly onSpeed: (speed: number) => void;
+  /** The fog's biome as played (T-168): the scene's own choice, else its map's; none: Bodennebel. */
+  readonly fogEffect: FogEffect | null;
+  /** Whether the scene has chosen its own biome (else it follows the map). */
+  readonly ownFogEffect: boolean;
+  /** Choose the scene's biome live; `null` follows the map again. */
+  readonly onFogEffect: (effect: FogEffect | null) => void;
 }) {
   const { t, i18n } = useTranslation();
   return (
@@ -140,6 +151,11 @@ export function FogToolbar({
           />
         </label>
       </RibbonGroup>
+      <BiomeGroup
+        fogEffect={fogEffect}
+        ownFogEffect={ownFogEffect}
+        onFogEffect={onFogEffect}
+      />
       <RibbonGroup caption={t("fog.wholeMap")}>
         <IconButton
           showLabel
@@ -157,5 +173,72 @@ export function FogToolbar({
         />
       </RibbonGroup>
     </>
+  );
+}
+
+/**
+ * The fog's biome and its strength (T-168), chosen live for the open scene. The strength is
+ * applied when the slider is let go, so dragging it makes one undo step.
+ */
+function BiomeGroup({
+  fogEffect,
+  ownFogEffect,
+  onFogEffect,
+}: {
+  readonly fogEffect: FogEffect | null;
+  readonly ownFogEffect: boolean;
+  readonly onFogEffect: (effect: FogEffect | null) => void;
+}) {
+  const { t } = useTranslation();
+  const biome = fogEffect?.biome ?? "nebel";
+  const known = FOG_BIOMES.find((each) => each === biome);
+  const strength = fogEffect?.strength ?? 1;
+  // While dragging: shown, not yet applied.
+  const [dragged, setDragged] = useState<number | null>(null);
+  const shown = dragged ?? strength;
+  const commit = () => {
+    if (dragged === null) return;
+    setDragged(null);
+    if (dragged !== strength) onFogEffect({ biome, strength: dragged });
+  };
+  return (
+    <RibbonGroup caption={t("fog.biome")}>
+      <Menu
+        label={known ? t(`fog.biomes.${known}`) : biome}
+        menuLabel={t("fog.biomePick")}
+        items={[
+          {
+            id: "map",
+            label: t("fog.biomeAsMap"),
+            checked: !ownFogEffect,
+          },
+          ...FOG_BIOMES.map((each) => ({
+            id: each,
+            label: t(`fog.biomes.${each}`),
+            checked: ownFogEffect && biome === each,
+          })),
+        ]}
+        onSelect={(id) => {
+          const chosen = FOG_BIOMES.find((each) => each === id);
+          onFogEffect(chosen ? { biome: chosen, strength } : null);
+        }}
+      />
+      <label className="dm-ribbon-field">
+        {t("fog.strength", { percent: Math.round(shown * 100) })}
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.1}
+          value={shown}
+          onChange={(event) => {
+            setDragged(Number(event.target.value));
+          }}
+          onPointerUp={commit}
+          onKeyUp={commit}
+          onBlur={commit}
+        />
+      </label>
+    </RibbonGroup>
   );
 }

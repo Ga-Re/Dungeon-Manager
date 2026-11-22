@@ -220,6 +220,8 @@ export function OpenScenePanel({
     reportSaveState.current?.({ saving, saveFailed });
   }, [saving, saveFailed]);
   const { scene, map, notOnTv } = session;
+  // The fog's biome as played (T-168): the scene's live choice, else its map's.
+  const fogEffect = scene.fogEffect ?? map?.fogEffect ?? null;
   const [tool, setTool] = useState<MapTool>("pan");
   // The scene is the Game-Orchestrator's document (T-174): undo and redo act on it only while
   // that workspace shows, and leaving it drops a fog tool back to panning.
@@ -1083,6 +1085,15 @@ export function OpenScenePanel({
               }}
               speed={fogLook.speed}
               onSpeed={setFogSpeed}
+              fogEffect={fogEffect}
+              ownFogEffect={scene.fogEffect !== undefined}
+              onFogEffect={(effect) => {
+                if (!busy)
+                  session.run({
+                    type: "scene.setFogEffect",
+                    fogEffect: effect,
+                  });
+              }}
             />
           </ShellPortal>
           <ShellPortal slot="canvas">
@@ -1120,7 +1131,7 @@ export function OpenScenePanel({
               cornerRadius={map.grid.cellSizePx / 4}
               softEdge={softEdgeWidth(map.grid.cellSizePx, fogLook.softEdges)}
               fade={fogLook.fadeSeconds * 1000}
-              living={livingFog(fogLook, map.grid.cellSizePx)}
+              living={livingFog(fogLook, map.grid.cellSizePx, fogEffect)}
               speed={fogSpeed(fogLook, map.grid.cellSizePx, media.path)}
               coverFrom={fogLook.coverFrom}
               onArea={(area, kind) => {

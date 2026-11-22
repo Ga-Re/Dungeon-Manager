@@ -59,6 +59,21 @@ describe("sidecar files", () => {
     });
   });
 
+  test("keep a map's fog biome, also one of a newer app (T-168)", async () => {
+    const fs = createMemoryFileSystem();
+    const map = sidecar.map;
+    if (!map) throw new Error("fixture without map data");
+    const withBiome: Sidecar = {
+      ...sidecar,
+      map: { ...map, fogEffect: { biome: "vulkan2", strength: 0.4 } },
+    };
+    await saveSidecar(fs, "library/maps/turm.png", withBiome);
+    expect(await loadSidecar(fs, "library/maps/turm.png")).toEqual({
+      status: "ok",
+      value: withBiome,
+    });
+  });
+
   test("a missing sidecar is reported as missing, so the caller uses defaults", async () => {
     expect(
       await loadSidecar(createMemoryFileSystem(), "library/maps/turm.png"),

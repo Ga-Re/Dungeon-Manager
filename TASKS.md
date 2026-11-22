@@ -1061,14 +1061,16 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-168 Fog biomes per map
 
-- **Status:** todo · **Depends on:** T-245, T-134b, T-160a · **Refs:** SPEC §4, ARCHITECTURE §8, §11, ADR-0019
+- **Status:** done · **Depends on:** T-245, T-134b, T-160a · **Refs:** SPEC §4, ARCHITECTURE §8, §11, ADR-0019
 - Eight biomes (ADR-0019, DM decision 2026-11-22, replacing the first set of 2026-11-19): Bodennebel, Schneesturm, Hitzeflimmern, Glutasche, Sumpfmiasma, Seenebel, Arkaner Dunst, Finsternis – each with colours, wind and streaks, particles (snow, embers, motes, sand) and underglow, plus a **strength**. The map's sidecar holds the default; a live change during play is stored as an optional field in the scene; "reset scene" takes the map's setting again. Biome picker and strength in the Nebel ribbon. Heat shimmer moves the fog and its edge only, never the map. Changing the biome blends over. GPU only.
 - **Acceptance criteria**
-  - [ ] Biome and strength in the sidecar and as a scene override, both optional and additive (format shown to the DM first; schema + storage tests)
-  - [ ] Each biome animates without making fog transparent; particles drift over the revealed side only next to the edge (pixel and screenshot tests)
-  - [ ] Ribbon picker and strength change the open scene live, also on the TV (component + E2E tests)
+  - [x] Biome and strength in the sidecar and as a scene override, both optional and additive (format shown to the DM first; schema + storage tests)
+  - [x] Each biome animates without making fog transparent; particles drift over the revealed side only next to the edge (pixel and screenshot tests)
+  - [x] Ribbon picker and strength change the open scene live, also on the TV (component + E2E tests)
   - [ ] The benchmark scene with each biome stays within ARCHITECTURE §11, measured by the DM
 - **Notes:** From the DM (2026-11-19); reworked in the DM interview (2026-11-22). How the DM sets a map's default from the DM window (e.g. "Als Kartenstandard übernehmen") is settled in this task's plan. Likely above 400 changed lines – the DM chose all eight biomes at once. DM confirmed (2026-11-22, with ADR-0019) that particles may drift over the revealed side next to the edge.
+- DM decisions (2026-11-22): file format approved (optional `fogEffect: { biome, strength }` in the sidecar's map data and in the scene; biome names in files are open strings, only known ones reach viewers); one PR; the map's default is set in the Map Forge later (T-176).
+- Done in T-168: `scene.setFogEffect` (undoable; the scene's choice wins over the map's, `effectiveFogEffect`), projected to viewers as a strict field; the Biom group in the Nebel ribbon (menu with "Wie die Karte" and the eight biomes, strength applied when the slider is let go); the biome table and shader in `fog-living.ts` (wind drift and streaks, particles, underglow; heat shimmer as wind-driven sand streaks of the fog, never the map). With the device's living fog off, the still fog shows no biome. The E2E for the ribbon picker is not separate: component tests cover the picker, `PlayerApp` the TV.
 
 ### T-248 Hide fog in the DM window
 
@@ -1211,6 +1213,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Open a library map and edit its metadata; saved in its sidecar (component + E2E test)
   - [ ] An edit reaches a scene live on the TV only after the DM confirms (ADR-0012)
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
+- From T-168 (DM decision 2026-11-22): the map's default fog biome (`fogEffect` in the sidecar, already read by every scene) is set here; until then the DM picks the biome live per scene in the Nebel ribbon.
 - Deepening (DM interview, 2026-11-20): the first stage of the Map Forge is import and management (folders + tags), metadata, the 3×3 calibration (T-177), adding levels (T-118d), crop and image adjustment (T-192) and rooms for the fog (T-108c); walls and vision follow in stage 5.
 
 ### T-177 Two-click grid calibration with a 3×3 box

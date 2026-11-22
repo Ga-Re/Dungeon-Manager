@@ -1,5 +1,6 @@
 import type {
   AssetRef,
+  FogEffect,
   Grid,
   Level,
   MapData,
@@ -22,6 +23,8 @@ export interface ResolvedMap {
   readonly levels: readonly SidecarLevel[];
   /** The rooms of this scene: hidden ones are left out. */
   readonly rooms: readonly Room[];
+  /** The fog's biome for every scene of this map (T-168), if the map has one. */
+  readonly fogEffect?: FogEffect;
 }
 
 /** What a scene's map is made of. */
@@ -49,7 +52,7 @@ export function resolveMap(source: MapSource): {
   readonly map: ResolvedMap;
   readonly orphanedOverrides: readonly string[];
 } {
-  const data = source.data ?? {
+  const data: MapData = source.data ?? {
     grid: PLACEHOLDER_GRID,
     levels: [source.defaultLevel],
     rooms: [],
@@ -74,6 +77,7 @@ export function resolveMap(source: MapSource): {
       grid: data.grid,
       levels: data.levels,
       rooms,
+      ...(data.fogEffect && { fogEffect: data.fogEffect }),
     },
     orphanedOverrides: Object.keys(source.overrides)
       .filter((id) => !roomIds.has(id))

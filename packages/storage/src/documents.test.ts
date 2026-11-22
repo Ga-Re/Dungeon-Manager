@@ -140,6 +140,19 @@ describe("scene files", () => {
     });
   });
 
+  test("keep the fog biome chosen live in a scene (T-168)", async () => {
+    const fs = createMemoryFileSystem();
+    const live: Scene = {
+      ...scene,
+      fogEffect: { biome: "schnee", strength: 0.8 },
+    };
+    await saveScene(fs, "mine", live);
+    expect(await loadScene(fs, "mine", "scene-1")).toEqual({
+      status: "ok",
+      value: live,
+    });
+  });
+
   test("an id that is not a valid file name is rejected", async () => {
     expect(await loadScene(createMemoryFileSystem(), "mine", "../x")).toEqual({
       status: "invalid",

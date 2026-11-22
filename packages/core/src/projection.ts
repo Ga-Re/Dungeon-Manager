@@ -1,4 +1,6 @@
 import {
+  type FogEffect,
+  fogBiomeSchema,
   type Scene,
   viewerEventSchema,
   viewerSceneSchema,
@@ -87,8 +89,24 @@ export function projectForViewer(
     tokens: visibleTokens.map((token) => projectToken(state, token, viewer)),
     ...projectInitiative(state, viewer, visibleTokenIds),
     ...(state.scene.combat === true && { combat: true as const }),
+    ...projectFogEffect(effectiveFogEffect(state)),
   };
   return viewerSceneSchema.parse(projected);
+}
+
+/**
+ * The fog's biome as played (T-168): the scene's live choice, else its map's, else none.
+ */
+export function effectiveFogEffect(state: SessionState): FogEffect | null {
+  return state.scene.fogEffect ?? state.map?.fogEffect ?? null;
+}
+
+/** A known biome with its strength, built field by field; an unknown one reaches nobody. */
+function projectFogEffect(effect: FogEffect | null) {
+  if (!effect) return {};
+  const biome = fogBiomeSchema.safeParse(effect.biome);
+  if (!biome.success) return {};
+  return { fogEffect: { biome: biome.data, strength: effect.strength } };
 }
 
 /**
@@ -177,6 +195,7 @@ export function projectEvents(
       case "visibility.changed":
       case "combat.changed":
       case "gridMode.changed":
+      case "fogEffect.changed":
       case "initiative.changed":
       case "initiative.combatantRemoved":
         return null;

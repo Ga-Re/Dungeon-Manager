@@ -145,7 +145,14 @@ async function livingScenario(scenario: string, canvas: HTMLCanvasElement) {
   });
   const quality = scenario.includes("medium") ? "medium" : "high";
   const opacity = scenario.includes("dm") ? 0.5 : 1;
-  renderer.setFog(REVEALED, { opacity, living: livingFog(quality) });
+  // "living-biome-<name>" (T-168): a biome at full strength.
+  const biome = scenario.startsWith("living-biome-")
+    ? scenario.slice("living-biome-".length)
+    : undefined;
+  renderer.setFog(REVEALED, {
+    opacity,
+    living: { ...livingFog(quality), ...(biome && { biome, strength: 1 }) },
+  });
   renderer.setMap(drawFixtureMap());
   renderer.setCamera(cameraFor("fit"));
   time = 12_500;
@@ -189,13 +196,25 @@ async function livingFailClosedScenario(canvas: HTMLCanvasElement) {
   const hidden = (index: number) => hard[index] === 0;
   let violations = 0;
   let living = 0;
-  for (const quality of ["high", "medium"] as const)
+  // Bodennebel in both qualities, and the biomes with particles and glow (T-168).
+  const passes = [
+    { quality: "high", biome: undefined },
+    { quality: "medium", biome: undefined },
+    { quality: "medium", biome: "schnee" },
+    { quality: "medium", biome: "asche" },
+    { quality: "medium", biome: "wueste" },
+    { quality: "medium", biome: "arkan" },
+  ] as const;
+  for (const { quality, biome } of passes)
     for (const seconds of [0, 7.3, 31.9, 140.6]) {
       const shots = [];
       for (const colour of ["#000000", "#ffffff"]) {
         renderer.setFog(REVEALED_NESTED, {
           opacity: 1,
-          living: livingFog(quality, 2.5),
+          living: {
+            ...livingFog(quality, 2.5),
+            ...(biome && { biome, strength: 1 }),
+          },
         });
         renderer.setMap(plainMap(colour));
         time = seconds * 1000;

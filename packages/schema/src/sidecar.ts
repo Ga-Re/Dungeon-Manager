@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { assetRefSchema, idSchema, polygonSchema } from "./common.js";
+import {
+  assetRefSchema,
+  fogEffectSchema,
+  idSchema,
+  polygonSchema,
+} from "./common.js";
 import { gridSchema, levelSchema } from "./entities.js";
 import type { DocumentType } from "./migrate.js";
 
@@ -32,6 +37,8 @@ export const mapDataSchema = z
     grid: gridSchema,
     levels: z.array(sidecarLevelSchema).min(1),
     rooms: z.array(roomSchema),
+    /** The fog's biome for every scene of this map (T-168); optional and additive. */
+    fogEffect: fogEffectSchema.optional(),
   })
   .refine(
     (map) => {

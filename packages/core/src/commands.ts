@@ -1,6 +1,7 @@
 import type {
   Combatant,
   Condition,
+  FogEffect,
   GridMode,
   Polygon,
   TokenPosition,
@@ -40,6 +41,11 @@ export type Command =
     }
   /** The scene's grid mode (T-233d); `null`: as the campaign's. */
   | { readonly type: "scene.setGridMode"; readonly gridMode: GridMode | null }
+  /** The fog's biome chosen live (T-168); `null` goes back to the map's. */
+  | {
+      readonly type: "scene.setFogEffect";
+      readonly fogEffect: FogEffect | null;
+    }
   | {
       readonly type: "token.move";
       readonly tokenId: string;
@@ -179,6 +185,7 @@ export type DomainEvent = { readonly at: number } & (
     }
   | { readonly type: "combat.changed"; readonly combat: boolean }
   | { readonly type: "gridMode.changed"; readonly gridMode: GridMode | null }
+  | { readonly type: "fogEffect.changed" }
   | { readonly type: "fog.revealed"; readonly levelId: string }
   | { readonly type: "fog.hidden"; readonly levelId: string }
   | { readonly type: "level.shown"; readonly levelId: string }
