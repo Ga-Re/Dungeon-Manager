@@ -1,10 +1,12 @@
+import { CALIBRATION_CELLS } from "@dungeon-manager/core";
 import {
   FOG_BIOMES,
   type FogEffect,
+  type Grid,
   type MapData,
 } from "@dungeon-manager/schema";
 import { MapDataChangedError, updateMapData } from "@dungeon-manager/storage";
-import { useId, useState, type SyntheticEvent } from "react";
+import { useEffect, useId, useState, type SyntheticEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
@@ -29,6 +31,34 @@ const valuesOf = (data: MapData): Values => ({
   strength: String(Math.round((data.fogEffect?.strength ?? 1) * 100)),
 });
 
+/** How the DM calibrates the grid on the map (T-177); `null` while not calibrating. */
+export interface CalibrationChoice {
+  readonly mode: "box" | "move" | null;
+  readonly cells: number;
+}
+
+/** A calibrated value as the field shows it: at most two decimals. */
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
+/** An offset as shown: rounded, and one a hair short of a whole cell shown as 0. */
+const shownOffset = (offset: number, cell: number) => {
+  const rounded = round2(offset);
+  return String(rounded >= round2(cell) ? 0 : rounded);
+};
+
+/** The grid the fields describe, other grid fields from `stored`; `null` while invalid. */
+function gridOf(values: Values, stored: Grid): Grid | null {
+  const cellSizePx = numberOf(values.cellSizePx);
+  const offsetXPx = numberOf(values.offsetXPx);
+  const offsetYPx = numberOf(values.offsetYPx);
+  return cellSizePx !== null &&
+    cellSizePx > 0 &&
+    offsetXPx !== null &&
+    offsetYPx !== null
+    ? { ...stored, cellSizePx, offsetXPx, offsetYPx }
+    : null;
+}
+
 /** A finite number from a field, or `null`. */
 function numberOf(text: string): number | null {
   if (text.trim() === "") return null;
@@ -48,6 +78,11 @@ export function MapDataEditor({
   data,
   defaults,
   onSaved,
+  proposal,
+  onPreview,
+  onTyped,
+  calibration,
+  onCalibration,
 }: {
   readonly service: LibraryService;
   readonly path: string;
@@ -55,6 +90,17 @@ export function MapDataEditor({
   readonly data: MapData;
   readonly defaults: MapData;
   readonly onSaved: () => void;
+  /** A grid calibrated on the map (T-177): fills the grid fields, unsaved. */
+  readonly proposal: { readonly grid: Grid; readonly seq: number } | null;
+  /** The grid the fields describe (`null` while invalid), shown on the map as a preview. */
+  readonly onPreview: (grid: Grid | null) => void;
+  /**
+   * The grid typed into the fields, right as it is typed (`null` while invalid, the stored one
+   * after Verwerfen as `undefined`): what a grid drag or an arrow key starts from.
+   */
+  readonly onTyped: (grid: Grid | null | undefined) => void;
+  readonly calibration: CalibrationChoice;
+  readonly onCalibration: (choice: CalibrationChoice) => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -77,6 +123,18 @@ export function MapDataEditor({
     } else if (rebasing) setBase(data);
   }
 
+  // A new calibration from the map fills the grid fields (DM decision: preview, then save).
+  const [proposed, setProposed] = useState(proposal?.seq ?? 0);
+  if (proposal && proposal.seq !== proposed) {
+    setProposed(proposal.seq);
+    setValues({
+      ...values,
+      cellSizePx: String(round2(proposal.grid.cellSizePx)),
+      offsetXPx: shownOffset(proposal.grid.offsetXPx, proposal.grid.cellSizePx),
+      offsetYPx: shownOffset(proposal.grid.offsetYPx, proposal.grid.cellSizePx),
+    });
+  }
+
   const cellSizePx = numberOf(values.cellSizePx);
   const offsetXPx = numberOf(values.offsetXPx);
   const offsetYPx = numberOf(values.offsetYPx);
@@ -88,6 +146,19 @@ export function MapDataEditor({
     offsetYPx !== null &&
     (values.biome === "" ||
       (strength !== null && strength >= 0 && strength <= 100));
+
+  const previewGrid = gridOf(values, base.grid);
+  const previewKey = JSON.stringify(previewGrid);
+  useEffect(() => {
+    onPreview(JSON.parse(previewKey) as Grid | null);
+  }, [previewKey, onPreview]);
+
+  const discard = () => {
+    setValues(valuesOf(base));
+    onTyped(undefined);
+    setProblem("");
+    onCalibration({ ...calibration, mode: null });
+  };
 
   const save = async (event: SyntheticEvent) => {
     event.preventDefault();
@@ -128,6 +199,8 @@ export function MapDataEditor({
       );
       if (written) setBase(written);
       setStatus(t("forge.saved"));
+      // Calibrated and saved: the map takes pointer input as a map again.
+      if (calibration.mode) onCalibration({ ...calibration, mode: null });
       onSaved();
       setRebasing(false);
     } catch (error) {
@@ -156,7 +229,9 @@ export function MapDataEditor({
         min={min}
         value={values[key]}
         onChange={(event) => {
-          setValues({ ...values, [key]: event.target.value });
+          const next = { ...values, [key]: event.target.value };
+          setValues(next);
+          onTyped(gridOf(next, base.grid));
         }}
       />
     </div>
@@ -171,6 +246,49 @@ export function MapDataEditor({
       onSubmit={(event) => void save(event)}
     >
       <p className="dm-details-kind">{t("forge.grid")}</p>
+      <div
+        role="group"
+        aria-label={t("forge.calibrate")}
+        className="dm-forge-calibration"
+      >
+        {(["box", "move"] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            aria-pressed={calibration.mode === mode}
+            onClick={() => {
+              onCalibration({
+                ...calibration,
+                mode: calibration.mode === mode ? null : mode,
+              });
+            }}
+          >
+            {t(`forge.calibration.${mode}`)}
+          </button>
+        ))}
+      </div>
+      <div className="dm-item-info-field">
+        <label htmlFor={`${id}-cells`}>{t("forge.calibration.cells")}</label>
+        <select
+          id={`${id}-cells`}
+          value={calibration.cells}
+          onChange={(event) => {
+            onCalibration({
+              ...calibration,
+              cells: Number(event.target.value),
+            });
+          }}
+        >
+          {Array.from(
+            { length: CALIBRATION_CELLS.max - CALIBRATION_CELLS.min + 1 },
+            (_, i) => CALIBRATION_CELLS.min + i,
+          ).map((cells) => (
+            <option key={cells} value={cells}>
+              {t("forge.calibration.cellsValue", { cells })}
+            </option>
+          ))}
+        </select>
+      </div>
       {field("cellSizePx", 1)}
       {field("offsetXPx")}
       {field("offsetYPx")}
@@ -216,6 +334,9 @@ export function MapDataEditor({
         </div>
       )}
       <div className="dm-item-info-actions">
+        <button type="button" disabled={busy || !changed} onClick={discard}>
+          {t("forge.discard")}
+        </button>
         <button type="submit" disabled={busy || !changed || !valid}>
           {t("forge.save")}
         </button>

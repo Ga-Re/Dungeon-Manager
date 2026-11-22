@@ -1,4 +1,9 @@
-import type { Sidecar } from "@dungeon-manager/schema";
+import {
+  CALIBRATION_CELLS,
+  gridFromBox,
+  shiftGrid,
+} from "@dungeon-manager/core";
+import type { Grid, Sidecar } from "@dungeon-manager/schema";
 import {
   loadSidecar,
   mapKind,
@@ -7,12 +12,12 @@ import {
 } from "@dungeon-manager/storage";
 import { IconButton, TreeList, type TreeNode } from "@dungeon-manager/ui";
 import { DoorOpen, Folder, Layers, Map as MapIcon, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { fileName } from "./file-name.js";
 import { ItemInfoEditor } from "./ItemInfoEditor.js";
-import { MapDataEditor } from "./MapDataEditor.js";
+import { MapDataEditor, type CalibrationChoice } from "./MapDataEditor.js";
 import { MapView } from "./MapView.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
@@ -93,6 +98,36 @@ export function MapForge({
   const { t } = useTranslation();
   const shown = useActiveWorkspace() === "mapForge";
   const loaded = useSidecar(service, path);
+  // Grid calibration (T-177): how the DM calibrates, the last grid calibrated on the map and
+  // the grid the fields describe, shown on the map until saved or discarded.
+  const [calibration, setCalibration] = useState<CalibrationChoice>({
+    mode: null,
+    cells: CALIBRATION_CELLS.default,
+  });
+  const [proposal, setProposal] = useState<{
+    readonly grid: Grid;
+    readonly seq: number;
+  } | null>(null);
+  const [preview, setPreview] = useState<Grid | null>(null);
+  // What a grid drag or an arrow key starts from, known at once (not one render later): the
+  // last calibrated or typed grid, "invalid" while the fields are, `null` for the stored one.
+  const gridNow = useRef<Grid | "invalid" | null>(null);
+  // A grid drag moves the grid it started from by the whole way since its start.
+  const dragBase = useRef<Grid | null>(null);
+  useEffect(() => {
+    setCalibration((current) => ({ ...current, mode: null }));
+    setProposal(null);
+    setPreview(null);
+    gridNow.current = null;
+  }, [path]);
+  const propose = useCallback((grid: Grid | null) => {
+    if (!grid) return;
+    gridNow.current = grid;
+    setProposal((current) => ({ grid, seq: (current?.seq ?? 0) + 1 }));
+  }, []);
+  const onTyped = useCallback((grid: Grid | null | undefined) => {
+    gridNow.current = grid === undefined ? null : (grid ?? "invalid");
+  }, []);
   if (!shown) return null;
   if (path === null)
     return (
@@ -177,7 +212,33 @@ export function MapForge({
           label={name}
           fog={null}
           // Placeholder data is no grid of this map: none until its sidecar is read.
-          grid={loaded.status === "ok" ? data.grid : null}
+          grid={loaded.status === "ok" ? (preview ?? data.grid) : null}
+          calibration={
+            loaded.status === "ok" && calibration.mode
+              ? {
+                  mode: calibration.mode,
+                  cells: calibration.cells,
+                  onBox: (a, b) => {
+                    propose(
+                      gridFromBox([a.x, a.y], [b.x, b.y], calibration.cells),
+                    );
+                  },
+                  // While the fields are invalid, moving would silently replace what is typed.
+                  onShift: (dx, dy) => {
+                    const from = gridNow.current ?? data.grid;
+                    if (from !== "invalid") propose(shiftGrid(from, dx, dy));
+                  },
+                  onDragStart: () => {
+                    const from = gridNow.current ?? data.grid;
+                    dragBase.current = from === "invalid" ? null : from;
+                  },
+                  onDrag: (dx, dy) => {
+                    if (dragBase.current)
+                      propose(shiftGrid(dragBase.current, dx, dy));
+                  },
+                }
+              : null
+          }
         />
       </ShellPortal>
       <ShellPortal slot="browser">
@@ -210,6 +271,11 @@ export function MapForge({
                 data={data}
                 defaults={defaults}
                 onSaved={loaded.reload}
+                proposal={proposal}
+                onPreview={setPreview}
+                onTyped={onTyped}
+                calibration={calibration}
+                onCalibration={setCalibration}
               />
             </>
           )}

@@ -254,6 +254,18 @@ export const en: Messages = {
     biomeNone: "None (ground fog)",
     strength: "Strength: {{percent}} %",
     save: "Save map data",
+    discard: "Discard",
+    calibrate: "Calibrate grid",
+    calibration: {
+      box: "Drag a box",
+      move: "Move the grid",
+      cells: "Cells in the box",
+      cellsValue: "{{cells}} × {{cells}}",
+      hint: {
+        box: "Drag a square over {{cells}} × {{cells}} cells of the printed grid on the map. Escape cancels.",
+        move: "Drag the grid into place on the map; arrow keys move it by 1 pixel, with ⇧ by 10.",
+      },
+    },
     saved:
       "Saved – applies to every scene of this map; a scene on the TV asks first.",
     invalid: "The cell size must be greater than 0; offsets are numbers.",

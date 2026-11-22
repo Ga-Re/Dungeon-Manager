@@ -256,6 +256,18 @@ export const de = {
     biomeNone: "Keins (Bodennebel)",
     strength: "Stärke: {{percent}} %",
     save: "Kartendaten speichern",
+    discard: "Verwerfen",
+    calibrate: "Raster kalibrieren",
+    calibration: {
+      box: "Box aufziehen",
+      move: "Raster verschieben",
+      cells: "Felder in der Box",
+      cellsValue: "{{cells}} × {{cells}}",
+      hint: {
+        box: "Ziehe auf der Karte ein Quadrat über {{cells}} × {{cells}} Felder des gedruckten Rasters. Escape bricht ab.",
+        move: "Ziehe das Raster auf der Karte an seinen Platz; Pfeiltasten schieben um 1 Pixel, mit ⇧ um 10.",
+      },
+    },
     saved:
       "Gespeichert – gilt für jede Szene dieser Karte; eine Szene auf dem TV fragt vorher.",
     invalid: "Die Zellgröße muss größer als 0 sein; Versätze sind Zahlen.",
