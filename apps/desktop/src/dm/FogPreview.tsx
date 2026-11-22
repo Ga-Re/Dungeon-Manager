@@ -15,6 +15,17 @@ type Drawing =
 const points = (list: readonly Point[]) =>
   list.map(({ x, y }) => `${String(x)},${String(y)}`).join(" ");
 
+/** Where an ellipse being drawn reaches: around where it started; Shift makes it a circle. */
+function ellipseEnd(drawing: {
+  readonly start: Point;
+  readonly end: Point;
+  readonly square?: boolean;
+}): Point {
+  return drawing.square === true
+    ? squareEnd(drawing.start, drawing.end)
+    : drawing.end;
+}
+
 /** The shape being drawn, over the map (screen pixels); the fog changes only when it is done. */
 export function FogPreview({
   tool,
@@ -55,23 +66,14 @@ export function FogPreview({
           )}
         />
       )}
-      {drawing?.kind === "drag" &&
-        drawing.shape === "ellipse" &&
-        (() => {
-          // Shift: a circle on the box's longer side, as the area will be (T-247).
-          const end =
-            drawing.square === true
-              ? squareEnd(drawing.start, drawing.end)
-              : drawing.end;
-          return (
-            <ellipse
-              cx={(drawing.start.x + end.x) / 2}
-              cy={(drawing.start.y + end.y) / 2}
-              rx={Math.abs(end.x - drawing.start.x) / 2}
-              ry={Math.abs(end.y - drawing.start.y) / 2}
-            />
-          );
-        })()}
+      {drawing?.kind === "drag" && drawing.shape === "ellipse" && (
+        <ellipse
+          cx={drawing.start.x}
+          cy={drawing.start.y}
+          rx={Math.abs(ellipseEnd(drawing).x - drawing.start.x)}
+          ry={Math.abs(ellipseEnd(drawing).y - drawing.start.y)}
+        />
+      )}
       {drawing?.kind === "lasso" && (
         <polygon
           className="map-view-preview-lasso"

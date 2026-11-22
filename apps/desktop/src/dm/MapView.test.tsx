@@ -110,7 +110,7 @@ describe("MapView", () => {
     fireEvent.pointerMove(area(), { clientX: 150, clientY: 100, pointerId: 1 });
     fireEvent.pointerUp(area(), { pointerId: 1 });
     expect(fake.camera()?.centerX).toBeLessThan(beforeDrag?.centerX ?? 0);
-    fireEvent.keyDown(area(), { key: "r" });
+    fireEvent.keyDown(area(), { key: "t" });
     expect(fake.camera()?.rotation).toBe(90);
 
     fireEvent.keyDown(area(), { key: "0" });
@@ -424,7 +424,7 @@ describe("MapView", () => {
     fireEvent.pointerUp(area(), { pointerId: 1 });
     expect(onArea).not.toHaveBeenCalled();
 
-    fireEvent.keyDown(area(), { key: "r" });
+    fireEvent.keyDown(area(), { key: "t" });
     fireEvent.pointerDown(area(), {
       button: 0,
       clientX: 300,
@@ -490,7 +490,7 @@ describe("MapView", () => {
     fireEvent.pointerUp(area(), { pointerId: 1 });
   };
 
-  test("the ellipse tool fills the dragged box; with Shift a circle (T-247)", async () => {
+  test("the ellipse tool draws from its middle; with Shift a circle (T-247)", async () => {
     const fake = fakeMapService(() => Promise.resolve(image));
     const onArea = vi.fn();
     renderView(fake.service, { tool: "reveal", shape: "ellipse", onArea });
@@ -513,9 +513,9 @@ describe("MapView", () => {
       string,
     ];
     expect(tool).toBe("reveal");
-    // The box is map (800, 400) to (1000, 480): centre (900, 440), radii 100 and 40.
+    // Around map (800, 400) where the drag started: radii 200 and 80.
     for (const [x, y] of ellipse.outer)
-      expect(((x - 900) / 100) ** 2 + ((y - 440) / 40) ** 2).toBeCloseTo(1, 6);
+      expect(((x - 800) / 200) ** 2 + ((y - 400) / 80) ** 2).toBeCloseTo(1, 6);
 
     fireEvent.pointerDown(area(), {
       button: 0,
@@ -531,9 +531,38 @@ describe("MapView", () => {
     });
     fireEvent.pointerUp(area(), { pointerId: 2 });
     const [circle] = onArea.mock.calls[1] as [{ outer: [number, number][] }];
-    // Square on the longer side: map (800, 400) to (1000, 600).
+    // A circle around the same middle, its radius the drag's longer side.
     for (const [x, y] of circle.outer)
-      expect(Math.hypot(x - 900, y - 500)).toBeCloseTo(100, 6);
+      expect(Math.hypot(x - 800, y - 400)).toBeCloseTo(200, 6);
+  });
+
+  test("Shift leaves a rectangle the box the DM dragged (T-247 review)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, { tool: "reveal", shape: "rectangle", onArea });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    fireEvent.pointerDown(area(), {
+      button: 0,
+      clientX: 400,
+      clientY: 200,
+      shiftKey: true,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(area(), {
+      clientX: 500,
+      clientY: 240,
+      shiftKey: true,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(area(), { pointerId: 1 });
+    const [rectangle] = onArea.mock.calls[0] as [{ outer: [number, number][] }];
+    const xs = rectangle.outer.map(([x]) => x);
+    const ys = rectangle.outer.map(([, y]) => y);
+    // Map (800, 400) to (1000, 480), not a 200 × 200 square.
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(200, 6);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(80, 6);
   });
 
   test("the lasso closes a freehand loop on release; Escape drops it (T-247)", async () => {

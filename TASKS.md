@@ -115,7 +115,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
-**Fog engine first** (DM decision, 2026-11-22, ADR-0019): T-245, T-246, T-247, T-168, T-248 come before the list below.
+**Fog engine first** (DM decision, 2026-11-22, ADR-0019): T-245, T-246, T-247, T-249, T-168, T-248 come before the list below.
 
 **Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111a, T-111b, T-111c, T-111d, T-112a, T-112b, T-113a, T-113b. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
@@ -1044,7 +1044,18 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Drawing, preview and Shift-circle (component tests); reveal and hide with both (E2E)
   - [x] Keyboard shortcuts and translated labels; Kreis is gone from the ribbon
 - **Notes:** From the DM interview (2026-11-22).
-- Done in T-247: `ellipseArea` in `core` (the ellipse in the box between two corners), `dragArea("ellipse")` with `squareEnd` for Shift, `lassoArea` (points closer than 3 px dropped; a loop that encloses nothing marks nothing). Keyboard: the shape buttons are reachable with Tab as before (there are no letter shortcuts for shapes); Escape drops a lasso being drawn. The E2E test runs in CI (the session's browser does not match the project's Playwright version).
+- DM decision (2026-11-22, during T-247): ellipses and circles are drawn from their middle (the drag starts at the centre), so the DM can put one around a monster.
+- Done in T-247: `ellipseArea` in `core` (the ellipse in the box between two corners), `dragArea("ellipse")` around where the drag started with `squareEnd` for Shift, `lassoArea` (points closer than 3 px dropped; a loop that encloses nothing marks nothing). Keyboard: the shape buttons are reachable with Tab as before and since the DM's answer (2026-11-22) by R, E, P, L, B while revealing or hiding; R moved the view's rotation to T (Shift+T back); Escape drops a lasso being drawn. The E2E test runs in CI (the session's browser does not match the project's Playwright version).
+
+### T-249 An isolated hide closes from its middle
+
+- **Status:** todo · **Depends on:** T-246 · **Refs:** SPEC §4, ARCHITECTURE §8, ADR-0019
+- DM request (2026-11-22): hiding an area that touches no fogged area spreads from the area's middle outward, not from its edge inward – like an isolated reveal. A hide that touches fog still comes in from the fog side.
+- **Acceptance criteria**
+  - [ ] Spread order: an isolated hide starts in its middle; a hide touching fog still starts at the fog (unit tests of the pure function; the T-167 cases updated)
+  - [ ] Screenshot test of an isolated hide frozen half-way; fail-closed as in T-167
+  - [ ] SPEC §4 and ARCHITECTURE §8 updated (also what "Alles verdecken" on a fully revealed map does)
+- **Notes:** From the DM (2026-11-22). Changes the T-167 rule "a hide from the fog it touches, else from its edge inward".
 
 ### T-168 Fog biomes per map
 

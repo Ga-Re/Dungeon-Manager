@@ -583,7 +583,8 @@ export function MapView({
         shape,
         start: point,
         end: point,
-        square: event.shiftKey,
+        // Shift makes the ellipse a circle; a rectangle stays the box the DM sees.
+        square: shape === "ellipse" && event.shiftKey,
       });
   };
   const onPointerMove = (event: PointerEvent) => {
@@ -617,7 +618,11 @@ export function MapView({
     // Touch has no hover: the outline would only sit under the finger.
     if (brushing && event.pointerType !== "touch") setPointer(point);
     if (drawing?.kind === "drag") {
-      setDrawing({ ...drawing, end: point, square: event.shiftKey });
+      setDrawing({
+        ...drawing,
+        end: point,
+        square: drawing.shape === "ellipse" && event.shiftKey,
+      });
       return;
     }
     if (drawing?.kind === "brush" || drawing?.kind === "lasso") {
@@ -737,8 +742,9 @@ export function MapView({
       ArrowRight: (current) => panBy(current, { x: -KEY_PAN, y: 0 }),
       ArrowUp: (current) => panBy(current, { x: 0, y: KEY_PAN }),
       ArrowDown: (current) => panBy(current, { x: 0, y: -KEY_PAN }),
-      r: (current) => rotateBy(current, 90),
-      R: (current) => rotateBy(current, -90),
+      // T turns (DM decision 2026-11-22: R chooses the rectangle, T-247).
+      t: (current) => rotateBy(current, 90),
+      T: (current) => rotateBy(current, -90),
     };
     if (event.key === "0") {
       event.preventDefault();
@@ -861,7 +867,7 @@ export function MapView({
           <IconButton
             icon={<RotateCw />}
             label={t("mapView.rotate")}
-            aria-keyshortcuts="r"
+            aria-keyshortcuts="t"
             disabled={load !== "ready"}
             onClick={() => {
               change((current) => rotateBy(current, 90));
