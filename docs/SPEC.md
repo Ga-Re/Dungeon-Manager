@@ -140,10 +140,12 @@ The DM window has five workspaces, each with its own ribbon tabs and documents (
 
 ## 4. Fog of war
 
-- **Manual reveal:** brush, rectangle, polygon, circle, or whole predefined rooms – by clicking the room on the map, from the room list in the scene browser, or by a trigger zone
+- **Manual reveal:** brush, rectangle, polygon, ellipse (Shift: circle), lasso, or whole predefined rooms – by clicking the room on the map, from the room list in the scene browser, or by a trigger zone
 - **Three tiers:** unexplored (black for players, tinted see-through for the DM), explored memory (dimmed, no current movement), active vision (fully lit, with the light's colour)
-- **Soft fades and soft edges** for fog changes; can be switched off in the settings (performance). A reveal spreads from the revealed area it touches (or from its centre when it touches none); hiding spreads from the fog side (T-167)
-- **Animated fog effects per map:** drifting mist, snow flurry, smoke and ash, darkness – set on the map, adjustable during a session (T-168)
+- **Soft fades and soft edges** for fog changes; can be switched off in the settings (performance). A reveal spreads from the revealed area it touches (or from its centre when it touches none); hiding spreads from the fog side (T-167). The change spreads at a set speed in grid cells per second with a ragged front, each spot turning over in a set transition time (ADR-0019, T-246)
+- **Living fog:** the fog drifts and its edge wobbles – on the TV only towards the revealed side, so nothing hidden ever shows; edge wobble, movement and an effect quality (high / medium / off) are set per device (ADR-0019, T-245)
+- **Fog biomes per map:** Bodennebel, Schneesturm, Hitzeflimmern, Glutasche, Sumpfmiasma, Seenebel, Arkaner Dunst, Finsternis, with a strength – set on the map, changed live per scene during play ("reset scene" takes the map's setting again); heat shimmer moves the fog, never the map (ADR-0019, T-168)
+- **Hide fog in the DM window:** the DM can fade the fog out in the DM window to work on the map; the TV is unaffected (T-248)
 - **Dynamic vision:** walls, closed doors and asset blockers stop line of sight and light (2D raycasting); the TV shows the union of what all player tokens see; respects light sources, darkvision and torch radius
 - **Light model:** brightness per scene (day / dusk / dark), bright and dim radius per light (5e), darkvision in greyscale, coloured and flickering light
 - **Secret rooms** stay hidden on "reveal all" and when neighbouring or overlapping rooms are revealed (the reveal skips the secret area), until the DM reveals them explicitly or paints into them with a manual tool; their contents are never sent to the TV or companions before that
