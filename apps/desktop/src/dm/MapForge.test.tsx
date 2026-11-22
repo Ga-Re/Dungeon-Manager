@@ -12,6 +12,10 @@ import { I18nextProvider } from "react-i18next";
 import { describe, expect, test, vi } from "vitest";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { MapForge } from "./MapForge.js";
+import {
+  CommandRegistryContext,
+  createCommandRegistry,
+} from "./shell/command.js";
 import type { Polygon } from "@dungeon-manager/schema";
 import type { MapCalibration, MapOutline } from "./MapView.js";
 import { ActiveWorkspaceContext, type Workspace } from "./shell/workspace.js";
@@ -90,7 +94,9 @@ function renderForge(
   render(
     <I18nextProvider i18n={createI18n("de")}>
       <ActiveWorkspaceContext value={workspace}>
-        <MapForge service={library.service} path={path} onClose={onClose} />
+        <CommandRegistryContext value={createCommandRegistry()}>
+          <MapForge service={library.service} path={path} onClose={onClose} />
+        </CommandRegistryContext>
       </ActiveWorkspaceContext>
     </I18nextProvider>,
   );
@@ -100,10 +106,13 @@ function renderForge(
 /** Like `renderForge`, and can show another workspace and come back. */
 function renderForgeSwitchable(files: Record<string, MemoryFileContent>) {
   const library = fakeLibraryService("/lib", { [MAP]: "png", ...files });
+  const registry = createCommandRegistry();
   const tree = (workspace: Workspace) => (
     <I18nextProvider i18n={createI18n("de")}>
       <ActiveWorkspaceContext value={workspace}>
-        <MapForge service={library.service} path={MAP} onClose={vi.fn()} />
+        <CommandRegistryContext value={registry}>
+          <MapForge service={library.service} path={MAP} onClose={vi.fn()} />
+        </CommandRegistryContext>
       </ActiveWorkspaceContext>
     </I18nextProvider>
   );
@@ -393,10 +402,36 @@ describe("MapForge", () => {
     expect(saved(library).map?.grid).toMatchObject({ cellSizePx: 70 });
   });
 
-  test("a room drawn on a level snaps to the grid, is saved and selected for naming (T-108c1)", async () => {
+  /** Starts "Raum anlegen" from the ribbon and returns its command panel. */
+  const startAddRoom = async () => {
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Raum anlegen" }),
+    );
+    return screen.getByRole("dialog", { name: "Raum anlegen" });
+  };
+  const square = (x: number, y: number, size: number): Polygon => ({
+    outer: [
+      [x, y],
+      [x + size, y],
+      [x + size, y + size],
+      [x, y + size],
+    ],
+    holes: [],
+  });
+
+  test("Raum anlegen: draw (again), name it, OK creates the room on its level (T-254)", async () => {
     const { library } = renderForge({ [SIDECAR]: sidecar({}) });
-    fireEvent.click(await screen.findByRole("button", { name: "Rechteck" }));
+    const panel = await startAddRoom();
     expect(view.tool).toBe("reveal");
+    const ok = within(panel).getByRole<HTMLButtonElement>("button", {
+      name: "OK",
+    });
+    // Nothing drawn yet: nothing to create.
+    expect(ok.disabled).toBe(true);
+    act(() => {
+      view.onArea?.(square(100, 100, 40), "reveal", false);
+    });
+    // Drawn again: the new shape replaces the first. Corners snap to the 70 px grid.
     act(() => {
       view.onArea?.(
         {
@@ -412,43 +447,43 @@ describe("MapForge", () => {
         false,
       );
     });
-    await waitFor(() => {
-      expect(saved(library).map).toMatchObject({
-        rooms: [
-          {
-            // A fresh random id, never one a deleted room had (ADR-0012 overrides).
-            id: expect.stringMatching(/^room-[0-9a-z]{6}$/) as unknown,
-            name: "Raum 1",
-            levelId: "ground",
-            // 70 px cells: corners on the nearest grid points.
-            area: {
-              outer: [
-                [0, 0],
-                [140, 0],
-                [140, 140],
-                [0, 140],
-              ],
-            },
-          },
-        ],
-      });
-    });
-    // Ready to be named: the room's name field has the keyboard.
-    const name = await screen.findByDisplayValue("Raum 1");
-    expect(document.activeElement).toBe(name);
     expect(view.outlines).toEqual([
-      expect.objectContaining({
-        label: "Raum 1",
-        selected: true,
-      }),
+      expect.objectContaining({ label: "Raum 1", selected: true }),
     ]);
+    fireEvent.change(within(panel).getByLabelText("Name"), {
+      target: { value: "Gruft" },
+    });
+    fireEvent.click(
+      within(panel).getByRole("checkbox", { name: /Geheimraum/ }),
+    );
+    // A preview only until OK.
+    expect(saved(library).map?.rooms).toEqual([]);
+    fireEvent.click(ok);
+    await waitFor(() => {
+      expect(saved(library).map?.rooms).toEqual([
+        {
+          // A fresh random id, never one a deleted room had (ADR-0012 overrides).
+          id: expect.stringMatching(/^room-[0-9a-z]{6}$/) as unknown,
+          name: "Gruft",
+          levelId: "ground",
+          secret: true,
+          area: square(0, 0, 140),
+        },
+      ]);
+    });
+    expect(screen.queryByRole("dialog", { name: "Raum anlegen" })).toBeNull();
+    // In the browser, selected, with the keyboard on it.
     const tree = screen.getByRole("tree", { name: "Karte" });
-    expect(within(tree).getByText("Raum 1")).toBeTruthy();
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain("Gruft");
+    });
+    expect(within(tree).getByText("geheim")).toBeTruthy();
   });
 
   test("Alt held as the shape is finished draws freely; a room that snaps flat is refused", async () => {
     const { library } = renderForge({ [SIDECAR]: sidecar({}) });
-    fireEvent.click(await screen.findByRole("button", { name: "Polygon" }));
+    const panel = await startAddRoom();
+    fireEvent.click(within(panel).getByRole("button", { name: "Polygon" }));
     const small = {
       outer: [
         [10, 10],
@@ -462,12 +497,11 @@ describe("MapForge", () => {
     act(() => {
       view.onArea?.(small, "reveal", false);
     });
-    expect(await screen.findByText(/Zu klein für einen Raum/)).toBeTruthy();
-    expect(saved(library).map?.rooms).toEqual([]);
-
+    expect(within(panel).getByText(/Zu klein für einen Raum/)).toBeTruthy();
     act(() => {
       view.onArea?.(small, "reveal", true);
     });
+    fireEvent.click(within(panel).getByRole("button", { name: "OK" }));
     await waitFor(() => {
       expect(saved(library).map?.rooms).toEqual([
         expect.objectContaining({ area: small }),
@@ -475,129 +509,166 @@ describe("MapForge", () => {
     });
   });
 
-  test("drawing a room ends a running calibration; rooms snap to the saved grid", async () => {
-    const { library } = renderForge({ [SIDECAR]: sidecar({}) });
+  test("one command at a time: Raum anlegen ends a calibration, and the other way round", async () => {
+    renderForge({ [SIDECAR]: sidecar({}) });
     fireEvent.click(
       await screen.findByRole("button", { name: "Raster kalibrieren" }),
     );
     act(() => {
       view.calibration?.onBox({ x: 0, y: 0 }, { x: 150, y: 150 });
     });
-    // One command at a time: choosing a room shape cancels the unsaved calibration.
-    fireEvent.click(screen.getByRole("button", { name: "Rechteck" }));
+    await startAddRoom();
     expect(
       screen.queryByRole("dialog", { name: "Raster kalibrieren" }),
     ).toBeNull();
-    act(() => {
-      view.onArea?.(
-        {
-          outer: [
-            [10, 10],
-            [80, 10],
-            [80, 80],
-            [10, 80],
-          ],
-          holes: [],
-        },
-        "reveal",
-        false,
-      );
-    });
-    await waitFor(() => {
-      expect(saved(library).map?.rooms).toEqual([
-        expect.objectContaining({
-          area: {
-            outer: [
-              [0, 0],
-              [70, 0],
-              [70, 70],
-              [0, 70],
-            ],
-            holes: [],
-          },
-        }),
-      ]);
-    });
+    expect(view.calibration).toBeNull();
+    expect(screen.getByTestId("map-grid").textContent).toBe("70/0/0");
+
+    fireEvent.click(screen.getByRole("button", { name: "Raster kalibrieren" }));
+    expect(screen.queryByRole("dialog", { name: "Raum anlegen" })).toBeNull();
+    expect(view.tool).toBe("pan");
   });
 
-  test("a room is renamed, marked secret and deleted after confirming", async () => {
-    const area = {
-      outer: [
-        [0, 0],
-        [70, 0],
-        [70, 70],
-      ],
-      holes: [],
-    };
+  test("another level, or leaving the Map Forge, drops a room drawn but not confirmed", async () => {
+    const { library, rerenderIn } = renderForgeSwitchable({
+      [SIDECAR]: sidecar({
+        levels: [
+          { id: "ground", name: "Erdgeschoss" },
+          { id: "cellar", name: "Keller" },
+        ],
+        rooms: [
+          {
+            id: "hall",
+            name: "Halle",
+            area: square(0, 0, 70),
+            levelId: "ground",
+          },
+        ],
+      }),
+    });
+    const tree = await screen.findByRole("tree", { name: "Karte" });
+    fireEvent.click(within(tree).getByText("Halle"));
+    fireEvent.click(screen.getByRole("button", { name: "Raum anlegen" }));
+    const panel = screen.getByRole("dialog", { name: "Raum anlegen" });
+    act(() => {
+      view.onArea?.(square(0, 0, 140), "reveal", false);
+    });
+    fireEvent.change(within(panel).getByLabelText("Ebene"), {
+      target: { value: "cellar" },
+    });
+    // Nothing of the old level stays drawn or selected.
+    expect(view.outlines).toEqual([]);
+    expect(
+      within(panel).getByRole<HTMLButtonElement>("button", { name: "OK" })
+        .disabled,
+    ).toBe(true);
+
+    act(() => {
+      view.onArea?.(square(0, 0, 140), "reveal", false);
+    });
+    rerenderIn("gameOrchestrator");
+    rerenderIn("mapForge");
+    expect(screen.queryByRole("dialog", { name: "Raum anlegen" })).toBeNull();
+    expect(saved(library).map?.rooms).toHaveLength(1);
+  });
+
+  test("Abbrechen discards a drawn room", async () => {
+    const { library } = renderForge({ [SIDECAR]: sidecar({}) });
+    const panel = await startAddRoom();
+    act(() => {
+      view.onArea?.(square(0, 0, 140), "reveal", false);
+    });
+    fireEvent.click(within(panel).getByRole("button", { name: "Abbrechen" }));
+    expect(view.outlines).toEqual([]);
+    expect(view.tool).toBe("pan");
+    expect(saved(library).map?.rooms).toEqual([]);
+  });
+
+  test("a room is edited by double-click and deleted from its context menu", async () => {
+    const area = square(0, 0, 70);
     const { library } = renderForge({
       [SIDECAR]: sidecar({
         rooms: [{ id: "hall", name: "Halle", area, levelId: "ground" }],
       }),
     });
     const tree = await screen.findByRole("tree", { name: "Karte" });
-    fireEvent.click(within(tree).getByText("Halle"));
-    const name = screen.getByDisplayValue("Halle");
-    fireEvent.change(name, { target: { value: "Thronsaal" } });
-    fireEvent.blur(name);
+    fireEvent.doubleClick(within(tree).getByText("Halle"));
+    const edit = screen.getByRole("dialog", { name: "Raum bearbeiten" });
+    fireEvent.change(within(edit).getByLabelText("Name"), {
+      target: { value: "Thronsaal" },
+    });
+    fireEvent.click(within(edit).getByRole("checkbox", { name: /Geheimraum/ }));
+    fireEvent.click(within(edit).getByRole("button", { name: "OK" }));
     await waitFor(() => {
       expect(saved(library).map?.rooms).toEqual([
-        expect.objectContaining({ id: "hall", name: "Thronsaal" }),
+        {
+          id: "hall",
+          name: "Thronsaal",
+          area,
+          levelId: "ground",
+          secret: true,
+        },
       ]);
     });
-    fireEvent.click(screen.getByRole("checkbox", { name: /Geheimraum/ }));
-    await waitFor(() => {
-      expect(saved(library).map?.rooms).toEqual([
-        expect.objectContaining({ id: "hall", secret: true }),
-      ]);
-    });
-    expect(await within(tree).findByText("geheim")).toBeTruthy();
 
-    // An emptied name shows the room's name again; nothing is saved.
-    const renamed = screen.getByDisplayValue("Thronsaal");
-    fireEvent.change(renamed, { target: { value: "  " } });
-    fireEvent.blur(renamed);
-    expect(screen.getByDisplayValue("Thronsaal")).toBeTruthy();
-
-    // The keyboard follows the question: to "Behalten", back to "Raum löschen …".
-    fireEvent.click(screen.getByRole("button", { name: "Raum löschen …" }));
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: "Behalten" }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Behalten" }));
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: "Raum löschen …" }),
-    );
-    expect(saved(library).map?.rooms).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Raum löschen …" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "„Thronsaal“ löschen" }),
-    );
+    // The context menu, by keyboard: Shift+F10 on the room.
+    const item = within(tree)
+      .getByText("Thronsaal")
+      .closest<HTMLElement>('[role="treeitem"]');
+    if (!item) throw new Error("no tree item");
+    fireEvent.keyDown(item, { key: "F10", shiftKey: true });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Raum löschen" }));
+    const confirm = screen.getByRole("dialog", { name: "Raum löschen" });
+    expect(within(confirm).getByText(/„Thronsaal“ löschen/)).toBeTruthy();
+    fireEvent.click(within(confirm).getByRole("button", { name: "OK" }));
     await waitFor(() => {
       expect(saved(library).map?.rooms).toEqual([]);
     });
-    // The editor went with the room: the keyboard is on its level in the browser.
+    // The keyboard goes to the room's level.
     await waitFor(() => {
-      expect(document.activeElement?.getAttribute("role")).toBe("treeitem");
+      expect(document.activeElement?.textContent).toContain("Erdgeschoss");
     });
-    expect(document.activeElement?.textContent).toContain("Erdgeschoss");
+  });
+
+  test("the RÄUME caption menu edits and deletes the selected room", async () => {
+    renderForge({
+      [SIDECAR]: sidecar({
+        rooms: [
+          {
+            id: "hall",
+            name: "Halle",
+            area: square(0, 0, 70),
+            levelId: "ground",
+          },
+        ],
+      }),
+    });
+    const tree = await screen.findByRole("tree", { name: "Karte" });
+    fireEvent.click(screen.getByRole("button", { name: "Räume" }));
+    expect(
+      screen
+        .getByRole("menuitem", { name: "Raum bearbeiten" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+    fireEvent.click(within(tree).getByText("Halle"));
+    fireEvent.click(screen.getByRole("button", { name: "Räume" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Raum bearbeiten" }));
+    expect(
+      screen.getByRole("dialog", { name: "Raum bearbeiten" }),
+    ).toBeTruthy();
   });
 
   test("changes in quick succession never take the forge's own write for one from elsewhere", async () => {
-    const area = {
-      outer: [
-        [0, 0],
-        [70, 0],
-        [70, 70],
-      ],
-      holes: [],
-    };
+    const area = square(0, 0, 70);
     const { library } = renderForge({
       [SIDECAR]: sidecar({
         rooms: [{ id: "hall", name: "Halle", area, levelId: "ground" }],
       }),
     });
     const tree = await screen.findByRole("tree", { name: "Karte" });
-    fireEvent.click(within(tree).getByText("Halle"));
     // The forge reads the sidecar back after its write only later: the next change comes first.
     const read = library.fs.read.bind(library.fs);
     const write = library.fs.writeAtomic.bind(library.fs);
@@ -616,17 +687,21 @@ describe("MapForge", () => {
         });
       });
     };
-    const name = screen.getByDisplayValue("Halle");
-    fireEvent.change(name, { target: { value: "Thronsaal" } });
-    fireEvent.blur(name);
-    const secret = screen.getByRole("checkbox", { name: /Geheimraum/ });
+    fireEvent.doubleClick(within(tree).getByText("Halle"));
+    let edit = screen.getByRole("dialog", { name: "Raum bearbeiten" });
+    fireEvent.change(within(edit).getByLabelText("Name"), {
+      target: { value: "Thronsaal" },
+    });
+    fireEvent.click(within(edit).getByRole("button", { name: "OK" }));
     await waitFor(() => {
-      expect(secret).toHaveProperty("disabled", false);
       expect(saved(library).map?.rooms).toEqual([
         expect.objectContaining({ name: "Thronsaal" }),
       ]);
     });
-    fireEvent.click(secret);
+    fireEvent.doubleClick(within(tree).getByText("Thronsaal"));
+    edit = screen.getByRole("dialog", { name: "Raum bearbeiten" });
+    fireEvent.click(within(edit).getByRole("checkbox", { name: /Geheimraum/ }));
+    fireEvent.click(within(edit).getByRole("button", { name: "OK" }));
     await waitFor(() => {
       expect(saved(library).map?.rooms).toEqual([
         expect.objectContaining({ name: "Thronsaal", secret: true }),
@@ -640,16 +715,9 @@ describe("MapForge", () => {
     });
   });
 
-  test("each level shows its own rooms and its own file", async () => {
-    const area = {
-      outer: [
-        [0, 0],
-        [70, 0],
-        [70, 70],
-      ],
-      holes: [],
-    };
-    renderForge({
+  test("each level shows its own rooms and its own file; a room is drawn on the level chosen", async () => {
+    const area = square(0, 0, 70);
+    const { library } = renderForge({
       [SIDECAR]: sidecar({
         levels: [
           { id: "ground", name: "Erdgeschoss" },
@@ -665,29 +733,29 @@ describe("MapForge", () => {
         ],
       }),
     });
-    await screen.findByRole("tree", { name: "Karte" });
+    const tree = await screen.findByRole("tree", { name: "Karte" });
     expect(view.outlines.map((each) => each.id)).toEqual(["hall"]);
     expect(view.path).toBe(MAP);
-    fireEvent.change(screen.getByLabelText("Ebene"), {
-      target: { value: "cellar" },
-    });
+    fireEvent.click(within(tree).getByText("Keller"));
     expect(view.outlines.map((each) => each.id)).toEqual(["vault"]);
     expect(view.path).toBe("library/maps/keller.png");
-  });
 
-  test("drawing a room and calibrating the grid take turns", async () => {
-    renderForge({ [SIDECAR]: sidecar({}) });
-    fireEvent.click(await screen.findByRole("button", { name: "Ellipse" }));
-    fireEvent.click(screen.getByRole("button", { name: "Raster kalibrieren" }));
-    expect(view.calibration?.mode).toBe("box");
-    expect(
-      screen
-        .getByRole("button", { name: "Ellipse" })
-        .getAttribute("aria-pressed"),
-    ).toBe("false");
-    fireEvent.click(screen.getByRole("button", { name: "Lasso" }));
-    expect(view.calibration).toBeNull();
-    expect(view.tool).toBe("reveal");
+    const panel = await startAddRoom();
+    expect(within(panel).getByLabelText<HTMLSelectElement>("Ebene").value).toBe(
+      "cellar",
+    );
+    fireEvent.change(within(panel).getByLabelText("Ebene"), {
+      target: { value: "ground" },
+    });
+    expect(view.path).toBe(MAP);
+    act(() => {
+      view.onArea?.(square(0, 0, 140), "reveal", false);
+    });
+    fireEvent.click(within(panel).getByRole("button", { name: "OK" }));
+    await waitFor(() => {
+      expect(saved(library).map?.rooms).toHaveLength(3);
+    });
+    expect(saved(library).map?.rooms[2]).toMatchObject({ levelId: "ground" });
   });
 
   test("an invalid cell size cannot be saved", async () => {

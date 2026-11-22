@@ -160,6 +160,19 @@ describe("TreeList", () => {
     expect(onItemContextMenu).toHaveBeenCalledTimes(3);
   });
 
+  it("opens an item on double-click, not a folder's toggle or a nested item's (ADR-0020)", () => {
+    const onItemActivate = vi.fn();
+    render(
+      <TreeList label="Szene" nodes={nodes} onItemActivate={onItemActivate} />,
+    );
+    fireEvent.doubleClick(screen.getByText("Grabkammer"));
+    expect(onItemActivate).toHaveBeenLastCalledWith("chamber");
+    const toggle = item("Krypta").querySelector(".dm-tree-toggle");
+    if (!toggle) throw new Error("no toggle");
+    fireEvent.doubleClick(toggle);
+    expect(onItemActivate).toHaveBeenCalledTimes(1);
+  });
+
   it("opens the context menu beside a narrow row and swallows the key's own contextmenu", () => {
     const onItemContextMenu =
       vi.fn<NonNullable<TreeListProps["onItemContextMenu"]>>();

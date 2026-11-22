@@ -8,6 +8,7 @@ export type ShellSlot =
   | "ribbonFog"
   | "ribbonDisplay"
   | "ribbonForgeMap"
+  | "ribbonForgeRooms"
   | "command"
   | "canvas"
   | "browser"

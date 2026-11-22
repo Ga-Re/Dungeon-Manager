@@ -109,14 +109,20 @@ test("a map open in the Map Forge (T-176a)", async ({ page }) => {
   await expect(page).toHaveScreenshot("dm-window-map-forge.png");
 });
 
-test("a room drawn in the Map Forge (T-108c1)", async ({ page }) => {
+test("a room being added in the Map Forge, before OK (T-108c1, T-254)", async ({
+  page,
+}) => {
   await openHarness(page);
   await page
     .getByRole("list", { name: "Karten" })
     .getByRole("button", { name: /krypta\.png/ })
     .dblclick();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
-  await page.getByRole("button", { name: "Rechteck" }).click();
+  await page.getByRole("tab", { name: "Räume" }).click();
+  await page
+    .getByRole("group", { name: "Räume" })
+    .getByRole("button", { name: "Raum anlegen" })
+    .click();
   const box = await page.locator(".map-view-canvas").boundingBox();
   if (!box) throw new Error("no map view");
   await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3);

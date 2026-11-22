@@ -23,9 +23,11 @@ import {
   updateMapData,
 } from "@dungeon-manager/storage";
 import {
+  ContextMenu,
   IconButton,
   RibbonGroup,
   TreeList,
+  type MenuPoint,
   type TreeNode,
 } from "@dungeon-manager/ui";
 import {
@@ -34,6 +36,9 @@ import {
   Grid3x3,
   Layers,
   Map as MapIcon,
+  Pencil,
+  SquarePlus,
+  Trash2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -48,7 +53,12 @@ import {
 } from "./CalibrateCommand.js";
 import { MapView } from "./MapView.js";
 import { describeLibraryError } from "./describe-error.js";
-import { RoomEditor, RoomTools } from "./ForgeRooms.js";
+import {
+  AddRoomCommand,
+  DeleteRoomCommand,
+  EditRoomCommand,
+  type RoomFacts,
+} from "./ForgeRooms.js";
 import { catalogAsset } from "./map-catalog.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
@@ -173,19 +183,35 @@ export function MapForge({
     if (grid) setPreview(grid);
   }, []);
 
-  // Rooms (T-108c1): the level shown and drawn on, the shape being drawn, the selected room.
+  // Rooms (T-108c1, T-254): the level shown and drawn on, the selected room, and the room
+  // command running – "Raum anlegen" with its shape, drawn area and facts, or editing or
+  // deleting a room – each a ribbon tool with its command panel (ADR-0020).
   const [levelChoice, setLevelChoice] = useState<string | null>(null);
-  const [shape, setShape] = useState<RoomShape | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
-  const [justDrawn, setJustDrawn] = useState(false);
+  const [roomCommand, setRoomCommand] = useState<
+    | { readonly kind: "add" }
+    | { readonly kind: "edit" | "delete"; readonly id: string }
+    | null
+  >(null);
+  const [roomShape, setRoomShape] = useState<RoomShape>("rectangle");
+  const [drawn, setDrawn] = useState<Polygon | null>(null);
+  const [facts, setFacts] = useState<RoomFacts>({ name: "", secret: false });
+  const [roomMenu, setRoomMenu] = useState<{
+    readonly id: string;
+    readonly at: MenuPoint;
+    readonly item: HTMLElement;
+  } | null>(null);
   const browser = useRef<HTMLDivElement>(null);
   const [focusTree, setFocusTree] = useState(false);
   useEffect(() => {
     if (!focusTree) return;
     setFocusTree(false);
-    browser.current
-      ?.querySelector<HTMLElement>('[role="treeitem"][aria-selected="true"]')
-      ?.focus();
+    // The selected item, or – if it lies in a collapsed folder – the map at the top.
+    (
+      browser.current?.querySelector<HTMLElement>(
+        '[role="treeitem"][aria-selected="true"]',
+      ) ?? browser.current?.querySelector<HTMLElement>('[role="treeitem"]')
+    )?.focus();
   }, [focusTree]);
   const [roomBusy, setRoomBusy] = useState(false);
   const [roomProblem, setRoomProblem] = useState("");
@@ -196,20 +222,23 @@ export function MapForge({
     readonly data: MapData;
     readonly before: Sidecar | null;
   } | null>(null);
+  const endRoomCommand = useCallback(() => {
+    setRoomCommand(null);
+    setDrawn(null);
+    setRoomProblem("");
+    setRoomMenu(null);
+  }, []);
   useEffect(() => {
     setLevelChoice(null);
-    setShape(null);
     setSelectedRoom(null);
-    setRoomProblem("");
-  }, [path]);
-  // Drawing a room and calibrating both take the map's pointer: one at a time.
+    endRoomCommand();
+  }, [path, endRoomCommand]);
+  useEffect(() => {
+    if (!shown) endRoomCommand();
+  }, [shown, endRoomCommand]);
+  // One command at a time: the registry cancels the one running when another starts.
   const startCalibration = () => {
-    setShape(null);
     setCalibrating(true);
-  };
-  const chooseShape = (next: RoomShape | null) => {
-    setShape(next);
-    if (next) endCalibration();
   };
 
   if (!shown) return null;
@@ -243,6 +272,34 @@ export function MapForge({
   const kind = mapKind(shownPath);
   const levelRooms = roomsOnLevel(data.rooms, data.levels, levelId);
   const room = data.rooms.find((each) => each.id === selectedRoom) ?? null;
+  const roomOf = (id: string) => data.rooms.find((each) => each.id === id);
+  const commandRoom =
+    roomCommand && roomCommand.kind !== "add"
+      ? roomOf(roomCommand.id)
+      : undefined;
+  // Another level: nothing of the old one stays selected or drawn.
+  const showLevel = (next: string) => {
+    setLevelChoice(next);
+    setSelectedRoom(null);
+    setDrawn(null);
+  };
+  // A room being edited or deleted that is gone (e.g. on another device): its command ends.
+  if (roomCommand && roomCommand.kind !== "add" && !commandRoom)
+    setRoomCommand(null);
+  const startAddRoom = () => {
+    setDrawn(null);
+    setRoomProblem("");
+    setFacts({
+      name: t("forgeRooms.defaultName", { number: levelRooms.length + 1 }),
+      secret: false,
+    });
+    setRoomCommand({ kind: "add" });
+  };
+  const startOnRoom = (kind: "edit" | "delete", id: string) => {
+    setRoomProblem("");
+    setSelectedRoom(id);
+    setRoomCommand({ kind, id });
+  };
 
   /**
    * Saves a change of the map's data; `expected` keeps a change made elsewhere from being lost.
@@ -307,16 +364,15 @@ export function MapForge({
       setGridBusy(false);
     }
   };
-  // `free`: Alt was held as the shape was finished (taken from that event, so an Alt+Tab
-  // never leaves rooms unsnapped).
-  const addRoom = async (area: Polygon, free: boolean) => {
-    if (!shape || roomBusy) return;
-    // The saved grid: drawing a room ends a running calibration (one command at a time).
-    const fitted = free ? area : snapArea(area, data.grid, shape);
-    if (!fitted) {
-      setRoomProblem(t("forgeRooms.tooSmall"));
-      return;
-    }
+  // A drawn area becomes the room to create (redrawing replaces it). `free`: Alt was held as
+  // it was finished (taken from that event, so an Alt+Tab never leaves rooms unsnapped).
+  const drawRoom = (area: Polygon, free: boolean) => {
+    const fitted = free ? area : snapArea(area, data.grid, roomShape);
+    setRoomProblem(fitted ? "" : t("forgeRooms.tooSmall"));
+    if (fitted) setDrawn(fitted);
+  };
+  const addRoom = async () => {
+    if (!drawn || roomBusy) return;
     const id = newRoomId(
       [...data.levels, ...data.rooms].map((each) => each.id),
       Math.random,
@@ -325,15 +381,17 @@ export function MapForge({
       ...rooms,
       {
         id,
-        name: t("forgeRooms.defaultName", { number: levelRooms.length + 1 }),
-        area: fitted,
+        name: facts.name.trim(),
+        area: drawn,
         levelId,
+        ...(facts.secret && { secret: true }),
       },
     ]);
-    if (added) {
-      setSelectedRoom(id);
-      setJustDrawn(true);
-    }
+    if (!added) return;
+    endRoomCommand();
+    // The new room is selected in the browser, with the keyboard on it.
+    setSelectedRoom(id);
+    setFocusTree(true);
   };
   const editRoom = (id: string, edit: (room: Room) => Room | null) =>
     changeRooms((rooms) =>
@@ -343,6 +401,25 @@ export function MapForge({
         return next ? [next] : [];
       }),
     );
+  const saveFacts = async (id: string, next: RoomFacts) => {
+    const saved = await editRoom(id, (each) => {
+      const changed: Room = { ...each, name: next.name };
+      if (next.secret) changed.secret = true;
+      else delete changed.secret;
+      return changed;
+    });
+    if (saved) {
+      endRoomCommand();
+      setFocusTree(true);
+    }
+  };
+  const deleteRoom = async (id: string) => {
+    if (!(await editRoom(id, () => null))) return;
+    endRoomCommand();
+    setSelectedRoom(null);
+    // The room is gone: the keyboard moves to its level.
+    setFocusTree(true);
+  };
 
   const tree: TreeNode = {
     id: "forge:map",
@@ -410,6 +487,87 @@ export function MapForge({
           />
         </RibbonGroup>
       </ShellPortal>
+      {/* RÄUME (ADR-0020, T-254): "Raum anlegen" as the quick tool; all room commands in
+          the caption's menu. */}
+      <ShellPortal slot="ribbonForgeRooms">
+        <RibbonGroup
+          caption={t("forgeRooms.title")}
+          menu={{
+            items: [
+              {
+                id: "add",
+                label: t("forgeRooms.add"),
+                icon: <SquarePlus />,
+                disabled: loaded.status !== "ok",
+              },
+              {
+                id: "edit",
+                label: t("forgeRooms.edit"),
+                icon: <Pencil />,
+                disabled: !room,
+              },
+              {
+                id: "delete",
+                label: t("forgeRooms.delete"),
+                icon: <Trash2 />,
+                disabled: !room,
+              },
+            ],
+            onSelect: (id) => {
+              if (id === "add") startAddRoom();
+              else if (room && (id === "edit" || id === "delete"))
+                startOnRoom(id, room.id);
+            },
+          }}
+        >
+          <IconButton
+            showLabel
+            icon={<SquarePlus />}
+            label={t("forgeRooms.add")}
+            disabled={loaded.status !== "ok"}
+            pressed={roomCommand?.kind === "add"}
+            onClick={() => {
+              if (roomCommand?.kind === "add") endRoomCommand();
+              else startAddRoom();
+            }}
+          />
+        </RibbonGroup>
+      </ShellPortal>
+      {roomCommand?.kind === "add" && loaded.status === "ok" && (
+        <AddRoomCommand
+          levels={levels}
+          levelId={levelId}
+          onLevel={showLevel}
+          shape={roomShape}
+          onShape={setRoomShape}
+          drawn={drawn !== null}
+          facts={facts}
+          onFacts={setFacts}
+          busy={roomBusy}
+          problem={roomProblem}
+          onOk={() => void addRoom()}
+          onCancel={endRoomCommand}
+        />
+      )}
+      {roomCommand?.kind === "edit" && commandRoom && (
+        <EditRoomCommand
+          key={commandRoom.id}
+          room={commandRoom}
+          busy={roomBusy}
+          problem={roomProblem}
+          onOk={(next) => void saveFacts(commandRoom.id, next)}
+          onCancel={endRoomCommand}
+        />
+      )}
+      {roomCommand?.kind === "delete" && commandRoom && (
+        <DeleteRoomCommand
+          room={commandRoom}
+          busy={roomBusy}
+          problem={roomProblem}
+          onOk={() => void deleteRoom(commandRoom.id)}
+          onCancel={endRoomCommand}
+        />
+      )}
       {calibrating && loaded.status === "ok" && (
         <CalibrateCommand
           stored={data.grid}
@@ -448,21 +606,41 @@ export function MapForge({
           kind={kind}
           label={name}
           fog={null}
-          tool={shape && !roomBusy ? "reveal" : "pan"}
-          shape={shape ?? "rectangle"}
-          onArea={(area, _tool, free) => void addRoom(area, free)}
+          tool={roomCommand?.kind === "add" && !roomBusy ? "reveal" : "pan"}
+          shape={roomShape}
+          onArea={(area, _tool, free) => {
+            drawRoom(area, free);
+          }}
           toolHint={
-            shape
-              ? t(shape === "lasso" ? "forgeRooms.hintFree" : "forgeRooms.hint")
+            roomCommand?.kind === "add"
+              ? t(
+                  roomShape === "lasso"
+                    ? "forgeRooms.hintFree"
+                    : "forgeRooms.hint",
+                )
               : undefined
           }
-          outlines={levelRooms.map((each) => ({
-            id: each.id,
-            label: each.name,
-            area: each.area,
-            selected: each.id === selectedRoom,
-            secret: each.secret === true,
-          }))}
+          outlines={[
+            ...levelRooms.map((each) => ({
+              id: each.id,
+              label: each.name,
+              area: each.area,
+              selected: each.id === selectedRoom,
+              secret: each.secret === true,
+            })),
+            // The room being created, until OK.
+            ...(roomCommand?.kind === "add" && drawn
+              ? [
+                  {
+                    id: "forge:new-room",
+                    label: facts.name,
+                    area: drawn,
+                    selected: true,
+                    secret: facts.secret,
+                  },
+                ]
+              : []),
+          ]}
           // Placeholder data is no grid of this map: none until its sidecar is read.
           grid={loaded.status === "ok" ? (preview ?? data.grid) : null}
           calibration={
@@ -504,18 +682,39 @@ export function MapForge({
             }
             onSelect={(id) => {
               if (id.startsWith("forge:level:")) {
-                setLevelChoice(id.slice("forge:level:".length));
-                setSelectedRoom(null);
+                showLevel(id.slice("forge:level:".length));
               } else if (id.startsWith("forge:room:")) {
-                const picked = data.rooms.find(
-                  (each) => each.id === id.slice("forge:room:".length),
-                );
+                const picked = roomOf(id.slice("forge:room:".length));
                 if (!picked) return;
                 setSelectedRoom(picked.id);
-                setJustDrawn(false);
                 setLevelChoice(picked.levelId ?? data.levels[0]?.id ?? null);
               }
             }}
+            // A room opens its edit command by double-click or its context menu (ADR-0020).
+            onItemActivate={(id) => {
+              if (id.startsWith("forge:room:"))
+                startOnRoom("edit", id.slice("forge:room:".length));
+            }}
+            onItemContextMenu={(id, at, item) => {
+              if (id.startsWith("forge:room:"))
+                setRoomMenu({ id: id.slice("forge:room:".length), at, item });
+            }}
+          />
+          <ContextMenu
+            at={roomMenu?.at ?? null}
+            label={t("forgeRooms.kind")}
+            items={[
+              { id: "edit", label: t("forgeRooms.edit"), icon: <Pencil /> },
+              { id: "delete", label: t("forgeRooms.delete"), icon: <Trash2 /> },
+            ]}
+            onSelect={(choice) => {
+              if (roomMenu && (choice === "edit" || choice === "delete"))
+                startOnRoom(choice, roomMenu.id);
+            }}
+            onClose={() => {
+              setRoomMenu(null);
+            }}
+            returnFocus={roomMenu?.item}
           />
         </div>
       </ShellPortal>
@@ -527,43 +726,19 @@ export function MapForge({
           {loaded.status === "ok" && (
             <>
               {room && (
-                <RoomEditor
-                  room={room}
-                  busy={roomBusy}
-                  focusName={justDrawn}
-                  onRename={(next) =>
-                    void editRoom(room.id, (each) => ({ ...each, name: next }))
-                  }
-                  onSecret={(secret) =>
-                    void editRoom(room.id, (each) => {
-                      const next: Room = { ...each };
-                      if (secret) next.secret = true;
-                      else delete next.secret;
-                      return next;
-                    })
-                  }
-                  onDelete={() => {
-                    void editRoom(room.id, () => null).then((done) => {
-                      if (!done) return;
-                      setSelectedRoom(null);
-                      // The editor goes with the room: the keyboard moves to its level.
-                      setFocusTree(true);
-                    });
-                  }}
-                />
+                <dl className="dm-details-rows">
+                  <div className="dm-details-row">
+                    <dt>{t("forgeRooms.kind")}</dt>
+                    <dd>{room.name}</dd>
+                  </div>
+                  {room.secret === true && (
+                    <div className="dm-details-row">
+                      <dt>{t("forgeRooms.secretLabel")}</dt>
+                      <dd>{t("forgeRooms.yes")}</dd>
+                    </div>
+                  )}
+                </dl>
               )}
-              <RoomTools
-                levels={levels}
-                levelId={levelId}
-                onLevel={(next) => {
-                  setLevelChoice(next);
-                  setSelectedRoom(null);
-                }}
-                shape={shape}
-                onShape={chooseShape}
-                disabled={roomBusy}
-              />
-              {roomProblem && <p role="alert">{roomProblem}</p>}
               <ItemInfoEditor
                 key={`info:${path}`}
                 service={service}

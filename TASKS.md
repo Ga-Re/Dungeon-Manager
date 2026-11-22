@@ -1281,11 +1281,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-254 Map Forge: grid calibration and rooms as ribbon tools with command panels
 
-- **Status:** todo · **Depends on:** T-252 · **Refs:** ADR-0020, T-177, T-108c1
+- **Status:** done · **Depends on:** T-252 · **Refs:** ADR-0020, T-177, T-108c1
 - (Calibration moved to the ribbon with T-252.) RÄUME › "Raum anlegen" opens a command panel with rectangle, polygon, ellipse and lasso and the level; the DM draws (and may redraw), OK creates the room, which appears in the browser. A double-click or the context menu on a room opens "Raum bearbeiten" (name, secret; delete from the context menu, after confirming).
 - **Acceptance criteria**
-  - [ ] Calibration and room drawing start only from the ribbon and finish with OK/Abbrechen (component + E2E test)
-  - [ ] Rooms are edited and deleted from the browser (double-click, context menu, keyboard)
+  - [x] Calibration and room drawing start only from the ribbon and finish with OK/Abbrechen (component + E2E test)
+  - [x] Rooms are edited and deleted from the browser (double-click, context menu, keyboard)
 - **Notes:** DM decision 2026-11-22 (ADR-0020): replaces the Eigenschaften forms of T-177 and T-108c1.
 
 ### T-255 Game-Orchestrator: ribbon tools with command panels
