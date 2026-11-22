@@ -141,6 +141,7 @@ export function MapView({
   softEdge = 0,
   fade = 0,
   living,
+  fogHidden = false,
   speed,
   coverFrom = "middle",
   onArea,
@@ -169,6 +170,11 @@ export function MapView({
   readonly fade?: number;
   /** The living fog (T-245); none draws the still fog. */
   readonly living?: LivingFog | undefined;
+  /**
+   * The DM has hidden the fog in this window (T-248): it fades out here, the TV never changes
+   * through it.
+   */
+  readonly fogHidden?: boolean;
   /** How fast fog changes spread (T-246); none spreads over `fade` as before. */
   readonly speed?: FogOptions["speed"];
   /** Where hiding everything starts on a fully revealed map (T-249). */
@@ -250,7 +256,7 @@ export function MapView({
   const fogNow = useRef(fog);
   fogNow.current = fog;
   const fogOptions = {
-    opacity: DM_FOG_OPACITY,
+    opacity: fogHidden ? 0 : DM_FOG_OPACITY,
     softEdge,
     ...(living && { living }),
   };
@@ -407,6 +413,8 @@ export function MapView({
   const coverFromNow = useRef(coverFrom);
   coverFromNow.current = coverFrom;
   // The living fog by value: a new object with the same settings redraws nothing.
+  const fogHiddenNow = useRef(fogHidden);
+  fogHiddenNow.current = fogHidden;
   const livingNow = useRef(living);
   livingNow.current = living;
   const livingKey = living
@@ -422,7 +430,8 @@ export function MapView({
   useEffect(() => {
     const current = livingNow.current;
     renderer.current?.setFog(fog, {
-      opacity: DM_FOG_OPACITY,
+      // Hidden: see-through to nothing; the renderer blends it over like any change of look.
+      opacity: fogHiddenNow.current ? 0 : DM_FOG_OPACITY,
       softEdge,
       fade: fadeNow.current,
       ...(speedNow.current && { speed: speedNow.current }),
@@ -431,7 +440,7 @@ export function MapView({
       }),
       ...(current && { living: current }),
     });
-  }, [fog, softEdge, livingKey]);
+  }, [fog, softEdge, livingKey, fogHidden]);
 
   // Functional updates: event handlers (also the native wheel listener) never see a stale camera.
   const change = (update: (current: Camera, view: Size) => Camera) => {

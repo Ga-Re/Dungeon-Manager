@@ -458,6 +458,7 @@ export const de = {
     strengthName: "Stärke",
     strengthValue: "{{percent}} Prozent",
     wholeMap: "Ganze Karte",
+    hideInDm: "Nebel ausblenden",
     revealAll: "Alles aufdecken",
     coverAll: "Alles verdecken",
     undo: "Rückgängig",

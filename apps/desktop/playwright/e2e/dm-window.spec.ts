@@ -630,6 +630,23 @@ test("the DM picks the scene's fog biome in the ribbon, one undo step (T-168)", 
   await expect(page.getByRole("button", { name: "Bodennebel" })).toBeVisible();
 });
 
+test("N hides the fog in the DM window only, and shows it again (T-248)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Nebel" }).click();
+  const toggle = page.getByRole("button", { name: "Nebel ausblenden" });
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("n");
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  // A view setting: nothing to undo.
+  await expect(page.getByRole("button", { name: "Rückgängig" })).toBeDisabled();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+});
+
 test("the dock zooms and fits the DM's view of the map (T-131)", async ({
   page,
 }) => {

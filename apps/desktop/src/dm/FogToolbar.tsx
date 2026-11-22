@@ -5,6 +5,7 @@ import {
   Brush,
   Circle,
   CloudFog,
+  CloudOff,
   Lasso,
   Eye,
   EyeOff,
@@ -52,6 +53,8 @@ export function FogToolbar({
   fogEffect,
   ownFogEffect,
   onFogEffect,
+  fogHidden,
+  onFogHidden,
 }: {
   readonly tool: MapTool;
   readonly onTool: (tool: MapTool) => void;
@@ -73,6 +76,9 @@ export function FogToolbar({
   readonly ownFogEffect: boolean;
   /** Choose the scene's biome live; `null` follows the map again. */
   readonly onFogEffect: (effect: FogEffect | null) => void;
+  /** The fog is hidden in the DM window only (T-248); the TV keeps it. */
+  readonly fogHidden: boolean;
+  readonly onFogHidden: (hidden: boolean) => void;
 }) {
   const { t, i18n } = useTranslation();
   return (
@@ -171,6 +177,16 @@ export function FogToolbar({
           label={t("fog.coverAll")}
           disabled={disabled}
           onClick={onCoverAll}
+        />
+        <IconButton
+          showLabel
+          icon={<CloudOff />}
+          label={t("fog.hideInDm")}
+          aria-keyshortcuts="n"
+          pressed={fogHidden}
+          onClick={() => {
+            onFogHidden(!fogHidden);
+          }}
         />
       </RibbonGroup>
     </>
