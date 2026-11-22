@@ -63,6 +63,15 @@ type LoadState = "loading" | "ready" | "error";
 /** What dragging on the map does: move it, or mark an area to reveal or hide. */
 export type MapTool = "pan" | "reveal" | "hide";
 
+/** A room drawn on the map (T-108c1): its outline and name, highlighted when selected. */
+export interface MapOutline {
+  readonly id: string;
+  readonly label: string;
+  readonly area: Polygon;
+  readonly selected?: boolean;
+  readonly secret?: boolean;
+}
+
 /**
  * Grid calibration in the Map Forge (T-177): `box` drags a square over `cells` × `cells` cells
  * of the printed grid; `move` drags the grid; arrow keys move it by a pixel (Shift: ten) in
@@ -168,6 +177,8 @@ export function MapView({
   tokens = NO_TOKENS,
   tokenControl = null,
   calibration = null,
+  outlines = NO_OUTLINES,
+  toolHint,
 }: {
   readonly path: string;
   /** Video maps play in a `<video>` under the canvas (ADR-0010). */
@@ -213,6 +224,10 @@ export function MapView({
     readonly onMove: (center: Point) => void;
   } | null;
   readonly calibration?: MapCalibration | null;
+  /** Rooms shown as outlines over the map (the Map Forge, T-108c1). */
+  readonly outlines?: readonly MapOutline[];
+  /** What the drawing tool does, instead of the fog's hint (e.g. drawing a room, T-108c1). */
+  readonly toolHint?: string | undefined;
 }) {
   const { t } = useTranslation();
   // A calibration box being dragged, in view pixels; the last map point of a grid drag.
@@ -911,6 +926,17 @@ export function MapView({
         }}
         data-tool={calibration ? `calibrate-${calibration.mode}` : tool}
       >
+        {camera && sizeNow.current && outlines.length > 0 && (
+          <RoomOutlines
+            outlines={outlines}
+            toScreen={(x, y) =>
+              mapToScreen(camera, sizeNow.current ?? { width: 0, height: 0 }, {
+                x,
+                y,
+              })
+            }
+          />
+        )}
         {calibBox && calibration && (
           <CalibrationBox
             start={calibBox.start}
@@ -961,7 +987,7 @@ export function MapView({
         )}
         {!calibration && tool !== "pan" && (
           <p id="map-view-hint" className="map-view-hint">
-            {t(`fog.shapeHints.${shape}`)}
+            {toolHint ?? t(`fog.shapeHints.${shape}`)}
           </p>
         )}
         {load === "loading" && <p>{t("mapView.loading")}</p>}
@@ -1070,6 +1096,49 @@ function CalibrationBox({
           <line x1={0} y1={at} x2={side} y2={at} />
         </g>
       ))}
+    </svg>
+  );
+}
+
+const NO_OUTLINES: readonly MapOutline[] = [];
+
+/** Room outlines with their names at their middle, in view pixels (T-108c1). */
+function RoomOutlines({
+  outlines,
+  toScreen,
+}: {
+  readonly outlines: readonly MapOutline[];
+  readonly toScreen: (x: number, y: number) => Point;
+}) {
+  return (
+    <svg className="map-view-rooms" aria-hidden="true">
+      {outlines.map((room) => {
+        const points = room.area.outer.map(([x, y]) => toScreen(x, y));
+        const middle = points.reduce(
+          (sum, point) => ({
+            x: sum.x + point.x / points.length,
+            y: sum.y + point.y / points.length,
+          }),
+          { x: 0, y: 0 },
+        );
+        return (
+          <g
+            key={room.id}
+            className="map-view-room"
+            data-selected={room.selected === true ? "true" : undefined}
+            data-secret={room.secret === true ? "true" : undefined}
+          >
+            <polygon
+              points={points
+                .map(({ x, y }) => `${String(x)},${String(y)}`)
+                .join(" ")}
+            />
+            <text x={middle.x} y={middle.y}>
+              {room.label}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }

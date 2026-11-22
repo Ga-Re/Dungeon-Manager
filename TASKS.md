@@ -541,16 +541,24 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] A circle dragged from its centre reveals/hides its area
 - **Notes:** Circle tool added by the DM (2026-11-18).
 
-### T-108c Fog: predefined rooms
+### T-108c1 Rooms: draw them per level in the Map Forge
 
-- **Status:** todo · **Depends on:** T-108b, T-134b · **Refs:** SPEC 4, ADR-0012
-- Rooms and areas drawn once per map level (polygons, may overlap) in the map's sidecar, so every scene using the map has them; revealed with one click on the room or from the room list in the scene browser. Rooms can be marked secret.
+- **Status:** done · **Depends on:** T-108b, T-134b, T-176a · **Refs:** SPEC 4, ADR-0012
+- Rooms and areas drawn once per map level (polygons, may overlap) in the map's sidecar, so every scene using the map has them. In the Map Forge the DM draws a room (rectangle, polygon, ellipse, lasso; corners snap to the grid, Alt draws freely), names it, marks it secret and deletes it; the browser lists the rooms per level.
 - **Acceptance criteria**
-  - [ ] DM defines rooms on a map; a second scene with the same map shows the same rooms
+  - [x] DM defines rooms on a map level; a second scene with the same map has the same rooms (component + E2E test)
+  - [x] Rooms can be renamed, marked secret and deleted; each change is saved in the sidecar
+- **Notes:** Split from T-108c (DM decision 2026-11-22). Format (DM decision 2026-11-22, additive, no version bump): a room may carry `levelId` (none: the map's first level) and `secret: true`. Format per ADR-0012 (accepted by the DM, 2026-11-18). Suggesting rooms from walls comes with T-141.
+
+### T-108c2 Rooms at the table: reveal with one click, room list, secret rooms
+
+- **Status:** todo · **Depends on:** T-108c1 · **Refs:** SPEC 4, ADR-0012
+- Rooms revealed with one click on the room or from the room list in the scene browser. Secret rooms stay hidden on room reveals and "reveal all" until the DM reveals them explicitly or paints into them.
+- **Acceptance criteria**
   - [ ] Hovering a room in fog mode highlights it; a click reveals/hides it as one undo step
   - [ ] Room list with per-room reveal toggle
   - [ ] Room reveals and "reveal all" subtract hidden secret rooms: afterwards `revealed ∩ hiddenSecretRoom = ∅` and no token centred in it is projected (property test, incl. overlapping rooms)
-- **Notes:** Format per ADR-0012 (accepted by the DM, 2026-11-18). Open for the DM (from the T-134 review): the agreed room format `{ id, name, area }` has no level, but rooms are drawn per level – an optional `levelId` is additive (no version bump); ask before implementing. Suggesting rooms from walls comes with T-141; reveal by trigger with the trigger zones (stage 5).
+- **Notes:** Split from T-108c (DM decision 2026-11-22). Reveal by trigger with the trigger zones (stage 5).
 
 ### T-109 Memory fog
 
@@ -1371,7 +1379,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-183 Map pins with room descriptions and read-aloud text
 
-- **Status:** todo · **Depends on:** T-181, T-161a, T-108c · **Refs:** SPEC §2.5, §12
+- **Status:** todo · **Depends on:** T-181, T-161a, T-108c2 · **Refs:** SPEC §2.5, §12
 - DM-only pins on rooms in the scene editor that open the room's description, read-aloud text and linked creatures; in the Orchestrator they show in the inspector.
 - **Acceptance criteria**
   - [ ] Pins never reach the TV or companions (projection test)
@@ -1477,7 +1485,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-141 Automatic walls and room suggestions
 
-- **Status:** todo · **Depends on:** T-140, T-108c · **Refs:** SPEC 8.1
+- **Status:** todo · **Depends on:** T-140, T-108c2 · **Refs:** SPEC 8.1
 - Generate walls from drawn rooms (outer edges = walls, shared edges = openings); suggest rooms from closed wall regions; suggest walls from image analysis (edges/colours), always reviewed by the DM before they apply. All local.
 - **Acceptance criteria**
   - [ ] Two adjacent rooms produce an opening on the shared edge (unit tests in `core`)
@@ -1533,7 +1541,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-189 Room labels on maps
 
-- **Status:** todo · **Depends on:** T-176a, T-108c · **Refs:** SPEC §2.5, §8.1
+- **Status:** todo · **Depends on:** T-176a, T-108c2 · **Refs:** SPEC §2.5, §8.1
 - DM-only room numbers and names on the map in the Map Forge, shown in every scene with the map.
 - **Acceptance criteria**
   - [ ] Labels never reach the TV (projection test)

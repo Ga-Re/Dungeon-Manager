@@ -29,6 +29,13 @@ export const roomSchema = z.looseObject({
   id: idSchema,
   name: z.string().min(1),
   area: polygonSchema,
+  /**
+   * The level it lies on (T-108c1, DM decision 2026-11-22; additive); none: the map's first
+   * level. One naming a level the map no longer has is simply not shown.
+   */
+  levelId: idSchema.optional(),
+  /** A secret room stays hidden until the DM reveals it on purpose (SPEC 4, T-108c2). */
+  secret: z.boolean().optional(),
 });
 
 /** What a sidecar knows about a map: its grid, its levels and its rooms. */

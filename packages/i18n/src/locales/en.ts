@@ -234,6 +234,31 @@ export const en: Messages = {
     caseDuplicate:
       "Old file {{file}} next to {{current}} – compare, then merge or delete it",
   },
+  forgeRooms: {
+    title: "Rooms",
+    kind: "Room",
+    level: "Level",
+    draw: "Draw a room",
+    shapes: {
+      rectangle: "Rectangle",
+      polygon: "Polygon",
+      ellipse: "Ellipse",
+      lasso: "Lasso",
+    },
+    hint: "Draw the room on the map; corners snap to the grid, hold Alt to draw freely.",
+    hintFree: "Outline the room freely on the map; the lasso does not snap.",
+    defaultName: "Room {{number}}",
+    name: "Name",
+    secret: "Secret room (stays hidden when revealing)",
+    secretMeta: "secret",
+    delete: "Delete room …",
+    deleteConfirm: "Delete “{{name}}”",
+    keep: "Keep",
+    tooSmall:
+      "Too small for a room: on the grid it would have no area. Hold Alt to draw freely.",
+    changedMeanwhile:
+      "The map data was changed elsewhere meanwhile; the map now shows the new state. Try again.",
+  },
   forge: {
     empty: "No map open. Double-click a map in the catalogue.",
     noMap: "No map open.",

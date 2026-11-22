@@ -120,7 +120,13 @@ export function MapDataEditor({
     if (!changed) {
       setBase(data);
       setValues(valuesOf(data));
-    } else if (rebasing) setBase(data);
+    } else if (
+      rebasing ||
+      // Only rooms or levels changed (e.g. a room drawn meanwhile): what the fields edit is
+      // the same, so the next save need not ask.
+      JSON.stringify(valuesOf(data)) === JSON.stringify(valuesOf(base))
+    )
+      setBase(data);
   }
 
   // A new calibration from the map fills the grid fields (DM decision: preview, then save).
