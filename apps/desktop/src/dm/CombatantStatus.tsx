@@ -1,5 +1,5 @@
 import type { Command } from "@dungeon-manager/core";
-import type { Combatant } from "@dungeon-manager/schema";
+import { MAX_CONDITION_LEVEL, type Combatant } from "@dungeon-manager/schema";
 import { IconButton, Popover } from "@dungeon-manager/ui";
 import { Minus, Plus, X } from "lucide-react";
 import {
@@ -33,7 +33,7 @@ export const CONDITIONS = [
 
 /** Conditions with a level (T-244): exhaustion, 1 to 6 in 5e. */
 const LEVELLED: ReadonlySet<string> = new Set(["exhaustion"]);
-const MAX_LEVEL = 6;
+const MAX_LEVEL = MAX_CONDITION_LEVEL;
 
 /** A whole number typed into a field, or `null`. */
 function wholeNumber(text: string): number | null {
@@ -133,7 +133,7 @@ export function CombatantStatus({
             >
               {conditionText(condition)}
               {/* Exhaustion's level (T-244): one step up or down; below 1 it goes. */}
-              {condition.level !== undefined && (
+              {LEVELLED.has(condition.type) && (
                 <>
                   <IconButton
                     icon={<Minus />}
@@ -143,9 +143,10 @@ export function CombatantStatus({
                     })}
                     disabled={busy}
                     onClick={() => {
-                      const { level } = condition;
+                      // An exhaustion from before levels counts as level 1.
+                      const level = condition.level ?? 1;
                       onCommand(
-                        level === undefined || level <= 1
+                        level <= 1
                           ? {
                               type: "condition.remove",
                               combatantId: id,
@@ -165,14 +166,14 @@ export function CombatantStatus({
                       condition: conditionName(condition.type),
                       name,
                     })}
-                    disabled={busy || (condition.level ?? 0) >= MAX_LEVEL}
+                    disabled={busy || (condition.level ?? 1) >= MAX_LEVEL}
                     onClick={() => {
                       onCommand({
                         type: "condition.add",
                         combatantId: id,
                         condition: {
                           ...condition,
-                          level: (condition.level ?? 0) + 1,
+                          level: (condition.level ?? 1) + 1,
                         },
                       });
                     }}

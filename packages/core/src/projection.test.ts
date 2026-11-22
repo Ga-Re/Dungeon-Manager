@@ -283,6 +283,30 @@ describe("projectForViewer", () => {
       );
     });
 
+    test("an exhaustion level never reaches a viewer (T-244, DM decision)", () => {
+      const tired = run(
+        fight,
+        {
+          type: "condition.add",
+          combatantId: "goblin",
+          condition: { type: "exhaustion", level: 3, remainingRounds: 2 },
+        },
+        {
+          type: "visibility.set",
+          target: { kind: "campaign" },
+          elementType: "conditions",
+          visibility: "visible",
+        },
+      );
+      expect(
+        projectForViewer(tired, table).initiative?.combatants[1]?.conditions,
+      ).toContainEqual({ type: "exhaustion", remainingRounds: 2 });
+      const conditions =
+        projectForViewer(tired, table).initiative?.combatants[1]?.conditions ??
+        [];
+      expect(conditions.every((each) => !("level" in each))).toBe(true);
+    });
+
     test("approximate conditions show the type but not the duration", () => {
       const vague = run(fight, {
         type: "visibility.set",

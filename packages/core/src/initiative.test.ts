@@ -650,4 +650,28 @@ describe("exhaustion levels (T-244)", () => {
         ),
       ).toEqual({ ok: false, reason: "invalidAmount" });
   });
+
+  test("the round's countdown keeps the level", () => {
+    let current = run(
+      state,
+      {
+        type: "initiative.addMany",
+        combatants: [fighter("aria", 15), fighter("goblin", 10)],
+      },
+      { type: "initiative.start", bounds },
+      {
+        type: "condition.add",
+        combatantId: "aria",
+        condition: { type: "exhaustion", level: 2, remainingRounds: 3 },
+      },
+    );
+    current = run(
+      current,
+      { type: "initiative.next" },
+      { type: "initiative.next" },
+    );
+    expect(combatant(current, "aria")?.conditions).toEqual([
+      { type: "exhaustion", level: 2, remainingRounds: 2 },
+    ]);
+  });
 });

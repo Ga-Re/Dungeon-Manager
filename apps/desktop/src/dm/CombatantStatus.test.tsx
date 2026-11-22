@@ -271,4 +271,21 @@ describe("exhaustion levels (T-244)", () => {
       }),
     ).toHaveProperty("disabled", true);
   });
+
+  test("an exhaustion from before levels counts as level 1", () => {
+    const onCommand = renderStatus({
+      ...goblin,
+      conditions: [{ type: "exhaustion" }],
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Erschöpfung von Goblin um eine Stufe erhöhen",
+      }),
+    );
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: "condition.add",
+      combatantId: "goblin",
+      condition: { type: "exhaustion", level: 2 },
+    });
+  });
 });
