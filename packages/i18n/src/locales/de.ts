@@ -472,10 +472,21 @@ export const de = {
       softEdges: "Weiche Kanten",
       softEdgesHint:
         "Der Nebel läuft an den Rändern aufgedeckter Bereiche sanft aus – auf diesem Gerät und dem TV. Er zeigt dabei nie mehr als mit harten Kanten.",
+      softEdgesLiving:
+        "Der lebendige Nebel hat immer weiche Kanten. Stelle ihn auf „Aus“, um harte Kanten zu wählen.",
       fade: "Übergangsdauer",
       fadeHint:
         "Wie lange Aufdecken und Verdecken weich überblenden – auch auf dem TV. 0 s schaltet sofort um.",
       seconds: "{{seconds, number(minimumFractionDigits: 2)}} s",
+      quality: "Lebendiger Nebel",
+      qualities: { high: "Hoch", medium: "Mittel", off: "Aus" },
+      qualityHint:
+        "Der Nebel wabert und seine Ränder bewegen sich – auf diesem Gerät und dem TV, nur in aufgedeckte Bereiche hinein. Hoch sieht am feinsten aus, Mittel braucht weniger Leistung, Aus zeigt ruhigen Nebel.",
+      edge: "Randwabern",
+      motion: "Bewegung",
+      factor: "{{factor, number(minimumFractionDigits: 1)}}×",
+      livingHint:
+        "Randwabern: wie stark die Ränder wabern (0 = ruhig). Bewegung: wie schnell der Nebel treibt (0 = steht still).",
     },
     layout: {
       hint: "Daten, Karte, Browser und Eigenschaften kehren an ihre Standardplätze zurück: Daten links, die Karte in der Mitte, Browser und Eigenschaften rechts.",

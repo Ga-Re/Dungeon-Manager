@@ -123,6 +123,170 @@ async function failClosedScenario(canvas: HTMLCanvasElement) {
   document.body.dataset["softened"] = String(softened);
 }
 
+/** Living fog (T-245) in the harness: the fixture map's 100-px cells, the largest edge wobble. */
+const livingFog = (quality: "high" | "medium", edge = 1.2) => ({
+  quality,
+  cellSizePx: 100,
+  edge,
+  motion: 1,
+});
+
+/**
+ * "living-…" (T-245): the living fog at a frozen moment (12.5 s of drift) – for players in both
+ * qualities, and see-through for the DM.
+ */
+async function livingScenario(scenario: string, canvas: HTMLCanvasElement) {
+  let time = 0;
+  const renderer = await createRenderer({
+    canvas,
+    size: view,
+    resolution: 1,
+    now: () => time,
+  });
+  const quality = scenario.includes("medium") ? "medium" : "high";
+  const opacity = scenario.includes("dm") ? 0.5 : 1;
+  renderer.setFog(REVEALED, { opacity, living: livingFog(quality) });
+  renderer.setMap(drawFixtureMap());
+  renderer.setCamera(cameraFor("fit"));
+  time = 12_500;
+  await renderer.drawn();
+}
+
+/** A map of the fixture's size in one colour: what shows of it is the map, not the fog. */
+function plainMap(colour: string): HTMLCanvasElement {
+  const map = document.createElement("canvas");
+  map.width = FIXTURE_MAP.width;
+  map.height = FIXTURE_MAP.height;
+  const context = map.getContext("2d");
+  if (!context) throw new Error("2D canvas missing");
+  context.fillStyle = colour;
+  context.fillRect(0, 0, map.width, map.height);
+  return map;
+}
+
+/**
+ * "living-fail-closed" (T-245): the nested fog drawn hard marks what is hidden; then the living
+ * fog with the largest edge wobble, in both qualities and at several moments of its drift (the
+ * clock only moves forward, so each run draws later moments), over a black and a white map. A
+ * hidden pixel that differs between the two shows the map (`data-violations`, must be none);
+ * revealed pixels the living fog changes (`data-living`) show that it was drawn. Then the same
+ * during a spread (`livingSpreadViolations`).
+ */
+async function livingFailClosedScenario(canvas: HTMLCanvasElement) {
+  let time = 0;
+  const renderer = await createRenderer({
+    canvas,
+    size: view,
+    resolution: 1,
+    now: () => time,
+  });
+  const camera = cameraFor("zoomed");
+  renderer.setFog(REVEALED_NESTED, { opacity: 1 });
+  renderer.setMap(plainMap("#ffffff"));
+  renderer.setCamera(camera);
+  await renderer.drawn();
+  const hard = capture(canvas);
+  const hidden = (index: number) => hard[index] === 0;
+  let violations = 0;
+  let living = 0;
+  for (const quality of ["high", "medium"] as const)
+    for (const seconds of [0, 7.3, 31.9, 140.6]) {
+      const shots = [];
+      for (const colour of ["#000000", "#ffffff"]) {
+        renderer.setFog(REVEALED_NESTED, {
+          opacity: 1,
+          living: livingFog(quality, 2.5),
+        });
+        renderer.setMap(plainMap(colour));
+        time = seconds * 1000;
+        await renderer.drawn();
+        shots.push(capture(canvas));
+      }
+      const [black, white] = shots;
+      if (!black || !white) throw new Error("capture missing");
+      for (let index = 0; index < black.length; index += 4) {
+        const differs =
+          black[index] !== white[index] ||
+          black[index + 1] !== white[index + 1] ||
+          black[index + 2] !== white[index + 2];
+        if (hidden(index) && differs) violations++;
+        if (!hidden(index) && white[index] !== 255) living++;
+      }
+    }
+  const hiddenAfter = await hardCapture(REVEALED);
+  violations += await livingSpreadViolations(hard, hiddenAfter);
+  document.body.dataset["violations"] = String(violations);
+  document.body.dataset["living"] = String(living);
+}
+
+/** The hard fog `revealed` over a white map, zoomed in (black = hidden). */
+async function hardCapture(
+  revealed: typeof REVEALED,
+): Promise<Uint8ClampedArray> {
+  const canvas = document.createElement("canvas");
+  const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
+  renderer.setFog(revealed, { opacity: 1 });
+  renderer.setMap(plainMap("#ffffff"));
+  renderer.setCamera(cameraFor("zoomed"));
+  await renderer.drawn();
+  const pixels = capture(canvas);
+  renderer.destroy();
+  return pixels;
+}
+
+/**
+ * A living spread from the nested fog to the plain one, at the largest edge wobble, over a black
+ * and a white map with the same frozen clock: a pixel hidden before and after that differs
+ * between the two shows the map. Returns how many such pixels the frames had.
+ */
+async function livingSpreadViolations(
+  before: Uint8ClampedArray,
+  after: Uint8ClampedArray,
+): Promise<number> {
+  const moments = [0, 150, 400, 700, 1100];
+  const frames: Uint8ClampedArray[][] = [];
+  for (const colour of ["#000000", "#ffffff"]) {
+    let time = 0;
+    const canvas = document.createElement("canvas");
+    const renderer = await createRenderer({
+      canvas,
+      size: view,
+      resolution: 1,
+      now: () => time,
+    });
+    const living = livingFog("medium", 2.5);
+    renderer.setFog(REVEALED_NESTED, { opacity: 1, living });
+    renderer.setMap(plainMap(colour));
+    renderer.setCamera(cameraFor("zoomed"));
+    await renderer.drawn();
+    renderer.setFog(REVEALED, { opacity: 1, living, fade: 1000 });
+    const shots: Uint8ClampedArray[] = [];
+    for (const moment of moments) {
+      time = moment;
+      await renderer.drawn();
+      shots.push(capture(canvas));
+    }
+    frames.push(shots);
+    renderer.destroy();
+  }
+  let violations = 0;
+  moments.forEach((_, frame) => {
+    const black = frames[0]?.[frame];
+    const white = frames[1]?.[frame];
+    if (!black || !white) throw new Error("capture missing");
+    for (let index = 0; index < black.length; index += 4) {
+      if (before[index] !== 0 || after[index] !== 0) continue;
+      if (
+        black[index] !== white[index] ||
+        black[index + 1] !== white[index + 1] ||
+        black[index + 2] !== white[index + 2]
+      )
+        violations++;
+    }
+  });
+  return violations;
+}
+
 /** The video fixture (`pages/media/fixture-map.webm`, 320 × 200) and what is revealed of it. */
 const VIDEO = { width: 320, height: 200 };
 const VIDEO_REVEALED = [
@@ -398,6 +562,16 @@ async function main() {
   }
   if (scenario === "fade-fail-closed") {
     await fadeFailClosedScenario(canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
+  if (scenario === "living-fail-closed") {
+    await livingFailClosedScenario(canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
+  if (scenario.startsWith("living-")) {
+    await livingScenario(scenario, canvas);
     document.body.dataset["ready"] = "true";
     return;
   }

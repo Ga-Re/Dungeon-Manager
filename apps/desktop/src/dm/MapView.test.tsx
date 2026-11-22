@@ -1,3 +1,4 @@
+import type { Polygon } from "@dungeon-manager/schema";
 import type { MapImage, Size } from "@dungeon-manager/renderer";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
@@ -277,6 +278,43 @@ describe("MapView", () => {
       opacity: 0.55,
       softEdge: 25,
       fade: 650,
+    });
+  });
+
+  test("hands the living fog to the renderer and redraws only when it changes (T-245)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const fog: Polygon[] = [];
+    const living = {
+      quality: "medium",
+      cellSizePx: 100,
+      edge: 1.2,
+      motion: 1,
+    } as const;
+    const { rerender } = renderView(fake.service, { fog, living });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    expect(fake.view.setFog).toHaveBeenLastCalledWith(fog, {
+      opacity: 0.55,
+      softEdge: 0,
+      living,
+    });
+    const calls = fake.view.setFog.mock.calls.length;
+    // The same settings in a new object: nothing to redraw.
+    rerender(tree(fake.service, undefined, { fog, living: { ...living } }));
+    expect(fake.view.setFog).toHaveBeenCalledTimes(calls);
+    // Faster drift: the renderer hears it.
+    rerender(
+      tree(fake.service, undefined, {
+        fog,
+        living: { ...living, motion: 2 },
+      }),
+    );
+    expect(fake.view.setFog).toHaveBeenLastCalledWith(fog, {
+      opacity: 0.55,
+      softEdge: 0,
+      fade: 0,
+      living: { ...living, motion: 2 },
     });
   });
 

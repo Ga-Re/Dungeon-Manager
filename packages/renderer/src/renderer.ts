@@ -33,6 +33,12 @@ import {
   spreadMix,
   type Grid,
 } from "./fog-spread.js";
+import {
+  drawLivingFog,
+  livingReach,
+  type LivingFog,
+  type LivingHandle,
+} from "./fog-living.js";
 import { softFogAlpha } from "./soft-mask.js";
 import { createVideoGate, cssTransform, sameAspect } from "./video-layer.js";
 
@@ -55,7 +61,16 @@ export interface FogOptions {
    * fogged throughout.
    */
   readonly fade?: number;
+  /**
+   * Living fog (T-245, ADR-0019): the fog drifts and its edge wobbles, only ever into revealed
+   * area (the player view keeps the exact hard fog underneath). Needs the map's size; replaces
+   * `softEdge` with its own band. None draws the still fog of before.
+   */
+  readonly living?: LivingFog;
 }
+
+export type { LivingFog } from "./fog-living.js";
+export { LIVING_EDGE_MAX } from "./fog-living.js";
 
 export interface RendererOptions {
   /** The canvas to draw into; it is sized by the caller (CSS) and by `resize`. */
@@ -368,6 +383,10 @@ export async function createRenderer(
     readonly map: Size;
   } | null = null;
   let fade: Fade | null = null;
+  // The living fog's clock (seconds of drift at speed 1) and when it last moved.
+  let livingTime = 0;
+  let livingAt = now();
+  const rootResolution = options.resolution ?? 1;
   let size = options.size;
   let camera: Camera | null = null;
   let frame: number | null = null;
@@ -448,7 +467,10 @@ export async function createRenderer(
     const previous = shownFog;
     if (duration <= 0 || !previous || !mapSize || !fog) return null;
     if (!sameSize(previous.map, mapSize)) return null;
-    const to = fogMask(target.revealed, mapSize, target.options.softEdge ?? 0);
+    // Only the look changed (soft edges, living fog): nothing spreads, it switches at once.
+    if (JSON.stringify(previous.revealed) === JSON.stringify(target.revealed))
+      return null;
+    const to = fogMask(target.revealed, mapSize, maskEdge(target.options));
     // From what is on screen: mid-fade, the mix reached so far.
     const from = fade
       ? {
@@ -460,7 +482,7 @@ export async function createRenderer(
             easeOut(fadeProgress(fade.start, fade.duration, now())),
           ),
         }
-      : fogMask(previous.revealed, mapSize, previous.options.softEdge ?? 0);
+      : fogMask(previous.revealed, mapSize, maskEdge(previous.options));
     const order = coarseSpreadOrder(gridOf(from), gridOf(to));
     // Fogged in every state of the fade: the exact hard fog covers it all along.
     const revealedAll = unique([
@@ -468,14 +490,28 @@ export async function createRenderer(
       ...target.revealed,
     ]);
     return {
-      ...drawFadeFog(revealedAll, from, to, order, target.options.opacity ?? 1),
+      ...drawFadeFog(
+        revealedAll,
+        from,
+        to,
+        order,
+        target.options,
+        mapSize,
+        rootResolution,
+      ),
       from,
       to,
       order,
       revealedAll,
       start: now(),
       duration,
-      final: drawFog(target.revealed, target.options, mapSize, to),
+      final: drawFog(
+        target.revealed,
+        target.options,
+        mapSize,
+        rootResolution,
+        to,
+      ),
     };
   };
 
@@ -490,7 +526,15 @@ export async function createRenderer(
     const key = fogInput
       ? JSON.stringify([
           fogInput.revealed,
-          { ...fogInput.options, fade: undefined },
+          {
+            ...fogInput.options,
+            fade: undefined,
+            // The drift's speed is read every frame; changing it rebuilds nothing.
+            living: fogInput.options.living && {
+              ...fogInput.options.living,
+              motion: undefined,
+            },
+          },
           mapSize,
         ])
       : null;
@@ -500,7 +544,7 @@ export async function createRenderer(
     const next = fading
       ? fading.layer
       : fogInput
-        ? drawFog(fogInput.revealed, fogInput.options, mapSize)
+        ? drawFog(fogInput.revealed, fogInput.options, mapSize, rootResolution)
         : null;
     replaceFog(next);
     dropFade();
@@ -524,12 +568,27 @@ export async function createRenderer(
     replaceFog(final);
   };
 
+  /** The living fog shown now (a fade's or the settled one's), if any. */
+  const livingShown = () => (fog ? livingLayers.get(fog) : undefined);
+  const drifting = () =>
+    livingShown() !== undefined && (fogInput?.options.living?.motion ?? 0) > 0;
+  /** Moves the living fog's clock on by the time since the last frame, at its speed. */
+  const stepLiving = () => {
+    const at = now();
+    livingTime +=
+      (Math.max(0, at - livingAt) / 1000) *
+      (fogInput?.options.living?.motion ?? 0);
+    livingAt = at;
+    livingShown()?.setTime(livingTime);
+  };
+
   const requestDraw = () => {
     if (frame !== null || destroyed) return;
     frame = requestAnimationFrame(() => {
       frame = null;
       try {
         stepFade();
+        stepLiving();
         stepGlides();
         applyCamera();
         app.render();
@@ -546,8 +605,8 @@ export async function createRenderer(
       done.forEach((resolve) => {
         resolve();
       });
-      // A fade draws every frame until it is over; otherwise drawing stays on demand.
-      if (fade || glides.size > 0) requestDraw();
+      // A fade, a glide or drifting fog draws every frame; otherwise drawing stays on demand.
+      if (fade || glides.size > 0 || drifting()) requestDraw();
     });
   };
 
@@ -613,6 +672,8 @@ export async function createRenderer(
       requestDraw();
     },
     setFog(revealed, fogOptions) {
+      // The clock only runs while the fog drifts: an idle spell is no jump.
+      if (!drifting()) livingAt = now();
       fogInput = revealed ? { revealed, options: fogOptions ?? {} } : null;
       applyFog();
       gate.fogSet();
@@ -681,6 +742,57 @@ export async function createRenderer(
       );
     },
   };
+}
+
+/** Living fog layers (T-245) by the fog layer that shows them: the frame loop moves their clock. */
+const livingLayers = new WeakMap<Container, LivingHandle>();
+
+/** The soft mask's edge for `options`: the living fog's band, else the soft edge (or none). */
+function maskEdge(options: FogOptions): number {
+  return options.living
+    ? livingReach(options.living).band
+    : (options.softEdge ?? 0);
+}
+
+/** A 1×1 spread order of 0: everything has turned over (a settled living fog). */
+function settledOrder(): Texture {
+  return alphaTexture({ width: 1, height: 1, data: new Uint8Array(1) }, 1);
+}
+
+/**
+ * Living fog over `map` (T-245): over the map and, for the player view, far around it, so a
+ * fitted or panned view never shows its edge; the see-through DM view tints only the map.
+ */
+function livingLayer(
+  layer: Container,
+  masks: {
+    readonly from: FogMask;
+    readonly to: FogMask;
+    readonly order: Texture;
+  },
+  living: LivingFog,
+  opacity: number,
+  map: Size,
+  rootResolution: number,
+): LivingHandle {
+  const to = maskTexture(masks.to, 1);
+  const handle = drawLivingFog({
+    from: masks.from === masks.to ? to : maskTexture(masks.from, 1),
+    to,
+    order: masks.order,
+    maskSize: {
+      width: masks.to.width * masks.to.texel,
+      height: masks.to.height * masks.to.texel,
+    },
+    map,
+    margin: opacity < 1 ? 0 : Math.max(map.width, map.height),
+    living,
+    opacity,
+    rootResolution,
+  });
+  layer.addChild(handle.mesh);
+  livingLayers.set(layer, handle);
+  return handle;
 }
 
 /** Fog reaches far beyond any map, so panning or rotating never shows an uncovered edge. */
@@ -874,8 +986,24 @@ function drawFadeFog(
   from: FogMask,
   to: FogMask,
   order: Grid,
-  opacity: number,
+  options: FogOptions,
+  map: Size,
+  rootResolution: number,
 ): { readonly layer: Container; readonly setMix: (t: number) => void } {
+  const opacity = options.opacity ?? 1;
+  if (options.living) {
+    const layer = opacity < 1 ? new Container() : drawHardFog(revealedAll, 1);
+    const handle = livingLayer(
+      layer,
+      { from, to, order: alphaTexture(order, 1) },
+      options.living,
+      opacity,
+      map,
+      rootResolution,
+    );
+    handle.setMix(0);
+    return { layer, setMix: handle.setMix };
+  }
   const fromTexture = maskTexture(from, opacity);
   const toTexture = maskTexture(to, opacity);
   const orderTexture = alphaTexture(order, 1);
@@ -931,11 +1059,26 @@ function drawFog(
   revealed: readonly Polygon[],
   options: FogOptions,
   map: Size | null,
+  rootResolution: number,
   /** The soft mask if already computed (the target of a fade). */
   known?: FogMask,
 ): Container {
   const opacity = options.opacity ?? 1;
   const softEdge = options.softEdge ?? 0;
+  if (options.living && map && map.width > 0 && map.height > 0) {
+    const mask = known ?? fogMask(revealed, map, maskEdge(options));
+    const layer =
+      opacity < 1 ? new Container() : drawHardFog(revealed, opacity);
+    livingLayer(
+      layer,
+      { from: mask, to: mask, order: settledOrder() },
+      options.living,
+      opacity,
+      map,
+      rootResolution,
+    );
+    return layer;
+  }
   // A map without size yet (e.g. a video before its metadata) gets hard fog for now.
   if (softEdge <= 0 || !map || map.width <= 0 || map.height <= 0)
     return drawHardFog(revealed, opacity);

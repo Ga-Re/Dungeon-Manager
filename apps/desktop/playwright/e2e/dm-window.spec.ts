@@ -1,6 +1,15 @@
 // The DM window in the browser harness (T-130a): real UI, in-memory library, no Tauri.
 import { expect, test, type Page } from "@playwright/test";
 
+// The living fog (T-245) drifts with the real clock: still fog keeps these runs deterministic
+// and light on the software GPU. The renderer harness covers the living fog at frozen moments.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem("dm.fog.quality") === null)
+      localStorage.setItem("dm.fog.quality", "off");
+  });
+});
+
 const HARNESS = "http://localhost:4175/e2e.html";
 
 /** Closes the welcome dialog of every start (T-153) into the empty window. */

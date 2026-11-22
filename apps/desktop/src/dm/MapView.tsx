@@ -6,6 +6,7 @@ import {
   screenToMap,
   zoomAt,
   type Camera,
+  type LivingFog,
   type Point,
   type Renderer,
   type Size,
@@ -133,6 +134,7 @@ export function MapView({
   cornerRadius = 0,
   softEdge = 0,
   fade = 0,
+  living,
   onArea,
   onMapSize,
   grid = null,
@@ -157,6 +159,8 @@ export function MapView({
   readonly softEdge?: number;
   /** How long fog changes fade, in milliseconds (T-136b); 0 switches at once. */
   readonly fade?: number;
+  /** The living fog (T-245); none draws the still fog. */
+  readonly living?: LivingFog | undefined;
   /** An area the DM marked with the reveal or hide tool, in map pixels. */
   readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
   readonly onMapSize?: (size: Size) => void;
@@ -233,7 +237,11 @@ export function MapView({
   }, [tool, shape]);
   const fogNow = useRef(fog);
   fogNow.current = fog;
-  const fogOptions = { opacity: DM_FOG_OPACITY, softEdge };
+  const fogOptions = {
+    opacity: DM_FOG_OPACITY,
+    softEdge,
+    ...(living && { living }),
+  };
   const fogOptionsNow = useRef(fogOptions);
   fogOptionsNow.current = fogOptions;
 
@@ -382,13 +390,21 @@ export function MapView({
   // The fade duration applies to the next change; changing it alone redraws nothing.
   const fadeNow = useRef(fade);
   fadeNow.current = fade;
+  // The living fog by value: a new object with the same settings redraws nothing.
+  const livingNow = useRef(living);
+  livingNow.current = living;
+  const livingKey = living
+    ? [living.quality, living.cellSizePx, living.edge, living.motion].join()
+    : "";
   useEffect(() => {
+    const current = livingNow.current;
     renderer.current?.setFog(fog, {
       opacity: DM_FOG_OPACITY,
       softEdge,
       fade: fadeNow.current,
+      ...(current && { living: current }),
     });
-  }, [fog, softEdge]);
+  }, [fog, softEdge, livingKey]);
 
   // Functional updates: event handlers (also the native wheel listener) never see a stale camera.
   const change = (update: (current: Camera, view: Size) => Camera) => {

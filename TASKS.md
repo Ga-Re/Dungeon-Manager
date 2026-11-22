@@ -1010,15 +1010,16 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-245 Animated fog look
 
-- **Status:** todo · **Depends on:** T-136a, T-167 · **Refs:** SPEC §4, ARCHITECTURE §8, §11, ADR-0019
+- **Status:** done · **Depends on:** T-136a, T-167 · **Refs:** SPEC §4, ARCHITECTURE §8, §11, ADR-0019
 - The fog gets the Nebelweber look (ADR-0019): a shader with drifting, domain-warped noise in the fog's colours (Bodennebel until T-168), rendered at reduced resolution. Its edge wobbles with a faster, small-scale turbulence, only towards the revealed side; the player view keeps the exact hard fog underneath. Per-device settings in "Nebel & Animation": **Qualität** (Hoch / Mittel / Aus; Aus = today's still fog), **Randwabern** (0–2.5×, default 1.2×), **Bewegung** (0–3×, default 1×).
 - **Acceptance criteria**
-  - [ ] Fail-closed: in the player view no pixel outside the revealed polygons shows the map, at several animation times and at the largest edge wobble (pixel test)
-  - [ ] The animation runs in the shader; per frame only uniforms change (no mask rebuild, no CPU pass)
-  - [ ] Qualität "Aus" draws today's fog (existing screenshots unchanged); Hoch and Mittel have screenshot tests with frozen time
-  - [ ] The three settings are stored per device and apply in the DM and the player window at once (component tests)
+  - [x] Fail-closed: in the player view no pixel outside the revealed polygons shows the map, at several animation times and at the largest edge wobble (pixel test)
+  - [x] The animation runs in the shader; per frame only uniforms change (no mask rebuild, no CPU pass)
+  - [x] Qualität "Aus" draws today's fog (existing screenshots unchanged); Hoch and Mittel have screenshot tests with frozen time
+  - [x] The three settings are stored per device and apply in the DM and the player window at once (component tests)
   - [ ] With Qualität "Mittel" the benchmark scene stays within ARCHITECTURE §11, measured by the DM on the reference notebook
 - **Notes:** From the DM interview (2026-11-22). Animation time is injected (frozen for screenshots). Reduced motion (OS setting) starts with a low Bewegung.
+- Done in T-245: one shader layer draws the living fog and the spread (`fog-living.ts`); the wobble reaches at most 0.45 cells (plus a mask texel of rounding) into revealed area; Mittel is the default (DM, 2026-11-22). The DM-window E2E and visual specs run with still fog (real clock); the renderer harness covers the living fog at a frozen moment and the fail-closed check at several. The benchmark criterion stays open until the DM has measured it on the reference notebook.
 
 ### T-246 Fog spreads at a speed with a ragged front
 

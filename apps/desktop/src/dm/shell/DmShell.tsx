@@ -68,8 +68,14 @@ import { FogLookContext } from "./fog-look.js";
 import {
   FADE_MAX_SECONDS,
   FADE_STEP_SECONDS,
+  FOG_EDGE,
+  FOG_MOTION,
+  FOG_QUALITIES,
   readFogLook,
   saveFadeSeconds,
+  saveFogEdge,
+  saveFogMotion,
+  saveFogQuality,
   saveSoftEdges,
 } from "../../fog-settings.js";
 import { SettingsDialog, type SettingsCategory } from "./SettingsDialog.js";
@@ -834,6 +840,8 @@ export function DmShell({
               type="checkbox"
               role="switch"
               checked={fogLook.softEdges}
+              // The living fog always has its own soft edge (T-245).
+              disabled={fogLook.quality !== "off"}
               onChange={(event) => {
                 const softEdges = event.target.checked;
                 setFogLook((look) => ({ ...look, softEdges }));
@@ -842,7 +850,13 @@ export function DmShell({
             />
             {t("shell.fogLook.softEdges")}
           </label>
-          <p className="dm-settings-hint">{t("shell.fogLook.softEdgesHint")}</p>
+          <p className="dm-settings-hint">
+            {t(
+              fogLook.quality === "off"
+                ? "shell.fogLook.softEdgesHint"
+                : "shell.fogLook.softEdgesLiving",
+            )}
+          </p>
           <div className="dm-settings-range">
             <span id={`${idPrefix}-fade`}>{t("shell.fogLook.fade")}</span>
             <input
@@ -866,6 +880,75 @@ export function DmShell({
             </output>
           </div>
           <p className="dm-settings-hint">{t("shell.fogLook.fadeHint")}</p>
+          <fieldset className="dm-settings-group">
+            <legend>{t("shell.fogLook.quality")}</legend>
+            <div className="dm-settings-choices">
+              {FOG_QUALITIES.map((each) => (
+                <label key={each}>
+                  <input
+                    type="radio"
+                    name={`${idPrefix}-fog-quality`}
+                    checked={fogLook.quality === each}
+                    onChange={() => {
+                      setFogLook((look) => ({ ...look, quality: each }));
+                      saveFogQuality(storage, each);
+                    }}
+                  />
+                  {t(`shell.fogLook.qualities.${each}`)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <p className="dm-settings-hint">{t("shell.fogLook.qualityHint")}</p>
+          <div className="dm-settings-range">
+            <span id={`${idPrefix}-fog-edge`}>{t("shell.fogLook.edge")}</span>
+            <input
+              type="range"
+              aria-labelledby={`${idPrefix}-fog-edge`}
+              min={0}
+              max={FOG_EDGE.max}
+              step={FOG_EDGE.step}
+              value={fogLook.edge}
+              disabled={fogLook.quality === "off"}
+              aria-valuetext={t("shell.fogLook.factor", {
+                factor: fogLook.edge,
+              })}
+              onChange={(event) => {
+                const edge = Number(event.target.value);
+                setFogLook((look) => ({ ...look, edge }));
+                saveFogEdge(storage, edge);
+              }}
+            />
+            <output aria-hidden="true">
+              {t("shell.fogLook.factor", { factor: fogLook.edge })}
+            </output>
+          </div>
+          <div className="dm-settings-range">
+            <span id={`${idPrefix}-fog-motion`}>
+              {t("shell.fogLook.motion")}
+            </span>
+            <input
+              type="range"
+              aria-labelledby={`${idPrefix}-fog-motion`}
+              min={0}
+              max={FOG_MOTION.max}
+              step={FOG_MOTION.step}
+              value={fogLook.motion}
+              disabled={fogLook.quality === "off"}
+              aria-valuetext={t("shell.fogLook.factor", {
+                factor: fogLook.motion,
+              })}
+              onChange={(event) => {
+                const motion = Number(event.target.value);
+                setFogLook((look) => ({ ...look, motion }));
+                saveFogMotion(storage, motion);
+              }}
+            />
+            <output aria-hidden="true">
+              {t("shell.fogLook.factor", { factor: fogLook.motion })}
+            </output>
+          </div>
+          <p className="dm-settings-hint">{t("shell.fogLook.livingHint")}</p>
         </fieldset>
       ),
     },

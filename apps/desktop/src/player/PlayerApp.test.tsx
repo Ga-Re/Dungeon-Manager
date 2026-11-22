@@ -56,10 +56,14 @@ function fakeFeed() {
 
 const image = { width: 2000, height: 1000 } as unknown as MapImage;
 
-function renderPlayer(load = () => Promise.resolve(image)) {
+function renderPlayer(
+  load = () => Promise.resolve(image),
+  // Still fog unless a test is about the living fog (T-245): the options stay short.
+  settings: Record<string, string> = { "dm.fog.quality": "off" },
+) {
   const maps = fakeMapService(load);
   const feed = fakeFeed();
-  const storage = memoryStorage();
+  const storage = memoryStorage(settings);
   const result = render(
     <I18nextProvider i18n={createI18n()}>
       <PlayerApp feed={feed.feed} maps={maps.service} storage={storage} />
@@ -677,6 +681,41 @@ describe("PlayerApp", () => {
 
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 0,
+      fade: 650,
+    });
+  });
+
+  test("draws the living fog on the TV (medium by default) and follows the DM's settings", async () => {
+    const { maps, feed, storage } = renderPlayer(
+      () => Promise.resolve(image),
+      {},
+    );
+    await waitFor(() => {
+      expect(maps.view.setFog).toHaveBeenCalled();
+    });
+    feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      softEdge: 25,
+      fade: 0,
+      living: { quality: "medium", cellSizePx: 100, edge: 1.2, motion: 1 },
+    });
+
+    storage.setItem("dm.fog.edge", "2");
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "dm.fog.edge", newValue: "2" }),
+    );
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      softEdge: 25,
+      fade: 650,
+      living: { quality: "medium", cellSizePx: 100, edge: 2, motion: 1 },
+    });
+
+    storage.setItem("dm.fog.quality", "off");
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "dm.fog.quality", newValue: "off" }),
+    );
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      softEdge: 25,
       fade: 650,
     });
   });
