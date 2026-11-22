@@ -214,3 +214,61 @@ describe("CombatantStatus without HP", () => {
     expect(document.querySelector(".dm-initiative-conditions")).toBeNull();
   });
 });
+
+describe("exhaustion levels (T-244)", () => {
+  test("added with a level, raised and lowered by one; below 1 it goes", () => {
+    const onCommand = renderStatus({
+      ...goblin,
+      conditions: [{ type: "exhaustion", level: 1 }],
+    });
+    expect(
+      document.querySelector(".dm-initiative-condition")?.textContent,
+    ).toBe("Erschöpfung 1");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Erschöpfung von Goblin um eine Stufe erhöhen",
+      }),
+    );
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: "condition.add",
+      combatantId: "goblin",
+      condition: { type: "exhaustion", level: 2 },
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Erschöpfung von Goblin um eine Stufe senken",
+      }),
+    );
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: "condition.remove",
+      combatantId: "goblin",
+      conditionType: "exhaustion",
+    });
+    // Added from the form: the level is asked for exhaustion only.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Zustand für Goblin hinzufügen" }),
+    );
+    expect(screen.queryByLabelText("Stufe")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Zustand"), {
+      target: { value: "exhaustion" },
+    });
+    fireEvent.change(screen.getByLabelText("Stufe"), {
+      target: { value: "3" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Hinzufügen" }));
+    expect(onCommand).toHaveBeenLastCalledWith({
+      type: "condition.add",
+      combatantId: "goblin",
+      condition: { type: "exhaustion", level: 3 },
+    });
+  });
+
+  test("level 6 is the highest", () => {
+    renderStatus({ ...goblin, conditions: [{ type: "exhaustion", level: 6 }] });
+    expect(
+      screen.getByRole("button", {
+        name: "Erschöpfung von Goblin um eine Stufe erhöhen",
+      }),
+    ).toHaveProperty("disabled", true);
+  });
+});

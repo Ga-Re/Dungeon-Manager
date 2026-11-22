@@ -332,6 +332,10 @@ export const en: Messages = {
     rounds: "Rounds",
     roundsHint:
       "Leave empty for no duration. Rounds count down as each new round starts.",
+    level: "Level",
+    conditionLevel: "{{name}} {{level}}",
+    levelUp: "Raise {{name}}'s {{condition}} by a level",
+    levelDown: "Lower {{name}}'s {{condition}} by a level",
     conditionRounds: "{{name}} ({{rounds}})",
     addCondition: "Add a condition to {{name}}",
     addConditionButton: "Add",

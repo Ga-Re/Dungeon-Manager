@@ -424,11 +424,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-244 Exhaustion levels
 
-- **Status:** todo · **Depends on:** T-112b · **Refs:** SPEC 11
+- **Status:** done · **Depends on:** T-112b · **Refs:** SPEC 11
 - 5e exhaustion has levels (1–6) with growing effects; T-112b treats it as a plain condition (with or without rounds). Track its level on the combatant and show it in the Initiative panel.
 - **Acceptance criteria**
-  - [ ] Exhaustion is set and changed by level (component test)
-- **Notes:** From the T-112b review (2026-11-21).
+  - [x] Exhaustion is set and changed by level (component test)
+- **Notes:** From the T-112b review (2026-11-21). DM decisions (2026-11-22): the level is an optional `level` (1–6) on the condition (additive, no version bump); it shows in the Initiative panel only, never on the TV.
 
 ### T-106c Move the TV's view
 

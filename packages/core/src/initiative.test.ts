@@ -617,3 +617,37 @@ describe("HP and conditions (T-112a)", () => {
     ]);
   });
 });
+
+describe("exhaustion levels (T-244)", () => {
+  test("a condition carries a level from 1 to 6; another level replaces it", () => {
+    const fighting = run(
+      state,
+      { type: "initiative.addMany", combatants: [fighter("aria", 15)] },
+      {
+        type: "condition.add",
+        combatantId: "aria",
+        condition: { type: "exhaustion", level: 2 },
+      },
+      {
+        type: "condition.add",
+        combatantId: "aria",
+        condition: { type: "exhaustion", level: 3 },
+      },
+    );
+    expect(combatant(fighting, "aria")?.conditions).toEqual([
+      { type: "exhaustion", level: 3 },
+    ]);
+    for (const level of [0, 7, 1.5])
+      expect(
+        apply(
+          fighting,
+          {
+            type: "condition.add",
+            combatantId: "aria",
+            condition: { type: "exhaustion", level },
+          },
+          ctx,
+        ),
+      ).toEqual({ ok: false, reason: "invalidAmount" });
+  });
+});

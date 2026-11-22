@@ -116,6 +116,8 @@ export const fogStateSchema = z.looseObject({
 export const conditionSchema = z.looseObject({
   type: z.string().min(1),
   remainingRounds: z.number().int().positive().optional(),
+  /** A level, for exhaustion (T-244, 5e: 1–6); additive, DM decision 2026-11-22. */
+  level: z.number().int().min(1).max(6).optional(),
 });
 
 /** A participant in combat (SPEC §11). `hp` is absent when the DM does not track it (e.g. player characters). */
