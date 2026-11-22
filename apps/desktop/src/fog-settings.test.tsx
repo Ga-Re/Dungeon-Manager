@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { memoryStorage } from "./dm/memory-storage.test-data.js";
 import {
+  FOG_SPEED,
+  fogSpeed,
   livingFog,
+  readFogSpeed,
+  saveFogSpeed,
+  speedOfStep,
+  stepOfSpeed,
   onFogLookChange,
   readFogEdge,
   readFogLook,
@@ -83,7 +89,7 @@ describe("fog settings", () => {
     window.dispatchEvent(
       new StorageEvent("storage", { key: "dm.theme", newValue: "light" }),
     );
-    const living = { quality: "medium", edge: 1.2, motion: 1 };
+    const living = { quality: "medium", edge: 1.2, motion: 1, speed: 5 };
     expect(listener.mock.calls).toEqual([
       [{ softEdges: false, fadeSeconds: 0.65, ...living }],
       [{ softEdges: false, fadeSeconds: 2, ...living }],
@@ -138,5 +144,32 @@ describe("fog settings", () => {
       motion: 1,
     });
     expect(livingFog({ ...look, quality: "off" }, 70)).toBeUndefined();
+  });
+
+  it("spreads at 5 cells per second by default and remembers the speed, also Sofort (T-246)", () => {
+    const storage = memoryStorage();
+    expect(readFogSpeed(storage)).toBe(5);
+    saveFogSpeed(storage, 12);
+    expect(readFogSpeed(storage)).toBe(12);
+    saveFogSpeed(storage, Infinity);
+    expect(storage.getItem("dm.fog.speed")).toBe("instant");
+    expect(readFogSpeed(storage)).toBe(Infinity);
+    expect(readFogSpeed(memoryStorage({ "dm.fog.speed": "0" }))).toBe(5);
+    expect(readFogSpeed(memoryStorage({ "dm.fog.speed": "999" }))).toBe(40);
+    expect(fogSpeed(readFogLook(memoryStorage()), 70)).toEqual({
+      cellsPerSecond: 5,
+      cellSizePx: 70,
+    });
+  });
+
+  it("maps the speed slider logarithmically, with Sofort as its last step", () => {
+    expect(speedOfStep(0)).toBe(FOG_SPEED.min);
+    expect(speedOfStep(FOG_SPEED.steps - 1)).toBe(FOG_SPEED.max);
+    expect(speedOfStep(FOG_SPEED.steps)).toBe(Infinity);
+    expect(stepOfSpeed(Infinity)).toBe(FOG_SPEED.steps);
+    // The default lands on a step and comes back as about the same speed.
+    expect(speedOfStep(stepOfSpeed(5))).toBeCloseTo(5, 0);
+    for (let step = 0; step < FOG_SPEED.steps; step++)
+      expect(speedOfStep(step + 1)).toBeGreaterThan(speedOfStep(step));
   });
 });

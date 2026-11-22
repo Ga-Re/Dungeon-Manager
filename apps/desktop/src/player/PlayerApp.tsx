@@ -15,6 +15,7 @@ import { tokenShapes } from "../token-shapes.js";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
 import type { PlayerFeedReceiver } from "../platform/player-feed.js";
 import {
+  fogSpeed,
   livingFog,
   onFogLookChange,
   readFogLook,
@@ -161,6 +162,7 @@ export function PlayerApp({
             ? softEdgeWidth(map.grid.cellSizePx, look.softEdges)
             : 0,
           fade: fades ? look.fadeSeconds * 1000 : 0,
+          ...(map && { speed: fogSpeed(look, map.grid.cellSizePx) }),
           ...(living && { living }),
         },
       );

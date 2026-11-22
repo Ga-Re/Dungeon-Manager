@@ -318,6 +318,44 @@ describe("MapView", () => {
     });
   });
 
+  test("spreads the next fog change at the chosen speed (T-246)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const fog: Polygon[] = [];
+    const speed = { cellsPerSecond: 5, cellSizePx: 100 };
+    const { rerender } = renderView(fake.service, { fog, speed, fade: 650 });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    const calls = fake.view.setFog.mock.calls.length;
+    // A new speed alone redraws nothing; it applies to the next change.
+    const faster = { cellsPerSecond: 20, cellSizePx: 100 };
+    rerender(tree(fake.service, undefined, { fog, speed: faster, fade: 650 }));
+    expect(fake.view.setFog).toHaveBeenCalledTimes(calls);
+    const revealed: Polygon[] = [
+      {
+        outer: [
+          [0, 0],
+          [10, 0],
+          [10, 10],
+        ],
+        holes: [],
+      },
+    ];
+    rerender(
+      tree(fake.service, undefined, {
+        fog: revealed,
+        speed: faster,
+        fade: 650,
+      }),
+    );
+    expect(fake.view.setFog).toHaveBeenLastCalledWith(revealed, {
+      opacity: 0.55,
+      softEdge: 0,
+      fade: 650,
+      speed: faster,
+    });
+  });
+
   test("the reveal tool turns a dragged rectangle into a map area", async () => {
     const fake = fakeMapService(() => Promise.resolve(image));
     const onArea = vi.fn();

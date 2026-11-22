@@ -1023,15 +1023,17 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-246 Fog spreads at a speed with a ragged front
 
-- **Status:** todo · **Depends on:** T-245 · **Refs:** SPEC §4, ARCHITECTURE §8, ADR-0019
+- **Status:** done · **Depends on:** T-245 · **Refs:** SPEC §4, ARCHITECTURE §8, ADR-0019
 - A fog change spreads at a **speed in grid cells per second** (Nebel ribbon, per device, up to "Sofort") instead of over a fixed duration, so a large area takes longer than a small one. The front is ragged: distances run through a noise cost field seeded per map (deterministic). Each spot turns over in a **Übergang** time (settings dialog, per device, 0.1–3 s), which replaces the fade duration of T-136b; the stored device value is read as the transition. The three directions of T-167 stay.
 - **Acceptance criteria**
-  - [ ] Spread order with the cost field: the three directions of T-167 still hold, the front is ragged, the result is deterministic for a map (unit tests of the pure function)
-  - [ ] Duration follows size and speed; "Sofort" switches at once (unit + screenshot tests)
-  - [ ] Fail-closed as in T-167: a pixel fogged before and after a change never shows the map; the first fog and a new map never animate
-  - [ ] Speed in the ribbon, Übergang in the settings dialog, both per device (component tests)
+  - [x] Spread order with the cost field: the three directions of T-167 still hold, the front is ragged, the result is deterministic for a map (unit tests of the pure function)
+  - [x] Duration follows size and speed; "Sofort" switches at once (unit + screenshot tests)
+  - [x] Fail-closed as in T-167: a pixel fogged before and after a change never shows the map; the first fog and a new map never animate
+  - [x] Speed in the ribbon, Übergang in the settings dialog, both per device (component tests)
   - [ ] The benchmark scene stays within ARCHITECTURE §11, measured by the DM
 - **Notes:** From the DM interview (2026-11-22).
+- DM decisions (2026-11-22): Übergang keeps 0–3 s (0 with "Sofort" switches at once, as the fade duration 0 did); the speed is 5 cells per second by default, 0.5–40 on a logarithmic slider plus "Sofort".
+- Done in T-246: `spreadAtSpeed`, `raggedWeights` and speed timing in `fog-spread.ts`; the fade and living shaders take the spread's shares as uniforms; the speed slider sits in the Nebel ribbon (group Ausbreitung), the transition in the settings dialog. Without a speed (the harness's older scenarios) a change spreads as in T-167. The benchmark criterion stays open until the DM has measured it.
 
 ### T-247 Lasso and ellipse fog tools
 

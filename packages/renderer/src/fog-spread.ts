@@ -8,6 +8,61 @@ const FOGGED = 128;
  * front reaches it until `FRONT` later, so the edge of the spread is soft.
  */
 export const FRONT = 0.2;
+
+/**
+ * How a spread's time splits (T-246), as shares of its whole duration: a texel of order `o`
+ * (0…1) turns over from `o · spread` until `front` later. Both add up to 1.
+ */
+export interface SpreadShares {
+  readonly spread: number;
+  readonly front: number;
+}
+
+/** A spread over a fixed duration (T-167): the front is a fifth of the spread. */
+export const DURATION_SHARES: SpreadShares = {
+  spread: 1 / (1 + FRONT),
+  front: FRONT / (1 + FRONT),
+};
+
+/**
+ * The duration of a spread at a speed (T-246) and how it splits: `longestPx` map pixels at
+ * `cellsPerSecond` grid cells of `cellSizePx` per second, then `transitionMs` for each spot to
+ * turn over. An infinite speed turns everything over together; 0 ms in all is no spread.
+ */
+export function spreadAtSpeed(
+  longestPx: number,
+  cellSizePx: number,
+  cellsPerSecond: number,
+  transitionMs: number,
+): { readonly duration: number; readonly shares: SpreadShares } {
+  const spreadMs =
+    Number.isFinite(cellsPerSecond) && cellsPerSecond > 0 && cellSizePx > 0
+      ? (Math.max(0, longestPx) / cellSizePx / cellsPerSecond) * 1000
+      : 0;
+  // At least a millisecond for each spot, so the front never divides by nothing.
+  const front = Math.max(1, transitionMs);
+  const duration = spreadMs + front;
+  if (spreadMs <= 0 && transitionMs <= 0)
+    return { duration: 0, shares: DURATION_SHARES };
+  return {
+    duration,
+    shares: { spread: spreadMs / duration, front: front / duration },
+  };
+}
+
+/** Options of a spread's order (T-246). */
+export interface SpreadOptions {
+  /**
+   * A cost per texel (1…), so the front advances unevenly – ragged, not a clean circle. None
+   * spreads evenly.
+   */
+  readonly weights?: Uint8Array;
+  /**
+   * Every change at the same speed, timed against the longest one (T-246); otherwise each
+   * change spreads over the whole duration on its own (T-167).
+   */
+  readonly atSpeed?: boolean;
+}
 // Chamfer steps (3 straight, 4 diagonal ≈ 3·√2): fronts close to round, in integers.
 const STRAIGHT = 3;
 const DIAGONAL = 4;
@@ -41,7 +96,23 @@ export function spreadOrder(
   height: number,
   from: Uint8Array,
   to: Uint8Array,
+  options: SpreadOptions = {},
 ): Uint8Array {
+  return spreadTiming(width, height, from, to, options).order;
+}
+
+/**
+ * {@link spreadOrder} and the length of the longest change in texels (its weighted distance in
+ * plain steps), which sets a spread's duration at a speed.
+ */
+export function spreadTiming(
+  width: number,
+  height: number,
+  from: Uint8Array,
+  to: Uint8Array,
+  options: SpreadOptions = {},
+): { readonly order: Uint8Array; readonly longest: number } {
+  const { weights, atSpeed = false } = options;
   const count = width * height;
   const kind = new Uint8Array(count);
   for (let index = 0; index < count; index++) {
@@ -84,13 +155,15 @@ export function spreadOrder(
   // below for reveals: middle first).
   for (const index of edges)
     if (!sourced.has(component[index] ?? 0)) seeds.push(index);
-  const distance = distances(width, height, component, seeds);
+  const distance = distances(width, height, component, seeds, weights);
   const longest = new Map<number, number>();
   for (let index = 0; index < count; index++) {
     if (kind[index] === UNCHANGED) continue;
     const label = component[index] ?? 0;
     longest.set(label, Math.max(longest.get(label) ?? 0, distance[index] ?? 0));
   }
+  // At a speed every change is timed against the longest one, so a small one finishes first.
+  const overall = Math.max(0, ...longest.values());
   const order = new Uint8Array(count);
   for (let index = 0; index < count; index++) {
     if (kind[index] === UNCHANGED) continue;
@@ -98,9 +171,10 @@ export function spreadOrder(
     const max = longest.get(label) ?? 0;
     // A change with no length (one texel, a one-texel line) turns over at once.
     if (max === 0) continue;
-    const share = (distance[index] ?? 0) / max;
+    const own = distance[index] ?? 0;
     const middleFirst = kind[index] === REVEAL && !sourced.has(label);
-    order[index] = Math.round(255 * (middleFirst ? 1 - share : share));
+    const along = middleFirst ? max - own : own;
+    order[index] = Math.round((255 * along) / (atSpeed ? overall : max));
   }
   // Unchanged texels next to a change take its order: the GPU filters the order linearly, and
   // a 0 there would pull the change's edge ahead of its front.
@@ -117,7 +191,86 @@ export function spreadOrder(
     }
     if (nearest !== -1) padded[index] = nearest;
   }
-  return padded;
+  return {
+    order: padded,
+    longest: overall / (STRAIGHT * meanWeight(weights, kind)),
+  };
+}
+
+/** The mean cost of the changed texels (1 without weights): distances in plain steps. */
+function meanWeight(weights: Uint8Array | undefined, kind: Uint8Array): number {
+  if (!weights) return 1;
+  let sum = 0;
+  let count = 0;
+  for (let index = 0; index < kind.length; index++) {
+    if (kind[index] === UNCHANGED) continue;
+    sum += weights[index] ?? 1;
+    count++;
+  }
+  return count > 0 ? sum / count : 1;
+}
+
+/** Costs of the ragged front: 1 (fast) … {@link RAGGED_MAX} (slow). */
+const RAGGED_MAX = 12;
+
+/**
+ * Costs per texel for a ragged front (T-246): value noise in grid cells, the same for the same
+ * map (`seed`), so a change spreads the same way every time. Slow patches make the front advance
+ * in tongues instead of a clean circle.
+ */
+export function raggedWeights(
+  width: number,
+  height: number,
+  cellsPerTexel: number,
+  seed: number,
+): Uint8Array {
+  const weights = new Uint8Array(width * height);
+  // About one swirl every two cells.
+  const scale = Math.max(1e-6, cellsPerTexel) / 2;
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const n = fbm(x * scale, y * scale, seed);
+      weights[y * width + x] = 1 + Math.round((RAGGED_MAX - 1) * n * n);
+    }
+  return weights;
+}
+
+function hash(x: number, y: number, seed: number): number {
+  let h =
+    (Math.imul(x, 374761393) +
+      Math.imul(y, 668265263) +
+      Math.imul(seed, 1442695041)) |
+    0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+function valueNoise(x: number, y: number, seed: number): number {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const xf = x - xi;
+  const yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf);
+  const v = yf * yf * (3 - 2 * yf);
+  const a = hash(xi, yi, seed);
+  const b = hash(xi + 1, yi, seed);
+  const c = hash(xi, yi + 1, seed);
+  const d = hash(xi + 1, yi + 1, seed);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+
+/** Three octaves of value noise, 0…1. */
+function fbm(x: number, y: number, seed: number): number {
+  let sum = 0;
+  let amplitude = 0.5;
+  let frequency = 1;
+  for (let octave = 0; octave < 3; octave++) {
+    sum += amplitude * valueNoise(x * frequency, y * frequency, seed + octave);
+    frequency *= 2.03;
+    amplitude *= 0.5;
+  }
+  return sum / 0.875;
 }
 
 /** A raster of one value per texel, row by row. */
@@ -137,22 +290,46 @@ export const ORDER_SIDE = 256;
  * The spread order of the change from `from` to `to` (same size), on a grid at most
  * `ORDER_SIDE` texels long: each of its texels averages the block of mask texels it covers.
  */
-export function coarseSpreadOrder(from: Grid, to: Grid): Grid {
+export function coarseSpreadOrder(
+  from: Grid,
+  to: Grid,
+  /**
+   * At a speed (T-246): the grid cells per mask texel and the map's seed make the front
+   * ragged, and every change spreads at the same speed. None spreads as T-167 did.
+   */
+  ragged?: { readonly cellsPerTexel: number; readonly seed: number },
+): Grid & {
+  /** The longest change in mask texels (with `ragged`; its weighted length). */
+  readonly longest: number;
+} {
   const factor = Math.max(
     1,
     Math.ceil(Math.max(to.width, to.height) / ORDER_SIDE),
   );
   const coarseFrom = shrink(from, factor);
   const coarseTo = shrink(to, factor);
+  const timing = spreadTiming(
+    coarseTo.width,
+    coarseTo.height,
+    coarseFrom.data,
+    coarseTo.data,
+    ragged
+      ? {
+          atSpeed: true,
+          weights: raggedWeights(
+            coarseTo.width,
+            coarseTo.height,
+            ragged.cellsPerTexel * factor,
+            ragged.seed,
+          ),
+        }
+      : {},
+  );
   return {
     width: coarseTo.width,
     height: coarseTo.height,
-    data: spreadOrder(
-      coarseTo.width,
-      coarseTo.height,
-      coarseFrom.data,
-      coarseTo.data,
-    ),
+    data: timing.order,
+    longest: timing.longest * factor,
   };
 }
 
@@ -217,6 +394,7 @@ export function spreadMix(
   to: Uint8Array,
   order: Uint8Array,
   t: number,
+  shares: SpreadShares = DURATION_SHARES,
 ): Uint8Array {
   const mixed = new Uint8Array(to.length);
   for (let index = 0; index < to.length; index++) {
@@ -224,7 +402,10 @@ export function spreadMix(
     const b = to[index] ?? 255;
     const local = Math.min(
       1,
-      Math.max(0, (t * (1 + FRONT) - (order[index] ?? 0) / 255) / FRONT),
+      Math.max(
+        0,
+        (t - ((order[index] ?? 0) / 255) * shares.spread) / shares.front,
+      ),
     );
     mixed[index] = Math.round(a + (b - a) * local);
   }
@@ -295,6 +476,7 @@ function distances(
   height: number,
   component: Int32Array,
   seeds: readonly number[],
+  weights?: Uint8Array,
 ): Int32Array {
   const distance = new Int32Array(width * height).fill(-1);
   const around = new Int32Array(8);
@@ -311,7 +493,18 @@ function distances(
         const neighbour = around[k] ?? 0;
         // Unchanged texels have label 0, never a change's own label.
         if (component[neighbour] !== own) continue;
-        const reached = current + (steps[k] ?? 0);
+        // Weighted: the step costs the mean of both texels' costs (rounded, at least 1).
+        const cost = weights
+          ? Math.max(
+              1,
+              Math.round(
+                ((steps[k] ?? 0) *
+                  ((weights[index] ?? 1) + (weights[neighbour] ?? 1))) /
+                  2,
+              ),
+            )
+          : (steps[k] ?? 0);
+        const reached = current + cost;
         const known = distance[neighbour] ?? -1;
         if (known !== -1 && known <= reached) continue;
         distance[neighbour] = reached;

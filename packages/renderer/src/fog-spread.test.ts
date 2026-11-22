@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   coarseSpreadOrder,
+  DURATION_SHARES,
   ORDER_SIDE,
+  raggedWeights,
   sampleOrder,
+  spreadAtSpeed,
   spreadMix,
   spreadOrder,
+  spreadTiming,
 } from "./fog-spread.js";
 
 const FOG = 255;
@@ -208,5 +212,134 @@ describe("coarseSpreadOrder", () => {
     );
     expect([...order.data]).toEqual([...spreadOrder(10, 10, from, to)]);
     expect([...sampleOrder(order, 10, 10)]).toEqual([...order.data]);
+  });
+});
+
+describe("spreading at a speed (T-246)", () => {
+  it("times every change against the longest one, so a small one finishes first", () => {
+    const from = mask(30, 9, () => false);
+    const to = mask(
+      30,
+      9,
+      (x, y) =>
+        (x >= 1 && x <= 5 && y >= 1 && y <= 5) ||
+        (x >= 10 && x <= 28 && y >= 0),
+    );
+    const order = spreadOrder(30, 9, from, to, { atSpeed: true });
+    // Both clear from their middle; the large one's edge opens last, the small one's edge (its
+    // last texel) when half of the time has passed.
+    expect(at(order, 30, 10, 4)).toBe(255);
+    expect(at(order, 30, 1, 3)).toBeLessThanOrEqual(128);
+  });
+
+  it("measures the longest change in texels", () => {
+    // A reveal 12 texels long from the revealed columns 0–3.
+    const from = mask(16, 8, (x) => x < 4);
+    const to = mask(16, 8, () => true);
+    const { longest } = spreadTiming(16, 8, from, to, { atSpeed: true });
+    expect(longest).toBeCloseTo(11, 0);
+  });
+
+  it("keeps the directions of T-167 with a ragged front", () => {
+    const weights = raggedWeights(24, 24, 0.5, 7);
+    const options = { atSpeed: true, weights };
+    // An adjacent reveal starts at the revealed side and ends at the far side.
+    const adjacent = spreadOrder(
+      24,
+      24,
+      mask(24, 24, (x) => x < 4),
+      mask(24, 24, () => true),
+      options,
+    );
+    expect(at(adjacent, 24, 4, 12)).toBeLessThan(at(adjacent, 24, 23, 12));
+    // An isolated reveal clears from its middle.
+    const isolated = spreadOrder(
+      24,
+      24,
+      mask(24, 24, () => false),
+      mask(24, 24, (x, y) => x >= 4 && x <= 20 && y >= 4 && y <= 20),
+      options,
+    );
+    expect(at(isolated, 24, 12, 12)).toBeLessThan(at(isolated, 24, 4, 12));
+    // A hide comes in from the fog side.
+    const hide = spreadOrder(
+      24,
+      24,
+      mask(24, 24, (x) => x >= 4),
+      mask(24, 24, () => false),
+      options,
+    );
+    expect(at(hide, 24, 4, 12)).toBeLessThan(at(hide, 24, 23, 12));
+  });
+
+  it("makes the front ragged: one column turns over at different times", () => {
+    const from = mask(40, 40, (x) => x < 2);
+    const to = mask(40, 40, () => true);
+    const even = spreadOrder(40, 40, from, to, { atSpeed: true });
+    const ragged = spreadOrder(40, 40, from, to, {
+      atSpeed: true,
+      weights: raggedWeights(40, 40, 0.5, 3),
+    });
+    const column = (order: Uint8Array) =>
+      new Set(Array.from({ length: 40 }, (_, y) => at(order, 40, 20, y))).size;
+    expect(column(even)).toBe(1);
+    expect(column(ragged)).toBeGreaterThan(5);
+  });
+
+  it("gives the same weights for the same map, and others for another", () => {
+    const a = raggedWeights(32, 32, 0.25, 11);
+    expect([...raggedWeights(32, 32, 0.25, 11)]).toEqual([...a]);
+    expect([...raggedWeights(32, 32, 0.25, 12)]).not.toEqual([...a]);
+    expect(Math.min(...a)).toBeGreaterThanOrEqual(1);
+    expect(Math.max(...a)).toBeLessThanOrEqual(12);
+  });
+
+  it("is ragged and at speed on the coarse grid, with the length in mask texels", () => {
+    const width = 2 * ORDER_SIDE;
+    const from = mask(width, 8, (x) => x < 16);
+    const to = mask(width, 8, () => true);
+    const order = coarseSpreadOrder(
+      { width, height: 8, data: from },
+      { width, height: 8, data: to },
+      { cellsPerTexel: 0.1, seed: 5 },
+    );
+    expect(order.width).toBe(ORDER_SIDE);
+    expect(order.longest).toBeGreaterThan(width / 2);
+  });
+});
+
+describe("spreadAtSpeed", () => {
+  it("takes longer for a longer change and a slower speed", () => {
+    // 10 cells of 100 px at 5 cells/s: 2 s of travel, then 0.5 s for the last spot.
+    const timing = spreadAtSpeed(1000, 100, 5, 500);
+    expect(timing.duration).toBe(2500);
+    expect(timing.shares.spread).toBeCloseTo(0.8);
+    expect(timing.shares.front).toBeCloseTo(0.2);
+    expect(spreadAtSpeed(2000, 100, 5, 500).duration).toBe(4500);
+    expect(spreadAtSpeed(1000, 100, 10, 500).duration).toBe(1500);
+  });
+
+  it("turns everything over together at Sofort, and not at all with no transition", () => {
+    const instant = spreadAtSpeed(1000, 100, Infinity, 650);
+    expect(instant.duration).toBe(650);
+    expect(instant.shares.spread).toBe(0);
+    expect(spreadAtSpeed(1000, 100, Infinity, 0).duration).toBe(0);
+    // A finite speed without a transition still travels, each spot switching at once.
+    expect(spreadAtSpeed(1000, 100, 5, 0).duration).toBeCloseTo(2001);
+  });
+
+  it("mixes as the shares say: the last spot turns over in the last share", () => {
+    const { shares } = spreadAtSpeed(1000, 100, 5, 500);
+    const from = Uint8Array.from([255, 255]);
+    const to = Uint8Array.from([0, 0]);
+    const order = Uint8Array.from([0, 255]);
+    const early = spreadMix(from, to, order, 0.5, shares);
+    // The first spot is done after its 500 ms; the last has not started yet.
+    expect([...early]).toEqual([0, 255]);
+    expect([...spreadMix(from, to, order, 1, shares)]).toEqual([0, 0]);
+    // The fixed duration's split is the default.
+    expect([...spreadMix(from, to, order, 0.5)]).toEqual([
+      ...spreadMix(from, to, order, 0.5, DURATION_SHARES),
+    ]);
   });
 });

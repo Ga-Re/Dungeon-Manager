@@ -64,7 +64,7 @@ import {
   showPanel,
   type PanelId,
 } from "./panel-layout.js";
-import { FogLookContext } from "./fog-look.js";
+import { FogLookContext, SetFogSpeedContext } from "./fog-look.js";
 import {
   FADE_MAX_SECONDS,
   FADE_STEP_SECONDS,
@@ -76,6 +76,7 @@ import {
   saveFogEdge,
   saveFogMotion,
   saveFogQuality,
+  saveFogSpeed,
   saveSoftEdges,
 } from "../../fog-settings.js";
 import { SettingsDialog, type SettingsCategory } from "./SettingsDialog.js";
@@ -380,6 +381,13 @@ export function DmShell({
   const [theme, setTheme] = useThemeSetting(storage, root);
   const [uiScale, setUiScale] = useUiScale(storage, root);
   const [fogLook, setFogLook] = useState(() => readFogLook(storage));
+  const setFogSpeed = useCallback(
+    (speed: number) => {
+      setFogLook((look) => ({ ...look, speed }));
+      saveFogSpeed(storage, speed);
+    },
+    [storage],
+  );
   const [slots, setSlots] = useState<Partial<Record<ShellSlot, HTMLElement>>>(
     {},
   );
@@ -1228,9 +1236,11 @@ export function DmShell({
               {/* Context passes through portals: what the children render gets it too. */}
               <AppCommandsContext value={commands}>
                 <FogLookContext value={fogLook}>
-                  <ActiveWorkspaceContext value={workspace}>
-                    {children}
-                  </ActiveWorkspaceContext>
+                  <SetFogSpeedContext value={setFogSpeed}>
+                    <ActiveWorkspaceContext value={workspace}>
+                      {children}
+                    </ActiveWorkspaceContext>
+                  </SetFogSpeedContext>
                 </FogLookContext>
               </AppCommandsContext>
             </div>

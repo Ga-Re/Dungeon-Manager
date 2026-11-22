@@ -10,7 +10,7 @@ import {
   UniformGroup,
   type Texture,
 } from "pixi.js";
-import { FRONT } from "./fog-spread.js";
+import { DURATION_SHARES, type SpreadShares } from "./fog-spread.js";
 
 /** How the living fog looks and moves on this device (the settings of T-245). */
 export interface LivingFog {
@@ -84,6 +84,8 @@ uniform sampler2D uFrom;
 uniform sampler2D uTo;
 uniform sampler2D uOrder;
 uniform float uMix;
+uniform float uSpread;
+uniform float uFront;
 uniform float uTime;
 uniform float uEdge;
 uniform float uWarp;
@@ -122,11 +124,7 @@ float fbm(vec2 p) {
 float fogAt(vec2 pos) {
   vec2 uv = pos / uMaskSize;
   if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return 1.0;
-  float local = clamp(
-    (uMix * (1.0 + ${FRONT.toFixed(3)}) - texture(uOrder, uv).a) / ${FRONT.toFixed(3)},
-    0.0,
-    1.0
-  );
+  float local = clamp((uMix - texture(uOrder, uv).a * uSpread) / uFront, 0.0, 1.0);
   return mix(texture(uFrom, uv).a, texture(uTo, uv).a, local);
 }
 void main() {
@@ -157,6 +155,8 @@ void main() {
 export interface LivingHandle {
   readonly mesh: Container;
   readonly setMix: (t: number) => void;
+  /** How a spread's time splits (T-246); a fixed duration's split by default. */
+  readonly setShares: (shares: SpreadShares) => void;
   readonly setTime: (seconds: number) => void;
 }
 
@@ -191,6 +191,8 @@ export function drawLivingFog({
   const quality = LIVING_QUALITY[living.quality];
   const uniforms = new UniformGroup({
     uMix: { value: 1, type: "f32" },
+    uSpread: { value: DURATION_SHARES.spread, type: "f32" },
+    uFront: { value: DURATION_SHARES.front, type: "f32" },
     uTime: { value: 0, type: "f32" },
     uEdge: {
       value: Math.min(LIVING_EDGE_MAX, Math.max(0, living.edge)),
@@ -259,6 +261,10 @@ export function drawLivingFog({
     mesh,
     setMix: (t) => {
       uniforms.uniforms.uMix = t;
+    },
+    setShares: (shares) => {
+      uniforms.uniforms.uSpread = shares.spread;
+      uniforms.uniforms.uFront = shares.front;
     },
     setTime: (seconds) => {
       uniforms.uniforms.uTime = seconds;
