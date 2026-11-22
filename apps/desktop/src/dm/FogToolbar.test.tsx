@@ -81,7 +81,7 @@ describe("FogToolbar: biome (T-168)", () => {
       own: true,
       onFogEffect,
     });
-    const slider = screen.getByRole("slider", { name: "Stärke: 100 %" });
+    const slider = screen.getByRole("slider", { name: "Stärke" });
     fireEvent.change(slider, { target: { value: "0.3" } });
     fireEvent.change(slider, { target: { value: "0.4" } });
     expect(onFogEffect).not.toHaveBeenCalled();
@@ -96,5 +96,29 @@ describe("FogToolbar: biome (T-168)", () => {
       screen.getByRole("menuitemradio", { name: "Wie die Karte" }),
     );
     expect(onFogEffect).toHaveBeenLastCalledWith(null);
+  });
+
+  it("applies the strength from the keyboard on key release and on leaving the slider", () => {
+    const onFogEffect = vi.fn();
+    renderToolbar(5, vi.fn(), {
+      fogEffect: { biome: "schnee", strength: 1 },
+      own: true,
+      onFogEffect,
+    });
+    const slider = screen.getByRole("slider", { name: "Stärke" });
+    expect(slider.getAttribute("aria-valuetext")).toBe("100 Prozent");
+    fireEvent.change(slider, { target: { value: "0.9" } });
+    fireEvent.keyUp(slider, { key: "ArrowLeft" });
+    expect(onFogEffect).toHaveBeenLastCalledWith({
+      biome: "schnee",
+      strength: 0.9,
+    });
+    fireEvent.change(slider, { target: { value: "0.5" } });
+    fireEvent.blur(slider);
+    expect(onFogEffect).toHaveBeenLastCalledWith({
+      biome: "schnee",
+      strength: 0.5,
+    });
+    expect(onFogEffect).toHaveBeenCalledTimes(2);
   });
 });

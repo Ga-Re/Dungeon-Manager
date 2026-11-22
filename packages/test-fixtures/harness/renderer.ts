@@ -592,6 +592,66 @@ function polygonsWithout(all: { outer: Ring; holes: never[] }[]) {
 }
 
 /**
+ * "biome-blend" (T-168): Bodennebel changes to Schneesturm with a 1000 ms transition; frozen
+ * half-way, the frame differs from both (`data-blends`), and hidden pixels look the same over
+ * a black and a white map (`data-violations`).
+ */
+async function biomeBlendScenario() {
+  const shot = async (
+    colour: string,
+    biomes: readonly string[],
+    at: number,
+  ): Promise<Uint8ClampedArray> => {
+    let time = 0;
+    const canvas = document.createElement("canvas");
+    const renderer = await createRenderer({
+      canvas,
+      size: view,
+      resolution: 1,
+      now: () => time,
+    });
+    renderer.setMap(plainMap(colour));
+    renderer.setCamera(cameraFor("zoomed"));
+    for (const biome of biomes) {
+      renderer.setFog(REVEALED_NESTED, {
+        opacity: 1,
+        fade: 1000,
+        living: { ...livingFog("medium"), biome, strength: 1 },
+      });
+      await renderer.drawn();
+    }
+    time = at;
+    await renderer.drawn();
+    const pixels = capture(canvas);
+    renderer.destroy();
+    return pixels;
+  };
+  const before = await shot("#ffffff", ["nebel"], 500);
+  const after = await shot("#ffffff", ["schnee"], 500);
+  const half = await shot("#ffffff", ["nebel", "schnee"], 500);
+  const halfBlack = await shot("#000000", ["nebel", "schnee"], 500);
+  const hard = await hardCapture(REVEALED_NESTED);
+  let differsBefore = 0;
+  let differsAfter = 0;
+  let violations = 0;
+  for (let index = 0; index < half.length; index += 4) {
+    if (half[index] !== before[index]) differsBefore++;
+    if (half[index] !== after[index]) differsAfter++;
+    const hidden = hard[index] === 0;
+    if (
+      hidden &&
+      (half[index] !== halfBlack[index] ||
+        half[index + 1] !== halfBlack[index + 1] ||
+        half[index + 2] !== halfBlack[index + 2])
+    )
+      violations++;
+  }
+  document.body.dataset["blends"] =
+    differsBefore > 0 && differsAfter > 0 ? "yes" : "no";
+  document.body.dataset["violations"] = String(violations);
+}
+
+/**
  * "tokens-glide" (T-233b): Aria glides from the left room towards the pool, frozen half-way;
  * the Goblin, which did not move, stays put.
  */
@@ -692,6 +752,11 @@ async function main() {
   }
   if (scenario === "tiles") {
     await tilesScenario(canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
+  if (scenario === "biome-blend") {
+    await biomeBlendScenario();
     document.body.dataset["ready"] = "true";
     return;
   }

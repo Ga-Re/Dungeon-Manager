@@ -294,6 +294,12 @@ function applyChange(state: SessionState, command: Command): Change {
       };
     }
     case "scene.setFogEffect": {
+      // A strength outside 0…1 would make the scene file invalid (e.g. from a remote).
+      if (
+        command.fogEffect !== null &&
+        !(command.fogEffect.strength >= 0 && command.fogEffect.strength <= 1)
+      )
+        return "invalidAmount";
       const before = scene.fogEffect ?? null;
       const same =
         before === command.fogEffect ||

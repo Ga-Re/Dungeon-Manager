@@ -152,6 +152,7 @@ export function FogToolbar({
         </label>
       </RibbonGroup>
       <BiomeGroup
+        disabled={disabled}
         fogEffect={fogEffect}
         ownFogEffect={ownFogEffect}
         onFogEffect={onFogEffect}
@@ -181,10 +182,12 @@ export function FogToolbar({
  * applied when the slider is let go, so dragging it makes one undo step.
  */
 function BiomeGroup({
+  disabled,
   fogEffect,
   ownFogEffect,
   onFogEffect,
 }: {
+  readonly disabled: boolean;
   readonly fogEffect: FogEffect | null;
   readonly ownFogEffect: boolean;
   readonly onFogEffect: (effect: FogEffect | null) => void;
@@ -223,14 +226,21 @@ function BiomeGroup({
           onFogEffect(chosen ? { biome: chosen, strength } : null);
         }}
       />
-      <label className="dm-ribbon-field">
-        {t("fog.strength", { percent: Math.round(shown * 100) })}
+      <div className="dm-ribbon-field">
+        <span aria-hidden="true">
+          {t("fog.strength", { percent: Math.round(shown * 100) })}
+        </span>
         <input
           type="range"
+          aria-label={t("fog.strengthName")}
+          aria-valuetext={t("fog.strengthValue", {
+            percent: Math.round(shown * 100),
+          })}
           min={0}
           max={1}
           step={0.1}
           value={shown}
+          disabled={disabled}
           onChange={(event) => {
             setDragged(Number(event.target.value));
           }}
@@ -238,7 +248,7 @@ function BiomeGroup({
           onKeyUp={commit}
           onBlur={commit}
         />
-      </label>
+      </div>
     </RibbonGroup>
   );
 }

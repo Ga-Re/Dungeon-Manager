@@ -455,6 +455,8 @@ export const de = {
       dunkel: "Finsternis",
     },
     strength: "Stärke: {{percent}} %",
+    strengthName: "Stärke",
+    strengthValue: "{{percent}} Prozent",
     wholeMap: "Ganze Karte",
     revealAll: "Alles aufdecken",
     coverAll: "Alles verdecken",

@@ -472,7 +472,40 @@ export async function createRenderer(
     });
   };
 
+  // The fog shown before a change of its look alone (a biome, T-168), fading out over the new
+  // one. Both cover the same polygons, so nothing hidden shows while they blend.
+  let outgoing: {
+    readonly layer: Container;
+    readonly start: number;
+    readonly duration: number;
+  } | null = null;
+  const dropOutgoing = () => {
+    if (!outgoing) return;
+    world.removeChild(outgoing.layer);
+    disposeFog(outgoing.layer);
+    outgoing = null;
+  };
+  /** Shows `next` under the fog on screen, which then fades out over `duration` ms. */
+  const blendFog = (next: Container, duration: number) => {
+    dropOutgoing();
+    const old = fog;
+    fog = next;
+    world.addChild(next);
+    if (!old) return;
+    // On top of the new layer, fading out.
+    world.removeChild(old);
+    world.addChild(old);
+    outgoing = { layer: old, start: now(), duration };
+  };
+  const stepOutgoing = () => {
+    if (!outgoing) return;
+    const progress = fadeProgress(outgoing.start, outgoing.duration, now());
+    if (progress >= 1) dropOutgoing();
+    else outgoing.layer.alpha = 1 - progress;
+  };
+
   const replaceFog = (next: Container | null) => {
+    dropOutgoing();
     if (fog) {
       world.removeChild(fog);
       disposeFog(fog);
@@ -603,7 +636,18 @@ export async function createRenderer(
       : fogInput
         ? drawFog(fogInput.revealed, fogInput.options, mapSize, rootResolution)
         : null;
-    replaceFog(next);
+    // Only the look changed (the same polygons on the same map): blend over (T-168).
+    const blend =
+      !fading &&
+      next !== null &&
+      fogInput !== null &&
+      shownFog !== null &&
+      mapSize !== null &&
+      sameSize(shownFog.map, mapSize) &&
+      (fogInput.options.fade ?? 0) > 0 &&
+      JSON.stringify(shownFog.revealed) === JSON.stringify(fogInput.revealed);
+    if (blend) blendFog(next, fogInput?.options.fade ?? 0);
+    else replaceFog(next);
     dropFade();
     fade = fading;
     fogBuiltFrom = key;
@@ -637,6 +681,7 @@ export async function createRenderer(
       (fogInput?.options.living?.motion ?? 0);
     livingAt = at;
     livingShown()?.setTime(livingTime);
+    if (outgoing) livingLayers.get(outgoing.layer)?.setTime(livingTime);
   };
 
   const requestDraw = () => {
@@ -646,6 +691,7 @@ export async function createRenderer(
       try {
         stepFade();
         stepLiving();
+        stepOutgoing();
         stepGlides();
         applyCamera();
         app.render();
@@ -663,7 +709,7 @@ export async function createRenderer(
         resolve();
       });
       // A fade, a glide or drifting fog draws every frame; otherwise drawing stays on demand.
-      if (fade || glides.size > 0 || drifting()) requestDraw();
+      if (fade || outgoing || glides.size > 0 || drifting()) requestDraw();
     });
   };
 

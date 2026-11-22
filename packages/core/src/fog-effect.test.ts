@@ -52,6 +52,22 @@ describe("scene.setFogEffect", () => {
   });
 });
 
+describe("scene.setFogEffect checks the strength", () => {
+  test("rejects a strength outside 0…1 or not a number", () => {
+    for (const strength of [-0.1, 1.5, Number.NaN])
+      expect(
+        apply(
+          sessionOf(scene),
+          {
+            type: "scene.setFogEffect",
+            fogEffect: { biome: "schnee", strength },
+          },
+          ctx,
+        ),
+      ).toEqual({ ok: false, reason: "invalidAmount" });
+  });
+});
+
 describe("projection of the fog effect", () => {
   test("the TV gets a known biome with its strength", () => {
     const state = sessionOf({ ...scene, fogEffect: snow });

@@ -196,3 +196,15 @@ for (const biome of [
     await expect(page).toHaveScreenshot(`living-biome-${biome}.png`);
   });
 }
+
+// A biome change blends over (T-168): half-way it is neither the old nor the new biome, and
+// nothing hidden shows.
+test("a biome change blends over without showing what is hidden", async ({
+  page,
+}) => {
+  await page.goto(`${fixturePage("renderer.html")}#biome-blend`);
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true", { timeout: 60_000 });
+  await expect(body).toHaveAttribute("data-blends", "yes");
+  await expect(body).toHaveAttribute("data-violations", "0");
+});

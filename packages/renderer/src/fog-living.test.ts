@@ -63,5 +63,8 @@ describe("biomes (T-168)", () => {
     expect(biomeOf(undefined)).toBe(BIOMES["nebel"]);
     expect(biomeOf("vulkan2")).toBe(BIOMES["nebel"]);
     expect(biomeOf("schnee").particles).toBe(1);
+    // Names in files are open: built-in object keys are no biomes.
+    expect(biomeOf("constructor")).toBe(BIOMES["nebel"]);
+    expect(biomeOf("toString")).toBe(BIOMES["nebel"]);
   });
 });

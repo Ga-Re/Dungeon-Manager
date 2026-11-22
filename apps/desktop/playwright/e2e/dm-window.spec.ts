@@ -613,6 +613,23 @@ test("the ellipse reveals and the lasso hides, each one undo step (T-247)", asyn
   await expect(undo).toBeDisabled();
 });
 
+test("the DM picks the scene's fog biome in the ribbon, one undo step (T-168)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Nebel" }).click();
+  const undo = page.getByRole("button", { name: "Rückgängig" });
+  // No biome of its own and none on the map: Bodennebel.
+  await page.getByRole("button", { name: "Bodennebel" }).click();
+  await page.getByRole("menuitemradio", { name: "Schneesturm" }).click();
+  await expect(page.getByRole("button", { name: "Schneesturm" })).toBeVisible();
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(page.getByRole("button", { name: "Bodennebel" })).toBeVisible();
+});
+
 test("the dock zooms and fits the DM's view of the map (T-131)", async ({
   page,
 }) => {

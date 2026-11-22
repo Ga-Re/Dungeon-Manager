@@ -41,6 +41,8 @@ interface Biome {
   readonly amount: number;
   readonly streaks: number;
   readonly glow: number;
+  /** Heat shimmer: the fog's edge flickers fast in thin rows (Hitzeflimmern, ADR-0019). */
+  readonly shimmer?: number;
 }
 
 export const BIOMES: Readonly<Record<string, Biome>> = {
@@ -70,6 +72,7 @@ export const BIOMES: Readonly<Record<string, Biome>> = {
     amount: 0.7,
     streaks: 1,
     glow: 0,
+    shimmer: 1,
   },
   asche: {
     colours: ["#141010", "#3a2f2a", "#7a695e"],
@@ -120,10 +123,12 @@ export const BIOMES: Readonly<Record<string, Biome>> = {
 
 /** The biome named `name`, Bodennebel for none or an unknown one. */
 export function biomeOf(name: string | undefined): Biome {
-  return (
-    (name !== undefined ? BIOMES[name] : undefined) ??
-    (BIOMES["nebel"] as Biome)
-  );
+  // Own entries only: names in files are open, and "constructor" is not a biome.
+  const known =
+    name !== undefined && Object.hasOwn(BIOMES, name)
+      ? BIOMES[name]
+      : undefined;
+  return known ?? (BIOMES["nebel"] as Biome);
 }
 
 const rgb = (hex: string): [number, number, number] => [
@@ -200,6 +205,8 @@ uniform vec3 uParticle;
 uniform vec2 uWind;
 // Particles kind, their amount, wind streaks and underglow (T-168), strength applied.
 uniform vec4 uFx;
+// Heat shimmer of the edge (T-168), strength applied.
+uniform float uShimmer;
 out vec4 finalColor;
 
 float hash(vec2 p) {
@@ -228,7 +235,9 @@ float fbm(vec2 p) {
 // One layer of particles: a point per grid square of \`size\` cells, moving at \`vel\` cells per
 // second, swaying, optionally flickering (\`tw\`); \`dens\` of the squares carry one.
 float layer(vec2 pos, float size, vec2 vel, float t, float radius, float dens, float sway, float tw) {
-  vec2 q = (pos / uCell - vel * t) / size;
+  // The travelled distance wrapped on the pattern's period (997 squares), so particles stay
+  // precise in long sessions.
+  vec2 q = pos / uCell / size - mod(vel * t / size, 997.0);
   vec2 id = mod(floor(q), 997.0);
   float h = hash(id);
   if (h > dens) return 0.0;
@@ -273,6 +282,11 @@ void main() {
   // Faster, finer turbulence that only shows where the fog has an edge.
   vec2 e = vec2(fbm(p * 2.4 + 1.2 * r + vec2(t * 0.21, 0.0)),
                 fbm(p * 2.4 + 1.2 * r + vec2(4.1, 7.3 - t * 0.19))) - 0.5;
+  // Heat shimmer: a fast flicker in thin rows takes over the turbulence – within the same
+  // ±0.5, so the edge never reaches further than the wobble's cap.
+  vec2 heat = vec2(0.5 * sin(vPos.y / uCell * 9.0 + t * 7.0 + noise(p * 6.0 + t) * 6.2832),
+                   noise(p * 8.0 + vec2(0.0, t * 3.0)) - 0.5);
+  e = mix(e, heat, clamp(uShimmer, 0.0, 1.0));
   float m = fogAt(vPos + e * uWarp);
   float edge = clamp(m * (1.0 - m) * 4.0, 0.0, 1.0);
   float d = m + (f - 0.5) * 0.9 * edge + (e.x + e.y) * 0.5 * uEdge * edge;
@@ -285,8 +299,10 @@ void main() {
   // Wind streaks along the wind (T-168).
   vec2 wd = normalize(uWind + vec2(1e-4, 0.0));
   vec2 sp = vec2(dot(vPos, wd), dot(vPos, vec2(-wd.y, wd.x))) / uCell;
-  float st = fbm(vec2(sp.x / 5.0 - t * 0.9 * length(uWind), sp.y / 0.55) + r * 0.6);
-  colour = mix(colour, uLight, smoothstep(0.55, 0.9, st) * uFx.z * 0.4);
+  if (uFx.z > 0.0) {
+    float st = fbm(vec2(sp.x / 5.0 - t * 0.9 * length(uWind), sp.y / 0.55) + r * 0.6);
+    colour = mix(colour, uLight, smoothstep(0.55, 0.9, st) * uFx.z * 0.4);
+  }
   // Underglow: embers or light from below in the dark parts.
   colour = mix(colour, uParticle * 0.8, uFx.w * smoothstep(0.45, 0.85, 1.0 - f) * 0.55);
   colour = mix(colour, uLight, edge * 0.3);
@@ -372,6 +388,7 @@ export function drawLivingFog({
       type: "vec3<f32>",
     },
     uWind: { value: new Float32Array(biome.wind), type: "vec2<f32>" },
+    uShimmer: { value: (biome.shimmer ?? 0) * strength, type: "f32" },
     uFx: {
       value: new Float32Array([
         biome.particles,

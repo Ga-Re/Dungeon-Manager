@@ -450,6 +450,8 @@ export const en: Messages = {
       dunkel: "Darkness",
     },
     strength: "Strength: {{percent}}%",
+    strengthName: "Strength",
+    strengthValue: "{{percent}} percent",
     wholeMap: "Whole map",
     revealAll: "Reveal all",
     coverAll: "Cover all",
