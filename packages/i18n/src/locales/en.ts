@@ -453,6 +453,7 @@ export const en: Messages = {
     strengthName: "Strength",
     strengthValue: "{{percent}} percent",
     wholeMap: "Whole map",
+    hideInDm: "Hide fog",
     revealAll: "Reveal all",
     coverAll: "Cover all",
     undo: "Undo",

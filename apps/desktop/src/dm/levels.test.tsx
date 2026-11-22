@@ -346,3 +346,35 @@ describe("adding and renaming levels (T-118d)", () => {
     expect(JSON.stringify(shown)).not.toContain("Geheimgang");
   });
 });
+
+describe("hiding the fog in the DM window (T-248)", () => {
+  test("N and the ribbon toggle fade the DM view's fog; the TV gets nothing new", async () => {
+    const { shown, maps } = renderScene(tower, towerLevels.slice(0, 1));
+    const toggle = await screen.findByRole("button", {
+      name: "Nebel ausblenden",
+    });
+    await waitFor(() => {
+      expect(maps.view.setFog).toHaveBeenCalled();
+    });
+    const sentBefore = shown.length;
+    fireEvent.keyDown(window, { key: "n" });
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ opacity: 0 }),
+    );
+    // No living fog while hidden: no particles stay (T-248 review).
+    expect(maps.view.setFog.mock.lastCall?.[1]).not.toHaveProperty("living");
+    // Held down, the key toggles once.
+    fireEvent.keyDown(window, { key: "n", repeat: true });
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(maps.view.setFog).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ opacity: 0.55 }),
+    );
+    // Nothing reaches the TV through it.
+    expect(shown).toHaveLength(sentBefore);
+  });
+});

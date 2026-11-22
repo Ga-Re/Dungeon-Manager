@@ -32,6 +32,8 @@ function renderToolbar(
         fogEffect={biome.fogEffect ?? null}
         ownFogEffect={biome.own ?? false}
         onFogEffect={biome.onFogEffect ?? vi.fn()}
+        fogHidden={false}
+        onFogHidden={vi.fn()}
       />
     </I18nextProvider>,
   );

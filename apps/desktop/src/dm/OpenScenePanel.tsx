@@ -230,6 +230,8 @@ export function OpenScenePanel({
     if (!inGame) setTool("pan");
   }, [inGame]);
   const [shape, setShape] = useState<FogShape>("rectangle");
+  // The fog hidden in this window only (T-248): a view setting, never saved or sent.
+  const [fogHidden, setFogHidden] = useState(false);
   const [brushCells, setBrushCells] = useState(1);
   const [mapSize, setMapSize] = useState<Size | null>(null);
   // The calibrated TV's view on this scene's map (T-106c): the DM moves it; the TV follows. Only
@@ -555,6 +557,21 @@ export function OpenScenePanel({
       event.preventDefault();
       if (action === "undo") session.undo();
       else session.redo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  });
+  // N hides the fog in this window only (T-248) while playing, unless typing; held down it
+  // toggles once.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (typing(event) || !active || !inGame || event.repeat) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key.toLowerCase() !== "n") return;
+      event.preventDefault();
+      setFogHidden((hidden) => !hidden);
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -1087,6 +1104,8 @@ export function OpenScenePanel({
               onSpeed={setFogSpeed}
               fogEffect={fogEffect}
               ownFogEffect={scene.fogEffect !== undefined}
+              fogHidden={fogHidden}
+              onFogHidden={setFogHidden}
               onFogEffect={(effect) => {
                 if (!busy)
                   session.run({
@@ -1132,6 +1151,7 @@ export function OpenScenePanel({
               softEdge={softEdgeWidth(map.grid.cellSizePx, fogLook.softEdges)}
               fade={fogLook.fadeSeconds * 1000}
               living={livingFog(fogLook, map.grid.cellSizePx, fogEffect)}
+              fogHidden={fogHidden}
               speed={fogSpeed(fogLook, map.grid.cellSizePx, media.path)}
               coverFrom={fogLook.coverFrom}
               onArea={(area, kind) => {
