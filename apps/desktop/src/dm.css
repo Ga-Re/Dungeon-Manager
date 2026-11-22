@@ -647,6 +647,23 @@ label {
   font-family: var(--dm-font-heading);
 }
 
+/* A ribbon tool's command panel (ADR-0020): top right over the map, below popovers. */
+.dm-stage-command {
+  position: absolute;
+  top: var(--dm-space-3);
+  right: var(--dm-space-3);
+  z-index: var(--dm-z-hud);
+  display: grid;
+  justify-items: end;
+  max-width: calc(100% - 2 * var(--dm-space-3));
+  max-height: calc(100% - 2 * var(--dm-space-3));
+  pointer-events: none;
+}
+
+.dm-stage-command > * {
+  display: contents;
+}
+
 /* Bottom centre of the map (T-131): notices over the navigation and display dock. */
 .dm-stage-bottom {
   position: absolute;

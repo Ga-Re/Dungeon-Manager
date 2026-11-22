@@ -813,6 +813,8 @@ export function MapView({
   };
   const onKeyDown = (event: KeyboardEvent) => {
     if (calibration && event.key === "Escape" && calibBox) {
+      // Handled here: the running command does not also take this Escape (ADR-0020).
+      event.preventDefault();
       setCalibBox(null);
       return;
     }
@@ -844,6 +846,7 @@ export function MapView({
       return;
     }
     if (event.key === "Escape" && (drawing || corners.length > 0)) {
+      event.preventDefault();
       setDrawing(null);
       setCorners([]);
       setHover(null);

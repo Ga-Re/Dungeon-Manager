@@ -97,6 +97,25 @@ function renderForge(
   return { library, onClose };
 }
 
+/** Like `renderForge`, and can show another workspace and come back. */
+function renderForgeSwitchable(files: Record<string, MemoryFileContent>) {
+  const library = fakeLibraryService("/lib", { [MAP]: "png", ...files });
+  const tree = (workspace: Workspace) => (
+    <I18nextProvider i18n={createI18n("de")}>
+      <ActiveWorkspaceContext value={workspace}>
+        <MapForge service={library.service} path={MAP} onClose={vi.fn()} />
+      </ActiveWorkspaceContext>
+    </I18nextProvider>
+  );
+  const { rerender } = render(tree("mapForge"));
+  return {
+    library,
+    rerenderIn: (workspace: Workspace) => {
+      rerender(tree(workspace));
+    },
+  };
+}
+
 const saved = (library: ReturnType<typeof fakeLibraryService>) =>
   JSON.parse(library.fs.files().get(SIDECAR) ?? "{}") as {
     map?: {
@@ -217,31 +236,31 @@ describe("MapForge", () => {
     });
   });
 
-  test("a square box over the printed grid fills the grid fields and previews it; saving keeps it (T-177)", async () => {
+  test("Raster kalibrieren is a ribbon tool: a square box fills its panel, the map previews it, OK saves (T-177, T-252)", async () => {
     const { library } = renderForge({ [SIDECAR]: sidecar({}) });
-    const cell =
-      await screen.findByLabelText<HTMLInputElement>("Zellgröße (Pixel)");
     expect(view.calibration).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Box aufziehen" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Raster kalibrieren" }),
+    );
+    const panel = screen.getByRole("dialog", { name: "Raster kalibrieren" });
     expect(view.calibration?.mode).toBe("box");
 
     act(() => {
       view.calibration?.onBox({ x: 130, y: 250 }, { x: 430, y: 550 });
     });
-    expect(cell.value).toBe("100");
     expect(
-      screen.getByLabelText<HTMLInputElement>("Versatz waagerecht (Pixel)")
-        .value,
+      within(panel).getByLabelText<HTMLInputElement>("Zellgröße (Pixel)").value,
+    ).toBe("100");
+    expect(
+      within(panel).getByLabelText<HTMLInputElement>(
+        "Versatz waagerecht (Pixel)",
+      ).value,
     ).toBe("30");
-    await waitFor(() => {
-      expect(screen.getByTestId("map-grid").textContent).toBe("100/30/50");
-    });
-    // A preview only: nothing is written before saving.
+    expect(screen.getByTestId("map-grid").textContent).toBe("100/30/50");
+    // A preview only: nothing is written before OK.
     expect(saved(library).map?.grid).toMatchObject({ cellSizePx: 70 });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Kartendaten speichern" }),
-    );
+    fireEvent.click(within(panel).getByRole("button", { name: "OK" }));
     await waitFor(() => {
       expect(saved(library).map?.grid).toEqual({
         cellSizePx: 100,
@@ -249,24 +268,32 @@ describe("MapForge", () => {
         offsetYPx: 50,
       });
     });
-    // Saved: calibrating ends.
+    // Saved: the tool ends and the map takes pointer input as a map again.
+    expect(
+      screen.queryByRole("dialog", { name: "Raster kalibrieren" }),
+    ).toBeNull();
     expect(view.calibration).toBeNull();
   });
 
   test("the box may span another number of cells; moving the grid adds up every move", async () => {
     renderForge({ [SIDECAR]: sidecar({}) });
-    fireEvent.change(await screen.findByLabelText("Felder in der Box"), {
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Raster kalibrieren" }),
+    );
+    const panel = screen.getByRole("dialog", { name: "Raster kalibrieren" });
+    fireEvent.change(within(panel).getByLabelText("Felder in der Box"), {
       target: { value: "2" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Box aufziehen" }));
     act(() => {
       view.calibration?.onBox({ x: 0, y: 0 }, { x: 300, y: 300 });
     });
-    expect(
-      screen.getByLabelText<HTMLInputElement>("Zellgröße (Pixel)").value,
-    ).toBe("150");
+    const field = (name: string) =>
+      within(panel).getByLabelText<HTMLInputElement>(name).value;
+    expect(field("Zellgröße (Pixel)")).toBe("150");
 
-    fireEvent.click(screen.getByRole("button", { name: "Raster verschieben" }));
+    fireEvent.click(
+      within(panel).getByRole("button", { name: "Raster verschieben" }),
+    );
     expect(view.calibration?.mode).toBe("move");
     act(() => {
       // A drag reports its whole way since the press; arrow keys add up step by step, also
@@ -277,21 +304,49 @@ describe("MapForge", () => {
       view.calibration?.onShift(1, 0);
       view.calibration?.onShift(1, 0);
     });
+    expect(field("Versatz waagerecht (Pixel)")).toBe("22");
+    expect(field("Versatz senkrecht (Pixel)")).toBe("145");
+  });
+
+  test("Raster kalibrieren also starts from the RASTER caption's menu", async () => {
+    renderForge({ [SIDECAR]: sidecar({}) });
+    fireEvent.click(await screen.findByRole("button", { name: "Raster" }));
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Raster kalibrieren" }),
+    );
     expect(
-      screen.getByLabelText<HTMLInputElement>("Versatz waagerecht (Pixel)")
-        .value,
-    ).toBe("22");
+      screen.getByRole("dialog", { name: "Raster kalibrieren" }),
+    ).toBeTruthy();
+    expect(view.calibration?.mode).toBe("box");
+  });
+
+  test("leaving the Map Forge ends a running calibration", async () => {
+    const { rerenderIn } = renderForgeSwitchable({ [SIDECAR]: sidecar({}) });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Raster kalibrieren" }),
+    );
+    act(() => {
+      view.calibration?.onBox({ x: 0, y: 0 }, { x: 300, y: 300 });
+    });
+    rerenderIn("gameOrchestrator");
+    rerenderIn("mapForge");
     expect(
-      screen.getByLabelText<HTMLInputElement>("Versatz senkrecht (Pixel)")
-        .value,
-    ).toBe("145");
+      screen.queryByRole("dialog", { name: "Raster kalibrieren" }),
+    ).toBeNull();
+    expect(screen.getByTestId("map-grid").textContent).toBe("70/0/0");
   });
 
   test("while a grid field is invalid, moving the grid does not replace what is typed", async () => {
     renderForge({ [SIDECAR]: sidecar({}) });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Raster kalibrieren" }),
+    );
+    const panel = screen.getByRole("dialog", { name: "Raster kalibrieren" });
+    fireEvent.click(
+      within(panel).getByRole("button", { name: "Raster verschieben" }),
+    );
     const cell =
-      await screen.findByLabelText<HTMLInputElement>("Zellgröße (Pixel)");
-    fireEvent.click(screen.getByRole("button", { name: "Raster verschieben" }));
+      within(panel).getByLabelText<HTMLInputElement>("Zellgröße (Pixel)");
     fireEvent.change(cell, { target: { value: "" } });
     act(() => {
       view.calibration?.onShift(5, 0);
@@ -300,27 +355,42 @@ describe("MapForge", () => {
     });
     expect(cell.value).toBe("");
     expect(
-      screen.getByLabelText<HTMLInputElement>("Versatz waagerecht (Pixel)")
-        .value,
+      within(panel).getByLabelText<HTMLInputElement>(
+        "Versatz waagerecht (Pixel)",
+      ).value,
     ).toBe("0");
+    expect(
+      within(panel).getByRole<HTMLButtonElement>("button", { name: "OK" })
+        .disabled,
+    ).toBe(true);
   });
 
-  test("Verwerfen takes the stored grid back and ends calibrating", async () => {
-    renderForge({ [SIDECAR]: sidecar({}) });
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Box aufziehen" }),
-    );
+  test("Abbrechen or Escape discards the calibration and shows the saved grid again", async () => {
+    const { library } = renderForge({ [SIDECAR]: sidecar({}) });
+    const tool = await screen.findByRole("button", {
+      name: "Raster kalibrieren",
+    });
+    fireEvent.click(tool);
     act(() => {
       view.calibration?.onBox({ x: 0, y: 0 }, { x: 300, y: 300 });
     });
-    fireEvent.click(screen.getByRole("button", { name: "Verwerfen" }));
-    expect(
-      screen.getByLabelText<HTMLInputElement>("Zellgröße (Pixel)").value,
-    ).toBe("70");
+    expect(screen.getByTestId("map-grid").textContent).toBe("100/0/0");
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
     expect(view.calibration).toBeNull();
-    await waitFor(() => {
-      expect(screen.getByTestId("map-grid").textContent).toBe("70/0/0");
+    expect(screen.getByTestId("map-grid").textContent).toBe("70/0/0");
+
+    fireEvent.click(tool);
+    act(() => {
+      view.calibration?.onBox({ x: 0, y: 0 }, { x: 300, y: 300 });
     });
+    fireEvent.keyDown(screen.getByLabelText("Felder in der Box"), {
+      key: "Escape",
+    });
+    expect(
+      screen.queryByRole("dialog", { name: "Raster kalibrieren" }),
+    ).toBeNull();
+    expect(screen.getByTestId("map-grid").textContent).toBe("70/0/0");
+    expect(saved(library).map?.grid).toMatchObject({ cellSizePx: 70 });
   });
 
   test("a room drawn on a level snaps to the grid, is saved and selected for naming (T-108c1)", async () => {
@@ -405,20 +475,27 @@ describe("MapForge", () => {
     });
   });
 
-  test("a room snaps to the grid the DM sees, an unsaved calibration included", async () => {
+  test("drawing a room ends a running calibration; rooms snap to the saved grid", async () => {
     const { library } = renderForge({ [SIDECAR]: sidecar({}) });
-    fireEvent.change(await screen.findByLabelText("Zellgröße (Pixel)"), {
-      target: { value: "50" },
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Raster kalibrieren" }),
+    );
+    act(() => {
+      view.calibration?.onBox({ x: 0, y: 0 }, { x: 150, y: 150 });
     });
+    // One command at a time: choosing a room shape cancels the unsaved calibration.
     fireEvent.click(screen.getByRole("button", { name: "Rechteck" }));
+    expect(
+      screen.queryByRole("dialog", { name: "Raster kalibrieren" }),
+    ).toBeNull();
     act(() => {
       view.onArea?.(
         {
           outer: [
             [10, 10],
-            [90, 10],
-            [90, 90],
-            [10, 90],
+            [80, 10],
+            [80, 80],
+            [10, 80],
           ],
           holes: [],
         },
@@ -432,9 +509,9 @@ describe("MapForge", () => {
           area: {
             outer: [
               [0, 0],
-              [100, 0],
-              [100, 100],
-              [0, 100],
+              [70, 0],
+              [70, 70],
+              [0, 70],
             ],
             holes: [],
           },
@@ -442,6 +519,7 @@ describe("MapForge", () => {
       ]);
     });
   });
+
   test("a room is renamed, marked secret and deleted after confirming", async () => {
     const area = {
       outer: [
@@ -600,7 +678,7 @@ describe("MapForge", () => {
   test("drawing a room and calibrating the grid take turns", async () => {
     renderForge({ [SIDECAR]: sidecar({}) });
     fireEvent.click(await screen.findByRole("button", { name: "Ellipse" }));
-    fireEvent.click(screen.getByRole("button", { name: "Box aufziehen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Raster kalibrieren" }));
     expect(view.calibration?.mode).toBe("box");
     expect(
       screen

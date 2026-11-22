@@ -310,7 +310,7 @@ test("a map opened in the Map Forge gets a new grid; the scene on the TV takes i
   await expect.poll(tvGrid).toBe(50);
 });
 
-test("the grid is calibrated by a box over 3 × 3 printed cells and moved by arrow keys (T-177)", async ({
+test("the grid is calibrated from the ribbon: a box over 3 × 3 printed cells, arrow keys, OK (T-177, T-252)", async ({
   page,
 }) => {
   await openDmWindow(page);
@@ -319,8 +319,13 @@ test("the grid is calibrated by a box over 3 × 3 printed cells and moved by arr
     .getByRole("button", { name: /krypta\.png/ })
     .dblclick();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
-  const details = page.getByRole("region", { name: "Eigenschaften" });
-  await details.getByRole("button", { name: "Box aufziehen" }).click();
+  // KARTE › RASTER › Raster kalibrieren opens its command panel over the map (ADR-0020).
+  await page
+    .getByRole("group", { name: "Raster" })
+    .getByRole("button", { name: "Raster kalibrieren" })
+    .click();
+  const panel = page.getByRole("dialog", { name: "Raster kalibrieren" });
+  await expect(panel).toBeVisible();
 
   // Where map pixels are on screen (rotation 0): the view's centre shows the camera's centre.
   const canvas = page.locator(".map-view-canvas");
@@ -347,28 +352,31 @@ test("the grid is calibrated by a box over 3 × 3 printed cells and moved by arr
   await page.mouse.move(to.x, to.y);
   await page.mouse.up();
 
-  const cell = details.getByLabel("Zellgröße (Pixel)");
+  const cell = panel.getByLabel("Zellgröße (Pixel)");
   await expect
     .poll(async () => Math.abs(Number(await cell.inputValue()) - 100))
     .toBeLessThan(1.5);
-  const offsetX = details.getByLabel("Versatz waagerecht (Pixel)");
+  const offsetX = panel.getByLabel("Versatz waagerecht (Pixel)");
   const x = Number(await offsetX.inputValue());
 
   // Fine adjustment: arrow keys move the grid by a pixel.
-  await details.getByRole("button", { name: "Raster verschieben" }).click();
+  await panel.getByRole("button", { name: "Raster verschieben" }).click();
   await canvas.focus();
   await page.keyboard.press("ArrowRight");
   await expect
     .poll(async () => Number(await offsetX.inputValue()))
     .toBeCloseTo((x + 1) % Number(await cell.inputValue()), 1);
+  const calibrated = Number(await cell.inputValue());
 
-  await details.getByRole("button", { name: "Kartendaten speichern" }).click();
-  await expect(
-    details.getByText(/Gespeichert – gilt für jede Szene/),
-  ).toBeVisible();
-  await expect(
-    details.getByRole("button", { name: "Raster verschieben" }),
-  ).toHaveAttribute("aria-pressed", "false");
+  await panel.getByRole("button", { name: "OK" }).click();
+  await expect(panel).toBeHidden();
+  // Saved for every scene of the map: the map's data shows it.
+  const details = page.getByRole("region", { name: "Eigenschaften" });
+  await expect
+    .poll(async () =>
+      Number(await details.getByLabel("Zellgröße (Pixel)").inputValue()),
+    )
+    .toBeCloseTo(calibrated, 1);
 });
 
 test("a room drawn in the Map Forge is named and shows in every scene of the map (T-108c1)", async ({

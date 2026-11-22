@@ -234,6 +234,11 @@ export const en: Messages = {
     caseDuplicate:
       "Old file {{file}} next to {{current}} – compare, then merge or delete it",
   },
+  command: {
+    ok: "OK",
+    cancel: "Cancel",
+    move: "Move the panel",
+  },
   forgeRooms: {
     title: "Rooms",
     kind: "Room",
@@ -256,10 +261,10 @@ export const en: Messages = {
     keep: "Keep",
     tooSmall:
       "Too small for a room: on the grid it would have no area. Hold Alt to draw freely.",
-    changedMeanwhile:
-      "The map data was changed elsewhere meanwhile; the map now shows the new state. Try again.",
   },
   forge: {
+    changedMeanwhile:
+      "The map data was changed elsewhere meanwhile; the map now shows the new state. Try again.",
     empty: "No map open. Double-click a map in the catalogue.",
     noMap: "No map open.",
     conflict:
@@ -280,6 +285,8 @@ export const en: Messages = {
     save: "Save map data",
     discard: "Discard",
     calibrate: "Calibrate grid",
+    gridGroup: "Grid",
+    calibrationMode: "How to calibrate",
     calibration: {
       box: "Drag a box",
       move: "Move the grid",
@@ -722,6 +729,7 @@ export const en: Messages = {
       scene: "Scene",
       fog: "Fog",
       display: "Display",
+      forgeMap: "Map",
     },
     noScene: "No scene is open. Choose a scene in the browser.",
     settings: "Settings",
