@@ -286,6 +286,19 @@ describe("spreading at a speed (T-246)", () => {
     expect(column(ragged)).toBeGreaterThan(5);
   });
 
+  it("measures a ragged change by the path its front travels, so the speed holds", () => {
+    const from = mask(64, 16, (x) => x < 1);
+    const to = mask(64, 16, () => true);
+    const plain = spreadTiming(64, 16, from, to, { atSpeed: true }).longest;
+    const ragged = spreadTiming(64, 16, from, to, {
+      atSpeed: true,
+      weights: raggedWeights(64, 16, 0.5, 9),
+    }).longest;
+    // The front's path is at least as long as the straight way, and not wildly longer.
+    expect(ragged).toBeGreaterThanOrEqual(plain - 0.5);
+    expect(ragged).toBeLessThan(plain * 1.5);
+  });
+
   it("gives the same weights for the same map, and others for another", () => {
     const a = raggedWeights(32, 32, 0.25, 11);
     expect([...raggedWeights(32, 32, 0.25, 11)]).toEqual([...a]);

@@ -162,7 +162,15 @@ export function PlayerApp({
             ? softEdgeWidth(map.grid.cellSizePx, look.softEdges)
             : 0,
           fade: fades ? look.fadeSeconds * 1000 : 0,
-          ...(map && { speed: fogSpeed(look, map.grid.cellSizePx) }),
+          // A new scene or level never spreads, at any speed: its fog is there at once.
+          ...(map &&
+            fades && {
+              speed: fogSpeed(
+                look,
+                map.grid.cellSizePx,
+                mediaOf(map)?.path ?? "",
+              ),
+            }),
           ...(living && { living }),
         },
       );

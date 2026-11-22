@@ -442,6 +442,14 @@ const SPREADS = {
     open: [700, 300],
     fogged: [1450, 850],
   },
+  // "Sofort" without a transition (T-246): the whole change is there in its first frame, the
+  // far corner too (`fogged` names it; the spec expects it open).
+  "spread-instant": {
+    before: [LEFT_ROOM],
+    after: [LEFT_ROOM, CORRIDOR, RIGHT_ROOM],
+    open: [700, 300],
+    fogged: [1450, 850],
+  },
 } as const;
 
 /** The speed of the "spread-ragged" scenario and of the speed pass of "fade-fail-closed". */
@@ -468,7 +476,14 @@ async function spreadScenario(
   renderer.setMap(drawFixtureMap());
   renderer.setCamera(camera);
   await renderer.drawn();
-  if (scenario === "spread-ragged") {
+  if (scenario === "spread-instant") {
+    renderer.setFog(after, {
+      opacity: 1,
+      softEdge: SOFT_EDGE,
+      fade: 0,
+      speed: { cellsPerSecond: Infinity, cellSizePx: 100 },
+    });
+  } else if (scenario === "spread-ragged") {
     renderer.setFog(after, {
       opacity: 1,
       softEdge: SOFT_EDGE,

@@ -156,10 +156,15 @@ describe("fog settings", () => {
     expect(readFogSpeed(storage)).toBe(Infinity);
     expect(readFogSpeed(memoryStorage({ "dm.fog.speed": "0" }))).toBe(5);
     expect(readFogSpeed(memoryStorage({ "dm.fog.speed": "999" }))).toBe(40);
-    expect(fogSpeed(readFogLook(memoryStorage()), 70)).toEqual({
-      cellsPerSecond: 5,
-      cellSizePx: 70,
-    });
+    const speed = fogSpeed(readFogLook(memoryStorage()), 70, "maps/a.png");
+    expect(speed).toMatchObject({ cellsPerSecond: 5, cellSizePx: 70 });
+    // The same map gives the same seed (its fronts look alike), another map another one.
+    expect(fogSpeed(readFogLook(memoryStorage()), 70, "maps/a.png").seed).toBe(
+      speed.seed,
+    );
+    expect(
+      fogSpeed(readFogLook(memoryStorage()), 70, "maps/b.png").seed,
+    ).not.toBe(speed.seed);
   });
 
   it("maps the speed slider logarithmically, with Sofort as its last step", () => {
@@ -167,8 +172,9 @@ describe("fog settings", () => {
     expect(speedOfStep(FOG_SPEED.steps - 1)).toBe(FOG_SPEED.max);
     expect(speedOfStep(FOG_SPEED.steps)).toBe(Infinity);
     expect(stepOfSpeed(Infinity)).toBe(FOG_SPEED.steps);
-    // The default lands on a step and comes back as about the same speed.
-    expect(speedOfStep(stepOfSpeed(5))).toBeCloseTo(5, 0);
+    // The default is a step of its own.
+    expect(speedOfStep(stepOfSpeed(FOG_SPEED.default))).toBe(5);
+    expect(stepOfSpeed(4.4)).toBe(stepOfSpeed(4));
     for (let step = 0; step < FOG_SPEED.steps; step++)
       expect(speedOfStep(step + 1)).toBeGreaterThan(speedOfStep(step));
   });
