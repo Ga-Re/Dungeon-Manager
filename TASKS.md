@@ -1042,10 +1042,10 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [x] Ellipse and lasso produce polygons in map pixels, also with the view rotated (unit tests in `core` / `fog-shapes`)
   - [x] Drawing, preview and Shift-circle (component tests); reveal and hide with both (E2E)
-  - [ ] Keyboard shortcuts and translated labels; Kreis is gone from the ribbon – labels and Kreis done; shortcuts open (DM question in the PR)
+  - [x] Keyboard shortcuts and translated labels; Kreis is gone from the ribbon
 - **Notes:** From the DM interview (2026-11-22).
 - DM decision (2026-11-22, during T-247): ellipses and circles are drawn from their middle (the drag starts at the centre), so the DM can put one around a monster.
-- Done in T-247: `ellipseArea` in `core` (the ellipse in the box between two corners), `dragArea("ellipse")` around where the drag started with `squareEnd` for Shift, `lassoArea` (points closer than 3 px dropped; a loop that encloses nothing marks nothing). Keyboard: the shape buttons are reachable with Tab as before (there are no letter shortcuts for shapes yet – asked the DM); Escape drops a lasso being drawn. The E2E test runs in CI (the session's browser does not match the project's Playwright version).
+- Done in T-247: `ellipseArea` in `core` (the ellipse in the box between two corners), `dragArea("ellipse")` around where the drag started with `squareEnd` for Shift, `lassoArea` (points closer than 3 px dropped; a loop that encloses nothing marks nothing). Keyboard: the shape buttons are reachable with Tab as before and since the DM's answer (2026-11-22) by R, E, P, L, B while revealing or hiding; R moved the view's rotation to T (Shift+T back); Escape drops a lasso being drawn. The E2E test runs in CI (the session's browser does not match the project's Playwright version).
 
 ### T-249 An isolated hide closes from its middle
 

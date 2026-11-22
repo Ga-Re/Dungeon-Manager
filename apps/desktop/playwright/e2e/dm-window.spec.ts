@@ -591,7 +591,12 @@ test("the ellipse reveals and the lasso hides, each one undo step (T-247)", asyn
 
   await page.getByRole("button", { name: "Alles aufdecken" }).click();
   await page.getByRole("button", { name: "Verdecken", exact: true }).click();
-  await page.getByRole("button", { name: "Lasso" }).click();
+  // The shape by its key (T-247).
+  await page.keyboard.press("l");
+  await expect(page.getByRole("button", { name: "Lasso" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.mouse.move(cx - 60, cy - 40);
   await page.mouse.down();
   for (const [dx, dy] of [

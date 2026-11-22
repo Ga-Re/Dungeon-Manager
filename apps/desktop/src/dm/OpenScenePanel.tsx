@@ -60,7 +60,7 @@ import {
   type TokenControl,
 } from "./MapView.js";
 import { releaseVideo } from "../platform/map-images.js";
-import type { FogShape } from "./fog-shapes.js";
+import { shapeOfKey, type FogShape } from "./fog-shapes.js";
 import { FogToolbar } from "./FogToolbar.js";
 import { SceneTabs, SceneTitle } from "./SceneTitle.js";
 import { ShellPortal } from "./shell/slots.js";
@@ -93,17 +93,21 @@ const NO_PLAYERS: readonly Player[] = [];
 /** The grid modes a scene can have (T-233d), in the Raster menu's order. */
 const GRID_MODES = gridModeSchema.options;
 
-/** Undo/redo keys, unless the DM is typing in a field (where they edit the text). */
-function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
+/** Whether the DM is typing in a field, where keys edit the text instead of choosing tools. */
+function typing(event: KeyboardEvent): boolean {
   const target = event.target;
-  if (
+  return (
     target instanceof HTMLElement &&
-    // Text entry only: on a tool button, a switch or a slider the shortcuts still undo fog.
+    // Text entry only: on a tool button, a switch or a slider the shortcuts still work.
     target.closest(
       'input:not([type="radio"]):not([type="checkbox"]):not([type="button"]):not([type="range"]), textarea, select, [contenteditable]',
-    )
-  )
-    return null;
+    ) !== null
+  );
+}
+
+/** Undo/redo keys, unless the DM is typing in a field (where they edit the text). */
+function historyKey(event: KeyboardEvent): "undo" | "redo" | null {
+  if (typing(event)) return null;
   if (!(event.metaKey || event.ctrlKey) || event.altKey) return null;
   const key = event.key.toLowerCase();
   if (key === "z") return event.shiftKey ? "redo" : "undo";
@@ -549,6 +553,20 @@ export function OpenScenePanel({
       event.preventDefault();
       if (action === "undo") session.undo();
       else session.redo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  });
+  // Shape keys (T-247): R, E, P, L, B choose the fog tool's shape while revealing or hiding.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (typing(event) || busy || !inGame || !active || tool === "pan") return;
+      const chosen = shapeOfKey(event);
+      if (!chosen) return;
+      event.preventDefault();
+      setShape(chosen);
     };
     window.addEventListener("keydown", onKey);
     return () => {

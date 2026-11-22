@@ -110,7 +110,7 @@ describe("MapView", () => {
     fireEvent.pointerMove(area(), { clientX: 150, clientY: 100, pointerId: 1 });
     fireEvent.pointerUp(area(), { pointerId: 1 });
     expect(fake.camera()?.centerX).toBeLessThan(beforeDrag?.centerX ?? 0);
-    fireEvent.keyDown(area(), { key: "r" });
+    fireEvent.keyDown(area(), { key: "t" });
     expect(fake.camera()?.rotation).toBe(90);
 
     fireEvent.keyDown(area(), { key: "0" });
@@ -424,7 +424,7 @@ describe("MapView", () => {
     fireEvent.pointerUp(area(), { pointerId: 1 });
     expect(onArea).not.toHaveBeenCalled();
 
-    fireEvent.keyDown(area(), { key: "r" });
+    fireEvent.keyDown(area(), { key: "t" });
     fireEvent.pointerDown(area(), {
       button: 0,
       clientX: 300,

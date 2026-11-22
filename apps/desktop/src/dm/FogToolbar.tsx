@@ -14,7 +14,7 @@ import {
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { FOG_SPEED, speedOfStep, stepOfSpeed } from "../fog-settings.js";
-import type { FogShape } from "./fog-shapes.js";
+import { SHAPE_KEYS, type FogShape } from "./fog-shapes.js";
 import type { MapTool } from "./MapView.js";
 
 const TOOLS: readonly { id: MapTool; icon: ReactNode }[] = [
@@ -88,6 +88,7 @@ export function FogToolbar({
             showLabel
             icon={each.icon}
             label={t(`fog.shapes.${each.id}`)}
+            aria-keyshortcuts={SHAPE_KEYS[each.id]}
             pressed={shape === each.id}
             disabled={disabled || tool === "pan"}
             onClick={() => {

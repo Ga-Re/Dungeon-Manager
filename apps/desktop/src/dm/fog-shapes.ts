@@ -15,6 +15,28 @@ import type { Polygon } from "@dungeon-manager/schema";
 /** How the DM marks an area to reveal or hide (SPEC 4; ellipse and lasso since T-247). */
 export type FogShape = "rectangle" | "ellipse" | "polygon" | "lasso" | "brush";
 
+/** The key choosing each shape (T-247, DM decision 2026-11-22), lower case. */
+export const SHAPE_KEYS: Readonly<Record<FogShape, string>> = {
+  rectangle: "r",
+  ellipse: "e",
+  polygon: "p",
+  lasso: "l",
+  brush: "b",
+};
+
+/** The shape a key chooses, if any (either case; no modifier keys). */
+export function shapeOfKey(event: {
+  readonly key: string;
+  readonly ctrlKey: boolean;
+  readonly metaKey: boolean;
+  readonly altKey: boolean;
+}): FogShape | null {
+  if (event.ctrlKey || event.metaKey || event.altKey) return null;
+  const key = event.key.toLowerCase();
+  const found = Object.entries(SHAPE_KEYS).find(([, each]) => each === key);
+  return found ? (found[0] as FogShape) : null;
+}
+
 /** Polygons smaller than this (square map pixels) enclose nothing worth a command. */
 const MIN_POLYGON_AREA = 1;
 

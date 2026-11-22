@@ -742,8 +742,9 @@ export function MapView({
       ArrowRight: (current) => panBy(current, { x: -KEY_PAN, y: 0 }),
       ArrowUp: (current) => panBy(current, { x: 0, y: KEY_PAN }),
       ArrowDown: (current) => panBy(current, { x: 0, y: -KEY_PAN }),
-      r: (current) => rotateBy(current, 90),
-      R: (current) => rotateBy(current, -90),
+      // T turns (DM decision 2026-11-22: R chooses the rectangle, T-247).
+      t: (current) => rotateBy(current, 90),
+      T: (current) => rotateBy(current, -90),
     };
     if (event.key === "0") {
       event.preventDefault();
@@ -866,7 +867,7 @@ export function MapView({
           <IconButton
             icon={<RotateCw />}
             label={t("mapView.rotate")}
-            aria-keyshortcuts="r"
+            aria-keyshortcuts="t"
             disabled={load !== "ready"}
             onClick={() => {
               change((current) => rotateBy(current, 90));

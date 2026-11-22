@@ -5,6 +5,7 @@ import {
   dragArea,
   lassoArea,
   polygonArea,
+  shapeOfKey,
   squareEnd,
 } from "./fog-shapes.js";
 
@@ -221,5 +222,33 @@ describe("lassoArea (T-247)", () => {
         view,
       ),
     ).toBeNull();
+  });
+});
+
+describe("shapeOfKey (T-247)", () => {
+  const key = (
+    k: string,
+    mods: Partial<Record<"ctrlKey" | "metaKey" | "altKey", boolean>> = {},
+  ) =>
+    shapeOfKey({
+      key: k,
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false,
+      ...mods,
+    });
+
+  test("R, E, P, L and B choose the shapes, in either case", () => {
+    expect(key("r")).toBe("rectangle");
+    expect(key("E")).toBe("ellipse");
+    expect(key("p")).toBe("polygon");
+    expect(key("l")).toBe("lasso");
+    expect(key("b")).toBe("brush");
+  });
+
+  test("other keys and keys with modifiers choose nothing", () => {
+    expect(key("t")).toBeNull();
+    expect(key("z", { ctrlKey: true })).toBeNull();
+    expect(key("r", { metaKey: true })).toBeNull();
   });
 });
