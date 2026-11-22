@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { FOG_SPEED, speedOfStep, stepOfSpeed } from "../fog-settings.js";
 import type { FogShape } from "./fog-shapes.js";
 import type { MapTool } from "./MapView.js";
 
@@ -42,6 +43,8 @@ export function FogToolbar({
   disabled,
   onRevealAll,
   onCoverAll,
+  speed,
+  onSpeed,
 }: {
   readonly tool: MapTool;
   readonly onTool: (tool: MapTool) => void;
@@ -54,6 +57,9 @@ export function FogToolbar({
   readonly disabled: boolean;
   readonly onRevealAll: () => void;
   readonly onCoverAll: () => void;
+  /** How fast fog changes spread, in grid cells per second; `Infinity` is "Sofort" (T-246). */
+  readonly speed: number;
+  readonly onSpeed: (speed: number) => void;
 }) {
   const { t, i18n } = useTranslation();
   return (
@@ -106,6 +112,30 @@ export function FogToolbar({
             />
           </label>
         )}
+      </RibbonGroup>
+      <RibbonGroup caption={t("fog.spread")}>
+        <label className="dm-ribbon-field">
+          {Number.isFinite(speed)
+            ? t("fog.speed", { cells: speed.toLocaleString(i18n.language) })
+            : t("fog.speedInstant")}
+          <input
+            type="range"
+            min={0}
+            max={FOG_SPEED.steps}
+            step={1}
+            value={stepOfSpeed(speed)}
+            aria-valuetext={
+              Number.isFinite(speed)
+                ? t("fog.speedValue", {
+                    cells: speed.toLocaleString(i18n.language),
+                  })
+                : t("fog.speedInstantValue")
+            }
+            onChange={(event) => {
+              onSpeed(speedOfStep(Number(event.target.value)));
+            }}
+          />
+        </label>
       </RibbonGroup>
       <RibbonGroup caption={t("fog.wholeMap")}>
         <IconButton

@@ -65,8 +65,8 @@ import { FogToolbar } from "./FogToolbar.js";
 import { SceneTabs, SceneTitle } from "./SceneTitle.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useSceneSession } from "./useSceneSession.js";
-import { livingFog, softEdgeWidth } from "../fog-settings.js";
-import { FogLookContext } from "./shell/fog-look.js";
+import { fogSpeed, livingFog, softEdgeWidth } from "../fog-settings.js";
+import { FogLookContext, SetFogSpeedContext } from "./shell/fog-look.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
 import { NewTokenForm } from "./NewTokenForm.js";
 import { InitiativePanel } from "./InitiativePanel.js";
@@ -197,6 +197,7 @@ export function OpenScenePanel({
 }) {
   const { t } = useTranslation();
   const fogLook = useContext(FogLookContext);
+  const setFogSpeed = useContext(SetFogSpeedContext);
   const mapImages = useContext(MapViewContext);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -1062,6 +1063,8 @@ export function OpenScenePanel({
               onCoverAll={() => {
                 if (mapSize) fogCommand("fog.hide", rectangle(mapSize));
               }}
+              speed={fogLook.speed}
+              onSpeed={setFogSpeed}
             />
           </ShellPortal>
           <ShellPortal slot="canvas">
@@ -1100,6 +1103,7 @@ export function OpenScenePanel({
               softEdge={softEdgeWidth(map.grid.cellSizePx, fogLook.softEdges)}
               fade={fogLook.fadeSeconds * 1000}
               living={livingFog(fogLook, map.grid.cellSizePx)}
+              speed={fogSpeed(fogLook, map.grid.cellSizePx)}
               onArea={(area, kind) => {
                 if (!busy)
                   fogCommand(

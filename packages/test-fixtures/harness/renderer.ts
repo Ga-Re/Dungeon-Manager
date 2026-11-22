@@ -367,6 +367,27 @@ async function fadeFailClosedScenario(canvas: HTMLCanvasElement) {
     }
     await new Promise((resolve) => setTimeout(resolve, 30));
   }
+  // The same hide at a speed with a ragged front (T-246).
+  renderer.setFog(REVEALED_NESTED, { opacity: 1, softEdge: SOFT_EDGE });
+  await renderer.drawn();
+  renderer.setFog(REVEALED, {
+    opacity: 1,
+    softEdge: SOFT_EDGE,
+    fade: 150,
+    speed: SPEED,
+  });
+  for (let frame = 0; frame < 12; frame++) {
+    await renderer.drawn();
+    const pixels = capture(canvas);
+    for (let index = 0; index < pixels.length; index += 4)
+      if (
+        hidden(before, index) &&
+        hidden(after, index) &&
+        !hidden(pixels, index)
+      )
+        violations++;
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  }
   // A new map of the same size mid-hide (the island in the pool): its fog is there at once,
   // not frozen half-way.
   renderer.setFog(REVEALED_NESTED, { opacity: 1, softEdge: SOFT_EDGE });
@@ -413,7 +434,18 @@ const SPREADS = {
     open: [1250, 450],
     fogged: [1040, 140],
   },
+  // At a speed (T-246): the same reveal at 10 cells of 100 px per second with a ragged front,
+  // 700 ms in – the corridor is open, the far corner of the right room still fogged.
+  "spread-ragged": {
+    before: [LEFT_ROOM],
+    after: [LEFT_ROOM, CORRIDOR, RIGHT_ROOM],
+    open: [700, 300],
+    fogged: [1450, 850],
+  },
 } as const;
+
+/** The speed of the "spread-ragged" scenario and of the speed pass of "fade-fail-closed". */
+const SPEED = { cellsPerSecond: 10, cellSizePx: 100 };
 
 /**
  * "spread-…" (T-167): a fog change with soft edges, frozen half-way (the renderer's clock is
@@ -436,9 +468,19 @@ async function spreadScenario(
   renderer.setMap(drawFixtureMap());
   renderer.setCamera(camera);
   await renderer.drawn();
-  renderer.setFog(after, { opacity: 1, softEdge: SOFT_EDGE, fade: 1000 });
-  // Eased, 206 of 1000 ms is half-way (1 − 0.794³ ≈ 0.5).
-  time = 206;
+  if (scenario === "spread-ragged") {
+    renderer.setFog(after, {
+      opacity: 1,
+      softEdge: SOFT_EDGE,
+      fade: 300,
+      speed: SPEED,
+    });
+    time = 700;
+  } else {
+    renderer.setFog(after, { opacity: 1, softEdge: SOFT_EDGE, fade: 1000 });
+    // Eased, 206 of 1000 ms is half-way (1 − 0.794³ ≈ 0.5).
+    time = 206;
+  }
   await renderer.drawn();
   const pixels = capture(canvas);
   // Red of the map pixel at `point`: 0 under the fog (unrotated camera).

@@ -11,4 +11,13 @@ export const FogLookContext = createContext<FogLook>({
   quality: "off",
   edge: 0,
   motion: 0,
+  speed: Infinity,
 });
+
+/**
+ * Sets the spread's speed on this device (T-246): the Nebel ribbon's slider. Outside a shell
+ * it changes nothing.
+ */
+export const SetFogSpeedContext = createContext<(speed: number) => void>(
+  () => undefined,
+);

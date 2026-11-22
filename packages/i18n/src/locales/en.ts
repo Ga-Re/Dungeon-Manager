@@ -428,6 +428,11 @@ export const en: Messages = {
         "Click to set points; double-click, Enter or the first point closes, Backspace removes the last one, Escape cancels.",
       brush: "Drag to paint with the brush.",
     },
+    spread: "Spread",
+    speed: "Speed: {{cells}} cells/s",
+    speedInstant: "Speed: instant",
+    speedValue: "{{cells}} cells per second",
+    speedInstantValue: "instant",
     wholeMap: "Whole map",
     revealAll: "Reveal all",
     coverAll: "Cover all",
@@ -466,9 +471,9 @@ export const en: Messages = {
         "The fog fades out softly at the edges of revealed areas – on this device and the TV. It never shows more than with hard edges.",
       softEdgesLiving:
         "The living fog always has soft edges. Set it to “Off” to choose hard edges.",
-      fade: "Transition duration",
+      fade: "Transition",
       fadeHint:
-        "How long revealing and hiding fade – also on the TV. 0 s switches at once.",
+        "How long each spot fades when revealing and hiding, while the change spreads at the speed set in the Fog ribbon – also on the TV. With speed “instant” and 0 s the fog switches at once.",
       seconds: "{{seconds, number(minimumFractionDigits: 2)}} s",
       quality: "Living fog",
       qualities: { high: "High", medium: "Medium", off: "Off" },

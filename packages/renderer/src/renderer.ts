@@ -28,7 +28,9 @@ import { easeOut, fadeProgress } from "./fog-fade.js";
 import { mapTiles } from "./map-tiles.js";
 import {
   coarseSpreadOrder,
-  FRONT,
+  DURATION_SHARES,
+  spreadAtSpeed,
+  type SpreadShares,
   sampleOrder,
   spreadMix,
   type Grid,
@@ -61,6 +63,16 @@ export interface FogOptions {
    * fogged throughout.
    */
   readonly fade?: number;
+  /**
+   * Spread at a speed (T-246, ADR-0019): the change travels `cellsPerSecond` grid cells (of
+   * `cellSizePx` map pixels) per second with a ragged front, and `fade` becomes the time each
+   * spot takes to turn over; an infinite speed turns everything over together. None spreads over
+   * `fade` as T-167 did.
+   */
+  readonly speed?: {
+    readonly cellsPerSecond: number;
+    readonly cellSizePx: number;
+  };
   /**
    * Living fog (T-245, ADR-0019): the fog drifts and its edge wobbles, only ever into revealed
    * area (the player view keeps the exact hard fog underneath). Needs the map's size; replaces
@@ -463,9 +475,14 @@ export async function createRenderer(
 
   /** A fade from the fog on screen to `target`, or `null` if this change must not fade. */
   const startFade = (target: NonNullable<typeof fogInput>): Fade | null => {
-    const duration = target.options.fade ?? 0;
+    const transition = target.options.fade ?? 0;
+    const speed = target.options.speed;
     const previous = shownFog;
-    if (duration <= 0 || !previous || !mapSize || !fog) return null;
+    // Nothing to animate: no transition, and no finite speed to travel at.
+    const spreads =
+      speed !== undefined && Number.isFinite(speed.cellsPerSecond);
+    if (transition <= 0 && !spreads) return null;
+    if (!previous || !mapSize || !fog) return null;
     if (!sameSize(previous.map, mapSize)) return null;
     // Only the look changed (soft edges, living fog): nothing spreads, it switches at once.
     if (JSON.stringify(previous.revealed) === JSON.stringify(target.revealed))
@@ -479,11 +496,28 @@ export async function createRenderer(
             fade.from.alpha,
             fade.to.alpha,
             sampleOrder(fade.order, fade.to.width, fade.to.height),
-            easeOut(fadeProgress(fade.start, fade.duration, now())),
+            fadeMix(fade, now()),
+            fade.shares,
           ),
         }
       : fogMask(previous.revealed, mapSize, maskEdge(previous.options));
-    const order = coarseSpreadOrder(gridOf(from), gridOf(to));
+    const order = coarseSpreadOrder(
+      gridOf(from),
+      gridOf(to),
+      speed && {
+        cellsPerTexel: to.texel / speed.cellSizePx,
+        seed: mapSeed(mapSize),
+      },
+    );
+    const timing = speed
+      ? spreadAtSpeed(
+          order.longest * to.texel,
+          speed.cellSizePx,
+          speed.cellsPerSecond,
+          transition,
+        )
+      : { duration: transition, shares: DURATION_SHARES };
+    if (timing.duration <= 0) return null;
     // Fogged in every state of the fade: the exact hard fog covers it all along.
     const revealedAll = unique([
       ...(fade?.revealedAll ?? previous.revealed),
@@ -498,13 +532,17 @@ export async function createRenderer(
         target.options,
         mapSize,
         rootResolution,
+        timing.shares,
       ),
       from,
       to,
       order,
       revealedAll,
       start: now(),
-      duration,
+      duration: timing.duration,
+      shares: timing.shares,
+      // At a speed the front travels evenly; a fixed duration eases out (T-136b).
+      eased: !speed,
       final: drawFog(
         target.revealed,
         target.options,
@@ -558,7 +596,7 @@ export async function createRenderer(
     if (!fade) return;
     const progress = fadeProgress(fade.start, fade.duration, now());
     if (progress < 1) {
-      fade.setMix(easeOut(progress));
+      fade.setMix(fadeMix(fade, now()));
       return;
     }
     // Shows the target, should swapping in the final layer fail.
@@ -944,8 +982,27 @@ interface Fade {
   readonly revealedAll: readonly Polygon[];
   readonly start: number;
   readonly duration: number;
+  /** How the duration splits into the travel of the front and each spot's turn (T-246). */
+  readonly shares: SpreadShares;
+  /** Eased (a fixed duration) or even (at a speed). */
+  readonly eased: boolean;
   /** The exact fog shown once the fade is over, built at its start (no work at its end). */
   readonly final: Container;
+}
+
+/** How far `fade` is at `at`, 0…1, as the shaders take it. */
+function fadeMix(fade: Fade, at: number): number {
+  const progress = fadeProgress(fade.start, fade.duration, at);
+  return fade.eased ? easeOut(progress) : progress;
+}
+
+/** The same seed for the same map size: a map's ragged fronts look the same every time. */
+function mapSeed(map: Size): number {
+  return (
+    (Math.imul(Math.round(map.width), 73856093) ^
+      Math.imul(Math.round(map.height), 19349663)) |
+    0
+  );
 }
 
 // Blends two fog masks texel by texel on the GPU while a front passes in the spread order
@@ -966,13 +1023,11 @@ uniform sampler2D uFrom;
 uniform sampler2D uTo;
 uniform sampler2D uOrder;
 uniform float uMix;
+uniform float uSpread;
+uniform float uFront;
 out vec4 finalColor;
 void main() {
-  float local = clamp(
-    (uMix * (1.0 + ${FRONT.toFixed(3)}) - texture(uOrder, vUV).a) / ${FRONT.toFixed(3)},
-    0.0,
-    1.0
-  );
+  float local = clamp((uMix - texture(uOrder, vUV).a * uSpread) / uFront, 0.0, 1.0);
   float alpha = mix(texture(uFrom, vUV).a, texture(uTo, vUV).a, local);
   finalColor = vec4(0.0, 0.0, 0.0, alpha);
 }`;
@@ -989,6 +1044,7 @@ function drawFadeFog(
   options: FogOptions,
   map: Size,
   rootResolution: number,
+  shares: SpreadShares,
 ): { readonly layer: Container; readonly setMix: (t: number) => void } {
   const opacity = options.opacity ?? 1;
   if (options.living) {
@@ -1001,13 +1057,18 @@ function drawFadeFog(
       map,
       rootResolution,
     );
+    handle.setShares(shares);
     handle.setMix(0);
     return { layer, setMix: handle.setMix };
   }
   const fromTexture = maskTexture(from, opacity);
   const toTexture = maskTexture(to, opacity);
   const orderTexture = alphaTexture(order, 1);
-  const uniforms = new UniformGroup({ uMix: { value: 0, type: "f32" } });
+  const uniforms = new UniformGroup({
+    uMix: { value: 0, type: "f32" },
+    uSpread: { value: shares.spread, type: "f32" },
+    uFront: { value: shares.front, type: "f32" },
+  });
   const width = to.width * to.texel;
   const height = to.height * to.texel;
   const geometry = new MeshGeometry({

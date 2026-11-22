@@ -433,6 +433,11 @@ export const de = {
         "Klicken setzt Punkte; Doppelklick, Enter oder der erste Punkt schließt, Rücktaste nimmt den letzten zurück, Escape bricht ab.",
       brush: "Ziehen malt mit dem Pinsel.",
     },
+    spread: "Ausbreitung",
+    speed: "Tempo: {{cells}} Felder/s",
+    speedInstant: "Tempo: sofort",
+    speedValue: "{{cells}} Felder pro Sekunde",
+    speedInstantValue: "sofort",
     wholeMap: "Ganze Karte",
     revealAll: "Alles aufdecken",
     coverAll: "Alles verdecken",
@@ -474,9 +479,9 @@ export const de = {
         "Der Nebel läuft an den Rändern aufgedeckter Bereiche sanft aus – auf diesem Gerät und dem TV. Er zeigt dabei nie mehr als mit harten Kanten.",
       softEdgesLiving:
         "Der lebendige Nebel hat immer weiche Kanten. Stelle ihn auf „Aus“, um harte Kanten zu wählen.",
-      fade: "Übergangsdauer",
+      fade: "Übergang",
       fadeHint:
-        "Wie lange Aufdecken und Verdecken weich überblenden – auch auf dem TV. 0 s schaltet sofort um.",
+        "Wie lange jede Stelle beim Aufdecken und Verdecken überblendet, während sich die Änderung im Tempo aus dem Nebel-Ribbon ausbreitet – auch auf dem TV. Mit Tempo „sofort“ und 0 s schaltet der Nebel hart um.",
       seconds: "{{seconds, number(minimumFractionDigits: 2)}} s",
       quality: "Lebendiger Nebel",
       qualities: { high: "Hoch", medium: "Mittel", off: "Aus" },

@@ -49,7 +49,13 @@ for (const scenario of [
 
 // Spreading fog (T-167), frozen half-way: a reveal opens from the revealed room it touches, an
 // isolated one from its middle; a hide comes in from the fog side.
-for (const scenario of ["spread-adjacent", "spread-isolated", "spread-hide"]) {
+// "spread-ragged" (T-246): at a speed, with a ragged front.
+for (const scenario of [
+  "spread-adjacent",
+  "spread-isolated",
+  "spread-hide",
+  "spread-ragged",
+]) {
   test(`fog change: ${scenario}`, async ({ page }) => {
     await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
     await expect(page.locator("body")).toHaveAttribute("data-ready", "true");

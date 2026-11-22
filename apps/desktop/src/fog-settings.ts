@@ -9,7 +9,15 @@ const FADE_KEY = "dm.fog.fadeSeconds";
 const QUALITY_KEY = "dm.fog.quality";
 const EDGE_KEY = "dm.fog.edge";
 const MOTION_KEY = "dm.fog.motion";
-const KEYS = [SOFT_EDGES_KEY, FADE_KEY, QUALITY_KEY, EDGE_KEY, MOTION_KEY];
+const SPEED_KEY = "dm.fog.speed";
+const KEYS = [
+  SOFT_EDGES_KEY,
+  FADE_KEY,
+  QUALITY_KEY,
+  EDGE_KEY,
+  MOTION_KEY,
+  SPEED_KEY,
+];
 
 /**
  * Width of the soft fog edge as a share of a grid cell, from the hard edge inwards: soft, while
@@ -46,7 +54,21 @@ export interface FogLook {
   readonly edge: number;
   /** Drift speed of the living fog, 0 … 3. */
   readonly motion: number;
+  /** How fast a fog change spreads, in grid cells per second; `Infinity` is "Sofort" (T-246). */
+  readonly speed: number;
 }
+
+/**
+ * The spread's speed (DM decisions, 2026-11-22): 0.5 … 40 grid cells per second on a
+ * logarithmic slider whose last step is "Sofort"; 5 by default.
+ */
+export const FOG_SPEED = {
+  min: 0.5,
+  max: 40,
+  default: 5,
+  /** Slider steps; the last one is "Sofort". */
+  steps: 40,
+} as const;
 
 /** Soft edges on unless switched off on this device (DM request: no hard edges). */
 export function readSoftEdges(storage: Storage | undefined): boolean {
@@ -189,6 +211,55 @@ function saveItem(
   }
 }
 
+/** The spread's speed for a slider position 0 … `FOG_SPEED.steps` (the last is "Sofort"). */
+export function speedOfStep(step: number): number {
+  if (step >= FOG_SPEED.steps) return Infinity;
+  const share = Math.max(0, step) / (FOG_SPEED.steps - 1);
+  const speed = FOG_SPEED.min * (FOG_SPEED.max / FOG_SPEED.min) ** share;
+  // Readable values: two significant digits (0.56, 2.5, 18).
+  return Number(speed.toPrecision(2));
+}
+
+/** The slider position nearest to `speed`. */
+export function stepOfSpeed(speed: number): number {
+  if (!Number.isFinite(speed)) return FOG_SPEED.steps;
+  const clamped = Math.min(FOG_SPEED.max, Math.max(FOG_SPEED.min, speed));
+  return Math.round(
+    (Math.log(clamped / FOG_SPEED.min) /
+      Math.log(FOG_SPEED.max / FOG_SPEED.min)) *
+      (FOG_SPEED.steps - 1),
+  );
+}
+
+/** The spread's speed on this device: 5 cells per second unless chosen. */
+export function readFogSpeed(storage: Storage | undefined): number {
+  const value = readItem(storage, SPEED_KEY);
+  if (value === "instant") return Infinity;
+  if (value === null || value.trim() === "") return FOG_SPEED.default;
+  const speed = Number(value);
+  if (!Number.isFinite(speed) || speed <= 0) return FOG_SPEED.default;
+  return Math.min(FOG_SPEED.max, Math.max(FOG_SPEED.min, speed));
+}
+
+export function saveFogSpeed(
+  storage: Storage | undefined,
+  speed: number,
+): void {
+  saveItem(
+    storage,
+    SPEED_KEY,
+    Number.isFinite(speed) ? String(speed) : "instant",
+  );
+}
+
+/** The spread for a map with `cellSizePx` cells, as the renderer takes it (T-246). */
+export function fogSpeed(
+  look: FogLook,
+  cellSizePx: number,
+): { readonly cellsPerSecond: number; readonly cellSizePx: number } {
+  return { cellsPerSecond: look.speed, cellSizePx };
+}
+
 /** All settings at once. */
 export function readFogLook(storage: Storage | undefined): FogLook {
   return {
@@ -197,6 +268,7 @@ export function readFogLook(storage: Storage | undefined): FogLook {
     quality: readFogQuality(storage),
     edge: readFogEdge(storage),
     motion: readFogMotion(storage),
+    speed: readFogSpeed(storage),
   };
 }
 

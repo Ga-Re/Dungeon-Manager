@@ -264,7 +264,7 @@ describe("DmShell", () => {
     expect((soft as HTMLInputElement).checked).toBe(false);
     expect(storage.getItem("dm.fog.softEdges")).toBe("off");
 
-    const fade = screen.getByRole("slider", { name: "Übergangsdauer" });
+    const fade = screen.getByRole("slider", { name: "Übergang" });
     expect(fade.getAttribute("aria-valuetext")).toBe("0,65 s");
     fireEvent.change(fade, { target: { value: "1.5" } });
     expect(fade.getAttribute("aria-valuetext")).toBe("1,50 s");

@@ -6,6 +6,7 @@ import {
   screenToMap,
   zoomAt,
   type Camera,
+  type FogOptions,
   type LivingFog,
   type Point,
   type Renderer,
@@ -135,6 +136,7 @@ export function MapView({
   softEdge = 0,
   fade = 0,
   living,
+  speed,
   onArea,
   onMapSize,
   grid = null,
@@ -161,6 +163,8 @@ export function MapView({
   readonly fade?: number;
   /** The living fog (T-245); none draws the still fog. */
   readonly living?: LivingFog | undefined;
+  /** How fast fog changes spread (T-246); none spreads over `fade` as before. */
+  readonly speed?: FogOptions["speed"];
   /** An area the DM marked with the reveal or hide tool, in map pixels. */
   readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
   readonly onMapSize?: (size: Size) => void;
@@ -387,9 +391,11 @@ export function MapView({
     renderer.current?.setGrid(gridNow.current);
   }, [showGrid, gridCell, gridX, gridY]);
 
-  // The fade duration applies to the next change; changing it alone redraws nothing.
+  // The fade duration and speed apply to the next change; changing them alone redraws nothing.
   const fadeNow = useRef(fade);
   fadeNow.current = fade;
+  const speedNow = useRef(speed);
+  speedNow.current = speed;
   // The living fog by value: a new object with the same settings redraws nothing.
   const livingNow = useRef(living);
   livingNow.current = living;
@@ -402,6 +408,7 @@ export function MapView({
       opacity: DM_FOG_OPACITY,
       softEdge,
       fade: fadeNow.current,
+      ...(speedNow.current && { speed: speedNow.current }),
       ...(current && { living: current }),
     });
   }, [fog, softEdge, livingKey]);

@@ -55,6 +55,8 @@ function fakeFeed() {
 }
 
 const image = { width: 2000, height: 1000 } as unknown as MapImage;
+/** The spread at its default speed (T-246) on the test scene's 100-px cells. */
+const SPEED = { cellsPerSecond: 5, cellSizePx: 100 };
 
 function renderPlayer(
   load = () => Promise.resolve(image),
@@ -100,6 +102,7 @@ describe("PlayerApp", () => {
     // The first fog of a scene never fades.
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
+      speed: SPEED,
       fade: 0,
     });
     expect(fogOrder).toBeLessThan(mapOrder);
@@ -501,6 +504,7 @@ describe("PlayerApp", () => {
     // The first fog of a scene never fades.
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
+      speed: SPEED,
       fade: 0,
     });
     expect(video?.isConnected).toBe(true);
@@ -537,12 +541,14 @@ describe("PlayerApp", () => {
     });
     expect(maps.view.setFog).toHaveBeenLastCalledWith(more, {
       softEdge: 25,
+      speed: SPEED,
       fade: 650,
     });
 
     feed.send({ v: 1, scene: { ...scene, id: "other" }, rotation: 0 });
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
+      speed: SPEED,
       fade: 0,
     });
   });
@@ -581,6 +587,7 @@ describe("PlayerApp", () => {
     feed.send({ v: 1, scene: cellar, rotation: 0 });
     expect(maps.view.setFog).toHaveBeenLastCalledWith([], {
       softEdge: 25,
+      speed: SPEED,
       fade: 0,
     });
     await waitFor(() => {
@@ -657,6 +664,7 @@ describe("PlayerApp", () => {
     });
     expect(maps.view.setFog).toHaveBeenLastCalledWith([], {
       softEdge: 25,
+      speed: SPEED,
       fade: 0,
     });
     expect(maps.service.loadImage).toHaveBeenCalledTimes(1);
@@ -671,6 +679,7 @@ describe("PlayerApp", () => {
     // The first fog of a scene never fades.
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
+      speed: SPEED,
       fade: 0,
     });
 
@@ -681,6 +690,7 @@ describe("PlayerApp", () => {
 
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 0,
+      speed: SPEED,
       fade: 650,
     });
   });
@@ -696,6 +706,7 @@ describe("PlayerApp", () => {
     feed.send({ v: 1, scene: sceneWith("library/maps/a.png"), rotation: 0 });
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
+      speed: SPEED,
       fade: 0,
       living: { quality: "medium", cellSizePx: 100, edge: 1.2, motion: 1 },
     });
@@ -706,6 +717,7 @@ describe("PlayerApp", () => {
     );
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
+      speed: SPEED,
       fade: 650,
       living: { quality: "medium", cellSizePx: 100, edge: 2, motion: 1 },
     });
@@ -716,6 +728,7 @@ describe("PlayerApp", () => {
     );
     expect(maps.view.setFog).toHaveBeenLastCalledWith(revealed, {
       softEdge: 25,
+      speed: SPEED,
       fade: 650,
     });
   });
