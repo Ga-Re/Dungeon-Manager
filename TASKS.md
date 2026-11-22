@@ -1051,7 +1051,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Each biome animates without making fog transparent; particles drift over the revealed side only next to the edge (pixel and screenshot tests)
   - [ ] Ribbon picker and strength change the open scene live, also on the TV (component + E2E tests)
   - [ ] The benchmark scene with each biome stays within ARCHITECTURE §11, measured by the DM
-- **Notes:** From the DM (2026-11-19); reworked in the DM interview (2026-11-22). How the DM sets a map's default from the DM window (e.g. "Als Kartenstandard übernehmen") is settled in this task's plan. Likely above 400 changed lines – the DM chose all eight biomes at once.
+- **Notes:** From the DM (2026-11-19); reworked in the DM interview (2026-11-22). How the DM sets a map's default from the DM window (e.g. "Als Kartenstandard übernehmen") is settled in this task's plan. Likely above 400 changed lines – the DM chose all eight biomes at once. DM confirmed (2026-11-22, with ADR-0019) that particles may drift over the revealed side next to the edge.
 
 ### T-248 Hide fog in the DM window
 

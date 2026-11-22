@@ -1,6 +1,6 @@
 # ADR-0019: Animated fog engine (Nebelweber look, spread by speed, biomes)
 
-- **Status:** Proposed
+- **Status:** Accepted (DM, 2026-11-22)
 - **Date:** 2026-11-22
 - **Deciders:** DM (product owner), agent
 
