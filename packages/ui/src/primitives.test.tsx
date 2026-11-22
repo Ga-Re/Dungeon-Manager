@@ -160,6 +160,16 @@ describe("TreeList", () => {
     expect(onItemContextMenu).toHaveBeenCalledTimes(3);
   });
 
+  it("opens an item on double-click, not a folder's toggle or a nested item's (ADR-0020)", () => {
+    const onItemActivate = vi.fn();
+    render(
+      <TreeList label="Szene" nodes={nodes} onItemActivate={onItemActivate} />,
+    );
+    fireEvent.doubleClick(screen.getByText("Grabkammer"));
+    expect(onItemActivate).toHaveBeenLastCalledWith("chamber");
+    expect(onItemActivate).toHaveBeenCalledTimes(1);
+  });
+
   it("opens the context menu beside a narrow row and swallows the key's own contextmenu", () => {
     const onItemContextMenu =
       vi.fn<NonNullable<TreeListProps["onItemContextMenu"]>>();

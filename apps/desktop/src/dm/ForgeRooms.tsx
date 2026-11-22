@@ -1,7 +1,8 @@
 import type { RoomShape } from "@dungeon-manager/core";
 import type { Room, SidecarLevel } from "@dungeon-manager/schema";
-import { useEffect, useId, useRef, useState, type SyntheticEvent } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ToolCommand } from "./ToolCommand.js";
 
 const SHAPES: readonly RoomShape[] = [
   "rectangle",
@@ -10,30 +11,91 @@ const SHAPES: readonly RoomShape[] = [
   "lasso",
 ];
 
+/** A room's name and whether it is secret, as the command panels edit them. */
+export interface RoomFacts {
+  readonly name: string;
+  readonly secret: boolean;
+}
+
+/** Name and secret fields, shared by "Raum anlegen" and "Raum bearbeiten". */
+function FactsFields({
+  facts,
+  onFacts,
+}: {
+  readonly facts: RoomFacts;
+  readonly onFacts: (facts: RoomFacts) => void;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  return (
+    <>
+      <div className="dm-item-info-field">
+        <label htmlFor={`${id}-name`}>{t("forgeRooms.name")}</label>
+        <input
+          id={`${id}-name`}
+          value={facts.name}
+          maxLength={200}
+          onChange={(event) => {
+            onFacts({ ...facts, name: event.target.value });
+          }}
+        />
+      </div>
+      <label className="dm-forge-check">
+        <input
+          type="checkbox"
+          checked={facts.secret}
+          onChange={(event) => {
+            onFacts({ ...facts, secret: event.target.checked });
+          }}
+        />
+        {t("forgeRooms.secret")}
+      </label>
+    </>
+  );
+}
+
 /**
- * Drawing rooms in the Map Forge (T-108c1): the level they are drawn on and the shape. While a
- * shape is chosen, the map draws a room with it; corners snap to the grid, Alt draws freely.
+ * "Raum anlegen" (T-254, ADR-0020): the DM picks the level and a shape and draws the room on
+ * the map – again, until it fits – names it and confirms with OK. Corners snap to the grid; Alt
+ * draws freely.
  */
-export function RoomTools({
+export function AddRoomCommand({
   levels,
   levelId,
   onLevel,
   shape,
   onShape,
-  disabled,
+  drawn,
+  facts,
+  onFacts,
+  busy,
+  problem,
+  onOk,
+  onCancel,
 }: {
   readonly levels: readonly SidecarLevel[];
   readonly levelId: string;
   readonly onLevel: (levelId: string) => void;
-  readonly shape: RoomShape | null;
-  readonly onShape: (shape: RoomShape | null) => void;
-  readonly disabled: boolean;
+  readonly shape: RoomShape;
+  readonly onShape: (shape: RoomShape) => void;
+  /** A room has been drawn on the map, so OK can create it. */
+  readonly drawn: boolean;
+  readonly facts: RoomFacts;
+  readonly onFacts: (facts: RoomFacts) => void;
+  readonly busy: boolean;
+  readonly problem: string;
+  readonly onOk: () => void;
+  readonly onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
   return (
-    <div className="dm-item-info">
-      <p className="dm-details-kind">{t("forgeRooms.title")}</p>
+    <ToolCommand
+      title={t("forgeRooms.add")}
+      okDisabled={busy || !drawn || facts.name.trim() === ""}
+      onOk={onOk}
+      onCancel={onCancel}
+    >
       {levels.length > 1 && (
         <div className="dm-item-info-field">
           <label htmlFor={`${id}-level`}>{t("forgeRooms.level")}</label>
@@ -62,134 +124,81 @@ export function RoomTools({
             key={each}
             type="button"
             aria-pressed={shape === each}
-            disabled={disabled}
             onClick={() => {
-              onShape(shape === each ? null : each);
+              onShape(each);
             }}
           >
             {t(`forgeRooms.shapes.${each}`)}
           </button>
         ))}
       </div>
-    </div>
+      <FactsFields facts={facts} onFacts={onFacts} />
+      {!drawn && (
+        <p className="dm-catalog-notice">{t("forgeRooms.drawFirst")}</p>
+      )}
+      {problem && <p role="alert">{problem}</p>}
+    </ToolCommand>
   );
 }
 
-/**
- * The selected room's name, whether it is secret, and deleting it (T-108c1). Every change is
- * saved in the map's sidecar at once, for every scene of the map.
- */
-export function RoomEditor({
+/** "Raum bearbeiten" (T-254): a room's name and whether it is secret; OK saves both. */
+export function EditRoomCommand({
   room,
   busy,
-  focusName,
-  onRename,
-  onSecret,
-  onDelete,
+  problem,
+  onOk,
+  onCancel,
 }: {
   readonly room: Room;
   readonly busy: boolean;
-  /** Put the keyboard in the name field (a room just drawn gets its name next). */
-  readonly focusName: boolean;
-  readonly onRename: (name: string) => void;
-  readonly onSecret: (secret: boolean) => void;
-  readonly onDelete: () => void;
+  readonly problem: string;
+  readonly onOk: (facts: RoomFacts) => void;
+  readonly onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const id = useId();
-  const field = useRef<HTMLInputElement>(null);
-  const [name, setName] = useState(room.name);
-  const [confirming, setConfirming] = useState(false);
-  // The keyboard follows the question: to "Behalten" while asking, back after it.
-  const keepButton = useRef<HTMLButtonElement>(null);
-  const deleteButton = useRef<HTMLButtonElement>(null);
-  const [asked, setAsked] = useState(false);
-  useEffect(() => {
-    if (!asked) return;
-    (confirming ? keepButton : deleteButton).current?.focus();
-  }, [asked, confirming]);
-  // Another room, or this one renamed elsewhere: the field shows its name.
-  const [shownFor, setShownFor] = useState(`${room.id}:${room.name}`);
-  if (shownFor !== `${room.id}:${room.name}`) {
-    setShownFor(`${room.id}:${room.name}`);
-    setName(room.name);
-    setConfirming(false);
-  }
-  useEffect(() => {
-    if (!focusName) return;
-    field.current?.focus();
-    field.current?.select();
-  }, [focusName, room.id]);
-
-  const rename = (event: SyntheticEvent) => {
-    event.preventDefault();
-    const trimmed = name.trim();
-    // A room needs a name: an emptied field shows the current one again.
-    if (trimmed === "") setName(room.name);
-    else if (trimmed !== room.name) onRename(trimmed);
-  };
-
+  const [facts, setFacts] = useState<RoomFacts>({
+    name: room.name,
+    secret: room.secret === true,
+  });
   return (
-    <form className="dm-item-info" noValidate onSubmit={rename}>
-      <p className="dm-details-heading">
-        <span className="dm-details-kind">{t("forgeRooms.kind")}</span>
-        {room.name}
-      </p>
-      <div className="dm-item-info-field">
-        <label htmlFor={`${id}-name`}>{t("forgeRooms.name")}</label>
-        <input
-          ref={field}
-          id={`${id}-name`}
-          value={name}
-          maxLength={200}
-          onChange={(event) => {
-            setName(event.target.value);
-          }}
-          onBlur={rename}
-        />
-      </div>
-      <label className="dm-forge-check">
-        <input
-          type="checkbox"
-          checked={room.secret === true}
-          disabled={busy}
-          onChange={(event) => {
-            onSecret(event.target.checked);
-          }}
-        />
-        {t("forgeRooms.secret")}
-      </label>
-      <div className="dm-item-info-actions">
-        {confirming ? (
-          <>
-            <button
-              ref={keepButton}
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
-              {t("forgeRooms.keep")}
-            </button>
-            <button type="button" disabled={busy} onClick={onDelete}>
-              {t("forgeRooms.deleteConfirm", { name: room.name })}
-            </button>
-          </>
-        ) : (
-          <button
-            ref={deleteButton}
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setConfirming(true);
-              setAsked(true);
-            }}
-          >
-            {t("forgeRooms.delete")}
-          </button>
-        )}
-      </div>
-    </form>
+    <ToolCommand
+      title={t("forgeRooms.edit")}
+      okDisabled={busy || facts.name.trim() === ""}
+      onOk={() => {
+        onOk({ ...facts, name: facts.name.trim() });
+      }}
+      onCancel={onCancel}
+    >
+      <FactsFields facts={facts} onFacts={setFacts} />
+      {problem && <p role="alert">{problem}</p>}
+    </ToolCommand>
+  );
+}
+
+/** "Raum löschen" (T-254): asks first; OK deletes the room for every scene of the map. */
+export function DeleteRoomCommand({
+  room,
+  busy,
+  problem,
+  onOk,
+  onCancel,
+}: {
+  readonly room: Room;
+  readonly busy: boolean;
+  readonly problem: string;
+  readonly onOk: () => void;
+  readonly onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ToolCommand
+      title={t("forgeRooms.delete")}
+      okDisabled={busy}
+      onOk={onOk}
+      onCancel={onCancel}
+    >
+      <p>{t("forgeRooms.deleteQuestion", { name: room.name })}</p>
+      {problem && <p role="alert">{problem}</p>}
+    </ToolCommand>
   );
 }

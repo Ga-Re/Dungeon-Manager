@@ -123,13 +123,16 @@ const PANEL_COMMAND = {
 /**
  * Each workspace's ribbon tabs and the slots their tools render into (ADR-0020). A workspace
  * without tabs yet shows what is coming. Tabs are added as their tools move in: the Map Forge's
- * RÄUME and NEBEL follow with T-253/T-254.
+ * NEBEL follows with T-253.
  */
 const RIBBON_TABS: Record<
   Workspace,
   readonly { readonly id: string; readonly slot: ShellSlot }[]
 > = {
-  mapForge: [{ id: "forgeMap", slot: "ribbonForgeMap" }],
+  mapForge: [
+    { id: "forgeMap", slot: "ribbonForgeMap" },
+    { id: "forgeRooms", slot: "ribbonForgeRooms" },
+  ],
   assetVault: [],
   creatures: [],
   campaignAtlas: [],
@@ -447,6 +450,7 @@ export function DmShell({
       "ribbonFog",
       "ribbonDisplay",
       "ribbonForgeMap",
+      "ribbonForgeRooms",
       "settings",
       "settingsTv",
       "settingsCampaign",

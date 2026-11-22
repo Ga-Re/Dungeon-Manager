@@ -379,7 +379,7 @@ test("the grid is calibrated from the ribbon: a box over 3 × 3 printed cells, a
     .toBeCloseTo(calibrated, 1);
 });
 
-test("a room drawn in the Map Forge is named and shows in every scene of the map (T-108c1)", async ({
+test("a room is added from the ribbon, named, confirmed and shows in every scene of the map (T-108c1, T-254)", async ({
   page,
 }) => {
   await openDmWindow(page);
@@ -389,8 +389,17 @@ test("a room drawn in the Map Forge is named and shows in every scene of the map
     .getByRole("button", { name: /krypta\.png/ })
     .dblclick();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
-  const details = page.getByRole("region", { name: "Eigenschaften" });
-  await details.getByRole("button", { name: "Rechteck" }).click();
+  // RÄUME › Raum anlegen opens its command panel (ADR-0020).
+  await page.getByRole("tab", { name: "Räume" }).click();
+  await page
+    .getByRole("group", { name: "Räume" })
+    .getByRole("button", { name: "Raum anlegen" })
+    .click();
+  const panel = page.getByRole("dialog", { name: "Raum anlegen" });
+  await expect(panel.getByRole("button", { name: "Rechteck" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
   const canvas = page.locator(".map-view-canvas");
   const box = await canvas.boundingBox();
@@ -401,17 +410,21 @@ test("a room drawn in the Map Forge is named and shows in every scene of the map
   await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6);
   await page.mouse.up();
 
-  // The new room has the keyboard for its name.
-  const roomForm = details.locator("form", {
-    has: page.locator(".dm-details-kind", { hasText: /^Raum$/ }),
-  });
-  const name = roomForm.getByLabel("Name");
+  const name = panel.getByLabel("Name");
   await expect(name).toHaveValue("Raum 1");
-  await expect(name).toBeFocused();
   await name.fill("Gruft");
+  // Enter in the panel confirms, as OK does.
   await name.press("Enter");
+  await expect(panel).toBeHidden();
   const forgeTree = page.getByRole("tree", { name: "Karte" });
   await expect(forgeTree.getByText("Gruft")).toBeVisible();
+
+  // A double-click in the browser opens "Raum bearbeiten".
+  await forgeTree.getByText("Gruft").dblclick();
+  const edit = page.getByRole("dialog", { name: "Raum bearbeiten" });
+  await expect(edit.getByLabel("Name")).toHaveValue("Gruft");
+  await page.keyboard.press("Escape");
+  await expect(edit).toBeHidden();
 
   // Every scene of the map has it: here the campaign's scene Krypta.
   await page

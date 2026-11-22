@@ -48,6 +48,11 @@ export interface TreeListProps {
     | ((id: string, point: { x: number; y: number }, item: HTMLElement) => void)
     | undefined;
   /**
+   * Double-click on an item: open it (its settings or edit command, ADR-0020). Keyboard users
+   * reach the same through the item's context menu.
+   */
+  onItemActivate?: ((id: string) => void) | undefined;
+  /**
    * `guides`: outline tree with connector lines, junction dots and toggle boxes. `compact`: CAD
    * browser style with disclosure chevrons and no lines, for tool windows over the map.
    */
@@ -104,6 +109,7 @@ export function TreeList({
   onExpandedChange,
   renderActions,
   onItemContextMenu,
+  onItemActivate,
   variant = "guides",
   className,
 }: TreeListProps) {
@@ -285,6 +291,17 @@ export function TreeList({
             moveFocus(node.id);
             onSelect?.(node.id);
           }}
+          onDoubleClick={
+            onItemActivate &&
+            ((event) => {
+              if (
+                !(event.target instanceof Element) ||
+                event.target.closest(".dm-tree-item") !== event.currentTarget
+              )
+                return;
+              onItemActivate(node.id);
+            })
+          }
           onFocus={(event) => {
             if (event.target === event.currentTarget) setFocusedId(node.id);
           }}
