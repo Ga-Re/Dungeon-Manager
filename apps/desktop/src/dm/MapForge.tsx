@@ -1,4 +1,9 @@
-import type { Sidecar } from "@dungeon-manager/schema";
+import {
+  CALIBRATION_CELLS,
+  gridFromBox,
+  shiftGrid,
+} from "@dungeon-manager/core";
+import type { Grid, Sidecar } from "@dungeon-manager/schema";
 import {
   loadSidecar,
   mapKind,
@@ -7,12 +12,12 @@ import {
 } from "@dungeon-manager/storage";
 import { IconButton, TreeList, type TreeNode } from "@dungeon-manager/ui";
 import { DoorOpen, Folder, Layers, Map as MapIcon, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { fileName } from "./file-name.js";
 import { ItemInfoEditor } from "./ItemInfoEditor.js";
-import { MapDataEditor } from "./MapDataEditor.js";
+import { MapDataEditor, type CalibrationChoice } from "./MapDataEditor.js";
 import { MapView } from "./MapView.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
@@ -93,6 +98,33 @@ export function MapForge({
   const { t } = useTranslation();
   const shown = useActiveWorkspace() === "mapForge";
   const loaded = useSidecar(service, path);
+  // Grid calibration (T-177): how the DM calibrates, the last grid calibrated on the map and
+  // the grid the fields describe, shown on the map until saved or discarded.
+  const [calibration, setCalibration] = useState<CalibrationChoice>({
+    mode: null,
+    cells: CALIBRATION_CELLS.default,
+  });
+  const [proposal, setProposal] = useState<{
+    readonly grid: Grid;
+    readonly seq: number;
+  } | null>(null);
+  const [preview, setPreviewState] = useState<Grid | null>(null);
+  // The latest grid, also between renders: a fast grid drag adds up every move.
+  const gridNow = useRef<Grid | null>(null);
+  const setPreview = useCallback((grid: Grid | null) => {
+    gridNow.current = grid;
+    setPreviewState(grid);
+  }, []);
+  useEffect(() => {
+    setCalibration((current) => ({ ...current, mode: null }));
+    setProposal(null);
+    setPreview(null);
+  }, [path, setPreview]);
+  const propose = useCallback((grid: Grid | null) => {
+    if (!grid) return;
+    gridNow.current = grid;
+    setProposal((current) => ({ grid, seq: (current?.seq ?? 0) + 1 }));
+  }, []);
   if (!shown) return null;
   if (path === null)
     return (
@@ -177,7 +209,23 @@ export function MapForge({
           label={name}
           fog={null}
           // Placeholder data is no grid of this map: none until its sidecar is read.
-          grid={loaded.status === "ok" ? data.grid : null}
+          grid={loaded.status === "ok" ? (preview ?? data.grid) : null}
+          calibration={
+            loaded.status === "ok" && calibration.mode
+              ? {
+                  mode: calibration.mode,
+                  cells: calibration.cells,
+                  onBox: (a, b) => {
+                    propose(
+                      gridFromBox([a.x, a.y], [b.x, b.y], calibration.cells),
+                    );
+                  },
+                  onShift: (dx, dy) => {
+                    propose(shiftGrid(gridNow.current ?? data.grid, dx, dy));
+                  },
+                }
+              : null
+          }
         />
       </ShellPortal>
       <ShellPortal slot="browser">
@@ -210,6 +258,10 @@ export function MapForge({
                 data={data}
                 defaults={defaults}
                 onSaved={loaded.reload}
+                proposal={proposal}
+                onPreview={setPreview}
+                calibration={calibration}
+                onCalibration={setCalibration}
               />
             </>
           )}

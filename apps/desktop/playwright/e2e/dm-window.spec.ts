@@ -310,6 +310,67 @@ test("a map opened in the Map Forge gets a new grid; the scene on the TV takes i
   await expect.poll(tvGrid).toBe(50);
 });
 
+test("the grid is calibrated by a box over 3 × 3 printed cells and moved by arrow keys (T-177)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page
+    .getByRole("list", { name: "Karten" })
+    .getByRole("button", { name: /krypta\.png/ })
+    .dblclick();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  const details = page.getByRole("region", { name: "Eigenschaften" });
+  await details.getByRole("button", { name: "Box aufziehen" }).click();
+
+  // Where map pixels are on screen (rotation 0): the view's centre shows the camera's centre.
+  const canvas = page.locator(".map-view-canvas");
+  const box = await canvas.boundingBox();
+  const camera = await page.evaluate(
+    () =>
+      JSON.parse(document.body.dataset["e2eCamera"] ?? "null") as {
+        centerX: number;
+        centerY: number;
+        zoom: number;
+      },
+  );
+  if (!box) throw new Error("no map view");
+  const screen = (x: number, y: number) => ({
+    x: box.x + box.width / 2 + (x - camera.centerX) * camera.zoom,
+    y: box.y + box.height / 2 + (y - camera.centerY) * camera.zoom,
+  });
+  // The harness map's own cells are 100 px; drag over 3 × 3 of them from (200, 300).
+  const from = screen(200, 300);
+  const to = screen(500, 600);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2);
+  await page.mouse.move(to.x, to.y);
+  await page.mouse.up();
+
+  const cell = details.getByLabel("Zellgröße (Pixel)");
+  await expect
+    .poll(async () => Math.abs(Number(await cell.inputValue()) - 100))
+    .toBeLessThan(1.5);
+  const offsetX = details.getByLabel("Versatz waagerecht (Pixel)");
+  const x = Number(await offsetX.inputValue());
+
+  // Fine adjustment: arrow keys move the grid by a pixel.
+  await details.getByRole("button", { name: "Raster verschieben" }).click();
+  await canvas.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect
+    .poll(async () => Number(await offsetX.inputValue()))
+    .toBeCloseTo((x + 1) % Number(await cell.inputValue()), 1);
+
+  await details.getByRole("button", { name: "Kartendaten speichern" }).click();
+  await expect(
+    details.getByText(/Gespeichert – gilt für jede Szene/),
+  ).toBeVisible();
+  await expect(
+    details.getByRole("button", { name: "Raster verschieben" }),
+  ).toHaveAttribute("aria-pressed", "false");
+});
+
 test("the empty Map Forge says how to open a map, without the scene hint (T-176a)", async ({
   page,
 }) => {

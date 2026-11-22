@@ -986,6 +986,40 @@ button.dm-map-tile[aria-pressed="true"] {
   gap: var(--dm-space-4);
 }
 
+.dm-forge-calibration {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dm-space-2);
+}
+
+.dm-forge-calibration button[aria-pressed="true"] {
+  border-color: var(--dm-accent);
+  background: var(--dm-accent-soft);
+}
+
+/* The calibration box while it is dragged (T-177), over the map. */
+.map-view-calibration {
+  position: absolute;
+  z-index: var(--dm-z-overlay);
+  overflow: visible;
+  pointer-events: none;
+  fill: var(--dm-overlay-reveal-fill);
+  stroke: var(--dm-overlay-reveal-stroke);
+  stroke-width: 2;
+}
+
+.map-view-calibration line {
+  stroke-width: 1;
+}
+
+.map-view-canvas[data-tool="calibrate-box"] {
+  cursor: crosshair;
+}
+
+.map-view-canvas[data-tool="calibrate-move"] {
+  cursor: move;
+}
+
 .dm-forge-details input[type="number"] {
   width: 100%;
 }

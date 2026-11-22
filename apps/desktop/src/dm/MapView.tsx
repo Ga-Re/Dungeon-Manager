@@ -63,6 +63,18 @@ type LoadState = "loading" | "ready" | "error";
 /** What dragging on the map does: move it, or mark an area to reveal or hide. */
 export type MapTool = "pan" | "reveal" | "hide";
 
+/**
+ * Grid calibration in the Map Forge (T-177): `box` drags a square over `cells` × `cells` cells
+ * of the printed grid; `move` drags the grid; arrow keys move it by a pixel (Shift: ten). It
+ * replaces the other tools while set; points and distances are in map pixels.
+ */
+export interface MapCalibration {
+  readonly mode: "box" | "move";
+  readonly cells: number;
+  readonly onBox: (a: Point, b: Point) => void;
+  readonly onShift: (dx: number, dy: number) => void;
+}
+
 /** The DM sees fog, but must see what lies beneath it. */
 const DM_FOG_OPACITY = 0.55;
 /** A click this close to the first corner closes a polygon. */
@@ -150,6 +162,7 @@ export function MapView({
   tvFrame = null,
   tokens = NO_TOKENS,
   tokenControl = null,
+  calibration = null,
 }: {
   readonly path: string;
   /** Video maps play in a `<video>` under the canvas (ADR-0010). */
@@ -194,8 +207,15 @@ export function MapView({
     readonly center: Point;
     readonly onMove: (center: Point) => void;
   } | null;
+  readonly calibration?: MapCalibration | null;
 }) {
   const { t } = useTranslation();
+  // A calibration box being dragged, in view pixels; the last map point of a grid drag.
+  const [calibBox, setCalibBox] = useState<{
+    readonly start: Point;
+    readonly end: Point;
+  } | null>(null);
+  const calibDrag = useRef<Point | null>(null);
   // Grid lines in the DM's view: on by default, switched in the dock (T-106b).
   const [showGrid, setShowGrid] = useState(true);
   const gridNow = useRef<GridCalibration | null>(null);
@@ -590,6 +610,12 @@ export function MapView({
     // Primary button only (touch and pen report it too); the others stay free for menus.
     if (event.button !== 0) return;
     const point = local(event);
+    if (calibration) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      if (calibration.mode === "box") setCalibBox({ start: point, end: point });
+      else calibDrag.current = onMapPoint(point);
+      return;
+    }
     if (tool !== "pan" && shape === "polygon") {
       addCorner(point);
       return;
@@ -614,6 +640,16 @@ export function MapView({
   };
   const onPointerMove = (event: PointerEvent) => {
     const point = local(event);
+    if (calibration) {
+      if (calibBox) setCalibBox({ start: calibBox.start, end: point });
+      const last = calibDrag.current;
+      const now = last ? onMapPoint(point) : null;
+      if (last && now) {
+        calibDrag.current = now;
+        calibration.onShift(now.x - last.x, now.y - last.y);
+      }
+      return;
+    }
     const press = tokenPress.current;
     if (press && grid) {
       if (event.pointerId !== press.pointerId) return;
@@ -666,6 +702,17 @@ export function MapView({
     );
   };
   const onPointerUp = (event: PointerEvent) => {
+    if (calibration) {
+      calibDrag.current = null;
+      const box = calibBox;
+      setCalibBox(null);
+      if (!box) return;
+      // Square on screen, so square on the map at any of the view's quarter turns.
+      const a = onMapPoint(box.start);
+      const b = onMapPoint(squareEnd(box.start, local(event)));
+      if (a && b) calibration.onBox(a, b);
+      return;
+    }
     const press = tokenPress.current;
     if (press && event.pointerId !== press.pointerId) return;
     tokenPress.current = null;
@@ -711,6 +758,8 @@ export function MapView({
       );
   };
   const onPointerCancel = () => {
+    setCalibBox(null);
+    calibDrag.current = null;
     tokenPress.current = null;
     emptyPress.current = null;
     setDragShift(null);
@@ -718,6 +767,29 @@ export function MapView({
     setDrawing(null);
   };
   const onKeyDown = (event: KeyboardEvent) => {
+    if (calibration && event.key === "Escape" && calibBox) {
+      setCalibBox(null);
+      return;
+    }
+    const nudge = calibration ? arrowDirection(event.key) : null;
+    const view = sizeNow.current;
+    if (calibration && nudge && camera && view && !event.ctrlKey) {
+      event.preventDefault();
+      // The arrow's direction on screen, as a step of 1 (Shift: 10) map pixels.
+      const centreAt = centre(view);
+      const from = screenToMap(camera, view, centreAt);
+      const to = screenToMap(camera, view, {
+        x: centreAt.x + nudge.x,
+        y: centreAt.y + nudge.y,
+      });
+      const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+      const step = event.shiftKey ? 10 : 1;
+      calibration.onShift(
+        (step * (to.x - from.x)) / length,
+        (step * (to.y - from.y)) / length,
+      );
+      return;
+    }
     if (event.key === "Escape" && (drawing || corners.length > 0)) {
       setDrawing(null);
       setCorners([]);
@@ -804,8 +876,15 @@ export function MapView({
         onDoubleClick={() => {
           if (corners.length > 0) finishPolygon();
         }}
-        data-tool={tool}
+        data-tool={calibration ? `calibrate-${calibration.mode}` : tool}
       >
+        {calibBox && calibration && (
+          <CalibrationBox
+            start={calibBox.start}
+            end={squareEnd(calibBox.start, calibBox.end)}
+            cells={calibration.cells}
+          />
+        )}
         {camera && sizeNow.current && tvFrame && grid && (
           <TvFrame
             camera={camera}
@@ -901,5 +980,56 @@ export function MapView({
         </div>
       </ShellPortal>
     </div>
+  );
+}
+
+/** The arrow key's direction on screen, or `null` for another key. */
+function arrowDirection(key: string): Point | null {
+  switch (key) {
+    case "ArrowLeft":
+      return { x: -1, y: 0 };
+    case "ArrowRight":
+      return { x: 1, y: 0 };
+    case "ArrowUp":
+      return { x: 0, y: -1 };
+    case "ArrowDown":
+      return { x: 0, y: 1 };
+    default:
+      return null;
+  }
+}
+
+/** The calibration box while it is dragged: a square with its `cells` × `cells` cells. */
+function CalibrationBox({
+  start,
+  end,
+  cells,
+}: {
+  readonly start: Point;
+  readonly end: Point;
+  readonly cells: number;
+}) {
+  const left = Math.min(start.x, end.x);
+  const top = Math.min(start.y, end.y);
+  const side = Math.abs(end.x - start.x);
+  const lines = Array.from(
+    { length: Math.max(0, cells - 1) },
+    (_, i) => ((i + 1) * side) / cells,
+  );
+  return (
+    <svg
+      className="map-view-calibration"
+      aria-hidden="true"
+      style={{ left, top, width: side, height: side }}
+      viewBox={`0 0 ${String(Math.max(side, 1))} ${String(Math.max(side, 1))}`}
+    >
+      <rect x={0} y={0} width={side} height={side} />
+      {lines.map((at) => (
+        <g key={at}>
+          <line x1={at} y1={0} x2={at} y2={side} />
+          <line x1={0} y1={at} x2={side} y2={at} />
+        </g>
+      ))}
+    </svg>
   );
 }

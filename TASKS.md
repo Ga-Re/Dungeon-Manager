@@ -1237,11 +1237,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-177 Two-click grid calibration with a 3×3 box
 
-- **Status:** todo · **Depends on:** T-176a, T-106a · **Refs:** SPEC §2.2, §2.5
+- **Status:** done · **Depends on:** T-176a, T-106a · **Refs:** SPEC §2.2, §2.5
 - In the Map Forge the DM drags a box over 3×3 cells of the map's printed grid; cell size and offset follow, so every map shows the same cell size on the TV.
 - **Acceptance criteria**
-  - [ ] Cell size and offset from a dragged 3×3 box, also on a turned view (unit tests for the math)
-  - [ ] Without a printed grid, an overlay grid can be laid over the map
+  - [x] Cell size and offset from a dragged 3×3 box, also on a turned view (unit tests for the math)
+  - [x] Without a printed grid, an overlay grid can be laid over the map
+- DM decisions (2026-11-22): the box is always square while dragged; its cell count is chosen (1–10, 3 by default); the result is a preview in the grid fields until "Kartendaten speichern", "Verwerfen" takes it back; fine adjustment by arrow keys (1 px, Shift 10 px), by dragging the grid and in the number fields.
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
 ### T-192 Crop, rotation and image adjustment of maps

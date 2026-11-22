@@ -1,6 +1,7 @@
 import type { MemoryFileContent } from "@dungeon-manager/storage";
 import { createI18n } from "@dungeon-manager/ui";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -11,9 +12,34 @@ import { I18nextProvider } from "react-i18next";
 import { describe, expect, test, vi } from "vitest";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { MapForge } from "./MapForge.js";
+import type { MapCalibration } from "./MapView.js";
 import { ActiveWorkspaceContext, type Workspace } from "./shell/workspace.js";
 
 // The Map Forge's document (T-176a): a library map opened without a scene.
+
+// jsdom has no renderer: the map view is a stand-in that shows the grid it gets and plays the
+// DM's calibration gestures (T-177). MapView's own pointer and key handling is in the E2E test.
+const view = vi.hoisted(() => ({
+  calibration: null as MapCalibration | null,
+}));
+vi.mock("./MapView.js", () => ({
+  MapView: ({
+    grid,
+    calibration,
+  }: {
+    grid: { cellSizePx: number; offsetXPx: number; offsetYPx: number } | null;
+    calibration: MapCalibration | null;
+  }) => {
+    view.calibration = calibration;
+    return (
+      <p data-testid="map-grid">
+        {grid
+          ? `${String(grid.cellSizePx)}/${String(grid.offsetXPx)}/${String(grid.offsetYPx)}`
+          : "none"}
+      </p>
+    );
+  },
+}));
 
 const MAP = "library/maps/turm.png";
 const SIDECAR = `${MAP}.dm.json`;
@@ -163,6 +189,93 @@ describe("MapForge", () => {
           levels: [{ id: "level-1", name: "Erdgeschoss" }],
         },
       });
+    });
+  });
+
+  test("a square box over the printed grid fills the grid fields and previews it; saving keeps it (T-177)", async () => {
+    const { library } = renderForge({ [SIDECAR]: sidecar({}) });
+    const cell =
+      await screen.findByLabelText<HTMLInputElement>("Zellgröße (Pixel)");
+    expect(view.calibration).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Box aufziehen" }));
+    expect(view.calibration?.mode).toBe("box");
+    expect(
+      screen.getByText(/Ziehe auf der Karte ein Quadrat über 3 × 3/),
+    ).toBeTruthy();
+
+    act(() => {
+      view.calibration?.onBox({ x: 130, y: 250 }, { x: 430, y: 550 });
+    });
+    expect(cell.value).toBe("100");
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Versatz waagerecht (Pixel)")
+        .value,
+    ).toBe("30");
+    await waitFor(() => {
+      expect(screen.getByTestId("map-grid").textContent).toBe("100/30/50");
+    });
+    // A preview only: nothing is written before saving.
+    expect(saved(library).map?.grid).toMatchObject({ cellSizePx: 70 });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Kartendaten speichern" }),
+    );
+    await waitFor(() => {
+      expect(saved(library).map?.grid).toEqual({
+        cellSizePx: 100,
+        offsetXPx: 30,
+        offsetYPx: 50,
+      });
+    });
+    // Saved: calibrating ends.
+    expect(view.calibration).toBeNull();
+  });
+
+  test("the box may span another number of cells; moving the grid adds up every move", async () => {
+    renderForge({ [SIDECAR]: sidecar({}) });
+    fireEvent.change(await screen.findByLabelText("Felder in der Box"), {
+      target: { value: "2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Box aufziehen" }));
+    act(() => {
+      view.calibration?.onBox({ x: 0, y: 0 }, { x: 300, y: 300 });
+    });
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Zellgröße (Pixel)").value,
+    ).toBe("150");
+
+    fireEvent.click(screen.getByRole("button", { name: "Raster verschieben" }));
+    expect(view.calibration?.mode).toBe("move");
+    act(() => {
+      // Two moves before the next render: neither is lost.
+      view.calibration?.onShift(10, 0);
+      view.calibration?.onShift(10, -5);
+    });
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Versatz waagerecht (Pixel)")
+        .value,
+    ).toBe("20");
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Versatz senkrecht (Pixel)")
+        .value,
+    ).toBe("145");
+  });
+
+  test("Verwerfen takes the stored grid back and ends calibrating", async () => {
+    renderForge({ [SIDECAR]: sidecar({}) });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Box aufziehen" }),
+    );
+    act(() => {
+      view.calibration?.onBox({ x: 0, y: 0 }, { x: 300, y: 300 });
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Verwerfen" }));
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Zellgröße (Pixel)").value,
+    ).toBe("70");
+    expect(view.calibration).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByTestId("map-grid").textContent).toBe("70/0/0");
     });
   });
 
