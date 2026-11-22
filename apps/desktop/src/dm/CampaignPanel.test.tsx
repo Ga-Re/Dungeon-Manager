@@ -877,6 +877,27 @@ describe("CampaignPanel", () => {
       ).toBeTruthy();
     });
 
+    test("an old file beside a readable session is shown under it (T-234)", async () => {
+      renderCampaign(
+        fakeLibraryService("/lib", {
+          "campaigns/mine/sessions/abend.json": sessionFile(
+            "abend",
+            "Abend",
+            [],
+          ),
+          "campaigns/mine/sessions/Abend.json": JSON.stringify({
+            ...JSON.parse(sessionFile("Abend", "Alter Abend", [])),
+            schemaVersion: 1,
+          }),
+        }),
+      );
+      expect(
+        await screen.findByText(
+          "Alte Datei Abend.json neben abend.json – nach dem Vergleich zusammenführen oder löschen",
+        ),
+      ).toBeTruthy();
+    });
+
     test("a scene in two sessions shows its content only where it was opened", async () => {
       const library = fakeLibraryService("/lib", {
         "campaigns/mine/scenes/a.json": sceneFile("a", "Krypta"),

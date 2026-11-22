@@ -133,4 +133,32 @@ describe("own notes under version 1 names with capitals (T-234)", () => {
       status: "missing",
     });
   });
+
+  test("starting the own note keeps and moves the old one instead of shadowing it", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/scenes/Turm.md": "# Turm\nAlter Text",
+    });
+    expect(await createNote(fs, "mine", "notes/scenes/turm.md", "Turm")).toBe(
+      false,
+    );
+    expect(await readNote(fs, "mine", "notes/scenes/turm.md")).toEqual({
+      status: "ok",
+      text: "# Turm\nAlter Text",
+    });
+  });
+
+  test("never overwrites a lowercase note that exists, and still reads when the trash fails", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/sessions/Abend.md": "alt",
+    });
+    fs.moveToTrash = () => Promise.reject(new Error("denied"));
+    expect(await readNote(fs, "mine", "notes/sessions/abend.md")).toEqual({
+      status: "ok",
+      text: "alt",
+    });
+    // Written to the lowercase name although the old one could not go to the trash.
+    expect(fs.files().get("campaigns/mine/notes/sessions/abend.md")).toBe(
+      "alt",
+    );
+  });
 });

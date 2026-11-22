@@ -47,7 +47,10 @@ export type NoteResult =
   /** The path is not a note inside the campaign folder. */
   | { readonly status: "invalid" };
 
-/** Reads a note by its path relative to the campaign folder. */
+/**
+ * Reads a note by its path relative to the campaign folder. An own note found only under a
+ * version 1 name with capitals is moved to its lowercase name on the way (T-234).
+ */
 export async function readNote(
   fs: FileSystem,
   slug: string,
@@ -121,8 +124,10 @@ export async function createNote(
   title: string,
 ): Promise<boolean> {
   const path = libraryPath(slug, notePath);
-  const existing = await fs.read(path);
-  if (existing.kind !== "missing") return false;
+  // Through `readNote`: an own note under a version 1 name with capitals counts as existing and
+  // is moved to its lowercase name, never shadowed by a new empty one (T-234).
+  const existing = await readNote(fs, slug, notePath);
+  if (existing.status !== "missing") return false;
   const folder = path.slice(0, path.lastIndexOf("/"));
   await fs.makeDirectory(folder);
   // One line, never an empty heading.

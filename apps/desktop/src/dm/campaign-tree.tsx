@@ -143,6 +143,7 @@ export function buildCampaignTree(
         : []),
       ...subScenes,
     ];
+    const duplicates = duplicateNodes(t, id, entry);
     return {
       id,
       label: entry.scene
@@ -150,8 +151,8 @@ export function buildCampaignTree(
         : problemLabel(t, "campaign.scene", entry),
       icon: <ScrollText />,
       children:
-        children.length + duplicateNodes(t, id, entry).length > 0
-          ? [...duplicateNodes(t, id, entry), ...children]
+        duplicates.length + children.length > 0
+          ? [...duplicates, ...children]
           : undefined,
     };
   };
@@ -185,7 +186,10 @@ export function buildCampaignTree(
         sessionNodeId(session.id),
         session.name,
         <CalendarDays />,
-        sessionScenes,
+        [
+          ...duplicateNodes(t, sessionNodeId(session.id), entry),
+          ...sessionScenes,
+        ],
         t("shell.tree.emptySession"),
       ),
       ...(session.date && sessionScenes.length > 0

@@ -252,9 +252,14 @@ async function listDocumentIds(
   const confirmed = await Promise.all(
     candidates.map((conflict) => isConfirmedCopy(conflict, idInFile)),
   );
+  const synced = candidates.filter((_, index) => confirmed[index]);
+  const syncedCopies = new Set(synced.map((conflict) => conflict.copy));
   const conflicts = [
-    ...candidates.filter((_, index) => confirmed[index]),
-    ...caseDuplicates(names),
+    ...synced,
+    // A sync copy that also differs only in case is reported once.
+    ...caseDuplicates(names).filter(
+      (conflict) => !syncedCopies.has(conflict.copy),
+    ),
   ];
   const copies = new Set(conflicts.map((conflict) => conflict.copy));
   const ids = names
