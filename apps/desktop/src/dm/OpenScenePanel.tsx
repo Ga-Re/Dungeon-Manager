@@ -563,10 +563,11 @@ export function OpenScenePanel({
       window.removeEventListener("keydown", onKey);
     };
   });
-  // N hides the fog in this window only (T-248), wherever the DM is, unless typing.
+  // N hides the fog in this window only (T-248) while playing, unless typing; held down it
+  // toggles once.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (typing(event) || !active) return;
+      if (typing(event) || !active || !inGame || event.repeat) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key.toLowerCase() !== "n") return;
       event.preventDefault();

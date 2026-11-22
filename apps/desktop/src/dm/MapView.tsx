@@ -258,7 +258,8 @@ export function MapView({
   const fogOptions = {
     opacity: fogHidden ? 0 : DM_FOG_OPACITY,
     softEdge,
-    ...(living && { living }),
+    // Hidden: no living fog either, so no particles stay and no shader runs (T-248).
+    ...(living && !fogHidden && { living }),
   };
   const fogOptionsNow = useRef(fogOptions);
   fogOptionsNow.current = fogOptions;
@@ -438,7 +439,7 @@ export function MapView({
       ...(coverFromNow.current === "random" && {
         coverFrom: "random" as const,
       }),
-      ...(current && { living: current }),
+      ...(current && !fogHiddenNow.current && { living: current }),
     });
   }, [fog, softEdge, livingKey, fogHidden]);
 

@@ -1080,7 +1080,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] The toggle fades the DM view's fog; the player view's projection and fog stay unchanged (component test against the player feed)
   - [x] Key N and a pressed toggle state; translated label (component + E2E tests)
 - **Notes:** From the DM interview (2026-11-22).
-- Done in T-248: a toggle in the Ganze Karte group and key N (anywhere in the open scene, not while typing) set the DM view's fog opacity to 0; the renderer blends it over in the transition time (T-168's look-only blend). Not saved, not undoable, never sent to the TV.
+- Done in T-248: a toggle in the Ganze Karte group and key N (while playing, not while typing; held down it toggles once) set the DM view's fog opacity to 0; the renderer blends it over in the transition time (T-168's look-only blend). Hidden, the DM view also drops the living fog, so no particles stay and no shader runs. Not saved, not undoable, never sent to the TV.
 
 ### T-135 Selectable scene transitions
 
