@@ -173,4 +173,25 @@ describe("LibraryPanel", () => {
       expect(library.listenerCount()).toBe(0);
     });
   });
+
+  test("a campaign with ids differing only in case names them (T-234)", async () => {
+    const library = fakeLibraryService("/Users/dm/DM", {
+      "campaigns/alt/campaign.json": JSON.stringify({
+        schemaVersion: 1,
+        id: "c1",
+        name: "Alt",
+        players: [
+          { id: "Ana", name: "Ana" },
+          { id: "ana", name: "Ana 2" },
+        ],
+        visibilityDefaults: {},
+      }),
+    });
+    renderPanel(library.service);
+    expect(
+      await screen.findByText(
+        "alt: „Ana“ und „ana“ unterscheiden sich nur in Groß-/Kleinschreibung – benenne eine davon in campaign.json um",
+      ),
+    ).toBeTruthy();
+  });
 });

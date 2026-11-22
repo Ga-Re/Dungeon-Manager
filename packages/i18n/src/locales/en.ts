@@ -91,6 +91,8 @@ export const en: Messages = {
     newCampaign: "New campaign …",
     campaign: {
       notAvailable: "{{slug}} (not downloaded yet)",
+      idCollision:
+        "{{slug}}: “{{first}}” and “{{second}}” differ only in case – rename one of them in campaign.json",
       invalid: "{{slug}} (cannot be read)",
     },
     errors: {
@@ -226,7 +228,11 @@ export const en: Messages = {
     scene: {
       notAvailable: "{{id}} (not downloaded yet)",
       invalid: "{{id}} (cannot be read)",
+      idCollision:
+        "{{id}}: “{{first}}” and “{{second}}” differ only in case – rename one of them in the file",
     },
+    caseDuplicate:
+      "Old file {{file}} next to {{current}} – compare, then merge or delete it",
   },
   catalog: {
     title: "Catalogue",
@@ -694,6 +700,8 @@ export const en: Messages = {
       session: {
         notAvailable: "{{id}} (not downloaded yet)",
         invalid: "{{id}} (cannot be read)",
+        idCollision:
+          "{{id}}: “{{first}}” and “{{second}}” differ only in case – rename one of them in the file",
       },
       browserTitle: "Browser",
       switchCampaign: "Switch campaign",

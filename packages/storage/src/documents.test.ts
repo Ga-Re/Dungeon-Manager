@@ -351,3 +351,44 @@ describe("campaign folders", () => {
     expect(await listCampaigns(createMemoryFileSystem())).toEqual([]);
   });
 });
+
+describe("leftovers of version 1 ids with capitals (T-234)", () => {
+  test("a document refused for ids differing only in case names both", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/scenes/turm.json": JSON.stringify({
+        ...scene,
+        schemaVersion: 1,
+        id: "turm",
+        tokens: [
+          { ...scene.tokens[0], id: "Ork" },
+          { ...scene.tokens[0], id: "ork" },
+        ],
+      }),
+    });
+    expect(await loadScene(fs, "mine", "turm")).toEqual({
+      status: "invalid",
+      reason: "idCollision",
+      ids: ["Ork", "ork"],
+    });
+  });
+
+  test("a name differing only in case next to the lowercase file is reported like a copy", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/scenes/turm.json": JSON.stringify({
+        ...scene,
+        id: "turm",
+      }),
+      "campaigns/mine/scenes/Turm.json": JSON.stringify({
+        ...scene,
+        schemaVersion: 1,
+        id: "Turm",
+      }),
+    });
+    expect(await listScenes(fs, "mine")).toEqual({
+      sceneIds: ["turm"],
+      conflicts: [
+        { copy: "Turm.json", original: "turm.json", provider: "capitals" },
+      ],
+    });
+  });
+});

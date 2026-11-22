@@ -99,3 +99,38 @@ describe("note files (T-161)", () => {
     });
   });
 });
+
+describe("own notes under version 1 names with capitals (T-234)", () => {
+  test("are listed under their lowercase id", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/scenes/Turm.md": "x",
+      "campaigns/mine/notes/sessions/Abend.md": "x",
+    });
+    expect(await listNoteOwners(fs, "mine")).toEqual({
+      sessions: ["abend"],
+      scenes: ["turm"],
+    });
+  });
+
+  test("are read ignoring case and moved to the lowercase name", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/scenes/Turm.md": "# Turm",
+    });
+    expect(await readNote(fs, "mine", "notes/scenes/turm.md")).toEqual({
+      status: "ok",
+      text: "# Turm",
+    });
+    const files = [...fs.files().keys()];
+    expect(files).toContain("campaigns/mine/notes/scenes/turm.md");
+    expect(files).not.toContain("campaigns/mine/notes/scenes/Turm.md");
+  });
+
+  test("a linked note keeps its exact name: only own notes are looked up ignoring case", async () => {
+    const fs = createMemoryFileSystem({
+      "campaigns/mine/notes/Orte/Turm.md": "x",
+    });
+    expect(await readNote(fs, "mine", "notes/Orte/turm.md")).toEqual({
+      status: "missing",
+    });
+  });
+});

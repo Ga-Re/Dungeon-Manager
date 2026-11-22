@@ -49,6 +49,8 @@ export type LoadResult<T> =
   | {
       readonly status: "invalid";
       readonly reason: "path" | "json" | "schema" | MigrationErrorReason;
+      /** With `idCollision`: the two ids that differ only in case, so the DM can fix one. */
+      readonly ids?: readonly [string, string];
     };
 
 /**
@@ -143,9 +145,12 @@ async function loadDocument<T extends object>(
   try {
     value = migrateDocument(json, type);
   } catch (error) {
+    if (!(error instanceof MigrationError))
+      return { status: "invalid", reason: "schema" };
     return {
       status: "invalid",
-      reason: error instanceof MigrationError ? error.reason : "schema",
+      reason: error.reason,
+      ...(error.ids && { ids: error.ids }),
     };
   }
   if (
@@ -247,13 +252,37 @@ async function listDocumentIds(
   const confirmed = await Promise.all(
     candidates.map((conflict) => isConfirmedCopy(conflict, idInFile)),
   );
-  const conflicts = candidates.filter((_, index) => confirmed[index]);
+  const conflicts = [
+    ...candidates.filter((_, index) => confirmed[index]),
+    ...caseDuplicates(names),
+  ];
   const copies = new Set(conflicts.map((conflict) => conflict.copy));
   const ids = names
     .filter((name) => name.endsWith(".json") && !copies.has(name))
     .map((name) => name.slice(0, -".json".length).toLowerCase())
     .filter(isValidFileId);
   return { ids: [...new Set(ids)].sort(), conflicts };
+}
+
+/**
+ * Version 1 names with capitals next to the lowercase file they now belong to (T-234): only a
+ * case-sensitive file system (Linux) holds both. The lowercase one is current; the other is
+ * reported like a conflict copy instead of being hidden, so the DM can merge or delete it.
+ */
+function caseDuplicates(names: readonly string[]): ConflictCopy[] {
+  const present = new Set(names);
+  return names
+    .filter(
+      (name) =>
+        name.endsWith(".json") &&
+        name !== name.toLowerCase() &&
+        present.has(name.toLowerCase()),
+    )
+    .map((name) => ({
+      copy: name,
+      original: name.toLowerCase(),
+      provider: "capitals" as const,
+    }));
 }
 
 /**

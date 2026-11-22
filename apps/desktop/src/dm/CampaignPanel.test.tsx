@@ -843,6 +843,40 @@ describe("CampaignPanel", () => {
       ).toBeTruthy();
     });
 
+    test("a scene with ids differing only in case names them; an old file beside a scene is shown (T-234)", async () => {
+      const token = (id: string) => ({
+        id,
+        name: "Ork",
+        size: "medium",
+        position: { col: 0, row: 0 },
+        levelId: "ground",
+      });
+      renderCampaign(
+        fakeLibraryService("/lib", {
+          "campaigns/mine/scenes/bad.json": JSON.stringify({
+            ...JSON.parse(sceneFile("bad", "Kaputt")),
+            schemaVersion: 1,
+            tokens: [token("Ork"), token("ork")],
+          }),
+          "campaigns/mine/scenes/turm.json": sceneFile("turm", "Turm"),
+          "campaigns/mine/scenes/Turm.json": JSON.stringify({
+            ...JSON.parse(sceneFile("Turm", "Alter Turm")),
+            schemaVersion: 1,
+          }),
+        }),
+      );
+      expect(
+        await screen.findByText(
+          "bad: „Ork“ und „ork“ unterscheiden sich nur in Groß-/Kleinschreibung – benenne eine davon in der Datei um",
+        ),
+      ).toBeTruthy();
+      expect(
+        await screen.findByText(
+          "Alte Datei Turm.json neben turm.json – nach dem Vergleich zusammenführen oder löschen",
+        ),
+      ).toBeTruthy();
+    });
+
     test("a scene in two sessions shows its content only where it was opened", async () => {
       const library = fakeLibraryService("/lib", {
         "campaigns/mine/scenes/a.json": sceneFile("a", "Krypta"),

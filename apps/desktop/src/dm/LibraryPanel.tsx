@@ -43,7 +43,9 @@ interface CampaignEntry {
   readonly slug: string;
   /** The campaign's name, or why it could not be read. */
   readonly name: string | null;
-  readonly problem: "notAvailable" | "invalid" | null;
+  readonly problem: "notAvailable" | "invalid" | "idCollision" | null;
+  /** With `idCollision`: the two ids that differ only in case (T-234). */
+  readonly collision?: readonly [string, string];
 }
 
 type LibraryState =
@@ -65,6 +67,13 @@ async function readCampaigns(
       const result = await loadCampaign(service.fs, slug);
       if (result.status === "ok")
         return { slug, name: result.value.name, problem: null };
+      if (result.status === "invalid" && result.ids)
+        return {
+          slug,
+          name: null,
+          problem: "idCollision",
+          collision: result.ids,
+        };
       return {
         slug,
         name: null,
@@ -272,7 +281,12 @@ export function LibraryPanel({
           name: campaign?.name ?? entry.name,
           sceneName: entry.sceneName,
           openedAt: entry.openedAt,
-          problem: !campaign ? "missing" : campaign.problem,
+          // The welcome list says only that it cannot be read; the library list names the ids.
+          problem: !campaign
+            ? "missing"
+            : campaign.problem === "idCollision"
+              ? "invalid"
+              : campaign.problem,
         };
       }),
       others: campaigns.flatMap((campaign) =>
@@ -325,6 +339,8 @@ export function LibraryPanel({
     campaign.name ??
     t(`library.campaign.${campaign.problem ?? "invalid"}`, {
       slug: campaign.slug,
+      first: campaign.collision?.[0] ?? "",
+      second: campaign.collision?.[1] ?? "",
     });
 
   const chooseButton = (

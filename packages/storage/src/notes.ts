@@ -62,10 +62,49 @@ export async function readNote(
   try {
     const file = await fs.read(path);
     if (file.kind === "ok") return { status: "ok", text: file.text };
+    if (file.kind === "missing" && OWN_NOTE.test(notePath))
+      return await readOwnNoteIgnoringCase(fs, path);
     return { status: file.kind };
   } catch {
     return { status: "unreadable" };
   }
+}
+
+/** A session's or scene's own note, whose name is an id (T-234). */
+const OWN_NOTE = /^notes\/(sessions|scenes)\/[^/]+\.md$/;
+
+/**
+ * An own note under a version 1 name with capitals (T-234): a case-sensitive file system does
+ * not find `Turm.md` under `turm.md`. It is looked up ignoring case, and moved to the lowercase
+ * name – written there first (only if still free), then the old file goes to the trash; if that
+ * fails, the note still reads from the old name.
+ */
+async function readOwnNoteIgnoringCase(
+  fs: FileSystem,
+  path: string,
+): Promise<NoteResult> {
+  const slash = path.lastIndexOf("/");
+  const name = path.slice(slash + 1);
+  const entries = (await fs.list(path.slice(0, slash))) ?? [];
+  const legacy = entries.find(
+    (entry) =>
+      entry.kind === "file" &&
+      entry.name !== name &&
+      entry.name.toLowerCase() === name,
+  );
+  if (!legacy) return { status: "missing" };
+  const legacyPath = `${path.slice(0, slash)}/${legacy.name}`;
+  const file = await fs.read(legacyPath);
+  if (file.kind !== "ok") return { status: file.kind };
+  try {
+    if ((await fs.read(path)).kind === "missing") {
+      await fs.writeAtomic(path, file.text);
+      await fs.moveToTrash(legacyPath);
+    }
+  } catch {
+    // Not moved: it still reads from the old name.
+  }
+  return { status: "ok", text: file.text };
 }
 
 /**
@@ -129,8 +168,10 @@ export async function listNoteOwners(
   const ids = async (folder: string) =>
     ((await fs.list(`${campaignDirectory(slug)}/${NOTES}/${folder}`)) ?? [])
       .filter((entry) => entry.kind === "file" && entry.name.endsWith(".md"))
-      .map((entry) => entry.name.slice(0, -".md".length))
+      // Version 1 names may hold capitals (T-234): listed under the lowercase id.
+      .map((entry) => entry.name.slice(0, -".md".length).toLowerCase())
       .filter(isValidFileId)
+      .filter((id, index, all) => all.indexOf(id) === index)
       .sort();
   return { sessions: await ids("sessions"), scenes: await ids("scenes") };
 }
