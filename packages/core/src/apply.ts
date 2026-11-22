@@ -1,3 +1,4 @@
+import { MAX_CONDITION_LEVEL } from "@dungeon-manager/schema";
 import type {
   Combatant,
   InitiativeState,
@@ -621,9 +622,15 @@ function applyChange(state: SessionState, command: Command): Change {
     case "condition.add": {
       const { condition } = command;
       const rounds = condition.remainingRounds;
+      const { level } = condition;
       if (
         condition.type.trim() === "" ||
-        (rounds !== undefined && (!Number.isInteger(rounds) || rounds <= 0))
+        (rounds !== undefined && (!Number.isInteger(rounds) || rounds <= 0)) ||
+        // Exhaustion's level (T-244): 5e knows 1 to 6.
+        (level !== undefined &&
+          (!Number.isInteger(level) ||
+            level < 1 ||
+            level > MAX_CONDITION_LEVEL))
       )
         return "invalidAmount";
       // Kept without surrounding spaces, so "poisoned " replaces "poisoned".

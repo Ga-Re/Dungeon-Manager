@@ -112,10 +112,15 @@ export const fogStateSchema = z.looseObject({
   levels: z.record(idSchema, levelFogSchema),
 });
 
+/** The highest exhaustion level (T-244, 5e). */
+export const MAX_CONDITION_LEVEL = 6;
+
 /** A condition on a combatant, e.g. `poisoned`; without `remainingRounds` it lasts until removed. */
 export const conditionSchema = z.looseObject({
   type: z.string().min(1),
   remainingRounds: z.number().int().positive().optional(),
+  /** A level, for exhaustion (T-244, 5e: 1–6); additive, DM decision 2026-11-22. */
+  level: z.number().int().min(1).max(MAX_CONDITION_LEVEL).optional(),
 });
 
 /** A participant in combat (SPEC §11). `hp` is absent when the DM does not track it (e.g. player characters). */

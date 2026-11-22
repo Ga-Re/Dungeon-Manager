@@ -1,7 +1,7 @@
 import type { Command } from "@dungeon-manager/core";
-import type { Combatant } from "@dungeon-manager/schema";
+import { MAX_CONDITION_LEVEL, type Combatant } from "@dungeon-manager/schema";
 import { IconButton, Popover } from "@dungeon-manager/ui";
-import { Plus, X } from "lucide-react";
+import { Minus, Plus, X } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -30,6 +30,10 @@ export const CONDITIONS = [
   "stunned",
   "unconscious",
 ] as const;
+
+/** Conditions with a level (T-244): exhaustion, 1 to 6 in 5e. */
+const LEVELLED: ReadonlySet<string> = new Set(["exhaustion"]);
+const MAX_LEVEL = MAX_CONDITION_LEVEL;
 
 /** A whole number typed into a field, or `null`. */
 function wholeNumber(text: string): number | null {
@@ -65,6 +69,21 @@ export function CombatantStatus({
       ? t("initiative.hp.withTemp", hp)
       : t("initiative.hp.value", hp)
     : t("initiative.hp.none");
+  const conditionText = (condition: Combatant["conditions"][number]) => {
+    const named =
+      condition.level === undefined
+        ? conditionName(condition.type)
+        : t("initiative.conditionLevel", {
+            name: conditionName(condition.type),
+            level: condition.level,
+          });
+    return condition.remainingRounds === undefined
+      ? named
+      : t("initiative.conditionRounds", {
+          name: named,
+          rounds: condition.remainingRounds,
+        });
+  };
   const conditionName = (type: string) =>
     (CONDITIONS as readonly string[]).includes(type)
       ? t(`initiative.conditions.${type as (typeof CONDITIONS)[number]}`)
@@ -112,12 +131,55 @@ export function CombatantStatus({
               key={`${condition.type}-${String(index)}`}
               className="dm-initiative-condition"
             >
-              {condition.remainingRounds === undefined
-                ? conditionName(condition.type)
-                : t("initiative.conditionRounds", {
-                    name: conditionName(condition.type),
-                    rounds: condition.remainingRounds,
-                  })}
+              {conditionText(condition)}
+              {/* Exhaustion's level (T-244): one step up or down; below 1 it goes. */}
+              {LEVELLED.has(condition.type) && (
+                <>
+                  <IconButton
+                    icon={<Minus />}
+                    label={t("initiative.levelDown", {
+                      condition: conditionName(condition.type),
+                      name,
+                    })}
+                    disabled={busy}
+                    onClick={() => {
+                      // An exhaustion from before levels counts as level 1.
+                      const level = condition.level ?? 1;
+                      onCommand(
+                        level <= 1
+                          ? {
+                              type: "condition.remove",
+                              combatantId: id,
+                              conditionType: condition.type,
+                            }
+                          : {
+                              type: "condition.add",
+                              combatantId: id,
+                              condition: { ...condition, level: level - 1 },
+                            },
+                      );
+                    }}
+                  />
+                  <IconButton
+                    icon={<Plus />}
+                    label={t("initiative.levelUp", {
+                      condition: conditionName(condition.type),
+                      name,
+                    })}
+                    disabled={busy || (condition.level ?? 1) >= MAX_LEVEL}
+                    onClick={() => {
+                      onCommand({
+                        type: "condition.add",
+                        combatantId: id,
+                        condition: {
+                          ...condition,
+                          level: (condition.level ?? 1) + 1,
+                        },
+                      });
+                    }}
+                  />
+                </>
+              )}
               <IconButton
                 icon={<X />}
                 label={t("initiative.removeCondition", {
@@ -159,13 +221,14 @@ export function CombatantStatus({
         {open === "condition" && (
           <ConditionForm
             conditionName={conditionName}
-            onAdd={(type, rounds) => {
+            onAdd={(type, rounds, level) => {
               onCommand({
                 type: "condition.add",
                 combatantId: id,
                 condition: {
                   type,
                   ...(rounds !== null && { remainingRounds: rounds }),
+                  ...(level !== null && { level }),
                 },
               });
               close(conditionButton.current);
@@ -316,12 +379,17 @@ function ConditionForm({
   onAdd,
 }: {
   readonly conditionName: (type: string) => string;
-  readonly onAdd: (type: string, rounds: number | null) => void;
+  readonly onAdd: (
+    type: string,
+    rounds: number | null,
+    level: number | null,
+  ) => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
   const [type, setType] = useState<string>(CONDITIONS[0]);
   const [rounds, setRounds] = useState("");
+  const [level, setLevel] = useState(1);
   const select = useRef<HTMLSelectElement>(null);
   useEffect(() => {
     select.current?.focus();
@@ -330,7 +398,7 @@ function ConditionForm({
     event.preventDefault();
     const value = wholeNumber(rounds);
     if (rounds.trim() !== "" && (value === null || value <= 0)) return;
-    onAdd(type, value);
+    onAdd(type, value, LEVELLED.has(type) ? level : null);
   };
   return (
     <form className="dm-initiative-form" onSubmit={submit}>
@@ -351,6 +419,26 @@ function ConditionForm({
           ))}
         </select>
       </label>
+      {LEVELLED.has(type) && (
+        <label htmlFor={`${id}-level`}>
+          {t("initiative.level")}
+          <select
+            id={`${id}-level`}
+            value={level}
+            onChange={(event) => {
+              setLevel(Number(event.target.value));
+            }}
+          >
+            {Array.from({ length: MAX_LEVEL }, (_, index) => index + 1).map(
+              (each) => (
+                <option key={each} value={each}>
+                  {each}
+                </option>
+              ),
+            )}
+          </select>
+        </label>
+      )}
       <label htmlFor={`${id}-rounds`}>
         {t("initiative.rounds")}
         <input

@@ -335,6 +335,10 @@ export const de = {
     rounds: "Runden",
     roundsHint:
       "Leer lassen für ohne Dauer. Die Runden zählen zu Beginn jeder neuen Runde herunter.",
+    level: "Stufe",
+    conditionLevel: "{{name}} {{level}}",
+    levelUp: "{{condition}} von {{name}} um eine Stufe erhöhen",
+    levelDown: "{{condition}} von {{name}} um eine Stufe senken",
     conditionRounds: "{{name}} ({{rounds}})",
     addCondition: "Zustand für {{name}} hinzufügen",
     addConditionButton: "Hinzufügen",
