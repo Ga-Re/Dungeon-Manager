@@ -310,6 +310,23 @@ test("a map opened in the Map Forge gets a new grid; the scene on the TV takes i
   await expect.poll(tvGrid).toBe(50);
 });
 
+test("the empty Map Forge says how to open a map, without the scene hint (T-176a)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page
+    .getByRole("group", { name: "Arbeitsbereich" })
+    .getByRole("button")
+    .click();
+  await page.getByRole("menuitemradio", { name: "Map Forge" }).click();
+  await expect(
+    page.getByText(
+      "Keine Karte geöffnet. Doppelklicke im Katalog auf eine Karte.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/Keine Szene geöffnet/)).toBeHidden();
+});
+
 test("panels are hidden and shown from the View menu; the layout survives a restart (T-172a)", async ({
   page,
 }) => {

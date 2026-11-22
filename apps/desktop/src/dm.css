@@ -961,10 +961,23 @@ button.dm-map-tile[aria-pressed="true"] {
 
 /* T-176a: the Map Forge's document. */
 .dm-forge-empty {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  height: 100%;
   margin: 0;
+  color: var(--dm-text-on-chrome-muted);
+}
+
+/* The Map Forge's hint replaces the scene hint on an empty canvas. */
+.dm-canvas:has(.dm-forge-empty) > .dm-canvas-empty {
+  display: none;
+}
+
+.dm-forge-browser-empty {
+  margin: 0;
+  padding: var(--dm-space-2);
+  font-size: var(--dm-font-size-sm);
   color: var(--dm-text-muted);
 }
 

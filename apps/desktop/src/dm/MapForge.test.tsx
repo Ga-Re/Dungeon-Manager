@@ -112,6 +112,41 @@ describe("MapForge", () => {
     });
   });
 
+  test("a save of the grid alone keeps the stored biome and unknown fields exactly", async () => {
+    const { library } = renderForge({
+      [SIDECAR]: sidecar({
+        grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0, unit: "ft" },
+        fogEffect: { biome: "schnee", strength: 0.333, wind: 3 },
+      }),
+    });
+    fireEvent.change(await screen.findByLabelText("Zellgröße (Pixel)"), {
+      target: { value: "80" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Kartendaten speichern" }),
+    );
+    await waitFor(() => {
+      expect(saved(library).map).toMatchObject({
+        grid: { cellSizePx: 80, unit: "ft" },
+        fogEffect: { biome: "schnee", strength: 0.333, wind: 3 },
+      });
+    });
+    // A changed biome keeps the unknown fields too.
+    fireEvent.change(screen.getByLabelText("Standard-Biom aller Szenen"), {
+      target: { value: "asche" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Kartendaten speichern" }),
+    );
+    await waitFor(() => {
+      expect(saved(library).map?.fogEffect).toEqual({
+        biome: "asche",
+        strength: 0.33,
+        wind: 3,
+      });
+    });
+  });
+
   test("a map without a sidecar gets one with the edited data", async () => {
     const { library } = renderForge({});
     fireEvent.change(await screen.findByLabelText("Zellgröße (Pixel)"), {
@@ -166,7 +201,9 @@ describe("MapForge", () => {
       screen.getByRole("button", { name: "Kartendaten speichern" }),
     );
     expect(
-      await screen.findByText(/Inzwischen woanders geändert/),
+      await screen.findByText(
+        /Kartendaten wurden inzwischen woanders geändert/,
+      ),
     ).toBeTruthy();
     expect(saved(library).map?.grid).toMatchObject({ cellSizePx: 100 });
     // Saving again replaces it, as the message says.
@@ -185,9 +222,10 @@ describe("MapForge", () => {
     expect(library.fs.files().get(SIDECAR)).toBe("{ broken");
   });
 
-  test("without an open map it shows how to open one; outside the Map Forge nothing", () => {
+  test("without an open map it shows how to open one", () => {
     renderForge({}, null);
     expect(screen.getByText(/Doppelklicke im Katalog/)).toBeTruthy();
+    expect(screen.getByText("Keine Karte geöffnet.")).toBeTruthy();
   });
 
   test("outside the Map Forge it shows nothing", () => {

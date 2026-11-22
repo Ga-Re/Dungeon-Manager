@@ -1,7 +1,7 @@
 import type { CatalogMap } from "@dungeon-manager/storage";
 import { ContextMenu, type MenuPoint } from "@dungeon-manager/ui";
 import { CircleAlert, Film, Hammer, Image as ImageIcon } from "lucide-react";
-import { useContext, useEffect, useId, useState } from "react";
+import { useContext, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { fileName } from "./file-name.js";
@@ -186,6 +186,9 @@ export function MapCatalogGrid({
   const searchId = useId();
   const [query, setQuery] = useState("");
   const shown = filterMaps(maps, query);
+  // When the context-menu key last opened a menu: its own `contextmenu` event follows on some
+  // platforms, so a recent one is swallowed (as in TreeList).
+  const openedByKey = useRef(Number.NEGATIVE_INFINITY);
   const [menu, setMenu] = useState<{
     readonly map: CatalogMap;
     readonly at: MenuPoint;
@@ -236,6 +239,10 @@ export function MapCatalogGrid({
                     onOpen &&
                     ((event) => {
                       event.preventDefault();
+                      if (event.timeStamp - openedByKey.current < 1000) {
+                        openedByKey.current = Number.NEGATIVE_INFINITY;
+                        return;
+                      }
                       setMenu({
                         map,
                         at: { x: event.clientX, y: event.clientY },
@@ -252,6 +259,10 @@ export function MapCatalogGrid({
                       )
                         return;
                       event.preventDefault();
+                      openedByKey.current =
+                        event.key === "ContextMenu"
+                          ? event.timeStamp
+                          : Number.NEGATIVE_INFINITY;
                       const box = event.currentTarget.getBoundingClientRect();
                       setMenu({
                         map,

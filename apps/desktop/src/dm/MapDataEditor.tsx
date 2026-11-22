@@ -110,8 +110,17 @@ export function MapDataEditor({
             // Unknown grid fields (loose schema) stay.
             grid: { ...current.grid, cellSizePx, offsetXPx, offsetYPx },
           };
-          if (fogEffect) next.fogEffect = fogEffect;
-          else delete next.fogEffect;
+          // An untouched biome stays exactly as stored: unknown fields (loose schema) and a
+          // strength finer than whole percent survive a save of the grid alone.
+          const baseValues = valuesOf(base);
+          const fogUnchanged =
+            values.biome === baseValues.biome &&
+            (values.biome === "" || values.strength === baseValues.strength);
+          if (!fogUnchanged) {
+            if (fogEffect)
+              next.fogEffect = { ...current.fogEffect, ...fogEffect };
+            else delete next.fogEffect;
+          }
           return next;
         },
         // After a reported conflict the DM saves deliberately: no check against what was there.
@@ -125,7 +134,7 @@ export function MapDataEditor({
       if (error instanceof MapDataChangedError) {
         setBase(data);
         setRebasing(true);
-        setProblem(t("catalog.info.conflict"));
+        setProblem(t("forge.conflict"));
         onSaved();
       } else setProblem(describeLibraryError(t, error));
     } finally {
@@ -154,7 +163,13 @@ export function MapDataEditor({
   );
 
   return (
-    <form className="dm-item-info" onSubmit={(event) => void save(event)}>
+    // The form checks its fields itself (and says why); the browser's own check would block
+    // a save silently, e.g. on a cell size below the field's `min`.
+    <form
+      className="dm-item-info"
+      noValidate
+      onSubmit={(event) => void save(event)}
+    >
       <p className="dm-details-kind">{t("forge.grid")}</p>
       {field("cellSizePx", 1)}
       {field("offsetXPx")}
@@ -192,7 +207,7 @@ export function MapDataEditor({
             type="range"
             min={0}
             max={100}
-            step={5}
+            step={1}
             value={values.strength}
             onChange={(event) => {
               setValues({ ...values, strength: event.target.value });

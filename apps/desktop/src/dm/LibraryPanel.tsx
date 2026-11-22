@@ -147,6 +147,11 @@ export function LibraryPanel({
     }),
     [chooseWorkspace],
   );
+  // Another library folder has other maps: the open one is closed.
+  const libraryRoot = state.status === "open" ? state.root : null;
+  useEffect(() => {
+    setForgePath(null);
+  }, [libraryRoot]);
   const inForge = useActiveWorkspace() === "mapForge";
   const catalogSelection = useMemo(
     () => ({ selected: catalogSelected, select: setCatalogSelected }),

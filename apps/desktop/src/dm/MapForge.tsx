@@ -29,7 +29,12 @@ function useSidecar(
   service: LibraryService,
   path: string | null,
 ): SidecarState & { readonly reload: () => void } {
-  const [state, setState] = useState<SidecarState>({ status: "loading" });
+  // Kept with the path it belongs to: right after another map opens, the old one's state is
+  // never shown for the new one.
+  const [state, setState] = useState<{
+    readonly path: string | null;
+    readonly value: SidecarState;
+  }>({ path, value: { status: "loading" } });
   const [version, setVersion] = useState(0);
   const reload = useCallback(() => {
     setVersion((current) => current + 1);
@@ -40,31 +45,33 @@ function useSidecar(
     reload,
   );
   useEffect(() => {
-    setState({ status: "loading" });
-  }, [path]);
-  useEffect(() => {
     if (path === null) return;
     let active = true;
     loadSidecar(service.fs, path).then(
       (loaded) => {
         if (!active) return;
-        setState(
-          loaded.status === "ok"
-            ? { status: "ok", sidecar: loaded.value }
-            : loaded.status === "missing"
-              ? { status: "ok", sidecar: null }
-              : { status: "unavailable" },
-        );
+        setState({
+          path,
+          value:
+            loaded.status === "ok"
+              ? { status: "ok", sidecar: loaded.value }
+              : loaded.status === "missing"
+                ? { status: "ok", sidecar: null }
+                : { status: "unavailable" },
+        });
       },
       () => {
-        if (active) setState({ status: "unavailable" });
+        if (active) setState({ path, value: { status: "unavailable" } });
       },
     );
     return () => {
       active = false;
     };
   }, [service, path, version]);
-  return { ...state, reload };
+  return {
+    ...(state.path === path ? state.value : { status: "loading" }),
+    reload,
+  };
 }
 
 /**
@@ -89,9 +96,14 @@ export function MapForge({
   if (!shown) return null;
   if (path === null)
     return (
-      <ShellPortal slot="canvas">
-        <p className="dm-forge-empty">{t("forge.empty")}</p>
-      </ShellPortal>
+      <>
+        <ShellPortal slot="canvas">
+          <p className="dm-forge-empty">{t("forge.empty")}</p>
+        </ShellPortal>
+        <ShellPortal slot="browser">
+          <p className="dm-forge-browser-empty">{t("forge.noMap")}</p>
+        </ShellPortal>
+      </>
     );
 
   const defaults = newMapData(t("campaign.defaultLevel"));
@@ -164,7 +176,8 @@ export function MapForge({
           kind={kind}
           label={name}
           fog={null}
-          grid={data.grid}
+          // Placeholder data is no grid of this map: none until its sidecar is read.
+          grid={loaded.status === "ok" ? data.grid : null}
         />
       </ShellPortal>
       <ShellPortal slot="browser">

@@ -238,6 +238,9 @@ export const de = {
   },
   forge: {
     empty: "Keine Karte geöffnet. Doppelklicke im Katalog auf eine Karte.",
+    noMap: "Keine Karte geöffnet.",
+    conflict:
+      "Die Kartendaten wurden inzwischen woanders geändert. Die Felder zeigen weiter deine Eingaben: „Kartendaten speichern“ setzt sie über die andere Änderung (Ebenen und Räume bleiben), Schließen der Karte verwirft sie.",
     openMap: "Geöffnete Karte",
     close: "{{name}} schließen",
     tree: "Karte",

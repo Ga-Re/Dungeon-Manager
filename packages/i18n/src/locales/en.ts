@@ -236,6 +236,9 @@ export const en: Messages = {
   },
   forge: {
     empty: "No map open. Double-click a map in the catalogue.",
+    noMap: "No map open.",
+    conflict:
+      "The map data was changed elsewhere meanwhile. The fields still show your input: “Save map data” puts it over the other change (levels and rooms stay), closing the map discards it.",
     openMap: "Open map",
     close: "Close {{name}}",
     tree: "Map",
