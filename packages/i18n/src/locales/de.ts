@@ -420,7 +420,8 @@ export const de = {
     shape: "Form",
     shapes: {
       rectangle: "Rechteck",
-      circle: "Kreis",
+      ellipse: "Ellipse",
+      lasso: "Lasso",
       polygon: "Polygon",
       brush: "Pinsel",
     },
@@ -428,7 +429,9 @@ export const de = {
     brushSize_other: "Pinselgröße: {{cells}} Felder",
     shapeHints: {
       rectangle: "Ziehen: Rechteck aufdecken oder verdecken.",
-      circle: "Ziehen: Kreis aus der Mitte.",
+      ellipse: "Ziehen: Ellipse im aufgezogenen Rahmen; mit ⇧ ein Kreis.",
+      lasso:
+        "Ziehen umrandet frei; Loslassen schließt die Form, Escape bricht ab.",
       polygon:
         "Klicken setzt Punkte; Doppelklick, Enter oder der erste Punkt schließt, Rücktaste nimmt den letzten zurück, Escape bricht ab.",
       brush: "Ziehen malt mit dem Pinsel.",

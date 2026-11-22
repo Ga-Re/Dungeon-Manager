@@ -1037,13 +1037,14 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-247 Lasso and ellipse fog tools
 
-- **Status:** todo · **Depends on:** T-131 · **Refs:** SPEC §4, ADR-0011, ADR-0019
+- **Status:** done · **Depends on:** T-131 · **Refs:** SPEC §4, ADR-0011, ADR-0019
 - New fog shapes in the Form group: **Ellipse** (replaces Kreis; Shift draws a circle) and **Lasso** (freehand, closed on release). Both become polygons in map pixels through `core`, also with the view turned; preview drawn in screen space like the other shapes.
 - **Acceptance criteria**
-  - [ ] Ellipse and lasso produce polygons in map pixels, also with the view rotated (unit tests in `core` / `fog-shapes`)
-  - [ ] Drawing, preview and Shift-circle (component tests); reveal and hide with both (E2E)
-  - [ ] Keyboard shortcuts and translated labels; Kreis is gone from the ribbon
+  - [x] Ellipse and lasso produce polygons in map pixels, also with the view rotated (unit tests in `core` / `fog-shapes`)
+  - [x] Drawing, preview and Shift-circle (component tests); reveal and hide with both (E2E)
+  - [x] Keyboard shortcuts and translated labels; Kreis is gone from the ribbon
 - **Notes:** From the DM interview (2026-11-22).
+- Done in T-247: `ellipseArea` in `core` (the ellipse in the box between two corners), `dragArea("ellipse")` with `squareEnd` for Shift, `lassoArea` (points closer than 3 px dropped; a loop that encloses nothing marks nothing). Keyboard: the shape buttons are reachable with Tab as before (there are no letter shortcuts for shapes); Escape drops a lasso being drawn. The E2E test runs in CI (the session's browser does not match the project's Playwright version).
 
 ### T-168 Fog biomes per map
 

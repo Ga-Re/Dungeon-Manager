@@ -415,7 +415,8 @@ export const en: Messages = {
     shape: "Shape",
     shapes: {
       rectangle: "Rectangle",
-      circle: "Circle",
+      ellipse: "Ellipse",
+      lasso: "Lasso",
       polygon: "Polygon",
       brush: "Brush",
     },
@@ -423,7 +424,9 @@ export const en: Messages = {
     brushSize_other: "Brush size: {{cells}} cells",
     shapeHints: {
       rectangle: "Drag: reveal or cover a rectangle.",
-      circle: "Drag: a circle from its centre.",
+      ellipse: "Drag: an ellipse in the dragged box; with ⇧ a circle.",
+      lasso:
+        "Drag to outline freely; releasing closes the shape, Escape cancels.",
       polygon:
         "Click to set points; double-click, Enter or the first point closes, Backspace removes the last one, Escape cancels.",
       brush: "Drag to paint with the brush.",

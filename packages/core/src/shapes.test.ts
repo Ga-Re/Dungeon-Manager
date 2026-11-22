@@ -1,7 +1,13 @@
 import fc from "fast-check";
 import { describe, expect, test } from "vitest";
 import { isInside } from "./fog.js";
-import { circleArea, ringArea, roundedRectArea, strokeArea } from "./index.js";
+import {
+  circleArea,
+  ellipseArea,
+  ringArea,
+  roundedRectArea,
+  strokeArea,
+} from "./index.js";
 
 const close = (a: number, b: number) => Math.abs(a - b) < 1e-6;
 
@@ -19,6 +25,25 @@ describe("circleArea", () => {
     expect(isInside([circle], [0, 0])).toBe(true);
     expect(isInside([circle], [9, 0])).toBe(true);
     expect(isInside([circle], [10.5, 0])).toBe(false);
+  });
+});
+
+describe("ellipseArea (T-247)", () => {
+  test("the ellipse inside the box between two opposite corners, in any order", () => {
+    const ellipse = ellipseArea([200, 20], [100, 80], 40);
+    expect(ellipse.outer).toHaveLength(40);
+    expect(ellipse.holes).toEqual([]);
+    // Every corner lies on the ellipse around (150, 50) with radii 50 and 30.
+    for (const [x, y] of ellipse.outer)
+      expect(close(((x - 150) / 50) ** 2 + ((y - 50) / 30) ** 2, 1)).toBe(true);
+    expect(isInside([ellipse], [150, 50])).toBe(true);
+    expect(isInside([ellipse], [105, 25])).toBe(false);
+  });
+
+  test("a square box gives a circle", () => {
+    const circle = ellipseArea([0, 0], [20, 20]);
+    for (const [x, y] of circle.outer)
+      expect(close(Math.hypot(x - 10, y - 10), 10)).toBe(true);
   });
 });
 

@@ -559,6 +559,54 @@ test("the ribbon keeps one height in every tab and workspace, so the map never m
   expect(await height()).toBeCloseTo(first, 0);
 });
 
+test("the ellipse reveals and the lasso hides, each one undo step (T-247)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await page.getByRole("tab", { name: "Nebel" }).click();
+  const undo = page.getByRole("button", { name: "Rückgängig" });
+  const map = page.getByRole("application", { name: /Karte der Szene/ });
+  await expect(
+    page.getByRole("button", { name: "Alles aufdecken" }),
+  ).toBeEnabled();
+  const box = await map.boundingBox();
+  if (!box) throw new Error("The map has no box.");
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+
+  // Kreis is gone; the ellipse takes its place.
+  await expect(page.getByRole("button", { name: "Kreis" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Aufdecken", exact: true }).click();
+  await page.getByRole("button", { name: "Ellipse" }).click();
+  await page.mouse.move(cx - 60, cy - 30);
+  await page.mouse.down();
+  await page.mouse.move(cx + 60, cy + 30, { steps: 4 });
+  await page.mouse.up();
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(undo).toBeDisabled();
+
+  await page.getByRole("button", { name: "Alles aufdecken" }).click();
+  await page.getByRole("button", { name: "Verdecken", exact: true }).click();
+  await page.getByRole("button", { name: "Lasso" }).click();
+  await page.mouse.move(cx - 60, cy - 40);
+  await page.mouse.down();
+  for (const [dx, dy] of [
+    [60, -40],
+    [60, 40],
+    [-60, 40],
+  ] as const)
+    await page.mouse.move(cx + dx, cy + dy, { steps: 3 });
+  await page.mouse.up();
+  // Two steps: the lasso's hide on top of revealing everything.
+  await undo.click();
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(undo).toBeDisabled();
+});
+
 test("the dock zooms and fits the DM's view of the map (T-131)", async ({
   page,
 }) => {
