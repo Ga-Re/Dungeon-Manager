@@ -44,8 +44,8 @@ export interface LibraryService {
    */
   hashFile(path: string): Promise<AssetRef>;
   /**
-   * Stores a catalog preview (T-124): a WebP up to 1 MiB, written by the backend to
-   * `library/.previews/<hex>.webp` for the file with this hash.
+   * Stores a catalog preview (T-124): a JPEG up to 1 MiB, written by the backend to
+   * `library/.previews/<hex>.jpg` for the file with this hash.
    */
   writePreview(hash: string, bytes: Uint8Array): Promise<void>;
   /** Calls `listener` with library-relative paths changed on disk; resolves to an unsubscribe. */

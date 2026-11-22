@@ -9,13 +9,20 @@ import type { LibraryService } from "../platform/library.js";
 import type { MapViewService } from "../platform/map-images.js";
 import { renderPreview } from "./map-preview.js";
 
-/** At most this many maps are hashed or drawn at once: a grid of videos must not stall the DM. */
+/** At most this many previews are made at once: a grid of videos must not stall the DM. */
 const CONCURRENT = 2;
 
-/** Per library service: hashes by path, so a map is hashed once per session, not per grid. */
+/** A preview being made, shared by every tile that shows it. */
+interface PreviewJob {
+  readonly promise: Promise<Blob>;
+  /** Tiles waiting for it; with none left before it started, it never starts. */
+  users: number;
+}
+
+/** Per library service, for this session: hashes and previews by map path. */
 interface CatalogStore {
   readonly hashes: Map<string, Promise<AssetRef>>;
-  readonly previews: Map<string, Promise<Blob>>;
+  readonly previews: Map<string, PreviewJob>;
   readonly queue: (() => void)[];
   running: number;
 }
@@ -31,10 +38,30 @@ function storeOf(service: LibraryService): CatalogStore {
   return store;
 }
 
-/** Runs `work` once fewer than `CONCURRENT` other jobs of this store are running. */
-function limited<T>(store: CatalogStore, work: () => Promise<T>): Promise<T> {
+/** Why a preview was never made: every tile that wanted it went away first. */
+export class PreviewCancelled extends Error {
+  constructor() {
+    super("No tile shows this preview any more.");
+    this.name = "PreviewCancelled";
+  }
+}
+
+/**
+ * Runs `work` once fewer than `CONCURRENT` other jobs of this store are running – unless
+ * `wanted` says by then that nobody waits for it any more.
+ */
+function limited<T>(
+  store: CatalogStore,
+  wanted: () => boolean,
+  work: () => Promise<T>,
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const start = () => {
+      if (!wanted()) {
+        reject(new PreviewCancelled());
+        store.queue.shift()?.();
+        return;
+      }
       store.running += 1;
       work()
         .then(resolve, reject)
@@ -48,55 +75,85 @@ function limited<T>(store: CatalogStore, work: () => Promise<T>): Promise<T> {
   });
 }
 
-/** Remembers a promise until it fails, so a failure is tried again next time. */
-function remembered<T>(
-  cache: Map<string, Promise<T>>,
-  key: string,
-  make: () => Promise<T>,
-): Promise<T> {
-  const known = cache.get(key);
-  if (known) return known;
-  const made = make();
-  cache.set(key, made);
-  made.catch(() => {
-    if (cache.get(key) === made) cache.delete(key);
-  });
-  return made;
-}
-
 /** The asset reference of a catalog map (hashed by the backend once per session). */
 export function catalogAsset(
   service: LibraryService,
   path: string,
 ): Promise<AssetRef> {
-  const store = storeOf(service);
-  return remembered(store.hashes, path, () =>
-    limited(store, () => service.hashFile(path)),
-  );
+  const { hashes } = storeOf(service);
+  const known = hashes.get(path);
+  if (known) return known;
+  const made = service.hashFile(path);
+  hashes.set(path, made);
+  // A failure is tried again next time.
+  made.catch(() => {
+    if (hashes.get(path) === made) hashes.delete(path);
+  });
+  return made;
 }
 
 /**
  * A catalog map's preview: the stored one in `library/.previews/`, else drawn now (needs
- * `maps`) and stored for the next time and the other devices.
+ * `maps`) and stored for the next time and the other devices. Hashing (which reads the whole
+ * file) and drawing run only while some tile wants the preview: call `release` when it goes.
  */
 export function catalogPreview(
   service: LibraryService,
   maps: MapViewService | null,
   map: CatalogMap,
-): Promise<Blob> {
+): { readonly promise: Promise<Blob>; readonly release: () => void } {
   const store = storeOf(service);
-  return remembered(store.previews, map.path, async () => {
-    const { hash } = await catalogAsset(service, map.path);
-    try {
-      return await service.readImage(previewFile(hash));
-    } catch {
-      // No preview yet (or an unreadable one): draw it below.
-    }
-    if (!maps) throw new Error(`No preview for ${map.path}.`);
-    const blob = await limited(store, () => renderPreview(maps, map));
+  let job = store.previews.get(map.path);
+  if (!job) {
+    // Held before it may start: an idle queue starts the work at once.
+    const wanted = { users: 1 };
+    const created: PreviewJob = Object.assign(wanted, {
+      promise: limited(
+        store,
+        () => wanted.users > 0,
+        () => makePreview(service, maps, map),
+      ),
+    });
+    job = created;
+    store.previews.set(map.path, created);
+    // A failure (or a cancelled job) is tried again next time.
+    created.promise.catch(() => {
+      if (store.previews.get(map.path) === created)
+        store.previews.delete(map.path);
+    });
+  } else job.users += 1;
+  const held = job;
+  let released = false;
+  return {
+    promise: held.promise,
+    release: () => {
+      if (released) return;
+      released = true;
+      held.users -= 1;
+    },
+  };
+}
+
+async function makePreview(
+  service: LibraryService,
+  maps: MapViewService | null,
+  map: CatalogMap,
+): Promise<Blob> {
+  const { hash } = await catalogAsset(service, map.path);
+  try {
+    return await service.readImage(previewFile(hash));
+  } catch {
+    // No preview yet (or an unreadable one): draw it below.
+  }
+  if (!maps) throw new Error(`No preview for ${map.path}.`);
+  const blob = await renderPreview(maps, map);
+  try {
     await service.writePreview(hash, new Uint8Array(await blob.arrayBuffer()));
-    return blob;
-  });
+  } catch (error) {
+    // Shown all the same; it is drawn again next session.
+    console.warn(`The preview of ${map.path} could not be stored.`, error);
+  }
+  return blob;
 }
 
 /** Forgets what is known about changed files, so they are hashed and drawn again. */
@@ -124,6 +181,11 @@ export function useMapCatalog(
   const reload = useCallback(() => {
     setVersion((current) => current + 1);
   }, []);
+
+  // Another library (or none): its maps are not this one's.
+  useEffect(() => {
+    setState({ status: "loading" });
+  }, [service, ready]);
 
   useEffect(() => {
     if (!ready) return;

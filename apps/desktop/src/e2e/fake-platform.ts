@@ -169,7 +169,7 @@ export async function createE2eLibrary({
         throw new Error(`no file at ${path}`);
       return { path, hash: `sha256:${"2".repeat(64)}` };
     },
-    // Previews are made but not kept: the harness has no WebP to show back.
+    // Previews are made but not kept: the harness shows only its one PNG back.
     writePreview: () => Promise.resolve(),
     onChange: () => Promise.resolve(() => undefined),
   };

@@ -274,7 +274,7 @@ pub async fn library_hash(
         .map_err(|error| LibraryError::Io(error.to_string()))?
 }
 
-/// Stores a catalog preview the webview made (T-124): a small WebP, only in
+/// Stores a catalog preview the webview made (T-124): a small JPEG, only in
 /// `library/.previews/`, named after the hash of the file it shows.
 #[tauri::command]
 pub fn library_write_preview(

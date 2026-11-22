@@ -45,6 +45,8 @@ async function openHarness(page: Page, search = "") {
   await expect(welcome).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(welcome).toBeHidden();
+  // The data panel's catalog draws its map preview once it is on screen (T-124).
+  await expect(page.locator(".dm-catalog .dm-map-thumb img")).toBeVisible();
 }
 
 test("zone layout with an open scene", async ({ page }) => {
@@ -78,7 +80,8 @@ test("the map picker with previews (T-124)", async ({ page }) => {
   await expect(picker.locator(".dm-map-thumb img")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 
-  await expect(page).toHaveScreenshot("dm-window-map-picker.png");
+  // The dialog alone: the tree behind it is covered by the other screenshots.
+  await expect(picker).toHaveScreenshot("dm-window-map-picker.png");
 });
 
 test("the settings dialog", async ({ page }) => {
@@ -115,6 +118,7 @@ test("the welcome dialog with recent campaigns", async ({ page }) => {
   await expect(
     page.getByRole("list", { name: "Zuletzt bearbeitet" }),
   ).toBeVisible();
+  await expect(page.locator(".dm-catalog .dm-map-thumb img")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 
   await expect(page).toHaveScreenshot("dm-window-welcome.png");

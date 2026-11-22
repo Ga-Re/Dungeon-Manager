@@ -173,7 +173,7 @@ pub fn import_map(root: &Path, folder: &str, source: &Path) -> Result<ImportedAs
     unreachable!("the name loop only ends by returning")
 }
 
-/// The largest preview the catalog writes (T-124): a downscaled WebP is far smaller.
+/// The largest preview the catalog writes (T-124): a downscaled JPEG is far smaller.
 pub const MAX_PREVIEW_BYTES: usize = 1024 * 1024;
 
 /// The hash of a file already in `library/` (T-124: maps placed there by hand or by a sync
@@ -193,9 +193,10 @@ pub fn hash_library_file(root: &Path, relative: &str) -> Result<ImportedAsset, L
     })
 }
 
-/// Writes a catalog preview (T-124, ARCHITECTURE §6.5): only a WebP of at most
-/// `MAX_PREVIEW_BYTES`, only into `library/.previews/`, named after the hash of the file it
-/// shows – the webview decides nothing else about where it goes.
+/// Writes a catalog preview (T-124, ARCHITECTURE §6.5): only a JPEG of at most
+/// `MAX_PREVIEW_BYTES` (every webview encodes JPEG; WebKit has no WebP encoder), only into
+/// `library/.previews/`, named after the hash of the file it shows – the webview decides
+/// nothing else about where it goes.
 pub fn write_preview(root: &Path, hash: &str, bytes: &[u8]) -> Result<(), LibraryError> {
     let hex = hash
         .strip_prefix("sha256:")
@@ -206,10 +207,10 @@ pub fn write_preview(root: &Path, hash: &str, bytes: &[u8]) -> Result<(), Librar
                     .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
         })
         .ok_or_else(|| LibraryError::InvalidPath(hash.to_owned()))?;
-    if bytes.len() > MAX_PREVIEW_BYTES || map_extension(bytes) != Some("webp") {
+    if bytes.len() > MAX_PREVIEW_BYTES || map_extension(bytes) != Some("jpg") {
         return Err(LibraryError::UnsupportedFile(format!("preview {hex}")));
     }
-    let path = library::resolve(root, &format!("library/.previews/{hex}.webp"))?;
+    let path = library::resolve(root, &format!("library/.previews/{hex}.jpg"))?;
     library::write_atomic_with(&path, |file| io::Write::write_all(file, bytes))
 }
 
@@ -287,20 +288,22 @@ mod tests {
     }
 
     #[test]
-    fn writes_only_small_webp_previews_named_by_hash() {
+    fn writes_only_small_jpeg_previews_named_by_hash() {
+        const JPEG: &[u8] = b"\xFF\xD8\xFF\xE0rest-of-a-jpeg";
         let root = temp_dir("preview");
         let hash = format!("sha256:{}", "a".repeat(64));
-        write_preview(&root, &hash, WEBP).unwrap();
+        write_preview(&root, &hash, JPEG).unwrap();
         assert_eq!(
-            fs::read(root.join(format!("library/.previews/{}.webp", "a".repeat(64)))).unwrap(),
-            WEBP
+            fs::read(root.join(format!("library/.previews/{}.jpg", "a".repeat(64)))).unwrap(),
+            JPEG
         );
-        // Not a WebP, too large, or a hash that could name another path: refused.
+        // Not a JPEG, too large, or a hash that could name another path: refused.
         assert!(write_preview(&root, &hash, PNG).is_err());
-        let large = [WEBP, &vec![0; MAX_PREVIEW_BYTES][..]].concat();
+        assert!(write_preview(&root, &hash, WEBP).is_err());
+        let large = [JPEG, &vec![0; MAX_PREVIEW_BYTES][..]].concat();
         assert!(write_preview(&root, &hash, &large).is_err());
         for bad in ["sha256:../../x", "sha256:ABC", "md5:abc", &"a".repeat(64)] {
-            assert!(write_preview(&root, bad, WEBP).is_err(), "{bad}");
+            assert!(write_preview(&root, bad, JPEG).is_err(), "{bad}");
         }
     }
 

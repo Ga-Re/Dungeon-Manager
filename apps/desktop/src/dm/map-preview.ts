@@ -5,7 +5,7 @@ import { releaseVideo, type MapViewService } from "../platform/map-images.js";
 /** The longest side of a catalog preview, in pixels: sharp in a grid cell on a HiDPI screen. */
 export const PREVIEW_MAX_PX = 384;
 
-/** WebP quality of a preview: small files, good enough for a thumbnail. */
+/** JPEG quality of a preview: small files, good enough for a thumbnail. */
 const PREVIEW_QUALITY = 0.8;
 
 /** A preview's size: the map's aspect ratio, never larger than the map or `PREVIEW_MAX_PX`. */
@@ -22,16 +22,16 @@ export function previewSize(map: Size): Size {
 
 /**
  * Draws a map (an image, or a video's first frame – DM decision T-124) small and encodes it as
- * WebP, in the webview: no new image library in the backend.
+ * JPEG, in the webview: no new image library in the backend. JPEG, not WebP: WebKit (macOS,
+ * Linux) cannot encode WebP, and maps are opaque anyway.
  */
 export async function renderPreview(
   maps: MapViewService,
   map: CatalogMap,
 ): Promise<Blob> {
   if (map.kind === "video") {
-    const video = await maps.loadVideo(map.path);
+    const video = await maps.loadVideo(map.path, { still: true });
     try {
-      video.pause();
       return await encode(video, {
         width: video.videoWidth,
         height: video.videoHeight,
@@ -52,12 +52,15 @@ async function encode(source: CanvasImageSource, size: Size): Promise<Blob> {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("No 2D canvas for the map preview.");
   context.imageSmoothingQuality = "high";
+  // JPEG has no transparency: a transparent pixel (e.g. of a video) becomes black, not noise.
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, target.width, target.height);
   context.drawImage(source, 0, 0, target.width, target.height);
   const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, "image/webp", PREVIEW_QUALITY);
+    canvas.toBlob(resolve, "image/jpeg", PREVIEW_QUALITY);
   });
-  // A webview without a WebP encoder answers with PNG; the backend only stores WebP.
-  if (!blob || blob.type !== "image/webp")
-    throw new Error("This webview cannot encode WebP previews.");
+  // The backend stores only JPEG; anything else is a webview we do not know.
+  if (!blob || blob.type !== "image/jpeg")
+    throw new Error("This webview cannot encode JPEG previews.");
   return blob;
 }

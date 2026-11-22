@@ -76,5 +76,5 @@ export async function listLibraryMaps(fs: FileSystem): Promise<CatalogMap[]> {
 export function previewFile(hash: string): string {
   const hex = /^sha256:([0-9a-f]{64})$/.exec(hash)?.[1];
   if (!hex) throw new Error(`Invalid hash: ${hash}`);
-  return `${PREVIEWS_DIRECTORY}/${hex}.webp`;
+  return `${PREVIEWS_DIRECTORY}/${hex}.jpg`;
 }

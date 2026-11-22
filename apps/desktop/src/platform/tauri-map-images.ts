@@ -21,8 +21,11 @@ export function createTauriMapViewService(): MapViewService {
       await image.decode();
       return image;
     },
-    async loadVideo(path) {
+    async loadVideo(path, options) {
+      const still = options?.still === true;
       const video = document.createElement("video");
+      // The scheme is another origin: without CORS a drawn frame taints the canvas.
+      if (still) video.crossOrigin = "anonymous";
       // Muted: browsers only autoplay muted video, and map videos have no sound to keep.
       video.muted = true;
       video.loop = true;
@@ -54,6 +57,7 @@ export function createTauriMapViewService(): MapViewService {
           { once: true },
         );
       });
+      if (still) return video;
       video.play().catch((error: unknown) => {
         // The map then shows its first frame, still under its fog; worth knowing, not fatal.
         console.warn(`The video map ${path} does not play.`, error);

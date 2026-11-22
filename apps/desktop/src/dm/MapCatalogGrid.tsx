@@ -4,7 +4,7 @@ import { useContext, useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { fileName } from "./file-name.js";
-import { catalogPreview } from "./map-catalog.js";
+import { catalogPreview, PreviewCancelled } from "./map-catalog.js";
 import { MapViewContext } from "./MapView.js";
 
 const MAPS_FOLDER = "library/maps/";
@@ -29,21 +29,59 @@ export function filterMaps(
   });
 }
 
-/** A map's preview, drawn on first sight; its kind's icon until then or if it cannot be drawn. */
+/** Calls back once the element is (nearly) on screen; at once where nothing can tell. */
+function useOnScreen(element: HTMLElement | null): boolean {
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (!element || seen) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setSeen(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setSeen(true);
+      },
+      // A little ahead of scrolling, so previews are there when the tile shows.
+      { rootMargin: "200px" },
+    );
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  }, [element, seen]);
+  return seen;
+}
+
+/**
+ * A map's preview, loaded or drawn once the tile comes on screen (hashing reads the whole
+ * file); its kind's icon until then or if it cannot be drawn.
+ */
 function MapThumbnail({
   service,
-  map,
+  path,
+  kind,
 }: {
   readonly service: LibraryService;
-  readonly map: CatalogMap;
+  readonly path: string;
+  readonly kind: CatalogMap["kind"];
 }) {
   const maps = useContext(MapViewContext);
+  const [element, setElement] = useState<HTMLElement | null>(null);
+  const onScreen = useOnScreen(element);
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!onScreen) return;
     let active = true;
     let objectUrl: string | null = null;
-    catalogPreview(service, maps, map).then(
+    // Path and kind, not the list's object: a reread list must not redraw every tile.
+    const preview = catalogPreview(service, maps, {
+      path,
+      kind,
+      sidecarConflicts: [],
+    });
+    preview.promise.then(
       (blob) => {
         if (!active) return;
         objectUrl = URL.createObjectURL(blob);
@@ -51,21 +89,23 @@ function MapThumbnail({
       },
       (error: unknown) => {
         // The tile keeps its icon; the map can still be picked.
-        console.warn(`No preview for ${map.path}.`, error);
+        if (active && !(error instanceof PreviewCancelled))
+          console.warn(`No preview for ${path}.`, error);
       },
     );
     return () => {
       active = false;
+      preview.release();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       setUrl(null);
     };
-  }, [service, maps, map]);
+  }, [service, maps, path, kind, onScreen]);
 
   return (
-    <span className="dm-map-thumb" aria-hidden="true">
+    <span ref={setElement} className="dm-map-thumb" aria-hidden="true">
       {url ? (
         <img src={url} alt="" draggable={false} />
-      ) : map.kind === "video" ? (
+      ) : kind === "video" ? (
         <Film />
       ) : (
         <ImageIcon />
@@ -155,12 +195,20 @@ export function MapCatalogGrid({
                     onPick(map);
                   }}
                 >
-                  <MapThumbnail service={service} map={map} />
+                  <MapThumbnail
+                    service={service}
+                    path={map.path}
+                    kind={map.kind}
+                  />
                   <TileText map={map} />
                 </button>
               ) : (
                 <div className="dm-map-tile">
-                  <MapThumbnail service={service} map={map} />
+                  <MapThumbnail
+                    service={service}
+                    path={map.path}
+                    kind={map.kind}
+                  />
                   <TileText map={map} />
                 </div>
               )}

@@ -57,7 +57,7 @@ describe("listLibraryMaps", () => {
 describe("previewFile", () => {
   test("names a map's preview after its content hash", () => {
     expect(previewFile(`sha256:${"a".repeat(64)}`)).toBe(
-      `library/.previews/${"a".repeat(64)}.webp`,
+      `library/.previews/${"a".repeat(64)}.jpg`,
     );
     expect(() => previewFile("sha256:nope")).toThrow();
   });

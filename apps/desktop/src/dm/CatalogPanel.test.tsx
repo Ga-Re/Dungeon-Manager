@@ -19,13 +19,13 @@ import { MapViewContext } from "./MapView.js";
 // jsdom draws nothing: the preview is made by a stand-in (map-preview.ts has its own tests).
 vi.mock("./map-preview.js", () => ({
   renderPreview: vi.fn(() =>
-    Promise.resolve(new Blob(["drawn"], { type: "image/webp" })),
+    Promise.resolve(new Blob(["drawn"], { type: "image/jpeg" })),
   ),
 }));
 
 /** The fake library hashes every file to this (fake-library.test-data.ts). */
 const HEX = "b".repeat(64);
-const PREVIEW = `library/.previews/${HEX}.webp`;
+const PREVIEW = `library/.previews/${HEX}.jpg`;
 
 const maps = {} as MapViewService;
 
@@ -69,7 +69,7 @@ describe("CatalogPanel", () => {
       "library/maps/Höhlen/see.png": "png",
       "library/maps/turm.webm": "webm",
       "library/maps/turm.webm.dm.json": "{}",
-      [PREVIEW]: "webp",
+      [PREVIEW]: "jpeg",
     });
     const tiles = within(await grid()).getAllByRole("listitem");
     expect(tiles.map((tile) => tile.title)).toEqual([
