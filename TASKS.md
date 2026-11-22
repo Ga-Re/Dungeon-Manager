@@ -558,7 +558,7 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Hovering a room in fog mode highlights it; a click reveals/hides it as one undo step
   - [ ] Room list with per-room reveal toggle
   - [ ] Room reveals and "reveal all" subtract hidden secret rooms: afterwards `revealed ∩ hiddenSecretRoom = ∅` and no token centred in it is projected (property test, incl. overlapping rooms)
-- **Notes:** Split from T-108c (DM decision 2026-11-22). Reveal by trigger with the trigger zones (stage 5).
+- **Notes:** Split from T-108c (DM decision 2026-11-22). Reveal by trigger with the trigger zones (stage 5). ADR-0020 (DM decision 2026-11-22): the room list is the scene browser; a room's context menu (or double-click) shows or hides it as quick access at the table.
 
 ### T-109 Memory fog
 
@@ -1260,6 +1260,49 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [ ] The map can be panned without leaving calibration (component test)
 - **Notes:** From the T-177 review (2026-11-22).
+
+### T-252 Ribbon tabs per workspace and the command panel
+
+- **Status:** todo · **Depends on:** T-176a · **Refs:** ADR-0020, ADR-0017, SPEC §2.5
+- Ribbon tabs for every workspace (today only the Game-Orchestrator has them), groups with quick-access icons and the caption's drop-down with all commands, and a `CommandPanel` primitive in `@dungeon-manager/ui`: floating over the map panel (top right), movable, not modal, one at a time, OK (Enter) and Abbrechen (Escape), focus moves in and back. The Map Forge gets its tabs KARTE · RÄUME · NEBEL.
+- **Acceptance criteria**
+  - [ ] Each workspace shows its own ribbon tabs; groups have quick-access tools and a drop-down with all commands (component + E2E test)
+  - [ ] A command panel opens from a ribbon tool, stays usable while the DM works on the map, applies on OK/Enter and discards on Abbrechen/Escape; only one is open at a time (component test)
+- **Notes:** DM decision 2026-11-22 (ADR-0020).
+
+### T-253 Map Forge: new map, map at the top of the browser, "Karteneinstellungen" dialog
+
+- **Status:** todo · **Depends on:** T-252 · **Refs:** ADR-0020, SPEC §2.5, §8.2
+- Ribbon tool "Neue Karte": asks whether to import a file or draw an own map (drawing offered as "kommt später", stage 6); the name is set right away; the file enters the catalog and opens as the document. In the browser the open map is at the top with "Karteneinstellungen ⚙" under it; a double-click or its context menu opens a dialog with name, origin, license, tags and theme (with T-126), grid as numbers and the default fog biome. The forms in the Eigenschaften panel go; it shows the map's facts.
+- **Acceptance criteria**
+  - [ ] A new map is imported with its name and opens in the Map Forge (component + E2E test)
+  - [ ] "Karteneinstellungen" opens from the browser (double-click, context menu, keyboard) and saves in the sidecar
+- **Notes:** DM decision 2026-11-22 (ADR-0020). Tags and theme follow T-126 if it is not done first.
+
+### T-254 Map Forge: grid calibration and rooms as ribbon tools with command panels
+
+- **Status:** todo · **Depends on:** T-252 · **Refs:** ADR-0020, T-177, T-108c1
+- KARTE › RASTER › "Raster kalibrieren" opens a command panel (box or move, cells, the resulting numbers; OK saves, Abbrechen discards). RÄUME › "Raum anlegen" opens a command panel with rectangle, polygon, ellipse and lasso and the level; the DM draws (and may redraw), OK creates the room, which appears in the browser. A double-click or the context menu on a room opens "Raum bearbeiten" (name, secret; delete from the context menu, after confirming).
+- **Acceptance criteria**
+  - [ ] Calibration and room drawing start only from the ribbon and finish with OK/Abbrechen (component + E2E test)
+  - [ ] Rooms are edited and deleted from the browser (double-click, context menu, keyboard)
+- **Notes:** DM decision 2026-11-22 (ADR-0020): replaces the Eigenschaften forms of T-177 and T-108c1.
+
+### T-255 Game-Orchestrator: ribbon tools with command panels
+
+- **Status:** todo · **Depends on:** T-252, T-108c2 · **Refs:** ADR-0020, SPEC §2.5, §4
+- The Orchestrator's tools (fog shapes and reveal/hide, tokens, scene commands) follow ADR-0020: in the ribbon by group with quick access and drop-down; tools with options open a command panel. Prepared content is used from the browser's quick access (e.g. a room's context menu shows or hides it, T-108c2).
+- **Acceptance criteria**
+  - [ ] The fog tools open a command panel that stays open while the DM marks areas; each area applies at once; OK or Escape ends the tool
+- **Notes:** DM decisions 2026-11-22 (ADR-0020): fog areas apply at once while the panel stays open.
+
+### T-256 Pin commands to the toolbar and to shortcuts; own keyboard shortcuts
+
+- **Status:** todo · **Depends on:** T-252 · **Refs:** ADR-0020
+- As in Fusion: a command's "⋮" menu pins it to its group's quick access or to the shortcuts, and changes its keyboard shortcut; stored per device.
+- **Acceptance criteria**
+  - [ ] A command can be pinned and unpinned and gets an own shortcut, kept per device (component test)
+- **Notes:** DM decision 2026-11-22: later than the ribbon itself.
 
 ### T-192 Crop, rotation and image adjustment of maps
 
