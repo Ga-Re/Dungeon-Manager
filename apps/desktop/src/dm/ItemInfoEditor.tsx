@@ -1,0 +1,112 @@
+import type { CatalogMap } from "@dungeon-manager/storage";
+import { updateItemInfo } from "@dungeon-manager/storage";
+import { ITEM_TEXT_MAX } from "@dungeon-manager/schema";
+import { useId, useState, type SyntheticEvent } from "react";
+import { useTranslation } from "react-i18next";
+import type { LibraryService } from "../platform/library.js";
+import { describeLibraryError } from "./describe-error.js";
+import { fileName } from "./file-name.js";
+import { catalogAsset } from "./map-catalog.js";
+
+const FIELDS = ["name", "origin", "license"] as const;
+type Field = (typeof FIELDS)[number];
+
+/**
+ * A catalog map's name and origin/license (T-125, SPEC 8.2), edited in the Eigenschaften panel
+ * and stored in its sidecar for every campaign. A blank name shows the file name.
+ */
+export function ItemInfoEditor({
+  service,
+  map,
+  onSaved,
+}: {
+  readonly service: LibraryService;
+  readonly map: CatalogMap;
+  readonly onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const initial = (field: Field) => map.info?.[field] ?? "";
+  const [values, setValues] = useState<Record<Field, string>>({
+    name: initial("name"),
+    origin: initial("origin"),
+    license: initial("license"),
+  });
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  const [problem, setProblem] = useState("");
+  const changed = FIELDS.some(
+    (field) => values[field].trim() !== initial(field),
+  );
+
+  const save = async (event: SyntheticEvent) => {
+    event.preventDefault();
+    if (busy || !changed) return;
+    setBusy(true);
+    setProblem("");
+    setStatus("");
+    try {
+      await updateItemInfo(
+        service.fs,
+        await catalogAsset(service, map.path),
+        values,
+      );
+      setStatus(t("catalog.info.saved"));
+      onSaved();
+    } catch (error) {
+      setProblem(describeLibraryError(t, error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="dm-item-info" onSubmit={(event) => void save(event)}>
+      <p className="dm-details-heading">
+        <span className="dm-details-kind">{t("catalog.info.kind")}</span>
+        {map.info?.name ?? fileName(map.path)}
+      </p>
+      <dl className="dm-details-rows">
+        <div className="dm-details-row">
+          <dt>{t("catalog.info.file")}</dt>
+          <dd className="dm-details-mono">{map.path}</dd>
+        </div>
+      </dl>
+      {FIELDS.map((field) => (
+        <div key={field} className="dm-item-info-field">
+          <label htmlFor={`${id}-${field}`}>{t(`catalog.info.${field}`)}</label>
+          {field === "name" ? (
+            <input
+              id={`${id}-${field}`}
+              value={values[field]}
+              maxLength={200}
+              placeholder={fileName(map.path)}
+              onChange={(event) => {
+                setValues({ ...values, [field]: event.target.value });
+              }}
+            />
+          ) : (
+            <textarea
+              id={`${id}-${field}`}
+              value={values[field]}
+              maxLength={ITEM_TEXT_MAX}
+              rows={2}
+              onChange={(event) => {
+                setValues({ ...values, [field]: event.target.value });
+              }}
+            />
+          )}
+        </div>
+      ))}
+      <div className="dm-item-info-actions">
+        <button type="submit" disabled={busy || !changed}>
+          {t("catalog.info.save")}
+        </button>
+      </div>
+      <p role="status" className="dm-catalog-notice">
+        {status}
+      </p>
+      {problem && <p role="alert">{problem}</p>}
+    </form>
+  );
+}

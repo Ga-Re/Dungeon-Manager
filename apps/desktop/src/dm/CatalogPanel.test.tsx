@@ -134,6 +134,61 @@ describe("CatalogPanel", () => {
     ).toBeTruthy();
   });
 
+  test("a selected map's name and origin/license are edited and stored in its sidecar (T-125)", async () => {
+    const library = renderCatalog(true, { "library/maps/turm.png": "png" });
+    const tile = within(await grid()).getByRole("button", {
+      name: /turm\.png/,
+    });
+    expect(tile.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(tile);
+    expect(tile.getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: " Turm der Magier " },
+    });
+    fireEvent.change(screen.getByLabelText("Lizenz / Nutzungsrechte"), {
+      target: { value: "CC0" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    expect(
+      await screen.findByText("Gespeichert – gilt in allen Kampagnen."),
+    ).toBeTruthy();
+    expect(
+      JSON.parse(
+        library.fs.files().get("library/maps/turm.png.dm.json") ?? "{}",
+      ),
+    ).toMatchObject({
+      original: { hash: `sha256:${HEX}` },
+      info: { name: "Turm der Magier", license: "CC0" },
+    });
+    // The tile is named after it, and the search finds it by that name.
+    expect(
+      await within(await grid()).findByText("Turm der Magier"),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Karten suchen" }), {
+      target: { value: "magier" },
+    });
+    expect(within(await grid()).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  test("an unreadable sidecar is never overwritten", async () => {
+    const library = renderCatalog(true, {
+      "library/maps/turm.png": "png",
+      "library/maps/turm.png.dm.json": "{ broken",
+    });
+    fireEvent.click(
+      within(await grid()).getByRole("button", { name: /turm\.png/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Turm" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(library.fs.files().get("library/maps/turm.png.dm.json")).toBe(
+      "{ broken",
+    );
+  });
+
   test("shows maps added on disk while the app runs", async () => {
     const library = renderCatalog(true, { "library/maps/turm.png": "png" });
     await grid();

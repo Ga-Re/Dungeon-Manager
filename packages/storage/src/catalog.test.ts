@@ -49,6 +49,28 @@ describe("listLibraryMaps", () => {
     ]);
   });
 
+  test("names a map by its sidecar's info, if it has one (T-125)", async () => {
+    const fs = createMemoryFileSystem({
+      "library/maps/turm.png": "png",
+      "library/maps/turm.png.dm.json": JSON.stringify({
+        schemaVersion: 1,
+        original: { hash: `sha256:${"a".repeat(64)}` },
+        info: { name: "Turm der Magier", license: "CC0" },
+      }),
+      "library/maps/see.png": "png",
+      "library/maps/see.png.dm.json": "{ broken",
+    });
+    expect(await listLibraryMaps(fs)).toEqual([
+      { path: "library/maps/see.png", kind: "image", sidecarConflicts: [] },
+      {
+        path: "library/maps/turm.png",
+        kind: "image",
+        sidecarConflicts: [],
+        info: { name: "Turm der Magier", license: "CC0" },
+      },
+    ]);
+  });
+
   test("an empty or missing maps folder lists nothing", async () => {
     expect(await listLibraryMaps(createMemoryFileSystem())).toEqual([]);
   });

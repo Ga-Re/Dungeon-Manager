@@ -1,4 +1,6 @@
+import type { ItemInfo } from "@dungeon-manager/schema";
 import { findConflictCopies } from "./conflicts.js";
+import { loadSidecar } from "./documents.js";
 import type { FileSystem } from "./fs.js";
 import { SIDECAR_SUFFIX } from "./layout.js";
 
@@ -20,6 +22,8 @@ export interface CatalogMap {
   readonly kind: "image" | "video";
   /** Sync conflict copies of the map's sidecar (file names next to it), for a hint. */
   readonly sidecarConflicts: readonly string[];
+  /** Name and origin/license from its sidecar (T-125), if it has a readable one with info. */
+  readonly info?: ItemInfo;
 }
 
 const extensionOf = (name: string) =>
@@ -56,12 +60,18 @@ export async function listLibraryMaps(fs: FileSystem): Promise<CatalogMap[]> {
           : null;
       if (!kind) continue;
       const sidecar = `${entry.name}${SIDECAR_SUFFIX}`;
+      // Only a sidecar that is there is read: most maps of a pack have none.
+      const loaded = names.includes(sidecar)
+        ? await loadSidecar(fs, path)
+        : null;
+      const info = loaded?.status === "ok" ? loaded.value.info : undefined;
       maps.push({
         path,
         kind,
         sidecarConflicts: conflicts
           .filter((conflict) => conflict.original === sidecar)
           .map((conflict) => conflict.copy),
+        ...(info && { info }),
       });
     }
   };

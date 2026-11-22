@@ -2,7 +2,9 @@ import {
   CAMPAIGN_VERSION,
   SCENE_VERSION,
   SESSION_VERSION,
+  itemInfoSchema,
   type AssetRef,
+  type ItemInfo,
   type Grid,
   type MapData,
   type MapKind,
@@ -408,4 +410,46 @@ export async function updateMapData(
   if (!next) return null;
   await saveSidecar(fs, asset.path, { ...sidecar, map: next });
   return next;
+}
+
+/** The fields of an item's info the DM edits (T-125); blank ones are left out of the file. */
+export interface ItemInfoInput {
+  readonly name?: string;
+  readonly origin?: string;
+  readonly license?: string;
+}
+
+/**
+ * Sets a catalog item's name and origin/license in its sidecar (T-125), creating the sidecar if
+ * the file has none; everything else in it is kept. Texts are trimmed, blank ones left out.
+ * @returns the info written. @throws `MapDataUnavailableError` when the sidecar is not
+ *   downloaded yet, unreadable or broken – it is never overwritten; on invalid input
+ */
+export async function updateItemInfo(
+  fs: FileSystem,
+  asset: AssetRef,
+  input: ItemInfoInput,
+): Promise<ItemInfo> {
+  const loaded = await loadSidecar(fs, asset.path);
+  if (loaded.status !== "ok" && loaded.status !== "missing")
+    throw new MapDataUnavailableError(asset.path);
+  const sidecar =
+    loaded.status === "ok"
+      ? loaded.value
+      : { schemaVersion: 1 as const, original: { hash: asset.hash } };
+  // Fields this app does not know yet (loose schema) stay as they are.
+  // Fields this app does not know yet (loose schema) stay as they are; the three it edits are
+  // replaced by the input.
+  const info: Record<string, unknown> = Object.fromEntries(
+    Object.entries(sidecar.info ?? {}).filter(
+      ([key]) => key !== "name" && key !== "origin" && key !== "license",
+    ),
+  );
+  for (const key of ["name", "origin", "license"] as const) {
+    const value = input[key]?.trim() ?? "";
+    if (value !== "") info[key] = value;
+  }
+  const parsed = itemInfoSchema.parse(info);
+  await saveSidecar(fs, asset.path, { ...sidecar, info: parsed });
+  return parsed;
 }

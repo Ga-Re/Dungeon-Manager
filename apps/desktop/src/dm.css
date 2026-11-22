@@ -947,6 +947,44 @@ button.dm-map-tile:focus-visible {
   color: var(--dm-danger);
 }
 
+.dm-map-tile-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--dm-font-size-sm);
+}
+
+button.dm-map-tile[aria-pressed="true"] {
+  border-color: var(--dm-accent);
+  background: var(--dm-accent-soft);
+}
+
+/* T-125: a catalog item's name and origin/license in the Eigenschaften panel. */
+.dm-item-info {
+  display: grid;
+  gap: var(--dm-space-2);
+}
+
+.dm-item-info-field {
+  display: grid;
+  gap: var(--dm-space-1);
+}
+
+.dm-item-info-field label {
+  margin: 0;
+  font-size: var(--dm-font-size-xs);
+  color: var(--dm-text-secondary);
+}
+
+.dm-item-info-field textarea {
+  resize: vertical;
+}
+
+.dm-item-info-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .dm-map-picker {
   width: min(56rem, 100%);
 }

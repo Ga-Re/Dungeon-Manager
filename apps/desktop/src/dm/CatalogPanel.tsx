@@ -1,11 +1,14 @@
 import { IconButton } from "@dungeon-manager/ui";
 import { ImagePlus } from "lucide-react";
-import { useId, useState } from "react";
+import { useContext, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
+import { CatalogSelectionContext } from "./catalog-selection.js";
+import { ItemInfoEditor } from "./ItemInfoEditor.js";
 import { useMapCatalog } from "./map-catalog.js";
+import { ShellPortal } from "./shell/slots.js";
 import { MapCatalogGrid } from "./MapCatalogGrid.js";
 
 const LATER_GROUPS = ["tokens", "assets"] as const;
@@ -27,6 +30,15 @@ export function CatalogPanel({
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState("");
   const catalog = useMapCatalog(service, ready);
+  const selection = useContext(CatalogSelectionContext);
+  // Without a library around it (component tests), the panel keeps its own selection.
+  const [ownSelected, setOwnSelected] = useState<string | null>(null);
+  const selected = selection ? selection.selected : ownSelected;
+  const select = selection ? selection.select : setOwnSelected;
+  const selectedMap =
+    catalog.status === "ok"
+      ? catalog.maps.find((map) => map.path === selected)
+      : undefined;
 
   const importMap = async () => {
     setImporting(true);
@@ -62,7 +74,14 @@ export function CatalogPanel({
           <p role="alert">{describeLibraryError(t, catalog.error)}</p>
         )}
         {ready && catalog.status === "ok" && (
-          <MapCatalogGrid service={service} maps={catalog.maps} />
+          <MapCatalogGrid
+            service={service}
+            maps={catalog.maps}
+            selected={selected}
+            onPick={(map) => {
+              select(map.path);
+            }}
+          />
         )}
       </section>
       {LATER_GROUPS.map((group) => (
@@ -74,6 +93,16 @@ export function CatalogPanel({
       <p role="status" className="dm-catalog-notice">
         {notice}
       </p>
+      {selectedMap && (
+        <ShellPortal slot="details">
+          <ItemInfoEditor
+            key={selectedMap.path}
+            service={service}
+            map={selectedMap}
+            onSaved={catalog.reload}
+          />
+        </ShellPortal>
+      )}
     </section>
   );
 }

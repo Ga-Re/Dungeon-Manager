@@ -90,3 +90,31 @@ describe("scene overrides of map elements", () => {
     expect(mapOverridesSchema.safeParse({ "Raum 1": {} }).success).toBe(false);
   });
 });
+
+// T-125 (DM decision, 2026-11-22): name and origin/license of a catalog item, in its own block.
+describe("item info", () => {
+  test("a sidecar may carry an item's name, origin and license", () => {
+    const parsed = sidecarSchema.parse({
+      ...tower,
+      info: { name: "Turm", origin: "Selbst gezeichnet", license: "CC0" },
+    });
+    expect(parsed.info).toEqual({
+      name: "Turm",
+      origin: "Selbst gezeichnet",
+      license: "CC0",
+    });
+    // Every field is optional, and older sidecars without info stay valid.
+    expect(sidecarSchema.parse({ ...tower, info: {} }).info).toEqual({});
+    expect(sidecarSchema.parse(tower).info).toBeUndefined();
+  });
+
+  test("an empty name and overlong texts are refused", () => {
+    expect(
+      sidecarSchema.safeParse({ ...tower, info: { name: "" } }).success,
+    ).toBe(false);
+    expect(
+      sidecarSchema.safeParse({ ...tower, info: { license: "x".repeat(1001) } })
+        .success,
+    ).toBe(false);
+  });
+});
