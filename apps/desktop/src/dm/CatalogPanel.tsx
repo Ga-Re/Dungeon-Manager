@@ -6,6 +6,8 @@ import type { LibraryService } from "../platform/library.js";
 import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
 import { CatalogSelectionContext } from "./catalog-selection.js";
+import { MapForgeContext } from "./map-forge-context.js";
+import { useActiveWorkspace } from "./shell/workspace.js";
 import { ItemInfoEditor } from "./ItemInfoEditor.js";
 import { useMapCatalog } from "./map-catalog.js";
 import { ShellPortal } from "./shell/slots.js";
@@ -31,6 +33,9 @@ export function CatalogPanel({
   const [notice, setNotice] = useState("");
   const catalog = useMapCatalog(service, ready);
   const selection = useContext(CatalogSelectionContext);
+  const forge = useContext(MapForgeContext);
+  // In the Map Forge, the open map fills the Eigenschaften panel (T-176a).
+  const inForge = useActiveWorkspace() === "mapForge";
   // Without a library around it (component tests), the panel keeps its own selection.
   const [ownSelected, setOwnSelected] = useState<string | null>(null);
   const selected = selection ? selection.selected : ownSelected;
@@ -85,6 +90,13 @@ export function CatalogPanel({
             service={service}
             maps={catalog.maps}
             selected={selected}
+            onOpen={
+              forge
+                ? (map) => {
+                    forge.open(map.path);
+                  }
+                : undefined
+            }
             onPick={(map) => {
               // A second click on the selected map gives the panel back to the browser.
               select(map.path === selected ? null : map.path);
@@ -101,13 +113,20 @@ export function CatalogPanel({
       <p role="status" className="dm-catalog-notice">
         {notice}
       </p>
-      {selectedMap && (
+      {selectedMap && !inForge && (
         <ShellPortal slot="details">
           <ItemInfoEditor
             key={selectedMap.path}
             service={service}
             map={selectedMap}
             onSaved={catalog.reload}
+            onOpenInForge={
+              forge
+                ? () => {
+                    forge.open(selectedMap.path);
+                  }
+                : undefined
+            }
           />
         </ShellPortal>
       )}

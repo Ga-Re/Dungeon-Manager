@@ -100,6 +100,7 @@ import {
   saveWorkspace,
   type Workspace,
   ActiveWorkspaceContext,
+  ChooseWorkspaceContext,
 } from "./workspace.js";
 
 /** The panels' look comes from the design tokens; the colour scheme follows the app's theme. */
@@ -366,12 +367,16 @@ export function DmShell({
   const [namedLayouts, setNamedLayouts] = useState(() =>
     readNamedLayouts(storage, workspace),
   );
-  const chooseWorkspace = (id: string) => {
-    if (!isWorkspace(id)) return;
-    setWorkspace(id);
-    saveWorkspace(storage, id);
-    setNamedLayouts(readNamedLayouts(storage, id));
-  };
+  // Stable: it is also handed down to the documents (T-176a).
+  const chooseWorkspace = useCallback(
+    (id: string) => {
+      if (!isWorkspace(id)) return;
+      setWorkspace(id);
+      saveWorkspace(storage, id);
+      setNamedLayouts(readNamedLayouts(storage, id));
+    },
+    [storage],
+  );
   const [saveLayoutOpen, setSaveLayoutOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const commands = useMemo(createAppCommands, []);
@@ -1260,7 +1265,9 @@ export function DmShell({
                 <FogLookContext value={fogLook}>
                   <SetFogSpeedContext value={setFogSpeed}>
                     <ActiveWorkspaceContext value={workspace}>
-                      {children}
+                      <ChooseWorkspaceContext value={chooseWorkspace}>
+                        {children}
+                      </ChooseWorkspaceContext>
                     </ActiveWorkspaceContext>
                   </SetFogSpeedContext>
                 </FogLookContext>

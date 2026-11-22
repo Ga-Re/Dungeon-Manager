@@ -263,7 +263,7 @@ describe("editing the fog", () => {
     fireEvent.click(tool);
     expect(tool.getAttribute("aria-pressed")).toBe("true");
 
-    showWorkspace("mapForge");
+    showWorkspace("assetVault");
     // Another workspace's undo never reaches the scene: keys and title bar buttons.
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     expect(tv.shown.at(-1)?.fog["ground"]?.revealed).toHaveLength(1);

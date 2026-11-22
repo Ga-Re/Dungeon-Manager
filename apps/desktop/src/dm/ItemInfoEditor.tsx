@@ -1,5 +1,5 @@
 import type { CatalogMap } from "@dungeon-manager/storage";
-import { updateItemInfo } from "@dungeon-manager/storage";
+import { MapDataChangedError, updateItemInfo } from "@dungeon-manager/storage";
 import {
   ITEM_NAME_MAX,
   ITEM_TEXT_MAX,
@@ -30,10 +30,13 @@ export function ItemInfoEditor({
   service,
   map,
   onSaved,
+  onOpenInForge,
 }: {
   readonly service: LibraryService;
   readonly map: CatalogMap;
   readonly onSaved: () => void;
+  /** Opens the map in the Map Forge (T-176a); left out where it already is open there. */
+  readonly onOpenInForge?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -43,6 +46,8 @@ export function ItemInfoEditor({
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [problem, setProblem] = useState("");
+  // After a refused save the next one deliberately replaces what is on disk then.
+  const [rebasing, setRebasing] = useState(false);
   const changed = FIELDS.some(
     (field) => values[field].trim() !== base[field].trim(),
   );
@@ -56,7 +61,7 @@ export function ItemInfoEditor({
     if (!changed) {
       setBase(valuesOf(map.info));
       setValues(valuesOf(map.info));
-    }
+    } else if (rebasing) setBase(valuesOf(map.info));
   }
 
   const save = async (event: SyntheticEvent) => {
@@ -70,13 +75,20 @@ export function ItemInfoEditor({
         service.fs,
         await catalogAsset(service, map.path),
         values,
-        base,
+        // After a reported conflict the DM saves deliberately: no check against what was there.
+        rebasing ? undefined : base,
       );
       setBase(values);
       setStatus(t("catalog.info.saved"));
       onSaved();
+      setRebasing(false);
     } catch (error) {
-      setProblem(describeLibraryError(t, error));
+      if (error instanceof MapDataChangedError) {
+        setBase(valuesOf(map.info));
+        setRebasing(true);
+        setProblem(t("catalog.info.conflict"));
+        onSaved();
+      } else setProblem(describeLibraryError(t, error));
     } finally {
       setBusy(false);
     }
@@ -121,6 +133,11 @@ export function ItemInfoEditor({
         </div>
       ))}
       <div className="dm-item-info-actions">
+        {onOpenInForge && (
+          <button type="button" onClick={onOpenInForge}>
+            {t("catalog.openInForge")}
+          </button>
+        )}
         <button type="submit" disabled={busy || !changed}>
           {t("catalog.info.save")}
         </button>

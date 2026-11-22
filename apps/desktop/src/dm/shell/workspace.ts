@@ -62,6 +62,14 @@ export function saveWorkspace(
 export const ActiveWorkspaceContext =
   createContext<Workspace>("gameOrchestrator");
 
+/**
+ * Switches the DM window to a workspace (T-176a: opening a map in the Map Forge). `null` outside
+ * the shell, where there is nothing to switch.
+ */
+export const ChooseWorkspaceContext = createContext<
+  ((workspace: Workspace) => void) | null
+>(null);
+
 /** The workspace the DM window shows; outside the shell, the Game-Orchestrator. */
 export function useActiveWorkspace(): Workspace {
   return useContext(ActiveWorkspaceContext);

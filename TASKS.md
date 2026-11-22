@@ -1149,7 +1149,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-172d Default layouts of the other workspaces
 
-- **Status:** todo · **Depends on:** T-172a, T-176 · **Refs:** ADR-0017, SPEC §2.5
+- **Status:** todo · **Depends on:** T-172a, T-176a · **Refs:** ADR-0017, SPEC §2.5
 - Each workspace gets its own default layout and stored layout once it has its own panels (e.g. the Atlas's five zones with T-181, Map Forge with T-176).
 - **Acceptance criteria**
   - [ ] A DM-window screenshot per workspace's default layout
@@ -1216,21 +1216,28 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Closing waits for a pending save and asks only if it fails; nothing is lost silently (component + E2E test)
 - **Notes:** From the T-223b review (2026-11-20). Proposal for the DM before building: wait for the write (usually milliseconds) instead of closing at once – this keeps "asks only after a failed save".
 
-### T-176 Map Forge: open and edit library maps
+### T-176a Map Forge: open a library map and edit its metadata
 
-- **Status:** todo · **Depends on:** T-124, T-134b, T-172a · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
-- The Map Forge opens a map from the library (data panel) as its document, without a scene. Ribbon tabs for the map's data; the browser lists levels, rooms, masks and props. First content: map metadata (name, cell size, ambient sound, transition, fog effect) in the sidecar.
+- **Status:** done · **Depends on:** T-124, T-125, T-134b, T-172a · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
+- The Map Forge opens a map from the library (data panel) as its document, without a scene: the map large with its grid, the browser lists its levels and rooms, the Eigenschaften panel edits its metadata in the sidecar – name and origin/license (T-125), cell size and offset, and the default fog biome (`fogEffect`, read by every scene since T-168).
 - **Acceptance criteria**
-  - [ ] The map library is organised in folders (an imported pack keeps its structure) and tags, with search
-  - [ ] Open a library map and edit its metadata; saved in its sidecar (component + E2E test)
-  - [ ] An edit reaches a scene live on the TV only after the DM confirms (ADR-0012)
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
-- From T-168 (DM decision 2026-11-22): the map's default fog biome (`fogEffect` in the sidecar, already read by every scene) is set here; until then the DM picks the biome live per scene in the Nebel ribbon.
-- Deepening (DM interview, 2026-11-20): the first stage of the Map Forge is import and management (folders + tags), metadata, the 3×3 calibration (T-177), adding levels (T-118d), crop and image adjustment (T-192) and rooms for the fog (T-108c); walls and vision follow in stage 5.
+  - [x] Open a library map from the catalog (double-click, context menu, button in Eigenschaften); the Map Forge shows it as its document
+  - [x] Edit its metadata; saved in its sidecar (component + E2E test)
+  - [x] An edit reaches a scene live on the TV only after the DM confirms (ADR-0012, existing T-134b mechanism)
+- **Notes:** Split from T-176 (DM decision 2026-11-22). From the workspace interview with the DM (2026-11-20, ADR-0017). Deepening (DM interview, 2026-11-20): the first stage of the Map Forge is import and management (folders + tags), metadata, the 3×3 calibration (T-177), adding levels (T-118d), crop and image adjustment (T-192) and rooms for the fog (T-108c); walls and vision follow in stage 5.
+
+### T-176b Map Forge: library organisation, ambient sound and transition
+
+- **Status:** todo · **Depends on:** T-176a, T-126, T-231 · **Refs:** SPEC §2.5, §8.2
+- The map library organised in folders (an imported pack keeps its structure, T-231) and tags with search (T-126), managed in the Map Forge; the map's ambient sound (once sound exists, stage 2) and its scene transition (T-135) as metadata.
+- **Acceptance criteria**
+  - [ ] Folders and tags of the map library can be managed in the Map Forge, with search
+  - [ ] Ambient sound and transition are map metadata, used by every scene of the map
+- **Notes:** Split from T-176 (DM decision 2026-11-22).
 
 ### T-177 Two-click grid calibration with a 3×3 box
 
-- **Status:** todo · **Depends on:** T-176, T-106a · **Refs:** SPEC §2.2, §2.5
+- **Status:** todo · **Depends on:** T-176a, T-106a · **Refs:** SPEC §2.2, §2.5
 - In the Map Forge the DM drags a box over 3×3 cells of the map's printed grid; cell size and offset follow, so every map shows the same cell size on the TV.
 - **Acceptance criteria**
   - [ ] Cell size and offset from a dragged 3×3 box, also on a turned view (unit tests for the math)
@@ -1239,7 +1246,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-192 Crop, rotation and image adjustment of maps
 
-- **Status:** todo · **Depends on:** T-176 · **Refs:** SPEC §2.5
+- **Status:** todo · **Depends on:** T-176a · **Refs:** SPEC §2.5
 - Non-destructive crop, rotation and brightness/contrast/hue per map, so dark or glaring maps read well on the TV.
 - **Acceptance criteria**
   - [ ] The original file stays untouched; settings live in the sidecar
@@ -1412,7 +1419,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-225 World map with scene pins and travel routes
 
-- **Status:** todo · **Depends on:** T-181, T-176 · **Refs:** SPEC §2.5
+- **Status:** todo · **Depends on:** T-181, T-176a · **Refs:** SPEC §2.5
 - A campaign world map (from the library) with scene pins and routes with travel times; double-clicking a pin opens the scene. The Atlas can show it above the flow graph (split drawer).
 - **Acceptance criteria**
   - [ ] Pins and routes are saved with the campaign; a pin opens its scene (component test)
@@ -1517,7 +1524,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-189 Room labels on maps
 
-- **Status:** todo · **Depends on:** T-176, T-108c · **Refs:** SPEC §2.5, §8.1
+- **Status:** todo · **Depends on:** T-176a, T-108c · **Refs:** SPEC §2.5, §8.1
 - DM-only room numbers and names on the map in the Map Forge, shown in every scene with the map.
 - **Acceptance criteria**
   - [ ] Labels never reach the TV (projection test)
@@ -1525,7 +1532,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-190 Compose a map from tiles
 
-- **Status:** todo · **Depends on:** T-176 · **Refs:** SPEC §2.5, §8.1
+- **Status:** todo · **Depends on:** T-176a · **Refs:** SPEC §2.5, §8.1
 - Build one map from several images (dungeon tiles, map sections), aligned on the grid.
 - **Acceptance criteria**
   - [ ] Composed maps render within the texture limits (T-127) and the benchmark budget
@@ -1533,7 +1540,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-191 Map variants
 
-- **Status:** todo · **Depends on:** T-176, T-134b · **Refs:** SPEC §2.5, §8.1
+- **Status:** todo · **Depends on:** T-176a, T-134b · **Refs:** SPEC §2.5, §8.1
 - Variants per level (day/night, destroyed, flooded): masks and rooms belong to the level and apply to all its variants; a scene picks a variant per level (DM decision, 2026-11-20).
 - **Acceptance criteria**
   - [ ] Switching variants keeps fog, masks and rooms (component test)
@@ -1549,7 +1556,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-194 Vision test and mask check in the Map Forge
 
-- **Status:** todo · **Depends on:** T-142, T-176 · **Refs:** SPEC §2.5
+- **Status:** todo · **Depends on:** T-142, T-176a · **Refs:** SPEC §2.5
 - A test figure on the map shows live what a token would see; open wall ends, overlapping doors and rooms without walls are flagged.
 - **Acceptance criteria**
   - [ ] Leaks in a fixture map are found (unit tests)
@@ -1557,7 +1564,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-195 Parametric rooms, towers and corridors
 
-- **Status:** todo · **Depends on:** T-140, T-176 · **Refs:** SPEC §2.5, §8.1
+- **Status:** todo · **Depends on:** T-140, T-176a · **Refs:** SPEC §2.5, §8.1
 - Drag rectangular rooms, round towers and corridors on the 5-ft grid; outer walls follow automatically, shared edges become openings.
 - **Acceptance criteria**
   - [ ] Walls follow the drawn shapes (core unit tests)
@@ -1565,7 +1572,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-196 Terrain and floor layers with movement cost
 
-- **Status:** todo · **Depends on:** T-176 · **Refs:** SPEC §2.5, §8.1
+- **Status:** todo · **Depends on:** T-176a · **Refs:** SPEC §2.5, §8.1
 - Paint or fill floors (cobblestones, forest floor, water, lava, difficult terrain); difficult terrain doubles movement cost for movement ranges.
 - **Acceptance criteria**
   - [ ] Movement range respects terrain cost (core unit tests)
@@ -1573,7 +1580,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-197 Level heights and stairs
 
-- **Status:** todo · **Depends on:** T-118d, T-107, T-176 · **Refs:** SPEC §2.5, §3.1
+- **Status:** todo · **Depends on:** T-118d, T-107, T-176a · **Refs:** SPEC §2.5, §3.1
 - Levels get a height (e.g. −10 ft, 0 ft, +15 ft); stair zones move a token to the next level.
 - **Acceptance criteria**
   - [ ] A token entering a stair zone moves to the linked level (component test)
@@ -1581,7 +1588,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-198 UVTT import in the Map Forge
 
-- **Status:** todo · **Depends on:** T-140, T-143, T-176 · **Refs:** SPEC §3.1
+- **Status:** todo · **Depends on:** T-140, T-143, T-176a · **Refs:** SPEC §3.1
 - Import `.uvtt`/`.dd2vtt` with image, grid, walls, doors and lights into a new library map.
 - **Acceptance criteria**
   - [ ] Import of a self-made fixture keeps walls, doors and lights (storage test)

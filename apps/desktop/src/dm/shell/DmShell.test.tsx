@@ -103,7 +103,9 @@ describe("DmShell", () => {
       screen.queryByRole("tablist", { name: "Werkzeugleisten" }),
     ).toBeNull();
     expect(
-      screen.getByText("Hier bearbeitest du bald deine Karten."),
+      screen.getByText(
+        "Karte öffnen: Doppelklick auf eine Kachel im Katalog. Werkzeuge der Map Forge folgen.",
+      ),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Aufdecken" })).toBeNull();
     expect(storage.getItem("dm.workspace")).toBe("mapForge");

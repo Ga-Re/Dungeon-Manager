@@ -96,6 +96,19 @@ test("a catalog map's details in Eigenschaften (T-125)", async ({ page }) => {
   await expect(page).toHaveScreenshot("dm-window-item-info.png");
 });
 
+test("a map open in the Map Forge (T-176a)", async ({ page }) => {
+  await openHarness(page);
+  await page
+    .getByRole("list", { name: "Karten" })
+    .getByRole("button", { name: /krypta\.png/ })
+    .dblclick();
+  await expect(page.getByLabel("Zellgröße (Pixel)")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  await page.evaluate(() => document.fonts.ready);
+
+  await expect(page).toHaveScreenshot("dm-window-map-forge.png");
+});
+
 test("the settings dialog", async ({ page }) => {
   await openHarness(page);
   await page.getByRole("button", { name: "Einstellungen" }).click();

@@ -139,6 +139,17 @@ export async function createE2eLibrary({
     name: "Vorbereitung",
     date: "2026-11-28",
   });
+  // Like the backend's watcher, which also reports the app's own writes: sidecar changes reach
+  // the open scenes, so a map edit in the Map Forge waits for the DM there (T-176a).
+  const listeners = new Set<(paths: readonly string[]) => void>();
+  const writeFile = fs.writeAtomic.bind(fs);
+  fs.writeAtomic = async (path, ...rest) => {
+    await writeFile(path, ...rest);
+    if (path.endsWith(".dm.json"))
+      listeners.forEach((listener) => {
+        listener([path]);
+      });
+  };
   if (failSceneSaves) {
     const write = fs.writeAtomic.bind(fs);
     fs.writeAtomic = (path, ...rest) =>
@@ -171,7 +182,12 @@ export async function createE2eLibrary({
     },
     // Previews are made but not kept: the harness shows only its one PNG back.
     writePreview: () => Promise.resolve(),
-    onChange: () => Promise.resolve(() => undefined),
+    onChange: (listener) => {
+      listeners.add(listener);
+      return Promise.resolve(() => {
+        listeners.delete(listener);
+      });
+    },
   };
 }
 
