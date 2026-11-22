@@ -261,10 +261,10 @@ export const en: Messages = {
     keep: "Keep",
     tooSmall:
       "Too small for a room: on the grid it would have no area. Hold Alt to draw freely.",
-    changedMeanwhile:
-      "The map data was changed elsewhere meanwhile; the map now shows the new state. Try again.",
   },
   forge: {
+    changedMeanwhile:
+      "The map data was changed elsewhere meanwhile; the map now shows the new state. Try again.",
     empty: "No map open. Double-click a map in the catalogue.",
     noMap: "No map open.",
     conflict:

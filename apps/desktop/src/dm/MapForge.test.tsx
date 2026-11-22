@@ -97,6 +97,25 @@ function renderForge(
   return { library, onClose };
 }
 
+/** Like `renderForge`, and can show another workspace and come back. */
+function renderForgeSwitchable(files: Record<string, MemoryFileContent>) {
+  const library = fakeLibraryService("/lib", { [MAP]: "png", ...files });
+  const tree = (workspace: Workspace) => (
+    <I18nextProvider i18n={createI18n("de")}>
+      <ActiveWorkspaceContext value={workspace}>
+        <MapForge service={library.service} path={MAP} onClose={vi.fn()} />
+      </ActiveWorkspaceContext>
+    </I18nextProvider>
+  );
+  const { rerender } = render(tree("mapForge"));
+  return {
+    library,
+    rerenderIn: (workspace: Workspace) => {
+      rerender(tree(workspace));
+    },
+  };
+}
+
 const saved = (library: ReturnType<typeof fakeLibraryService>) =>
   JSON.parse(library.fs.files().get(SIDECAR) ?? "{}") as {
     map?: {
@@ -287,6 +306,34 @@ describe("MapForge", () => {
     });
     expect(field("Versatz waagerecht (Pixel)")).toBe("22");
     expect(field("Versatz senkrecht (Pixel)")).toBe("145");
+  });
+
+  test("Raster kalibrieren also starts from the RASTER caption's menu", async () => {
+    renderForge({ [SIDECAR]: sidecar({}) });
+    fireEvent.click(await screen.findByRole("button", { name: "Raster" }));
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Raster kalibrieren" }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Raster kalibrieren" }),
+    ).toBeTruthy();
+    expect(view.calibration?.mode).toBe("box");
+  });
+
+  test("leaving the Map Forge ends a running calibration", async () => {
+    const { rerenderIn } = renderForgeSwitchable({ [SIDECAR]: sidecar({}) });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Raster kalibrieren" }),
+    );
+    act(() => {
+      view.calibration?.onBox({ x: 0, y: 0 }, { x: 300, y: 300 });
+    });
+    rerenderIn("gameOrchestrator");
+    rerenderIn("mapForge");
+    expect(
+      screen.queryByRole("dialog", { name: "Raster kalibrieren" }),
+    ).toBeNull();
+    expect(screen.getByTestId("map-grid").textContent).toBe("70/0/0");
   });
 
   test("while a grid field is invalid, moving the grid does not replace what is typed", async () => {

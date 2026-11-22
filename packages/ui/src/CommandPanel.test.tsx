@@ -95,6 +95,15 @@ describe("CommandPanel", () => {
     expect(onCancel).toHaveBeenCalledTimes(2);
   });
 
+  it("does not take the keyboard back from where the DM went meanwhile", () => {
+    render(<Harness onOk={vi.fn()} onCancel={vi.fn()} />);
+    open();
+    const elsewhere = screen.getByRole("button", { name: "Karte" });
+    elsewhere.focus();
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(document.activeElement).toBe(elsewhere);
+  });
+
   it("does not apply while OK is disabled", () => {
     const onOk = vi.fn();
     render(<Harness onOk={onOk} onCancel={vi.fn()} okDisabled />);
@@ -109,7 +118,7 @@ describe("CommandPanel", () => {
   it("is moved by dragging its title bar", () => {
     render(<Harness onOk={vi.fn()} onCancel={vi.fn()} />);
     const panel = open();
-    const handle = screen.getByRole("button", { name: "Verschieben" });
+    const handle = screen.getByTitle("Verschieben");
     fireEvent.pointerDown(handle, { clientX: 100, clientY: 100, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientX: 70, clientY: 140, pointerId: 1 });
     fireEvent.pointerUp(handle, { clientX: 70, clientY: 140, pointerId: 1 });

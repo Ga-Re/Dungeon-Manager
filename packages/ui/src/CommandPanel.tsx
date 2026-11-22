@@ -58,8 +58,16 @@ export function CommandPanel({
     const previous = document.activeElement;
     panel.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
     return () => {
-      // Back to the tool that opened it, if it is still there.
-      if (previous instanceof HTMLElement && previous.isConnected)
+      // Back to the tool that opened it – only if the keyboard was in the panel (it closed
+      // under it) and the tool is still there to be seen; never away from where the DM went.
+      const now = document.activeElement;
+      const lost = now === null || now === document.body;
+      if (
+        lost &&
+        previous instanceof HTMLElement &&
+        previous.isConnected &&
+        !previous.closest("[hidden]")
+      )
         previous.focus();
     };
   }, []);
@@ -119,10 +127,9 @@ export function CommandPanel({
       onKeyDown={onKeyDown}
     >
       <header className="dm-command-panel-head">
+        {/* A pointer handle only: the panel's place does not matter to the keyboard. */}
         <span
-          role="button"
-          tabIndex={-1}
-          aria-label={moveLabel}
+          aria-hidden="true"
           title={moveLabel}
           className="dm-command-panel-handle"
           onPointerDown={onHandleDown}

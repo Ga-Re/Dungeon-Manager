@@ -264,10 +264,10 @@ export const de = {
     keep: "Behalten",
     tooSmall:
       "Zu klein für einen Raum: am Raster wäre er keine Fläche. Mit Alt zeichnest du frei.",
-    changedMeanwhile:
-      "Die Kartendaten wurden inzwischen woanders geändert; die Karte zeigt jetzt den neuen Stand. Versuche es erneut.",
   },
   forge: {
+    changedMeanwhile:
+      "Die Kartendaten wurden inzwischen woanders geändert; die Karte zeigt jetzt den neuen Stand. Versuche es erneut.",
     empty: "Keine Karte geöffnet. Doppelklicke im Katalog auf eine Karte.",
     noMap: "Keine Karte geöffnet.",
     conflict:

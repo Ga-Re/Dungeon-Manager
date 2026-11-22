@@ -647,7 +647,6 @@ label {
   font-family: var(--dm-font-heading);
 }
 
-/* Bottom centre of the map (T-131): notices over the navigation and display dock. */
 /* A ribbon tool's command panel (ADR-0020): top right over the map, below popovers. */
 .dm-stage-command {
   position: absolute;
@@ -665,6 +664,7 @@ label {
   display: contents;
 }
 
+/* Bottom centre of the map (T-131): notices over the navigation and display dock. */
 .dm-stage-bottom {
   position: absolute;
   left: 50%;

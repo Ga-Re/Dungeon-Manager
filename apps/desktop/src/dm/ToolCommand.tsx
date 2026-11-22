@@ -24,9 +24,34 @@ export function ToolCommand({
   const { t } = useTranslation();
   const registry = useContext(CommandRegistryContext);
   const cancel = useRef(onCancel);
+  const ok = useRef({ onOk, okDisabled });
   useEffect(() => {
     cancel.current = onCancel;
+    ok.current = { onOk, okDisabled };
   });
+  // Escape and Enter also reach the command while the DM works on the map (as in CAD
+  // programs), unless the map used the key itself (e.g. to drop a box being dragged).
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (
+        !(event.target instanceof Element) ||
+        !event.target.closest(".map-view-canvas")
+      )
+        return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        cancel.current();
+      } else if (event.key === "Enter" && ok.current.okDisabled !== true) {
+        event.preventDefault();
+        ok.current.onOk();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
   useEffect(
     () =>
       registry?.claim(() => {

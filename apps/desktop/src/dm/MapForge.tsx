@@ -158,6 +158,10 @@ export function MapForge({
   useEffect(() => {
     endCalibration();
   }, [path, endCalibration]);
+  // Leaving the Map Forge ends a running command: it would come back half-done.
+  useEffect(() => {
+    if (!shown) endCalibration();
+  }, [shown, endCalibration]);
   const propose = useCallback((grid: Grid | null) => {
     if (!grid) return;
     gridNow.current = grid;
@@ -262,7 +266,7 @@ export function MapForge({
     } catch (error) {
       report(
         error instanceof MapDataChangedError
-          ? t("forgeRooms.changedMeanwhile")
+          ? t("forge.changedMeanwhile")
           : describeLibraryError(t, error),
       );
       loaded.reload();
