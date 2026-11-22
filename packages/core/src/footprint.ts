@@ -85,8 +85,9 @@ function cellLoads(others: readonly Occupant[]): Map<string, number> {
         add(cell, footprint.share);
       continue;
     }
-    // A free Tiny token takes its cells whole (T-243): Tiny tokens on the grid arrange in a
-    // cell's quarters without regard to a free disc, so they must not share a cell with one.
+    // Free tokens take their cells whole. For larger ones that is their share anyway; for a free
+    // Tiny token it matters (T-243): Tiny tokens on the grid arrange in a cell's quarters without
+    // regard to a free disc, so they must not share a cell with one.
     for (const cell of reachedCells(other)) add(cell, 1);
   }
   return load;

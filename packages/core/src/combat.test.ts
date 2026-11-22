@@ -644,3 +644,42 @@ describe("grid moves next to free tokens (T-242)", () => {
     });
   });
 });
+
+describe("a Tiny token moved next to a free Tiny one (T-243)", () => {
+  test("goes to another cell than the one the free disc reaches into", () => {
+    const rat = (id: string, col: number, row: number) => ({
+      ...token(id, col, row),
+      size: "tiny" as const,
+    });
+    const result = ok(
+      apply(
+        withTokens(rat("free", 2.4, 1), rat("grid", 6, 6)),
+        {
+          type: "token.moveMany",
+          moves: [{ tokenId: "grid", to: { col: 3, row: 1 } }],
+          bounds,
+        },
+        ctx,
+      ),
+    );
+    expect(result.state.scene.tokens[1]?.position).not.toEqual({
+      col: 3,
+      row: 1,
+    });
+  });
+
+  test("a free Medium blocks exactly as before", () => {
+    const result = ok(
+      apply(
+        withTokens(token("free", 2.4, 1), token("hero", 6, 6)),
+        {
+          type: "token.moveMany",
+          moves: [{ tokenId: "hero", to: { col: 4, row: 1 } }],
+          bounds,
+        },
+        ctx,
+      ),
+    );
+    expect(result.state.scene.tokens[1]?.position).toEqual({ col: 4, row: 1 });
+  });
+});
