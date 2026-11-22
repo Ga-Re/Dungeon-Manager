@@ -173,6 +173,46 @@ pub fn import_map(root: &Path, folder: &str, source: &Path) -> Result<ImportedAs
     unreachable!("the name loop only ends by returning")
 }
 
+/// The largest preview the catalog writes (T-124): a downscaled WebP is far smaller.
+pub const MAX_PREVIEW_BYTES: usize = 1024 * 1024;
+
+/// The hash of a file already in `library/` (T-124: maps placed there by hand or by a sync
+/// client, never imported). Campaign files and sidecars are not assets.
+pub fn hash_library_file(root: &Path, relative: &str) -> Result<ImportedAsset, LibraryError> {
+    let invalid = || LibraryError::InvalidPath(relative.to_owned());
+    if !relative.starts_with("library/") || relative.ends_with(".dm.json") {
+        return Err(invalid());
+    }
+    let path = library::resolve(root, relative)?;
+    if !path.is_file() {
+        return Err(invalid());
+    }
+    Ok(ImportedAsset {
+        path: relative.to_owned(),
+        hash: sha256_of(&path)?,
+    })
+}
+
+/// Writes a catalog preview (T-124, ARCHITECTURE §6.5): only a WebP of at most
+/// `MAX_PREVIEW_BYTES`, only into `library/.previews/`, named after the hash of the file it
+/// shows – the webview decides nothing else about where it goes.
+pub fn write_preview(root: &Path, hash: &str, bytes: &[u8]) -> Result<(), LibraryError> {
+    let hex = hash
+        .strip_prefix("sha256:")
+        .filter(|hex| {
+            hex.len() == 64
+                && hex
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        })
+        .ok_or_else(|| LibraryError::InvalidPath(hash.to_owned()))?;
+    if bytes.len() > MAX_PREVIEW_BYTES || map_extension(bytes) != Some("webp") {
+        return Err(LibraryError::UnsupportedFile(format!("preview {hex}")));
+    }
+    let path = library::resolve(root, &format!("library/.previews/{hex}.webp"))?;
+    library::write_atomic_with(&path, |file| io::Write::write_all(file, bytes))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -218,6 +258,50 @@ mod tests {
         assert_eq!(map_extension(&mkv), None);
         assert_eq!(map_extension(b"GIF89a"), None);
         assert_eq!(map_extension(b""), None);
+    }
+
+    #[test]
+    fn hashes_library_files_only() {
+        let root = temp_dir("hash");
+        fs::create_dir_all(root.join("library/maps/Höhlen")).unwrap();
+        fs::write(root.join("library/maps/Höhlen/see.png"), PNG).unwrap();
+        fs::create_dir_all(root.join("campaigns/mine")).unwrap();
+        fs::write(root.join("campaigns/mine/campaign.json"), "{}").unwrap();
+        fs::write(root.join("library/maps/see.png.dm.json"), "{}").unwrap();
+        assert_eq!(
+            hash_library_file(&root, "library/maps/Höhlen/see.png").unwrap(),
+            ImportedAsset {
+                path: "library/maps/Höhlen/see.png".to_owned(),
+                hash: format!("sha256:{:x}", Sha256::digest(PNG)),
+            }
+        );
+        for refused in [
+            "campaigns/mine/campaign.json",
+            "library/maps/see.png.dm.json",
+            "library/maps/missing.png",
+            "library/maps",
+            "library/../campaigns/mine/campaign.json",
+        ] {
+            assert!(hash_library_file(&root, refused).is_err(), "{refused}");
+        }
+    }
+
+    #[test]
+    fn writes_only_small_webp_previews_named_by_hash() {
+        let root = temp_dir("preview");
+        let hash = format!("sha256:{}", "a".repeat(64));
+        write_preview(&root, &hash, WEBP).unwrap();
+        assert_eq!(
+            fs::read(root.join(format!("library/.previews/{}.webp", "a".repeat(64)))).unwrap(),
+            WEBP
+        );
+        // Not a WebP, too large, or a hash that could name another path: refused.
+        assert!(write_preview(&root, &hash, PNG).is_err());
+        let large = [WEBP, &vec![0; MAX_PREVIEW_BYTES][..]].concat();
+        assert!(write_preview(&root, &hash, &large).is_err());
+        for bad in ["sha256:../../x", "sha256:ABC", "md5:abc", &"a".repeat(64)] {
+            assert!(write_preview(&root, bad, WEBP).is_err(), "{bad}");
+        }
     }
 
     #[test]

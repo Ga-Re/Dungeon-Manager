@@ -2,8 +2,8 @@ import type { AssetRef } from "@dungeon-manager/schema";
 import { useEffect, useId, useRef, useState, type SyntheticEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
-import { describeLibraryError } from "./describe-error.js";
 import { fileName } from "./file-name.js";
+import { MapPicker } from "./MapPicker.js";
 
 /**
  * Content of the "Neue Szene" popover: a name and an optional map. Keeps both if creating
@@ -23,6 +23,8 @@ export function NewSceneForm({
   const { t } = useTranslation();
   const inputId = useId();
   const field = useRef<HTMLInputElement>(null);
+  const mapButton = useRef<HTMLButtonElement>(null);
+  const [picking, setPicking] = useState(false);
   const [name, setName] = useState("");
   const [map, setMap] = useState<AssetRef | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,21 +33,6 @@ export function NewSceneForm({
   useEffect(() => {
     field.current?.focus();
   }, []);
-
-  const chooseMap = async () => {
-    setBusy(true);
-    try {
-      const asset = await service.importMap(t("campaign.mapFilter"));
-      if (asset) {
-        setMap(asset);
-        setProblem("");
-      }
-    } catch (error) {
-      setProblem(describeLibraryError(t, error));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const submit = async (event: SyntheticEvent) => {
     event.preventDefault();
@@ -76,7 +63,14 @@ export function NewSceneForm({
           : t("campaign.noMapForNewScene")}
       </p>
       <div className="dm-popover-actions">
-        <button type="button" disabled={busy} onClick={() => void chooseMap()}>
+        <button
+          ref={mapButton}
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setPicking(true);
+          }}
+        >
           {t("campaign.importMap")}
         </button>
         <button type="submit" disabled={busy || name.trim() === ""}>
@@ -84,6 +78,19 @@ export function NewSceneForm({
         </button>
       </div>
       {problem && <p role="alert">{problem}</p>}
+      <MapPicker
+        service={service}
+        open={picking}
+        returnFocus={mapButton}
+        onClose={() => {
+          setPicking(false);
+        }}
+        onChoose={(asset) => {
+          setMap(asset);
+          setProblem("");
+          setPicking(false);
+        }}
+      />
     </form>
   );
 }

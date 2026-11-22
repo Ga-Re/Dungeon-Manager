@@ -38,6 +38,16 @@ export interface LibraryService {
    * JPEG, WebP, GIF) up to 20 MB, checked by the backend.
    */
   readImage(path: string): Promise<Blob>;
+  /**
+   * The asset reference of a file already in `library/` (T-124: a map placed there by hand or
+   * by a sync client), hashed by the backend.
+   */
+  hashFile(path: string): Promise<AssetRef>;
+  /**
+   * Stores a catalog preview (T-124): a WebP up to 1 MiB, written by the backend to
+   * `library/.previews/<hex>.webp` for the file with this hash.
+   */
+  writePreview(hash: string, bytes: Uint8Array): Promise<void>;
   /** Calls `listener` with library-relative paths changed on disk; resolves to an unsubscribe. */
   onChange(listener: (paths: readonly string[]) => void): Promise<() => void>;
 }

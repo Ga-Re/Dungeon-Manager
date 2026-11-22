@@ -67,6 +67,20 @@ test("a campaign note rendered as Markdown", async ({ page }) => {
   await expect(page).toHaveScreenshot("dm-window-note.png");
 });
 
+test("the map picker with previews (T-124)", async ({ page }) => {
+  await openHarness(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Fluch der Krypta" }).focus();
+  await page.keyboard.press("Shift+F10");
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Karte wählen …" }).click();
+  const picker = page.getByRole("dialog", { name: "Karte wählen" });
+  await expect(picker.locator(".dm-map-thumb img")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+
+  await expect(page).toHaveScreenshot("dm-window-map-picker.png");
+});
+
 test("the settings dialog", async ({ page }) => {
   await openHarness(page);
   await page.getByRole("button", { name: "Einstellungen" }).click();

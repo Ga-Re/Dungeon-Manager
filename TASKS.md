@@ -276,13 +276,14 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-124 Global map and asset catalog
 
-- **Status:** todo · **Depends on:** T-104b · **Refs:** SPEC 8.2, ARCHITECTURE §6.2
+- **Status:** done · **Depends on:** T-104b · **Refs:** SPEC 8.2, ARCHITECTURE §6.2
 - One catalog of everything in `library/` (maps now; tokens, assets, sounds later), shared by all campaigns. When creating a scene or changing its map, the DM picks from the catalog (with previews) or imports a new file into it. Deleting a scene never removes anything from the catalog.
 - **Acceptance criteria**
-  - [ ] Catalog lists all maps in the library with a preview, across campaigns
-  - [ ] DM picks a map from the catalog for a new scene and when changing a scene's map
-  - [ ] Deleting a scene leaves its map in the catalog
-  - [ ] The catalog ignores sidecars (`*.dm.json`) and maps sidecar conflict copies back to their original (`listSidecarConflicts`; from T-134b)
+  - [x] Catalog lists all maps in the library with a preview, across campaigns
+  - [x] DM picks a map from the catalog for a new scene and when changing a scene's map
+  - [x] Deleting a scene leaves its map in the catalog
+  - [x] The catalog ignores sidecars (`*.dm.json`) and maps sidecar conflict copies back to their original (`listSidecarConflicts`; from T-134b)
+- DM decisions (2026-11-22): previews are downscaled in the webview (canvas) and written by a narrow new backend command into `library/.previews/` only (no new dependency); video maps are in the catalog with a still frame; the DM picks a map in a dialog with a grid of previews (with search and import), the data panel shows the same grid.
 - **Notes:** DM request (2026-11-17). Previews go to `library/.previews/` as ARCHITECTURE §6.5 already plans (shared with the web app and handouts); maps picked but not used (e.g. a cancelled map change) simply stay in the catalog.
 
 ### T-125 Asset metadata: scale, name, origin

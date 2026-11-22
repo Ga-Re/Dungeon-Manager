@@ -58,6 +58,8 @@ export async function createE2eLibrary({
     name: "Fluch der Krypta",
   });
   const asset = { path: MAP_PATH, hash: `sha256:${"0".repeat(64)}` };
+  // The map is in the library like any imported one (its pixels are drawn by `drawMap`).
+  await fs.writeAtomic(MAP_PATH, "png");
   // The map's grid and levels live in its sidecar (ADR-0012).
   const data = newMapData("Ebene 1");
   if (levels)
@@ -162,6 +164,13 @@ export async function createE2eLibrary({
         throw new Error(`no image at ${path}`);
       return new Blob([WAPPEN_PNG], { type: "image/png" });
     },
+    hashFile: async (path) => {
+      if ((await fs.read(path)).kind !== "ok")
+        throw new Error(`no file at ${path}`);
+      return { path, hash: `sha256:${"2".repeat(64)}` };
+    },
+    // Previews are made but not kept: the harness has no WebP to show back.
+    writePreview: () => Promise.resolve(),
     onChange: () => Promise.resolve(() => undefined),
   };
 }
@@ -179,6 +188,8 @@ export function createFirstStartLibrary(): LibraryService {
     },
     importMap: () => Promise.resolve(null),
     readImage: (path) => Promise.reject(new Error(`no image at ${path}`)),
+    hashFile: (path) => Promise.reject(new Error(`no file at ${path}`)),
+    writePreview: () => Promise.resolve(),
     onChange: () => Promise.resolve(() => undefined),
   };
 }

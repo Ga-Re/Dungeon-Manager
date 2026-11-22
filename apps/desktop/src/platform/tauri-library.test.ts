@@ -41,6 +41,19 @@ describe("createTauriLibraryService", () => {
       "campaigns/a/bilder/x.png",
     );
     expect(image.size).toBe(3);
+    const asset = {
+      path: "library/maps/see.png",
+      hash: `sha256:${"c".repeat(64)}`,
+    };
+    fake.invoke.mockResolvedValueOnce(asset);
+    expect(
+      await createTauriLibraryService().hashFile("library/maps/see.png"),
+    ).toEqual(asset);
+    fake.invoke.mockResolvedValueOnce(null);
+    await createTauriLibraryService().writePreview(
+      asset.hash,
+      Uint8Array.of(1, 2),
+    );
     expect(fake.invoke.mock.calls).toEqual([
       ["library_read", { path: "campaigns/a/campaign.json" }],
       ["library_write", { path: "x.json", text: "{}" }],
@@ -49,6 +62,8 @@ describe("createTauriLibraryService", () => {
       ["library_move_to_trash", { path: "campaigns/a/scenes/s.json" }],
       ["library_import_map", { filterLabel: "Karten" }],
       ["library_read_image", { path: "campaigns/a/bilder/x.png" }],
+      ["library_hash", { path: "library/maps/see.png" }],
+      ["library_write_preview", { hash: asset.hash, bytes: [1, 2] }],
     ]);
   });
 
