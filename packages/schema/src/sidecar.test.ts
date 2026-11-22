@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
 import {
+  ITEM_NAME_MAX,
+  ITEM_TEXT_MAX,
+  itemInfoSchema,
   mapOverridesSchema,
   migrateDocument,
   sidecarDocument,
@@ -88,5 +91,43 @@ describe("scene overrides of map elements", () => {
 
   test("refuse ids that are no valid element ids", () => {
     expect(mapOverridesSchema.safeParse({ "Raum 1": {} }).success).toBe(false);
+  });
+});
+
+// T-125 (DM decision, 2026-11-22): name and origin/license of a catalog item, in its own block.
+describe("item info", () => {
+  test("a sidecar may carry an item's name, origin and license", () => {
+    const parsed = sidecarSchema.parse({
+      ...tower,
+      info: { name: "Turm", origin: "Selbst gezeichnet", license: "CC0" },
+    });
+    expect(parsed.info).toEqual({
+      name: "Turm",
+      origin: "Selbst gezeichnet",
+      license: "CC0",
+    });
+    // Every field is optional, and older sidecars without info stay valid.
+    expect(sidecarSchema.parse({ ...tower, info: {} }).info).toEqual({});
+    expect(sidecarSchema.parse(tower).info).toBeUndefined();
+  });
+
+  test("invalid info never hides the map: the block is dropped on reading", () => {
+    // A hand edit or a future app may write what this one does not accept.
+    for (const info of [{ name: "" }, { license: "x".repeat(1001) }, "Turm"]) {
+      const parsed = sidecarSchema.parse({ ...tower, info });
+      expect(parsed.info).toBeUndefined();
+      expect(parsed.map?.grid).toEqual(tower.map.grid);
+    }
+  });
+
+  test("an empty name and overlong texts are refused on writing", () => {
+    expect(itemInfoSchema.safeParse({ name: "" }).success).toBe(false);
+    expect(
+      itemInfoSchema.safeParse({ name: "x".repeat(ITEM_NAME_MAX + 1) }).success,
+    ).toBe(false);
+    expect(
+      itemInfoSchema.safeParse({ license: "x".repeat(ITEM_TEXT_MAX + 1) })
+        .success,
+    ).toBe(false);
   });
 });

@@ -231,6 +231,33 @@ test("the DM picks a scene's map from the library catalog; deleting the scene ke
   ).toBeVisible();
 });
 
+test("a catalog map's name and license are edited in Eigenschaften; the browser takes it back (T-125)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  const details = page.getByRole("region", { name: "Eigenschaften" });
+
+  await page
+    .getByRole("list", { name: "Karten" })
+    .getByRole("button", { name: /krypta\.png/ })
+    .click();
+  await details.getByLabel("Name").fill("Gruft der Ahnen");
+  await details.getByLabel("Lizenz / Nutzungsrechte").fill("selbst gezeichnet");
+  await details.getByRole("button", { name: "Speichern" }).click();
+  await expect(
+    details.getByText("Gespeichert – gilt in allen Kampagnen."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Karten" }).getByText("Gruft der Ahnen"),
+  ).toBeVisible();
+
+  // Selecting in the browser shows its item again.
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(details.getByLabel("Name")).toHaveCount(0);
+  await expect(details.getByText("Szene", { exact: true })).toBeVisible();
+});
+
 test("panels are hidden and shown from the View menu; the layout survives a restart (T-172a)", async ({
   page,
 }) => {

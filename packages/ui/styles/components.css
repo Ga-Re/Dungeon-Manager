@@ -299,7 +299,13 @@
 }
 
 :where(.dm-ui)
-  :where(input:not([type]), input[type="text"], input[type="search"], select) {
+  :where(
+    input:not([type]),
+    input[type="text"],
+    input[type="search"],
+    select,
+    textarea
+  ) {
   font: inherit;
   font-size: var(--dm-font-size-sm);
   padding: var(--dm-space-1) var(--dm-space-2);
@@ -329,7 +335,12 @@
 }
 
 :where(.dm-ui)
-  :where(button:focus-visible, input:focus-visible, select:focus-visible) {
+  :where(
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible
+  ) {
   outline: var(--dm-focus-width) solid var(--dm-focus);
   outline-offset: 1px;
 }

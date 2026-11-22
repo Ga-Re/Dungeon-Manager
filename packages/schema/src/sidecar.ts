@@ -10,8 +10,8 @@ import type { DocumentType } from "./migrate.js";
 
 // Sidecar files `<file>.dm.json` next to a library file (ADR-0012, T-134; format agreed with the
 // DM, 2026-11-20): the data that belongs to the map or asset in every campaign. Scenes refer to
-// the file and keep only their overrides, keyed by element id. Tags, origin, walls, doors, lights
-// and asset data follow in later tasks; loose schemas keep them when an older app saves.
+// the file and keep only their overrides, keyed by element id. Tags, walls, doors, lights and
+// asset data follow in later tasks; loose schemas keep them when an older app saves.
 
 /** Current version of a sidecar file. */
 export const SIDECAR_VERSION = 1;
@@ -48,11 +48,33 @@ export const mapDataSchema = z
     { message: "element ids must be unique", path: ["levels"] },
   );
 
+/** The longest origin or license text: a sentence or a link, not a license's full text. */
+export const ITEM_TEXT_MAX = 1000;
+
+/** The longest name of a catalog item. */
+export const ITEM_NAME_MAX = 200;
+
+/**
+ * A catalog item's name and where it comes from (T-125, SPEC 8.2; DM decision 2026-11-22: its
+ * own block, the same for maps, tokens and assets). Every field is optional: without a name the
+ * catalog shows the file name.
+ */
+export const itemInfoSchema = z.looseObject({
+  name: z.string().min(1).max(ITEM_NAME_MAX).optional(),
+  /** Where the file comes from, e.g. a pack, an artist or "selbst gezeichnet". */
+  origin: z.string().max(ITEM_TEXT_MAX).optional(),
+  /** The terms it may be used under, e.g. "CC0" or "nur privat". */
+  license: z.string().max(ITEM_TEXT_MAX).optional(),
+});
+
 /** `<file>.dm.json`. `original` is the hash of the file it describes, to re-link it (§6.3). */
 export const sidecarSchema = z.looseObject({
   schemaVersion: z.literal(SIDECAR_VERSION),
   original: z.looseObject({ hash: assetRefSchema.shape.hash }),
   map: mapDataSchema.optional(),
+  // A name the app does not accept (hand edit, newer app) must not hide the map's grid and
+  // levels: the block is dropped on reading instead of failing the whole sidecar.
+  info: itemInfoSchema.optional().catch(undefined),
 });
 
 /**
@@ -72,6 +94,7 @@ export type SidecarLevel = z.infer<typeof sidecarLevelSchema>;
 export type Room = z.infer<typeof roomSchema>;
 export type MapData = z.infer<typeof mapDataSchema>;
 export type Sidecar = z.infer<typeof sidecarSchema>;
+export type ItemInfo = z.infer<typeof itemInfoSchema>;
 export type ElementOverride = z.infer<typeof elementOverrideSchema>;
 export type MapOverrides = z.infer<typeof mapOverridesSchema>;
 

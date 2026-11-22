@@ -84,6 +84,18 @@ test("the map picker with previews (T-124)", async ({ page }) => {
   await expect(picker).toHaveScreenshot("dm-window-map-picker.png");
 });
 
+test("a catalog map's details in Eigenschaften (T-125)", async ({ page }) => {
+  await openHarness(page);
+  await page
+    .getByRole("list", { name: "Karten" })
+    .getByRole("button", { name: /krypta\.png/ })
+    .click();
+  await expect(page.getByLabel("Herkunft")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+
+  await expect(page).toHaveScreenshot("dm-window-item-info.png");
+});
+
 test("the settings dialog", async ({ page }) => {
   await openHarness(page);
   await page.getByRole("button", { name: "Einstellungen" }).click();

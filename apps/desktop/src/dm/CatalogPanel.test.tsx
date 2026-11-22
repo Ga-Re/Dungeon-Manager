@@ -134,6 +134,141 @@ describe("CatalogPanel", () => {
     ).toBeTruthy();
   });
 
+  test("a selected map's name and origin/license are edited and stored in its sidecar (T-125)", async () => {
+    const library = renderCatalog(true, { "library/maps/turm.png": "png" });
+    const tile = within(await grid()).getByRole("button", {
+      name: /turm\.png/,
+    });
+    expect(tile.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(tile);
+    expect(tile.getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: " Turm der Magier " },
+    });
+    fireEvent.change(screen.getByLabelText("Lizenz / Nutzungsrechte"), {
+      target: { value: "CC0" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    expect(
+      await screen.findByText("Gespeichert – gilt in allen Kampagnen."),
+    ).toBeTruthy();
+    expect(
+      JSON.parse(
+        library.fs.files().get("library/maps/turm.png.dm.json") ?? "{}",
+      ),
+    ).toMatchObject({
+      original: { hash: `sha256:${HEX}` },
+      info: { name: "Turm der Magier", license: "CC0" },
+    });
+    // The tile is named after it, and the search finds it by that name.
+    expect(
+      await within(await grid()).findByText("Turm der Magier"),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Karten suchen" }), {
+      target: { value: "magier" },
+    });
+    expect(within(await grid()).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  test("the editor follows a change on disk while untouched, and never overwrites one under edits", async () => {
+    const sidecar = (name: string) =>
+      JSON.stringify({
+        schemaVersion: 1,
+        original: { hash: `sha256:${HEX}` },
+        info: { name },
+      });
+    const path = "library/maps/turm.png.dm.json";
+    const library = renderCatalog(true, {
+      "library/maps/turm.png": "png",
+      [path]: sidecar("Turm"),
+    });
+    fireEvent.click(
+      within(await grid()).getByRole("button", { name: /turm\.png/ }),
+    );
+    const name = screen.getByLabelText<HTMLInputElement>("Name");
+    expect(name.value).toBe("Turm");
+
+    // Another device renames it: the untouched form shows the new name.
+    await library.fs.writeAtomic(path, sidecar("Turm von anderswo"));
+    library.emit([path]);
+    await waitFor(() => {
+      expect(name.value).toBe("Turm von anderswo");
+    });
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Speichern" })
+        .disabled,
+    ).toBe(true);
+
+    // With edits typed, a change from elsewhere is not overwritten.
+    fireEvent.change(name, { target: { value: "Mein Turm" } });
+    await library.fs.writeAtomic(path, sidecar("Noch ein Name"));
+    library.emit([path]);
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole("list", { name: "Karten" })).getByText(
+          "Noch ein Name",
+        ),
+      ).toBeTruthy();
+    });
+    expect(name.value).toBe("Mein Turm");
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(JSON.parse(library.fs.files().get(path) ?? "{}")).toMatchObject({
+      info: { name: "Noch ein Name" },
+    });
+  });
+
+  test("a second click or a deleted map gives the selection up", async () => {
+    const library = renderCatalog(true, {
+      "library/maps/turm.png": "png",
+      "library/maps/see.png": "png",
+    });
+    const tile = (name: RegExp) =>
+      within(screen.getByRole("list", { name: "Karten" })).getByRole("button", {
+        name,
+      });
+    await grid();
+    fireEvent.click(tile(/turm\.png/));
+    expect(screen.getByLabelText("Name")).toBeTruthy();
+    fireEvent.click(tile(/turm\.png/));
+    expect(tile(/turm\.png/).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByLabelText("Name")).toBeNull();
+
+    fireEvent.click(tile(/see\.png/));
+    // Gone from the folder (the memory file system lists it no longer).
+    const list = library.fs.list.bind(library.fs);
+    library.fs.list = async (path) =>
+      (await list(path))?.filter((entry) => entry.name !== "see.png") ?? null;
+    library.emit(["library/maps/see.png"]);
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Name")).toBeNull();
+    });
+    // Back on disk, it is not selected by itself.
+    library.fs.list = list;
+    library.emit(["library/maps/see.png"]);
+    expect(await screen.findByTitle("library/maps/see.png")).toBeTruthy();
+    expect(screen.queryByLabelText("Name")).toBeNull();
+  });
+
+  test("an unreadable sidecar is never overwritten", async () => {
+    const library = renderCatalog(true, {
+      "library/maps/turm.png": "png",
+      "library/maps/turm.png.dm.json": "{ broken",
+    });
+    fireEvent.click(
+      within(await grid()).getByRole("button", { name: /turm\.png/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Turm" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(library.fs.files().get("library/maps/turm.png.dm.json")).toBe(
+      "{ broken",
+    );
+  });
+
   test("shows maps added on disk while the app runs", async () => {
     const library = renderCatalog(true, { "library/maps/turm.png": "png" });
     await grid();

@@ -16,7 +16,7 @@ function folderOf(path: string): string {
   return slash < 0 ? "" : inside.slice(0, slash);
 }
 
-/** Maps whose path contains every word of `query`, ignoring case. */
+/** Maps whose name or path contains every word of `query`, ignoring case. */
 export function filterMaps(
   maps: readonly CatalogMap[],
   query: string,
@@ -24,8 +24,10 @@ export function filterMaps(
   const words = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return maps;
   return maps.filter((map) => {
-    const path = map.path.slice(MAPS_FOLDER.length).toLocaleLowerCase();
-    return words.every((word) => path.includes(word));
+    // The item's own name (T-125) and its path, so a renamed map is found both ways.
+    const text =
+      `${map.info?.name ?? ""} ${map.path.slice(MAPS_FOLDER.length)}`.toLocaleLowerCase();
+    return words.every((word) => text.includes(word));
   });
 }
 
@@ -118,10 +120,22 @@ function MapThumbnail({
 function TileText({ map }: { readonly map: CatalogMap }) {
   const { t } = useTranslation();
   const folder = folderOf(map.path);
+  const name = map.info?.name;
   return (
     <span className="dm-map-tile-text">
-      <span className="dm-map-tile-name">{fileName(map.path)}</span>
-      {folder && <span className="dm-map-tile-folder">{folder}</span>}
+      {name ? (
+        <>
+          <span className="dm-map-tile-title">{name}</span>
+          <span className="dm-map-tile-folder">
+            {folder ? `${folder}/${fileName(map.path)}` : fileName(map.path)}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="dm-map-tile-name">{fileName(map.path)}</span>
+          {folder && <span className="dm-map-tile-folder">{folder}</span>}
+        </>
+      )}
       {map.kind === "video" && (
         <span className="dm-map-tile-badge">
           <Film aria-hidden="true" />
@@ -145,17 +159,20 @@ function TileText({ map }: { readonly map: CatalogMap }) {
 
 /**
  * The maps of the library as a grid of previews with a search (T-124): in the data panel to
- * look through, in the map picker to choose from (`onPick`).
+ * select one for the Eigenschaften panel (T-125, `selected`), in the map picker to choose from.
  */
 export function MapCatalogGrid({
   service,
   maps,
   onPick,
+  selected,
   disabled = false,
 }: {
   readonly service: LibraryService;
   readonly maps: readonly CatalogMap[];
   readonly onPick?: (map: CatalogMap) => void;
+  /** The selected map's path: tiles toggle like buttons (`aria-pressed`). */
+  readonly selected?: string | null;
   readonly disabled?: boolean;
 }) {
   const { t } = useTranslation();
@@ -191,6 +208,9 @@ export function MapCatalogGrid({
                   type="button"
                   className="dm-map-tile"
                   disabled={disabled}
+                  aria-pressed={
+                    selected === undefined ? undefined : selected === map.path
+                  }
                   onClick={() => {
                     onPick(map);
                   }}

@@ -50,12 +50,14 @@ import {
 } from "@dungeon-manager/storage";
 import {
   useCallback,
+  useContext,
   useEffect,
   useId,
   useRef,
   useState,
   type ReactNode,
 } from "react";
+import { CatalogSelectionContext } from "./catalog-selection.js";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import {
@@ -331,6 +333,14 @@ export function CampaignPanel({
   const players: readonly Player[] = campaignFile?.players ?? [];
   // What the details panel shows: a tree item id (T-159).
   const [inspected, setInspected] = useState<string | null>(null);
+  // Whichever was selected last – here or in the catalog (T-125) – fills the Eigenschaften panel:
+  // anything the browser comes to show (a click, a new scene, a note opened from a link) takes
+  // the panel back. `onSelect` also clears it, for a click on the item already selected here.
+  const catalogSelection = useContext(CatalogSelectionContext);
+  const clearCatalogSelection = catalogSelection?.select;
+  useEffect(() => {
+    if (inspected !== null) clearCatalogSelection?.(null);
+  }, [inspected, clearCatalogSelection]);
   const newSceneButton = useRef<HTMLButtonElement>(null);
   const newSessionButton = useRef<HTMLButtonElement>(null);
   const contextItem = useRef<HTMLElement | null>(null);
@@ -1109,6 +1119,7 @@ export function CampaignPanel({
         selectedId={selectedNodeId}
         onSelect={(id) => {
           setInspected(id);
+          catalogSelection?.select(null);
           open(id);
         }}
         onItemContextMenu={(treeId, at, item) => {
@@ -1324,32 +1335,34 @@ export function CampaignPanel({
           }}
         />
       ))}
-      <ShellPortal slot="details">
-        <DetailsPanel
-          details={
-            inspected
-              ? withNoteBody(
-                  describeItem(t, inspected, {
-                    name,
-                    scenes: readyScenes,
-                    sessions: sessions ?? [],
-                    players,
-                    mapPaths,
-                    visibilityRules: Object.keys(
-                      campaignFile?.visibilityDefaults ?? {},
-                    ).length,
-                    live,
-                    openSceneId: openScene?.id ?? null,
-                    language: i18n.language,
-                    notesIndex,
-                    campaignLinks: campaignFile?.notes ?? [],
-                  }),
-                )
-              : null
-          }
-          selected={inspected !== null}
-        />
-      </ShellPortal>
+      {!catalogSelection?.selected && (
+        <ShellPortal slot="details">
+          <DetailsPanel
+            details={
+              inspected
+                ? withNoteBody(
+                    describeItem(t, inspected, {
+                      name,
+                      scenes: readyScenes,
+                      sessions: sessions ?? [],
+                      players,
+                      mapPaths,
+                      visibilityRules: Object.keys(
+                        campaignFile?.visibilityDefaults ?? {},
+                      ).length,
+                      live,
+                      openSceneId: openScene?.id ?? null,
+                      language: i18n.language,
+                      notesIndex,
+                      campaignLinks: campaignFile?.notes ?? [],
+                    }),
+                  )
+                : null
+            }
+            selected={inspected !== null}
+          />
+        </ShellPortal>
+      )}
       <ShellPortal slot="notices">
         <RescueOffer
           copies={rescues}

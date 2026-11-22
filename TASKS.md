@@ -297,12 +297,12 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-125 Asset metadata: scale, name, origin
 
-- **Status:** todo · **Depends on:** T-124, T-106a, T-134b · **Refs:** SPEC 8.2, 3.1, ADR-0012
-- Metadata per catalog item so it always fits the map scale: for maps the grid calibration (pixels per cell, offset; filled from T-176/T-177 and reused by every scene with that map), for assets and tokens their footprint in grid cells. Plus display name and origin/license (SPEC 8.2).
+- **Status:** done · **Depends on:** T-124, T-106a, T-134b · **Refs:** SPEC 8.2, 3.1, ADR-0012
+- Metadata per catalog item so it always fits the map scale: for maps the grid calibration (pixels per cell, offset; filled from T-176/T-177 and reused by every scene with that map). Plus display name and origin/license (SPEC 8.2).
 - **Acceptance criteria**
-  - [ ] A map's calibration is stored once and pre-fills the grid of every new scene using it
-  - [ ] Assets and tokens are placed at the size given by their metadata, matching the map scale
-  - [ ] Name and origin/license can be edited per item
+  - [x] A map's calibration is stored once and pre-fills the grid of every new scene using it (already so since ADR-0012/T-134: `ensureMapData` keeps a map's data; calibrating comes with T-177)
+  - [x] Name and origin/license can be edited per item
+- DM decisions (2026-11-22): name, origin and license in their own sidecar block `info` (the same for maps, tokens and assets); edited by selecting a catalog tile, in the Eigenschaften panel; the name replaces the file name in the tile and the search. The asset footprint in cells and "assets and tokens placed at their metadata size" moved to T-144, as assets cannot be placed yet.
 - **Notes:** DM request (2026-11-17). Stored in the item's sidecar `<file>.dm.json` (ADR-0012, T-134); grid calibration is not overridable per scene. Tokens keep their D&D size category (`token.size`) as the source of truth; the footprint in cells applies to assets only.
 
 ### T-126 Tags and search in the catalog
@@ -1491,8 +1491,9 @@ New tasks discovered during work are appended to the right stage with status `to
 ### T-144 Asset placement and asset blockers
 
 - **Status:** todo · **Depends on:** T-134b, T-125, T-142 · **Refs:** SPEC 8.1, 8.2, ADR-0012
-- Place assets from the catalog on a scene (scale from metadata, rotate, mirror, z-order); per asset a blocker generated from its alpha channel (simplified polygon), editable, with type: blocks sight and light / one-way / partial (dimmed).
+- Place assets from the catalog on a scene (scale from metadata, rotate, mirror, z-order); per asset a blocker generated from its alpha channel (simplified polygon), editable, with type: blocks sight and light / one-way / partial (dimmed). An asset's footprint in grid cells is stored in its sidecar (from T-125, DM decision 2026-11-22) and edited with its name and origin in the Eigenschaften panel.
 - **Acceptance criteria**
+  - [ ] Assets are placed at the footprint given in their metadata, matching the map scale (from T-125)
   - [ ] Generated blocker follows the opaque outline within a set tolerance (unit test on a self-made fixture)
   - [ ] Vision treats the three blocker types correctly (unit tests)
 

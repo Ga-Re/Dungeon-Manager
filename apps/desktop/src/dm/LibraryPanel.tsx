@@ -19,6 +19,7 @@ import {
 } from "./rescue-copies.js";
 import type { RememberedSceneTabs } from "./scene-tabs.js";
 import { CatalogPanel } from "./CatalogPanel.js";
+import { CatalogSelectionContext } from "./catalog-selection.js";
 import { describeLibraryError } from "./describe-error.js";
 import { NameForm } from "./NameForm.js";
 import {
@@ -119,6 +120,12 @@ export function LibraryPanel({
   const [choosing, setChoosing] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  // The catalog map shown in the Eigenschaften panel (T-125).
+  const [catalogSelected, setCatalogSelected] = useState<string | null>(null);
+  const catalogSelection = useMemo(
+    () => ({ selected: catalogSelected, select: setCatalogSelected }),
+    [catalogSelected],
+  );
   const [creating, setCreating] = useState(false);
   const campaignMenu = useRef<HTMLButtonElement>(null);
   const [welcomeOpen, setWelcomeOpen] = useState(welcome);
@@ -355,187 +362,189 @@ export function LibraryPanel({
   );
 
   return (
-    <SceneRescueContext value={sceneRescue}>
-      <ShellPortal slot="settings">
-        <fieldset className="dm-settings-group">
-          <legend>{t("library.folderSetting")}</legend>
-          {state.status === "open" && (
-            <p className="dm-settings-path">
-              {t("library.folder", { path: state.root })}
-            </p>
-          )}
-          {chooseButton}
-        </fieldset>
-      </ShellPortal>
-      <ShellPortal slot="dataPanel">
-        <CatalogPanel service={service} ready={state.status === "open"} />
-      </ShellPortal>
-      <ShellPortal slot="browser">
-        {/* The Browser panel names the region (its tab, T-172a). */}
-        <div className="dm-campaign-browser">
-          {/* The campaign switch heads the browser panel (T-172a: the panel's tab names it). */}
-          <div className="dm-panel-toolbar">
+    <CatalogSelectionContext value={catalogSelection}>
+      <SceneRescueContext value={sceneRescue}>
+        <ShellPortal slot="settings">
+          <fieldset className="dm-settings-group">
+            <legend>{t("library.folderSetting")}</legend>
             {state.status === "open" && (
-              <span className="dm-panel-head-menu">
-                <Menu
-                  // The campaign itself heads the tree; the header only switches it.
-                  label={
-                    selectedCampaign
-                      ? t("shell.tree.switchCampaign")
-                      : t("library.chooseCampaign")
-                  }
-                  buttonRef={campaignMenu}
-                  items={[
-                    ...campaigns.map((campaign) => ({
-                      id: campaign.slug,
-                      label: campaignLabel(campaign),
-                      icon: <BookOpen />,
-                      disabled: campaign.name === null,
-                    })),
-                    {
-                      id: NEW_CAMPAIGN,
-                      label: t("library.newCampaign"),
-                      icon: <FolderPlus />,
-                    },
-                  ]}
-                  onSelect={(id) => {
-                    if (id === NEW_CAMPAIGN) setCreating(true);
-                    else {
-                      setPendingScene(null);
-                      setSelected(id);
+              <p className="dm-settings-path">
+                {t("library.folder", { path: state.root })}
+              </p>
+            )}
+            {chooseButton}
+          </fieldset>
+        </ShellPortal>
+        <ShellPortal slot="dataPanel">
+          <CatalogPanel service={service} ready={state.status === "open"} />
+        </ShellPortal>
+        <ShellPortal slot="browser">
+          {/* The Browser panel names the region (its tab, T-172a). */}
+          <div className="dm-campaign-browser">
+            {/* The campaign switch heads the browser panel (T-172a: the panel's tab names it). */}
+            <div className="dm-panel-toolbar">
+              {state.status === "open" && (
+                <span className="dm-panel-head-menu">
+                  <Menu
+                    // The campaign itself heads the tree; the header only switches it.
+                    label={
+                      selectedCampaign
+                        ? t("shell.tree.switchCampaign")
+                        : t("library.chooseCampaign")
                     }
-                  }}
-                />
-                <Popover
-                  open={creating}
-                  anchor={campaignMenu}
-                  label={t("library.newCampaign")}
-                  onClose={() => {
-                    setCreating(false);
-                  }}
-                >
-                  <NameForm
-                    label={t("library.newCampaignName")}
-                    submitLabel={t("library.createCampaign")}
-                    onSubmit={create}
-                    focusOnMount
+                    buttonRef={campaignMenu}
+                    items={[
+                      ...campaigns.map((campaign) => ({
+                        id: campaign.slug,
+                        label: campaignLabel(campaign),
+                        icon: <BookOpen />,
+                        disabled: campaign.name === null,
+                      })),
+                      {
+                        id: NEW_CAMPAIGN,
+                        label: t("library.newCampaign"),
+                        icon: <FolderPlus />,
+                      },
+                    ]}
+                    onSelect={(id) => {
+                      if (id === NEW_CAMPAIGN) setCreating(true);
+                      else {
+                        setPendingScene(null);
+                        setSelected(id);
+                      }
+                    }}
                   />
-                </Popover>
-              </span>
+                  <Popover
+                    open={creating}
+                    anchor={campaignMenu}
+                    label={t("library.newCampaign")}
+                    onClose={() => {
+                      setCreating(false);
+                    }}
+                  >
+                    <NameForm
+                      label={t("library.newCampaignName")}
+                      submitLabel={t("library.createCampaign")}
+                      onSubmit={create}
+                      focusOnMount
+                    />
+                  </Popover>
+                </span>
+              )}
+            </div>
+            {state.status === "loading" && <p>{t("library.loading")}</p>}
+            {state.status === "none" && (
+              <>
+                <p>{t("library.none")}</p>
+                {chooseButton}
+              </>
+            )}
+            {state.status === "error" && (
+              <>
+                <p role="alert">{describeLibraryError(t, state.error)}</p>
+                {chooseButton}
+              </>
+            )}
+            {state.status === "open" &&
+              !selectedCampaign &&
+              (campaigns.length === 0 ? (
+                <p className="dm-browser-hint">{t("library.noCampaigns")}</p>
+              ) : (
+                <>
+                  <p className="dm-browser-hint">
+                    {t("library.chooseCampaignHint")}
+                  </p>
+                  <ul
+                    aria-label={t("library.campaigns")}
+                    className="dm-campaign-list"
+                  >
+                    {campaigns.map((campaign) => (
+                      <li key={campaign.slug}>
+                        {campaign.name === null ? (
+                          campaignLabel(campaign)
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingScene(null);
+                              setSelected(campaign.slug);
+                            }}
+                          >
+                            <BookOpen aria-hidden="true" />
+                            {campaign.name}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ))}
+            {selectedCampaign?.name != null && (
+              <CampaignPanel
+                key={selectedCampaign.slug}
+                service={service}
+                slug={selectedCampaign.slug}
+                name={selectedCampaign.name}
+                newId={newId}
+                initialTabs={
+                  pendingScene?.slug === selectedCampaign.slug
+                    ? pendingScene.tabs
+                    : null
+                }
+                rescues={rescues.filter(
+                  (copy) =>
+                    copy.root === root && copy.slug === selectedCampaign.slug,
+                )}
+                onRescueHandled={(sceneId) => {
+                  sceneRescue?.drop(selectedCampaign.slug, sceneId);
+                }}
+                onTabsChange={(tabs) => {
+                  if (root === null) return;
+                  const campaign = { root, slug: selectedCampaign.slug };
+                  setRecent((list) =>
+                    recordTabs(list, campaign, tabs, clock.current()),
+                  );
+                }}
+                onSceneOpen={(scene) => {
+                  // Used once: a later remount of this campaign must not jump back to it.
+                  setPendingScene(null);
+                  if (root === null) return;
+                  const campaign = { root, slug: selectedCampaign.slug };
+                  setRecent((list) =>
+                    recordScene(list, campaign, scene, clock.current()),
+                  );
+                }}
+              />
             )}
           </div>
-          {state.status === "loading" && <p>{t("library.loading")}</p>}
-          {state.status === "none" && (
-            <>
-              <p>{t("library.none")}</p>
-              {chooseButton}
-            </>
-          )}
-          {state.status === "error" && (
-            <>
-              <p role="alert">{describeLibraryError(t, state.error)}</p>
-              {chooseButton}
-            </>
-          )}
-          {state.status === "open" &&
-            !selectedCampaign &&
-            (campaigns.length === 0 ? (
-              <p className="dm-browser-hint">{t("library.noCampaigns")}</p>
-            ) : (
-              <>
-                <p className="dm-browser-hint">
-                  {t("library.chooseCampaignHint")}
-                </p>
-                <ul
-                  aria-label={t("library.campaigns")}
-                  className="dm-campaign-list"
-                >
-                  {campaigns.map((campaign) => (
-                    <li key={campaign.slug}>
-                      {campaign.name === null ? (
-                        campaignLabel(campaign)
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPendingScene(null);
-                            setSelected(campaign.slug);
-                          }}
-                        >
-                          <BookOpen aria-hidden="true" />
-                          {campaign.name}
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ))}
-          {selectedCampaign?.name != null && (
-            <CampaignPanel
-              key={selectedCampaign.slug}
-              service={service}
-              slug={selectedCampaign.slug}
-              name={selectedCampaign.name}
-              newId={newId}
-              initialTabs={
-                pendingScene?.slug === selectedCampaign.slug
-                  ? pendingScene.tabs
-                  : null
-              }
-              rescues={rescues.filter(
-                (copy) =>
-                  copy.root === root && copy.slug === selectedCampaign.slug,
-              )}
-              onRescueHandled={(sceneId) => {
-                sceneRescue?.drop(selectedCampaign.slug, sceneId);
-              }}
-              onTabsChange={(tabs) => {
-                if (root === null) return;
-                const campaign = { root, slug: selectedCampaign.slug };
-                setRecent((list) =>
-                  recordTabs(list, campaign, tabs, clock.current()),
-                );
-              }}
-              onSceneOpen={(scene) => {
-                // Used once: a later remount of this campaign must not jump back to it.
-                setPendingScene(null);
-                if (root === null) return;
-                const campaign = { root, slug: selectedCampaign.slug };
-                setRecent((list) =>
-                  recordScene(list, campaign, scene, clock.current()),
-                );
-              }}
-            />
-          )}
-        </div>
-      </ShellPortal>
-      <WelcomeDialog
-        open={welcomeOpen}
-        onClose={() => {
-          setWelcomeOpen(false);
-        }}
-        returnFocus={campaignMenu}
-        library={welcomeLibrary}
-        choosing={choosing}
-        notice={notice}
-        onChooseFolder={() => void choose()}
-        onOpen={openFromWelcome}
-        onForget={(slug) => {
-          if (root === null) return;
-          setRecent((list) => forgetCampaign(list, { root, slug }));
-        }}
-        onCreate={async (name) => {
-          // The form shows only this attempt's message, not an older one.
-          setNotice("");
-          const created = await create(name);
-          if (created) setWelcomeOpen(false);
-          return created;
-        }}
-      />
-      <ShellPortal slot="notices">
-        <p role="status">{notice}</p>
-      </ShellPortal>
-    </SceneRescueContext>
+        </ShellPortal>
+        <WelcomeDialog
+          open={welcomeOpen}
+          onClose={() => {
+            setWelcomeOpen(false);
+          }}
+          returnFocus={campaignMenu}
+          library={welcomeLibrary}
+          choosing={choosing}
+          notice={notice}
+          onChooseFolder={() => void choose()}
+          onOpen={openFromWelcome}
+          onForget={(slug) => {
+            if (root === null) return;
+            setRecent((list) => forgetCampaign(list, { root, slug }));
+          }}
+          onCreate={async (name) => {
+            // The form shows only this attempt's message, not an older one.
+            setNotice("");
+            const created = await create(name);
+            if (created) setWelcomeOpen(false);
+            return created;
+          }}
+        />
+        <ShellPortal slot="notices">
+          <p role="status">{notice}</p>
+        </ShellPortal>
+      </SceneRescueContext>
+    </CatalogSelectionContext>
   );
 }
