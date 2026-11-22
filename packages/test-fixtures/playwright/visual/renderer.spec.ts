@@ -128,3 +128,24 @@ test("fog fades never show what stays fogged", async ({ page }) => {
   await expect(body).toHaveAttribute("data-violations", "0");
   expect(Number(await body.getAttribute("data-between"))).toBeGreaterThan(0);
 });
+
+// Living fog (T-245), frozen at one moment: for players in both qualities and see-through for
+// the DM; it reaches into revealed area only a little, never out of the fog.
+for (const scenario of ["living-high", "living-medium", "living-dm"]) {
+  test(`living fog: ${scenario}`, async ({ page }) => {
+    await page.goto(`${fixturePage("renderer.html")}#${scenario}`);
+    await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
+    await expect(page).toHaveScreenshot(`${scenario}.png`);
+  });
+}
+
+// The living fog never shows what the hard fog covers (T-245, fail-closed): at the largest edge
+// wobble, in both qualities and at several moments, a hidden pixel looks the same over a black
+// and a white map.
+test("living fog never shows what the hard fog covers", async ({ page }) => {
+  await page.goto(`${fixturePage("renderer.html")}#living-fail-closed`);
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true", { timeout: 60_000 });
+  await expect(body).toHaveAttribute("data-violations", "0");
+  expect(Number(await body.getAttribute("data-living"))).toBeGreaterThan(0);
+});

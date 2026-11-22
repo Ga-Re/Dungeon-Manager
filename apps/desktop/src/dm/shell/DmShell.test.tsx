@@ -267,6 +267,32 @@ describe("DmShell", () => {
     expect(storage.getItem("dm.fog.fadeSeconds")).toBe("1.5");
   });
 
+  it("sets the living fog's quality, edge wobble and movement, per device", () => {
+    const { storage } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Nebel & Animation" }));
+    const medium = screen.getByRole("radio", { name: "Mittel" });
+    expect((medium as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole("radio", { name: "Hoch" }));
+    expect(storage.getItem("dm.fog.quality")).toBe("high");
+
+    const edge = screen.getByRole("slider", { name: "Randwabern" });
+    expect(edge.getAttribute("aria-valuetext")).toBe("1,2×");
+    fireEvent.change(edge, { target: { value: "2" } });
+    expect(edge.getAttribute("aria-valuetext")).toBe("2,0×");
+    expect(storage.getItem("dm.fog.edge")).toBe("2");
+
+    const motion = screen.getByRole("slider", { name: "Bewegung" });
+    fireEvent.change(motion, { target: { value: "0" } });
+    expect(storage.getItem("dm.fog.motion")).toBe("0");
+
+    // Without living fog there is nothing to wobble or move.
+    fireEvent.click(screen.getByRole("radio", { name: "Aus" }));
+    expect(storage.getItem("dm.fog.quality")).toBe("off");
+    expect((edge as HTMLInputElement).disabled).toBe(true);
+    expect((motion as HTMLInputElement).disabled).toBe(true);
+  });
+
   it("switches settings categories with the arrow keys", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));

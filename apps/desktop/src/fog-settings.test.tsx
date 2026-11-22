@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { memoryStorage } from "./dm/memory-storage.test-data.js";
 import {
+  livingFog,
   onFogLookChange,
+  readFogEdge,
+  readFogLook,
+  readFogMotion,
+  readFogQuality,
+  saveFogEdge,
+  saveFogMotion,
+  saveFogQuality,
   readFadeSeconds,
   readSoftEdges,
   saveFadeSeconds,
@@ -75,14 +83,60 @@ describe("fog settings", () => {
     window.dispatchEvent(
       new StorageEvent("storage", { key: "dm.theme", newValue: "light" }),
     );
+    const living = { quality: "medium", edge: 1.2, motion: 1 };
     expect(listener.mock.calls).toEqual([
-      [{ softEdges: false, fadeSeconds: 0.65 }],
-      [{ softEdges: false, fadeSeconds: 2 }],
+      [{ softEdges: false, fadeSeconds: 0.65, ...living }],
+      [{ softEdges: false, fadeSeconds: 2, ...living }],
     ]);
     stop();
     window.dispatchEvent(
       new StorageEvent("storage", { key: "dm.fog.softEdges", newValue: "on" }),
     );
     expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it("has the living fog at medium by default and remembers the quality per device", () => {
+    const storage = memoryStorage();
+    expect(readFogQuality(storage)).toBe("medium");
+    saveFogQuality(storage, "high");
+    expect(readFogQuality(storage)).toBe("high");
+    saveFogQuality(storage, "off");
+    expect(readFogQuality(storage)).toBe("off");
+    expect(readFogQuality(memoryStorage({ "dm.fog.quality": "ultra" }))).toBe(
+      "medium",
+    );
+    expect(readFogQuality(undefined)).toBe("medium");
+  });
+
+  it("keeps edge wobble and movement on their sliders' range and steps", () => {
+    const storage = memoryStorage();
+    expect(readFogEdge(storage)).toBe(1.2);
+    expect(readFogMotion(storage, false)).toBe(1);
+    saveFogEdge(storage, 1.73);
+    expect(readFogEdge(storage)).toBe(1.7);
+    saveFogEdge(storage, 9);
+    expect(readFogEdge(storage)).toBe(2.5);
+    saveFogMotion(storage, -1);
+    expect(readFogMotion(storage)).toBe(0);
+    expect(readFogEdge(memoryStorage({ "dm.fog.edge": "x" }))).toBe(1.2);
+  });
+
+  it("starts with little movement when the system asks for reduced motion", () => {
+    expect(readFogMotion(memoryStorage(), true)).toBe(0.2);
+    // A choice made here wins.
+    expect(readFogMotion(memoryStorage({ "dm.fog.motion": "2" }), true)).toBe(
+      2,
+    );
+  });
+
+  it("gives the renderer living fog in the map's cells, or none when off", () => {
+    const look = readFogLook(memoryStorage({ "dm.fog.motion": "1" }));
+    expect(livingFog(look, 70)).toEqual({
+      quality: "medium",
+      cellSizePx: 70,
+      edge: 1.2,
+      motion: 1,
+    });
+    expect(livingFog({ ...look, quality: "off" }, 70)).toBeUndefined();
   });
 });

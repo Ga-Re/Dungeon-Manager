@@ -15,6 +15,7 @@ import { tokenShapes } from "../token-shapes.js";
 import { releaseVideo, type MapViewService } from "../platform/map-images.js";
 import type { PlayerFeedReceiver } from "../platform/player-feed.js";
 import {
+  livingFog,
   onFogLookChange,
   readFogLook,
   softEdgeWidth,
@@ -152,6 +153,7 @@ export function PlayerApp({
     ) => {
       const map = shown.scene?.map ?? null;
       const level = map?.currentLevelId;
+      const living = map ? livingFog(look, map.grid.cellSizePx) : undefined;
       view.setFog(
         level === undefined ? [] : (shown.scene?.fog[level]?.revealed ?? []),
         {
@@ -159,6 +161,7 @@ export function PlayerApp({
             ? softEdgeWidth(map.grid.cellSizePx, look.softEdges)
             : 0,
           fade: fades ? look.fadeSeconds * 1000 : 0,
+          ...(living && { living }),
         },
       );
     };

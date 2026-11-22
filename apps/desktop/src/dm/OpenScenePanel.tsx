@@ -65,7 +65,7 @@ import { FogToolbar } from "./FogToolbar.js";
 import { SceneTabs, SceneTitle } from "./SceneTitle.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useSceneSession } from "./useSceneSession.js";
-import { softEdgeWidth } from "../fog-settings.js";
+import { livingFog, softEdgeWidth } from "../fog-settings.js";
 import { FogLookContext } from "./shell/fog-look.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
 import { NewTokenForm } from "./NewTokenForm.js";
@@ -1099,6 +1099,7 @@ export function OpenScenePanel({
               cornerRadius={map.grid.cellSizePx / 4}
               softEdge={softEdgeWidth(map.grid.cellSizePx, fogLook.softEdges)}
               fade={fogLook.fadeSeconds * 1000}
+              living={livingFog(fogLook, map.grid.cellSizePx)}
               onArea={(area, kind) => {
                 if (!busy)
                   fogCommand(

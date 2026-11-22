@@ -14,6 +14,15 @@ function harnessFile(pathname: string): string {
 
 test.use({ viewport: { width: 1280, height: 800 } });
 
+// The living fog (T-245) drifts with the real clock: still fog keeps these runs deterministic
+// and light on the software GPU. The renderer harness covers the living fog at frozen moments.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem("dm.fog.quality") === null)
+      localStorage.setItem("dm.fog.quality", "off");
+  });
+});
+
 async function loadHarness(page: Page, search = "") {
   // Playwright reads the file and sets the content type from its extension.
   await page.route(`${ORIGIN}/**`, async (route) => {

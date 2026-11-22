@@ -468,6 +468,15 @@ export const en: Messages = {
       fadeHint:
         "How long revealing and hiding fade – also on the TV. 0 s switches at once.",
       seconds: "{{seconds, number(minimumFractionDigits: 2)}} s",
+      quality: "Living fog",
+      qualities: { high: "High", medium: "Medium", off: "Off" },
+      qualityHint:
+        "The fog drifts and its edges move – on this device and the TV, only into revealed areas. High looks finest, Medium needs less power, Off shows still fog.",
+      edge: "Edge wobble",
+      motion: "Movement",
+      factor: "{{factor, number(minimumFractionDigits: 1)}}×",
+      livingHint:
+        "Edge wobble: how much the edges move (0 = calm). Movement: how fast the fog drifts (0 = still).",
     },
     layout: {
       hint: "Data, map, browser and properties return to their default places: data on the left, the map in the middle, browser and properties on the right.",
