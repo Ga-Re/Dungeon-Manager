@@ -11,3 +11,4 @@ export * from "./footprint.js";
 export * from "./token-creature.js";
 export * from "./initiative.js";
 export * from "./calibration.js";
+export * from "./rooms.js";

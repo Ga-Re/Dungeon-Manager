@@ -997,6 +997,50 @@ button.dm-map-tile[aria-pressed="true"] {
   background: var(--dm-accent-soft);
 }
 
+/* Rooms over the map in the Map Forge (T-108c1). */
+.map-view-rooms {
+  position: absolute;
+  inset: 0;
+  z-index: var(--dm-z-overlay);
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.map-view-room polygon {
+  fill: var(--dm-overlay-reveal-fill);
+  stroke: var(--dm-overlay-reveal-stroke);
+  stroke-width: 2;
+}
+
+.map-view-room[data-secret="true"] polygon {
+  stroke-dasharray: 6 4;
+}
+
+.map-view-room[data-selected="true"] polygon {
+  stroke: var(--dm-accent);
+  stroke-width: 3;
+}
+
+.map-view-room text {
+  fill: var(--dm-text-on-chrome);
+  font-family: var(--dm-font-ui);
+  font-size: var(--dm-font-size-sm);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  paint-order: stroke;
+  stroke: var(--dm-surface-canvas);
+  stroke-width: 3px;
+}
+
+.dm-forge-check {
+  flex-direction: row;
+  align-items: center;
+  margin: 0;
+  font-size: var(--dm-font-size-sm);
+}
+
 /* The calibration box while it is dragged (T-177), over the map. */
 .map-view-calibration {
   position: absolute;

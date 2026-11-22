@@ -63,6 +63,15 @@ type LoadState = "loading" | "ready" | "error";
 /** What dragging on the map does: move it, or mark an area to reveal or hide. */
 export type MapTool = "pan" | "reveal" | "hide";
 
+/** A room drawn on the map (T-108c1): its outline and name, highlighted when selected. */
+export interface MapOutline {
+  readonly id: string;
+  readonly label: string;
+  readonly area: Polygon;
+  readonly selected?: boolean;
+  readonly secret?: boolean;
+}
+
 /**
  * Grid calibration in the Map Forge (T-177): `box` drags a square over `cells` × `cells` cells
  * of the printed grid; `move` drags the grid; arrow keys move it by a pixel (Shift: ten) in
@@ -168,6 +177,8 @@ export function MapView({
   tokens = NO_TOKENS,
   tokenControl = null,
   calibration = null,
+  outlines = NO_OUTLINES,
+  toolHint,
 }: {
   readonly path: string;
   /** Video maps play in a `<video>` under the canvas (ADR-0010). */
@@ -198,7 +209,15 @@ export function MapView({
   /** Where hiding everything starts on a fully revealed map (T-249). */
   readonly coverFrom?: "middle" | "random";
   /** An area the DM marked with the reveal or hide tool, in map pixels. */
-  readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
+  /**
+   * A marked area; `free` when Alt was held as it was finished (the Map Forge then does not snap
+   * it to the grid, T-108c1).
+   */
+  readonly onArea?: (
+    area: Polygon,
+    tool: Exclude<MapTool, "pan">,
+    free: boolean,
+  ) => void;
   readonly onMapSize?: (size: Size) => void;
   /** The map's grid (sidecar calibration); its lines can be shown in this view (T-106b). */
   readonly grid?: GridCalibration | null;
@@ -213,6 +232,10 @@ export function MapView({
     readonly onMove: (center: Point) => void;
   } | null;
   readonly calibration?: MapCalibration | null;
+  /** Rooms shown as outlines over the map (the Map Forge, T-108c1). */
+  readonly outlines?: readonly MapOutline[];
+  /** What the drawing tool does, instead of the fog's hint (e.g. drawing a room, T-108c1). */
+  readonly toolHint?: string | undefined;
 }) {
   const { t } = useTranslation();
   // A calibration box being dragged, in view pixels; the last map point of a grid drag.
@@ -519,22 +542,22 @@ export function MapView({
     const box = event.currentTarget.getBoundingClientRect();
     return { x: event.clientX - box.left, y: event.clientY - box.top };
   };
-  const mark = (area: Polygon | null) => {
-    if (area && tool !== "pan") onArea?.(area, tool);
+  const mark = (area: Polygon | null, free: boolean) => {
+    if (area && tool !== "pan") onArea?.(area, tool, free);
   };
-  const finishPolygon = () => {
-    mark(polygonArea(corners));
+  const finishPolygon = (free: boolean) => {
+    mark(polygonArea(corners), free);
     setCorners([]);
     setHover(null);
   };
-  const addCorner = (point: Point) => {
+  const addCorner = (point: Point, free: boolean) => {
     const view = sizeNow.current;
     if (!camera || !view) return;
     const first = corners[0];
     if (first && corners.length >= 3) {
       const shown = mapToScreen(camera, view, { x: first[0], y: first[1] });
       if (Math.hypot(shown.x - point.x, shown.y - point.y) <= CLOSE_PX) {
-        finishPolygon();
+        finishPolygon(free);
         return;
       }
     }
@@ -635,7 +658,7 @@ export function MapView({
       return;
     }
     if (tool !== "pan" && shape === "polygon") {
-      addCorner(point);
+      addCorner(point, event.altKey);
       return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -762,9 +785,9 @@ export function MapView({
       const stroke = brushArea(done.points, brushRadius, camera, view);
       if (!stroke)
         console.warn("A brush stroke could not be turned into an area.");
-      mark(stroke);
+      mark(stroke, event.altKey);
     } else if (done.kind === "lasso")
-      mark(lassoArea(done.points, camera, view));
+      mark(lassoArea(done.points, camera, view), event.altKey);
     else
       mark(
         dragArea(
@@ -775,6 +798,7 @@ export function MapView({
           view,
           cornerRadius,
         ),
+        event.altKey,
       );
   };
   const onPointerCancel = () => {
@@ -827,7 +851,7 @@ export function MapView({
     }
     if (corners.length > 0 && event.key === "Enter") {
       event.preventDefault();
-      finishPolygon();
+      finishPolygon(event.altKey);
       return;
     }
     if (corners.length > 0 && event.key === "Backspace") {
@@ -906,11 +930,22 @@ export function MapView({
           setPointer(null);
         }}
         onKeyDown={onKeyDown}
-        onDoubleClick={() => {
-          if (corners.length > 0) finishPolygon();
+        onDoubleClick={(event) => {
+          if (corners.length > 0) finishPolygon(event.altKey);
         }}
         data-tool={calibration ? `calibrate-${calibration.mode}` : tool}
       >
+        {camera && sizeNow.current && outlines.length > 0 && (
+          <RoomOutlines
+            outlines={outlines}
+            toScreen={(x, y) =>
+              mapToScreen(camera, sizeNow.current ?? { width: 0, height: 0 }, {
+                x,
+                y,
+              })
+            }
+          />
+        )}
         {calibBox && calibration && (
           <CalibrationBox
             start={calibBox.start}
@@ -961,7 +996,7 @@ export function MapView({
         )}
         {!calibration && tool !== "pan" && (
           <p id="map-view-hint" className="map-view-hint">
-            {t(`fog.shapeHints.${shape}`)}
+            {toolHint ?? t(`fog.shapeHints.${shape}`)}
           </p>
         )}
         {load === "loading" && <p>{t("mapView.loading")}</p>}
@@ -1070,6 +1105,49 @@ function CalibrationBox({
           <line x1={0} y1={at} x2={side} y2={at} />
         </g>
       ))}
+    </svg>
+  );
+}
+
+const NO_OUTLINES: readonly MapOutline[] = [];
+
+/** Room outlines with their names at their middle, in view pixels (T-108c1). */
+function RoomOutlines({
+  outlines,
+  toScreen,
+}: {
+  readonly outlines: readonly MapOutline[];
+  readonly toScreen: (x: number, y: number) => Point;
+}) {
+  return (
+    <svg className="map-view-rooms" aria-hidden="true">
+      {outlines.map((room) => {
+        const points = room.area.outer.map(([x, y]) => toScreen(x, y));
+        const middle = points.reduce(
+          (sum, point) => ({
+            x: sum.x + point.x / points.length,
+            y: sum.y + point.y / points.length,
+          }),
+          { x: 0, y: 0 },
+        );
+        return (
+          <g
+            key={room.id}
+            className="map-view-room"
+            data-selected={room.selected === true ? "true" : undefined}
+            data-secret={room.secret === true ? "true" : undefined}
+          >
+            <polygon
+              points={points
+                .map(({ x, y }) => `${String(x)},${String(y)}`)
+                .join(" ")}
+            />
+            <text x={middle.x} y={middle.y}>
+              {room.label}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }

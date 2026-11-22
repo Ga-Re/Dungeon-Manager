@@ -1,8 +1,12 @@
-import { tableLevels, type ResolvedMap } from "@dungeon-manager/core";
+import {
+  roomsOnLevel,
+  tableLevels,
+  type ResolvedMap,
+} from "@dungeon-manager/core";
 import type { Polygon, Scene } from "@dungeon-manager/schema";
 import type { TreeNode } from "@dungeon-manager/ui";
 import type { TFunction } from "i18next";
-import { Cloud, Layers, Map as MapIcon, Tv } from "lucide-react";
+import { Cloud, DoorOpen, Layers, Map as MapIcon, Tv } from "lucide-react";
 import { fileName } from "./file-name.js";
 
 /** Tree ids of the open scene's content, kept apart from scene ids (`scene:<id>`). */
@@ -10,7 +14,7 @@ const CONTENT = "content:";
 
 /**
  * The open scene's content in the scene browser (ADR-0011): its map with levels and its fog.
- * Grows with tokens, rooms and notes in later tasks.
+ * Grows with tokens and notes in later tasks.
  */
 export function sceneContentNodes(
   t: TFunction,
@@ -45,11 +49,27 @@ export function sceneContentNodes(
             id: `${CONTENT}levels`,
             label: t("shell.browser.levels"),
             icon: <Layers />,
-            children: (map?.levels ?? []).map((level) => ({
-              id: `${CONTENT}level-${level.id}`,
-              label: level.name,
-              meta: levelMeta(level.id),
-            })),
+            children: (map?.levels ?? []).map((level) => {
+              // The level's rooms (T-108c1), drawn in the Map Forge for every scene of the map.
+              const rooms = map
+                ? roomsOnLevel(map.rooms, map.levels, level.id)
+                : [];
+              return {
+                id: `${CONTENT}level-${level.id}`,
+                label: level.name,
+                meta: levelMeta(level.id),
+                ...(rooms.length > 0 && {
+                  children: rooms.map((room) => ({
+                    id: `${CONTENT}room-${room.id}`,
+                    label: room.name,
+                    icon: <DoorOpen />,
+                    ...(room.secret === true && {
+                      meta: t("forgeRooms.secretMeta"),
+                    }),
+                  })),
+                }),
+              };
+            }),
           },
         ],
       }

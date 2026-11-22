@@ -131,3 +131,42 @@ describe("item info", () => {
     ).toBe(false);
   });
 });
+
+// T-108c1 (DM decision 2026-11-22): rooms are drawn per level and may be secret; both fields
+// are additive, so older sidecars stay valid.
+describe("rooms per level", () => {
+  test("a room may name its level and be secret", () => {
+    const parsed = sidecarSchema.parse({
+      ...tower,
+      map: {
+        ...tower.map,
+        rooms: [
+          {
+            id: "vault",
+            name: "Schatzkammer",
+            area: square,
+            levelId: "cellar",
+            secret: true,
+          },
+        ],
+      },
+    });
+    expect(parsed.map?.rooms[0]).toMatchObject({
+      levelId: "cellar",
+      secret: true,
+    });
+  });
+
+  test("a room on a level the map no longer has stays readable", () => {
+    // It is simply not shown; the map's grid and levels must not get lost over it.
+    expect(
+      sidecarSchema.safeParse({
+        ...tower,
+        map: {
+          ...tower.map,
+          rooms: [{ id: "x", name: "X", area: square, levelId: "gone" }],
+        },
+      }).success,
+    ).toBe(true);
+  });
+});

@@ -1,14 +1,26 @@
 import {
   CALIBRATION_CELLS,
   gridFromBox,
+  newRoomId,
+  roomsOnLevel,
   shiftGrid,
+  snapArea,
+  type RoomShape,
 } from "@dungeon-manager/core";
-import type { Grid, Sidecar } from "@dungeon-manager/schema";
+import type {
+  Grid,
+  MapData,
+  Polygon,
+  Room,
+  Sidecar,
+} from "@dungeon-manager/schema";
 import {
   loadSidecar,
   mapKind,
+  MapDataChangedError,
   newMapData,
   SIDECAR_SUFFIX,
+  updateMapData,
 } from "@dungeon-manager/storage";
 import { IconButton, TreeList, type TreeNode } from "@dungeon-manager/ui";
 import { DoorOpen, Folder, Layers, Map as MapIcon, X } from "lucide-react";
@@ -19,6 +31,9 @@ import { fileName } from "./file-name.js";
 import { ItemInfoEditor } from "./ItemInfoEditor.js";
 import { MapDataEditor, type CalibrationChoice } from "./MapDataEditor.js";
 import { MapView } from "./MapView.js";
+import { describeLibraryError } from "./describe-error.js";
+import { RoomEditor, RoomTools } from "./ForgeRooms.js";
+import { catalogAsset } from "./map-catalog.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
 import { useLibraryChanges } from "./useLibraryChanges.js";
@@ -128,6 +143,46 @@ export function MapForge({
   const onTyped = useCallback((grid: Grid | null | undefined) => {
     gridNow.current = grid === undefined ? null : (grid ?? "invalid");
   }, []);
+
+  // Rooms (T-108c1): the level shown and drawn on, the shape being drawn, the selected room.
+  const [levelChoice, setLevelChoice] = useState<string | null>(null);
+  const [shape, setShape] = useState<RoomShape | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [justDrawn, setJustDrawn] = useState(false);
+  const browser = useRef<HTMLDivElement>(null);
+  const [focusTree, setFocusTree] = useState(false);
+  useEffect(() => {
+    if (!focusTree) return;
+    setFocusTree(false);
+    browser.current
+      ?.querySelector<HTMLElement>('[role="treeitem"][aria-selected="true"]')
+      ?.focus();
+  }, [focusTree]);
+  const [roomBusy, setRoomBusy] = useState(false);
+  const [roomProblem, setRoomProblem] = useState("");
+  // The forge's own last write and the sidecar read before it: until a newer read arrives, the
+  // map shows (and the next change starts from) what was written, so changes in quick
+  // succession never take the forge's own write for a change from elsewhere.
+  const ownWrite = useRef<{
+    readonly data: MapData;
+    readonly before: Sidecar | null;
+  } | null>(null);
+  useEffect(() => {
+    setLevelChoice(null);
+    setShape(null);
+    setSelectedRoom(null);
+    setRoomProblem("");
+  }, [path]);
+  // Drawing a room and calibrating both take the map's pointer: one at a time.
+  const chooseCalibration = useCallback((choice: CalibrationChoice) => {
+    setCalibration(choice);
+    if (choice.mode) setShape(null);
+  }, []);
+  const chooseShape = (next: RoomShape | null) => {
+    setShape(next);
+    if (next) setCalibration((current) => ({ ...current, mode: null }));
+  };
+
   if (!shown) return null;
   if (path === null)
     return (
@@ -143,10 +198,87 @@ export function MapForge({
 
   const defaults = newMapData(t("campaign.defaultLevel"));
   const sidecar = loaded.status === "ok" ? loaded.sidecar : null;
-  const data = sidecar?.map ?? defaults;
+  if (ownWrite.current && ownWrite.current.before !== sidecar)
+    ownWrite.current = null;
+  const data = ownWrite.current?.data ?? sidecar?.map ?? defaults;
   const info = sidecar?.info;
   const name = info?.name ?? fileName(path);
-  const kind = mapKind(path);
+  const levels = data.levels.filter((level) => level.archived !== true);
+  const level =
+    levels.find((each) => each.id === levelChoice) ??
+    levels[0] ??
+    data.levels[0];
+  const levelId = level?.id ?? "";
+  // A level with its own file shows that file (ADR-0012: same size, one calibration).
+  const shownPath = level?.asset?.path ?? path;
+  const kind = mapKind(shownPath);
+  const levelRooms = roomsOnLevel(data.rooms, data.levels, levelId);
+  const room = data.rooms.find((each) => each.id === selectedRoom) ?? null;
+
+  /** Saves a change of the rooms; `expected` keeps a change made elsewhere from being lost. */
+  const changeRooms = async (change: (rooms: readonly Room[]) => Room[]) => {
+    setRoomBusy(true);
+    setRoomProblem("");
+    try {
+      const written = await updateMapData(
+        service.fs,
+        await catalogAsset(service, path),
+        defaults,
+        (current: MapData) => ({ ...current, rooms: change(current.rooms) }),
+        data,
+      );
+      if (written) ownWrite.current = { data: written, before: sidecar };
+      loaded.reload();
+      return true;
+    } catch (error) {
+      setRoomProblem(
+        error instanceof MapDataChangedError
+          ? t("forgeRooms.changedMeanwhile")
+          : describeLibraryError(t, error),
+      );
+      loaded.reload();
+      return false;
+    } finally {
+      setRoomBusy(false);
+    }
+  };
+  // `free`: Alt was held as the shape was finished (taken from that event, so an Alt+Tab
+  // never leaves rooms unsnapped).
+  const addRoom = async (area: Polygon, free: boolean) => {
+    if (!shape || roomBusy) return;
+    // The grid the DM sees: an unsaved calibration included.
+    const fitted = free ? area : snapArea(area, preview ?? data.grid, shape);
+    if (!fitted) {
+      setRoomProblem(t("forgeRooms.tooSmall"));
+      return;
+    }
+    const id = newRoomId(
+      [...data.levels, ...data.rooms].map((each) => each.id),
+      Math.random,
+    );
+    const added = await changeRooms((rooms) => [
+      ...rooms,
+      {
+        id,
+        name: t("forgeRooms.defaultName", { number: levelRooms.length + 1 }),
+        area: fitted,
+        levelId,
+      },
+    ]);
+    if (added) {
+      setSelectedRoom(id);
+      setJustDrawn(true);
+    }
+  };
+  const editRoom = (id: string, edit: (room: Room) => Room | null) =>
+    changeRooms((rooms) =>
+      rooms.flatMap((each) => {
+        if (each.id !== id) return [each];
+        const next = edit(each);
+        return next ? [next] : [];
+      }),
+    );
+
   const tree: TreeNode = {
     id: "forge:map",
     label: name,
@@ -156,31 +288,27 @@ export function MapForge({
         id: "forge:levels",
         label: t("forge.levels"),
         icon: <Folder />,
-        children: data.levels
-          .filter((level) => level.archived !== true)
-          .map((level) => ({
-            id: `forge:level:${level.id}`,
-            label: level.name,
+        children: levels.map((each) => {
+          const rooms = roomsOnLevel(data.rooms, data.levels, each.id);
+          return {
+            id: `forge:level:${each.id}`,
+            label: each.name,
             icon: <Layers />,
-          })),
+            ...(rooms.length > 0
+              ? {
+                  children: rooms.map((each) => ({
+                    id: `forge:room:${each.id}`,
+                    label: each.name,
+                    icon: <DoorOpen />,
+                    ...(each.secret === true && {
+                      meta: t("forgeRooms.secretMeta"),
+                    }),
+                  })),
+                }
+              : { meta: t("forge.noRooms") }),
+          };
+        }),
       },
-      data.rooms.length > 0
-        ? {
-            id: "forge:rooms",
-            label: t("forge.rooms"),
-            icon: <Folder />,
-            children: data.rooms.map((room) => ({
-              id: `forge:room:${room.id}`,
-              label: room.name,
-              icon: <DoorOpen />,
-            })),
-          }
-        : {
-            id: "forge:rooms",
-            label: t("forge.rooms"),
-            icon: <Folder />,
-            meta: t("forge.noRooms"),
-          },
     ],
   };
 
@@ -206,11 +334,26 @@ export function MapForge({
       </ShellPortal>
       <ShellPortal slot="canvas">
         <MapView
-          key={path}
-          path={path}
+          key={shownPath}
+          path={shownPath}
           kind={kind}
           label={name}
           fog={null}
+          tool={shape && !roomBusy ? "reveal" : "pan"}
+          shape={shape ?? "rectangle"}
+          onArea={(area, _tool, free) => void addRoom(area, free)}
+          toolHint={
+            shape
+              ? t(shape === "lasso" ? "forgeRooms.hintFree" : "forgeRooms.hint")
+              : undefined
+          }
+          outlines={levelRooms.map((each) => ({
+            id: each.id,
+            label: each.name,
+            area: each.area,
+            selected: each.id === selectedRoom,
+            secret: each.secret === true,
+          }))}
           // Placeholder data is no grid of this map: none until its sidecar is read.
           grid={loaded.status === "ok" ? (preview ?? data.grid) : null}
           calibration={
@@ -242,8 +385,29 @@ export function MapForge({
         />
       </ShellPortal>
       <ShellPortal slot="browser">
-        <div className="dm-campaign-browser">
-          <TreeList label={t("forge.tree")} variant="compact" nodes={[tree]} />
+        <div ref={browser} className="dm-campaign-browser">
+          <TreeList
+            label={t("forge.tree")}
+            variant="compact"
+            nodes={[tree]}
+            selectedId={
+              room ? `forge:room:${room.id}` : `forge:level:${levelId}`
+            }
+            onSelect={(id) => {
+              if (id.startsWith("forge:level:")) {
+                setLevelChoice(id.slice("forge:level:".length));
+                setSelectedRoom(null);
+              } else if (id.startsWith("forge:room:")) {
+                const picked = data.rooms.find(
+                  (each) => each.id === id.slice("forge:room:".length),
+                );
+                if (!picked) return;
+                setSelectedRoom(picked.id);
+                setJustDrawn(false);
+                setLevelChoice(picked.levelId ?? data.levels[0]?.id ?? null);
+              }
+            }}
+          />
         </div>
       </ShellPortal>
       <ShellPortal slot="details">
@@ -253,6 +417,44 @@ export function MapForge({
           )}
           {loaded.status === "ok" && (
             <>
+              {room && (
+                <RoomEditor
+                  room={room}
+                  busy={roomBusy}
+                  focusName={justDrawn}
+                  onRename={(next) =>
+                    void editRoom(room.id, (each) => ({ ...each, name: next }))
+                  }
+                  onSecret={(secret) =>
+                    void editRoom(room.id, (each) => {
+                      const next: Room = { ...each };
+                      if (secret) next.secret = true;
+                      else delete next.secret;
+                      return next;
+                    })
+                  }
+                  onDelete={() => {
+                    void editRoom(room.id, () => null).then((done) => {
+                      if (!done) return;
+                      setSelectedRoom(null);
+                      // The editor goes with the room: the keyboard moves to its level.
+                      setFocusTree(true);
+                    });
+                  }}
+                />
+              )}
+              <RoomTools
+                levels={levels}
+                levelId={levelId}
+                onLevel={(next) => {
+                  setLevelChoice(next);
+                  setSelectedRoom(null);
+                }}
+                shape={shape}
+                onShape={chooseShape}
+                disabled={roomBusy}
+              />
+              {roomProblem && <p role="alert">{roomProblem}</p>}
               <ItemInfoEditor
                 key={`info:${path}`}
                 service={service}
@@ -275,7 +477,7 @@ export function MapForge({
                 onPreview={setPreview}
                 onTyped={onTyped}
                 calibration={calibration}
-                onCalibration={setCalibration}
+                onCalibration={chooseCalibration}
               />
             </>
           )}

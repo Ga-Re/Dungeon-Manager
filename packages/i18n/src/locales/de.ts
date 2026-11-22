@@ -236,6 +236,32 @@ export const de = {
     caseDuplicate:
       "Alte Datei {{file}} neben {{current}} – nach dem Vergleich zusammenführen oder löschen",
   },
+  forgeRooms: {
+    title: "Räume",
+    kind: "Raum",
+    level: "Ebene",
+    draw: "Raum zeichnen",
+    shapes: {
+      rectangle: "Rechteck",
+      polygon: "Polygon",
+      ellipse: "Ellipse",
+      lasso: "Lasso",
+    },
+    hint: "Zeichne den Raum auf der Karte; die Ecken rasten am Raster ein, mit gehaltener Alt-Taste zeichnest du frei.",
+    hintFree:
+      "Umrande den Raum frei auf der Karte; das Lasso rastet nicht ein.",
+    defaultName: "Raum {{number}}",
+    name: "Name",
+    secret: "Geheimraum (bleibt beim Aufdecken verborgen)",
+    secretMeta: "geheim",
+    delete: "Raum löschen …",
+    deleteConfirm: "„{{name}}“ löschen",
+    keep: "Behalten",
+    tooSmall:
+      "Zu klein für einen Raum: am Raster wäre er keine Fläche. Mit Alt zeichnest du frei.",
+    changedMeanwhile:
+      "Die Kartendaten wurden inzwischen woanders geändert; die Karte zeigt jetzt den neuen Stand. Versuche es erneut.",
+  },
   forge: {
     empty: "Keine Karte geöffnet. Doppelklicke im Katalog auf eine Karte.",
     noMap: "Keine Karte geöffnet.",
@@ -245,7 +271,6 @@ export const de = {
     close: "{{name}} schließen",
     tree: "Karte",
     levels: "Ebenen",
-    rooms: "Räume",
     noRooms: "Noch keine Räume",
     grid: "Raster",
     cellSizePx: "Zellgröße (Pixel)",

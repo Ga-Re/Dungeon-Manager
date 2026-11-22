@@ -371,6 +371,52 @@ test("the grid is calibrated by a box over 3 × 3 printed cells and moved by arr
   ).toHaveAttribute("aria-pressed", "false");
 });
 
+test("a room drawn in the Map Forge is named and shows in every scene of the map (T-108c1)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page
+    .getByRole("list", { name: "Karten" })
+    .getByRole("button", { name: /krypta\.png/ })
+    .dblclick();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  const details = page.getByRole("region", { name: "Eigenschaften" });
+  await details.getByRole("button", { name: "Rechteck" }).click();
+
+  const canvas = page.locator(".map-view-canvas");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("no map view");
+  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.45, box.y + box.height * 0.45);
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6);
+  await page.mouse.up();
+
+  // The new room has the keyboard for its name.
+  const roomForm = details.locator("form", {
+    has: page.locator(".dm-details-kind", { hasText: /^Raum$/ }),
+  });
+  const name = roomForm.getByLabel("Name");
+  await expect(name).toHaveValue("Raum 1");
+  await expect(name).toBeFocused();
+  await name.fill("Gruft");
+  await name.press("Enter");
+  const forgeTree = page.getByRole("tree", { name: "Karte" });
+  await expect(forgeTree.getByText("Gruft")).toBeVisible();
+
+  // Every scene of the map has it: here the campaign's scene Krypta.
+  await page
+    .getByRole("group", { name: "Arbeitsbereich" })
+    .getByRole("button")
+    .click();
+  await page.getByRole("menuitemradio", { name: "Game-Orchestrator" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(
+    page.getByRole("treeitem", { name: "Gruft", exact: true }),
+  ).toBeVisible();
+});
+
 test("the empty Map Forge says how to open a map, without the scene hint (T-176a)", async ({
   page,
 }) => {
