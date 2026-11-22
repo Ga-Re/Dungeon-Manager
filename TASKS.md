@@ -115,6 +115,8 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ## Stage 1 – MVP: map, fog, tokens (desktop)
 
+**Fog engine first** (DM decision, 2026-11-22, ADR-0019): T-245, T-246, T-247, T-168, T-248 come before the list below.
+
 **Next up, in this order** (DM decision, 2026-11-20: foundations first, so that data and UI are not built on the old `scene.map` model and the fixed layout and moved later): T-119, T-134, T-134c, T-134d, T-134b, T-118d, T-171, T-172a, T-172b, T-172c, T-174, T-223a, T-223b, T-114a, T-114b, T-180a, T-106a, T-106b, T-106c, T-107a, T-107b, T-233a, T-233b, T-233c, T-233d, T-233e, T-111a, T-111b, T-111c, T-111d, T-112a, T-112b, T-113a, T-113b. T-105d and T-127 come before T-168. Pick from this list before the file order.
 
 ### T-101 Schema v1 and migrations framework
@@ -1006,15 +1008,59 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] A global edit to the map of the scene live on the TV is applied there only after DM confirmation (hint in the DM window); other scenes pick it up on open (component test)
 - **Notes:** Split from T-134 (2026-11-20). The open scene is the one on the TV, so a change of its map's sidecar on disk waits for "Änderung übernehmen"; unchanged reloads (our own writes coming back from the watcher) ask nothing. The DM's own map edits in the open scene (T-118d, T-176) must update the shown data before writing the sidecar (e.g. an `applyOwnEdit` on `useMapData`), or their watcher echo would be held – noted there. A sidecar that cannot be read for a moment keeps what is shown. The catalog part moved to T-124, which builds the catalog.
 
-### T-168 Animated fog effects per map
+### T-245 Animated fog look
 
-- **Status:** todo · **Depends on:** T-134b, T-136a, T-160a, T-105d, T-127 · **Refs:** SPEC §4, ARCHITECTURE §8, §11
-- The fog of a map can carry an animated effect: drifting mist, snow flurry, smoke and ash, darkness (first set – DM decision, 2026-11-19). Set on the map (sidecar, T-134) and adjustable during a session (session override); shown on the TV, previewed in the DM window. GPU shaders, no per-frame CPU work.
+- **Status:** todo · **Depends on:** T-136a, T-167 · **Refs:** SPEC §4, ARCHITECTURE §8, §11, ADR-0019
+- The fog gets the Nebelweber look (ADR-0019): a shader with drifting, domain-warped noise in the fog's colours (Bodennebel until T-168), rendered at reduced resolution. Its edge wobbles with a faster, small-scale turbulence, only towards the revealed side; the player view keeps the exact hard fog underneath. Per-device settings in "Nebel & Animation": **Qualität** (Hoch / Mittel / Aus; Aus = today's still fog), **Randwabern** (0–2.5×, default 1.2×), **Bewegung** (0–3×, default 1×).
 - **Acceptance criteria**
-  - [ ] Effect and strength stored in the map sidecar and overridable per session (schema + storage tests)
-  - [ ] The effect animates only over fogged area and never makes fog transparent (screenshot tests)
-  - [ ] The benchmark scene with each effect stays within ARCHITECTURE §11
-- **Notes:** From the DM (2026-11-19).
+  - [ ] Fail-closed: in the player view no pixel outside the revealed polygons shows the map, at several animation times and at the largest edge wobble (pixel test)
+  - [ ] The animation runs in the shader; per frame only uniforms change (no mask rebuild, no CPU pass)
+  - [ ] Qualität "Aus" draws today's fog (existing screenshots unchanged); Hoch and Mittel have screenshot tests with frozen time
+  - [ ] The three settings are stored per device and apply in the DM and the player window at once (component tests)
+  - [ ] With Qualität "Mittel" the benchmark scene stays within ARCHITECTURE §11, measured by the DM on the reference notebook
+- **Notes:** From the DM interview (2026-11-22). Animation time is injected (frozen for screenshots). Reduced motion (OS setting) starts with a low Bewegung.
+
+### T-246 Fog spreads at a speed with a ragged front
+
+- **Status:** todo · **Depends on:** T-245 · **Refs:** SPEC §4, ARCHITECTURE §8, ADR-0019
+- A fog change spreads at a **speed in grid cells per second** (Nebel ribbon, per device, up to "Sofort") instead of over a fixed duration, so a large area takes longer than a small one. The front is ragged: distances run through a noise cost field seeded per map (deterministic). Each spot turns over in a **Übergang** time (settings dialog, per device, 0.1–3 s), which replaces the fade duration of T-136b; the stored device value is read as the transition. The three directions of T-167 stay.
+- **Acceptance criteria**
+  - [ ] Spread order with the cost field: the three directions of T-167 still hold, the front is ragged, the result is deterministic for a map (unit tests of the pure function)
+  - [ ] Duration follows size and speed; "Sofort" switches at once (unit + screenshot tests)
+  - [ ] Fail-closed as in T-167: a pixel fogged before and after a change never shows the map; the first fog and a new map never animate
+  - [ ] Speed in the ribbon, Übergang in the settings dialog, both per device (component tests)
+  - [ ] The benchmark scene stays within ARCHITECTURE §11, measured by the DM
+- **Notes:** From the DM interview (2026-11-22).
+
+### T-247 Lasso and ellipse fog tools
+
+- **Status:** todo · **Depends on:** T-131 · **Refs:** SPEC §4, ADR-0011, ADR-0019
+- New fog shapes in the Form group: **Ellipse** (replaces Kreis; Shift draws a circle) and **Lasso** (freehand, closed on release). Both become polygons in map pixels through `core`, also with the view turned; preview drawn in screen space like the other shapes.
+- **Acceptance criteria**
+  - [ ] Ellipse and lasso produce polygons in map pixels, also with the view rotated (unit tests in `core` / `fog-shapes`)
+  - [ ] Drawing, preview and Shift-circle (component tests); reveal and hide with both (E2E)
+  - [ ] Keyboard shortcuts and translated labels; Kreis is gone from the ribbon
+- **Notes:** From the DM interview (2026-11-22).
+
+### T-168 Fog biomes per map
+
+- **Status:** todo · **Depends on:** T-245, T-134b, T-160a · **Refs:** SPEC §4, ARCHITECTURE §8, §11, ADR-0019
+- Eight biomes (ADR-0019, DM decision 2026-11-22, replacing the first set of 2026-11-19): Bodennebel, Schneesturm, Hitzeflimmern, Glutasche, Sumpfmiasma, Seenebel, Arkaner Dunst, Finsternis – each with colours, wind and streaks, particles (snow, embers, motes, sand) and underglow, plus a **strength**. The map's sidecar holds the default; a live change during play is stored as an optional field in the scene; "reset scene" takes the map's setting again. Biome picker and strength in the Nebel ribbon. Heat shimmer moves the fog and its edge only, never the map. Changing the biome blends over. GPU only.
+- **Acceptance criteria**
+  - [ ] Biome and strength in the sidecar and as a scene override, both optional and additive (format shown to the DM first; schema + storage tests)
+  - [ ] Each biome animates without making fog transparent; particles drift over the revealed side only next to the edge (pixel and screenshot tests)
+  - [ ] Ribbon picker and strength change the open scene live, also on the TV (component + E2E tests)
+  - [ ] The benchmark scene with each biome stays within ARCHITECTURE §11, measured by the DM
+- **Notes:** From the DM (2026-11-19); reworked in the DM interview (2026-11-22). How the DM sets a map's default from the DM window (e.g. "Als Kartenstandard übernehmen") is settled in this task's plan. Likely above 400 changed lines – the DM chose all eight biomes at once.
+
+### T-248 Hide fog in the DM window
+
+- **Status:** todo · **Depends on:** T-245 · **Refs:** SPEC §4, ADR-0019
+- "Nebel ausblenden" in the Nebel ribbon and key N fade the fog out (and back in) in the DM window only, so the DM can work on the map. The TV and companions never change through it.
+- **Acceptance criteria**
+  - [ ] The toggle fades the DM view's fog; the player view's projection and fog stay unchanged (component test against the player feed)
+  - [ ] Key N and a pressed toggle state; translated label (component + E2E tests)
+- **Notes:** From the DM interview (2026-11-22).
 
 ### T-135 Selectable scene transitions
 
