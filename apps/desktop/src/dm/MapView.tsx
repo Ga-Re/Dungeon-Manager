@@ -65,14 +65,19 @@ export type MapTool = "pan" | "reveal" | "hide";
 
 /**
  * Grid calibration in the Map Forge (T-177): `box` drags a square over `cells` × `cells` cells
- * of the printed grid; `move` drags the grid; arrow keys move it by a pixel (Shift: ten). It
- * replaces the other tools while set; points and distances are in map pixels.
+ * of the printed grid; `move` drags the grid; arrow keys move it by a pixel (Shift: ten) in
+ * the screen's direction. It replaces the other tools while set; points and distances are in
+ * map pixels.
  */
 export interface MapCalibration {
   readonly mode: "box" | "move";
   readonly cells: number;
   readonly onBox: (a: Point, b: Point) => void;
+  /** An arrow key's step. */
   readonly onShift: (dx: number, dy: number) => void;
+  /** A grid drag begins; each `onDrag` then gives the whole way since its start. */
+  readonly onDragStart: () => void;
+  readonly onDrag: (dx: number, dy: number) => void;
 }
 
 /** The DM sees fog, but must see what lies beneath it. */
@@ -215,7 +220,11 @@ export function MapView({
     readonly start: Point;
     readonly end: Point;
   } | null>(null);
-  const calibDrag = useRef<Point | null>(null);
+  const calibDrag = useRef<{
+    readonly pointerId: number;
+    readonly start: Point;
+  } | null>(null);
+  const calibPointer = useRef<number | null>(null);
   // Grid lines in the DM's view: on by default, switched in the dock (T-106b).
   const [showGrid, setShowGrid] = useState(true);
   const gridNow = useRef<GridCalibration | null>(null);
@@ -611,9 +620,18 @@ export function MapView({
     if (event.button !== 0) return;
     const point = local(event);
     if (calibration) {
+      // One pointer at a time: a second touch neither ends nor skews the gesture.
+      if (calibPointer.current !== null) return;
       event.currentTarget.setPointerCapture(event.pointerId);
-      if (calibration.mode === "box") setCalibBox({ start: point, end: point });
-      else calibDrag.current = onMapPoint(point);
+      calibPointer.current = event.pointerId;
+      if (calibration.mode === "box") {
+        setCalibBox({ start: point, end: point });
+        return;
+      }
+      const start = onMapPoint(point);
+      if (!start) return;
+      calibDrag.current = { pointerId: event.pointerId, start };
+      calibration.onDragStart();
       return;
     }
     if (tool !== "pan" && shape === "polygon") {
@@ -641,13 +659,13 @@ export function MapView({
   const onPointerMove = (event: PointerEvent) => {
     const point = local(event);
     if (calibration) {
+      if (event.pointerId !== calibPointer.current) return;
       if (calibBox) setCalibBox({ start: calibBox.start, end: point });
-      const last = calibDrag.current;
-      const now = last ? onMapPoint(point) : null;
-      if (last && now) {
-        calibDrag.current = now;
-        calibration.onShift(now.x - last.x, now.y - last.y);
-      }
+      const dragging = calibDrag.current;
+      const now = dragging ? onMapPoint(point) : null;
+      // The whole way since the press: a move is never lost, however fast they come.
+      if (dragging && now)
+        calibration.onDrag(now.x - dragging.start.x, now.y - dragging.start.y);
       return;
     }
     const press = tokenPress.current;
@@ -703,6 +721,8 @@ export function MapView({
   };
   const onPointerUp = (event: PointerEvent) => {
     if (calibration) {
+      if (event.pointerId !== calibPointer.current) return;
+      calibPointer.current = null;
       calibDrag.current = null;
       const box = calibBox;
       setCalibBox(null);
@@ -760,6 +780,7 @@ export function MapView({
   const onPointerCancel = () => {
     setCalibBox(null);
     calibDrag.current = null;
+    calibPointer.current = null;
     tokenPress.current = null;
     emptyPress.current = null;
     setDragShift(null);
@@ -773,7 +794,15 @@ export function MapView({
     }
     const nudge = calibration ? arrowDirection(event.key) : null;
     const view = sizeNow.current;
-    if (calibration && nudge && camera && view && !event.ctrlKey) {
+    if (
+      calibration &&
+      nudge &&
+      camera &&
+      view &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
       event.preventDefault();
       // The arrow's direction on screen, as a step of 1 (Shift: 10) map pixels.
       const centreAt = centre(view);
@@ -862,7 +891,11 @@ export function MapView({
         role="application"
         aria-label={t("mapView.label", { name: label })}
         aria-describedby={
-          tool === "pan" ? "map-view-help" : "map-view-help map-view-hint"
+          calibration
+            ? "map-view-calibration-hint"
+            : tool === "pan"
+              ? "map-view-help"
+              : "map-view-help map-view-hint"
         }
         tabIndex={0}
         onPointerDown={onPointerDown}
@@ -919,7 +952,14 @@ export function MapView({
         {t("mapView.help")}
       </p>
       <ShellPortal slot="notices">
-        {tool !== "pan" && (
+        {calibration && (
+          <p id="map-view-calibration-hint" className="map-view-hint">
+            {t(`forge.calibration.hint.${calibration.mode}`, {
+              cells: calibration.cells,
+            })}
+          </p>
+        )}
+        {!calibration && tool !== "pan" && (
           <p id="map-view-hint" className="map-view-hint">
             {t(`fog.shapeHints.${shape}`)}
           </p>

@@ -38,7 +38,26 @@ export interface CalibrationChoice {
 }
 
 /** A calibrated value as the field shows it: at most two decimals. */
-const shown = (value: number) => String(Math.round(value * 100) / 100);
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
+/** An offset as shown: rounded, and one a hair short of a whole cell shown as 0. */
+const shownOffset = (offset: number, cell: number) => {
+  const rounded = round2(offset);
+  return String(rounded >= round2(cell) ? 0 : rounded);
+};
+
+/** The grid the fields describe, other grid fields from `stored`; `null` while invalid. */
+function gridOf(values: Values, stored: Grid): Grid | null {
+  const cellSizePx = numberOf(values.cellSizePx);
+  const offsetXPx = numberOf(values.offsetXPx);
+  const offsetYPx = numberOf(values.offsetYPx);
+  return cellSizePx !== null &&
+    cellSizePx > 0 &&
+    offsetXPx !== null &&
+    offsetYPx !== null
+    ? { ...stored, cellSizePx, offsetXPx, offsetYPx }
+    : null;
+}
 
 /** A finite number from a field, or `null`. */
 function numberOf(text: string): number | null {
@@ -61,6 +80,7 @@ export function MapDataEditor({
   onSaved,
   proposal,
   onPreview,
+  onTyped,
   calibration,
   onCalibration,
 }: {
@@ -74,6 +94,11 @@ export function MapDataEditor({
   readonly proposal: { readonly grid: Grid; readonly seq: number } | null;
   /** The grid the fields describe (`null` while invalid), shown on the map as a preview. */
   readonly onPreview: (grid: Grid | null) => void;
+  /**
+   * The grid typed into the fields, right as it is typed (`null` while invalid, the stored one
+   * after Verwerfen as `undefined`): what a grid drag or an arrow key starts from.
+   */
+  readonly onTyped: (grid: Grid | null | undefined) => void;
   readonly calibration: CalibrationChoice;
   readonly onCalibration: (choice: CalibrationChoice) => void;
 }) {
@@ -104,9 +129,9 @@ export function MapDataEditor({
     setProposed(proposal.seq);
     setValues({
       ...values,
-      cellSizePx: shown(proposal.grid.cellSizePx),
-      offsetXPx: shown(proposal.grid.offsetXPx),
-      offsetYPx: shown(proposal.grid.offsetYPx),
+      cellSizePx: String(round2(proposal.grid.cellSizePx)),
+      offsetXPx: shownOffset(proposal.grid.offsetXPx, proposal.grid.cellSizePx),
+      offsetYPx: shownOffset(proposal.grid.offsetYPx, proposal.grid.cellSizePx),
     });
   }
 
@@ -122,13 +147,7 @@ export function MapDataEditor({
     (values.biome === "" ||
       (strength !== null && strength >= 0 && strength <= 100));
 
-  const previewGrid =
-    cellSizePx !== null &&
-    cellSizePx > 0 &&
-    offsetXPx !== null &&
-    offsetYPx !== null
-      ? { ...base.grid, cellSizePx, offsetXPx, offsetYPx }
-      : null;
+  const previewGrid = gridOf(values, base.grid);
   const previewKey = JSON.stringify(previewGrid);
   useEffect(() => {
     onPreview(JSON.parse(previewKey) as Grid | null);
@@ -136,6 +155,7 @@ export function MapDataEditor({
 
   const discard = () => {
     setValues(valuesOf(base));
+    onTyped(undefined);
     setProblem("");
     onCalibration({ ...calibration, mode: null });
   };
@@ -209,7 +229,9 @@ export function MapDataEditor({
         min={min}
         value={values[key]}
         onChange={(event) => {
-          setValues({ ...values, [key]: event.target.value });
+          const next = { ...values, [key]: event.target.value };
+          setValues(next);
+          onTyped(gridOf(next, base.grid));
         }}
       />
     </div>
@@ -267,13 +289,6 @@ export function MapDataEditor({
           ))}
         </select>
       </div>
-      {calibration.mode && (
-        <p className="dm-catalog-notice">
-          {t(`forge.calibration.hint.${calibration.mode}`, {
-            cells: calibration.cells,
-          })}
-        </p>
-      )}
       {field("cellSizePx", 1)}
       {field("offsetXPx")}
       {field("offsetYPx")}

@@ -108,22 +108,25 @@ export function MapForge({
     readonly grid: Grid;
     readonly seq: number;
   } | null>(null);
-  const [preview, setPreviewState] = useState<Grid | null>(null);
-  // The latest grid, also between renders: a fast grid drag adds up every move.
-  const gridNow = useRef<Grid | null>(null);
-  const setPreview = useCallback((grid: Grid | null) => {
-    gridNow.current = grid;
-    setPreviewState(grid);
-  }, []);
+  const [preview, setPreview] = useState<Grid | null>(null);
+  // What a grid drag or an arrow key starts from, known at once (not one render later): the
+  // last calibrated or typed grid, "invalid" while the fields are, `null` for the stored one.
+  const gridNow = useRef<Grid | "invalid" | null>(null);
+  // A grid drag moves the grid it started from by the whole way since its start.
+  const dragBase = useRef<Grid | null>(null);
   useEffect(() => {
     setCalibration((current) => ({ ...current, mode: null }));
     setProposal(null);
     setPreview(null);
-  }, [path, setPreview]);
+    gridNow.current = null;
+  }, [path]);
   const propose = useCallback((grid: Grid | null) => {
     if (!grid) return;
     gridNow.current = grid;
     setProposal((current) => ({ grid, seq: (current?.seq ?? 0) + 1 }));
+  }, []);
+  const onTyped = useCallback((grid: Grid | null | undefined) => {
+    gridNow.current = grid === undefined ? null : (grid ?? "invalid");
   }, []);
   if (!shown) return null;
   if (path === null)
@@ -220,8 +223,18 @@ export function MapForge({
                       gridFromBox([a.x, a.y], [b.x, b.y], calibration.cells),
                     );
                   },
+                  // While the fields are invalid, moving would silently replace what is typed.
                   onShift: (dx, dy) => {
-                    propose(shiftGrid(gridNow.current ?? data.grid, dx, dy));
+                    const from = gridNow.current ?? data.grid;
+                    if (from !== "invalid") propose(shiftGrid(from, dx, dy));
+                  },
+                  onDragStart: () => {
+                    const from = gridNow.current ?? data.grid;
+                    dragBase.current = from === "invalid" ? null : from;
+                  },
+                  onDrag: (dx, dy) => {
+                    if (dragBase.current)
+                      propose(shiftGrid(dragBase.current, dx, dy));
                   },
                 }
               : null
@@ -260,6 +273,7 @@ export function MapForge({
                 onSaved={loaded.reload}
                 proposal={proposal}
                 onPreview={setPreview}
+                onTyped={onTyped}
                 calibration={calibration}
                 onCalibration={setCalibration}
               />

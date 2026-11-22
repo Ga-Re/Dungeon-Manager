@@ -445,6 +445,96 @@ describe("MapView", () => {
     expect([Math.min(...ys), Math.max(...ys)]).toEqual([200, 600]);
   });
 
+  test("calibration on a turned view: a square box, drags and arrow keys in map pixels (T-177)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    const calibration = {
+      mode: "box" as const,
+      cells: 3,
+      onBox: vi.fn(),
+      onShift: vi.fn(),
+      onDragStart: vi.fn(),
+      onDrag: vi.fn(),
+    };
+    const { rerender } = renderView(fake.service, {
+      tool: "hide",
+      onArea,
+      calibration,
+    });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    fireEvent.keyDown(area(), { key: "t" });
+    expect(fake.camera()?.rotation).toBe(90);
+
+    // Escape cancels a box; a second pointer neither ends nor skews it.
+    const press = (pointerId: number, x: number, y: number) => {
+      fireEvent.pointerDown(area(), {
+        button: 0,
+        clientX: x,
+        clientY: y,
+        pointerId,
+      });
+    };
+    press(1, 300, 100);
+    fireEvent.pointerMove(area(), { clientX: 500, clientY: 250, pointerId: 1 });
+    fireEvent.keyDown(area(), { key: "Escape" });
+    fireEvent.pointerUp(area(), { clientX: 500, clientY: 250, pointerId: 1 });
+    expect(calibration.onBox).not.toHaveBeenCalled();
+
+    press(1, 300, 100);
+    press(2, 50, 50);
+    fireEvent.pointerMove(area(), { clientX: 60, clientY: 60, pointerId: 2 });
+    fireEvent.pointerUp(area(), { clientX: 60, clientY: 60, pointerId: 2 });
+    expect(calibration.onBox).not.toHaveBeenCalled();
+    // A box 200 × 150 px on screen is dragged square: 200 × 200 px, 400 map px at zoom 0.5.
+    fireEvent.pointerMove(area(), { clientX: 500, clientY: 250, pointerId: 1 });
+    fireEvent.pointerUp(area(), { clientX: 500, clientY: 250, pointerId: 1 });
+    const [a, b] = calibration.onBox.mock.calls[0] as [
+      { x: number; y: number },
+      { x: number; y: number },
+    ];
+    expect(Math.abs(b.x - a.x)).toBeCloseTo(400);
+    expect(Math.abs(b.y - a.y)).toBeCloseTo(400);
+    // The same map rectangle as the fog test's turned view (screen x runs along map y).
+    expect([Math.min(a.x, b.x), Math.max(a.x, b.x)]).toEqual([600, 1000]);
+    expect([Math.min(a.y, b.y), Math.max(a.y, b.y)]).toEqual([200, 600]);
+    // Calibrating takes the map's pointer input: no fog was marked.
+    expect(onArea).not.toHaveBeenCalled();
+
+    // Moving the grid: the whole way since the press, in map pixels.
+    rerender(
+      tree(fake.service, undefined, {
+        tool: "hide",
+        onArea,
+        calibration: { ...calibration, mode: "move" },
+      }),
+    );
+    press(1, 100, 100);
+    expect(calibration.onDragStart).toHaveBeenCalledTimes(1);
+    fireEvent.pointerMove(area(), { clientX: 150, clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(area(), { clientX: 200, clientY: 100, pointerId: 1 });
+    fireEvent.pointerUp(area(), { clientX: 200, clientY: 100, pointerId: 1 });
+    const [dx, dy] = calibration.onDrag.mock.calls.at(-1) as [number, number];
+    expect(dx).toBeCloseTo(0);
+    expect(Math.abs(dy)).toBeCloseTo(200);
+
+    // Arrow keys move it in the screen's direction: right on screen is along map y here,
+    // the same way the drag to the right went; Shift moves ten pixels.
+    fireEvent.keyDown(area(), { key: "ArrowRight" });
+    fireEvent.keyDown(area(), { key: "ArrowRight", shiftKey: true });
+    fireEvent.keyDown(area(), { key: "ArrowRight", altKey: true });
+    expect(calibration.onShift).toHaveBeenCalledTimes(2);
+    const [[x1, y1], [x10, y10]] = calibration.onShift.mock.calls as [
+      [number, number],
+      [number, number],
+    ];
+    expect(x1).toBeCloseTo(0);
+    expect(y1).toBeCloseTo(Math.sign(dy));
+    expect(x10).toBeCloseTo(0);
+    expect(y10).toBeCloseTo(10 * Math.sign(dy));
+  });
+
   test("a video map lies under its own canvas and is released with the view", async () => {
     const fake = fakeMapService(() => Promise.resolve(image));
     const { unmount } = renderView(fake.service, { kind: "video", fog: [] });

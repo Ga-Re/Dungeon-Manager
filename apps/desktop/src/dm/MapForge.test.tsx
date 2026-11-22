@@ -18,7 +18,8 @@ import { ActiveWorkspaceContext, type Workspace } from "./shell/workspace.js";
 // The Map Forge's document (T-176a): a library map opened without a scene.
 
 // jsdom has no renderer: the map view is a stand-in that shows the grid it gets and plays the
-// DM's calibration gestures (T-177). MapView's own pointer and key handling is in the E2E test.
+// DM's calibration gestures (T-177). MapView's own pointer and key handling is tested in
+// MapView.test.tsx (also on a turned view) and the E2E test.
 const view = vi.hoisted(() => ({
   calibration: null as MapCalibration | null,
 }));
@@ -199,9 +200,6 @@ describe("MapForge", () => {
     expect(view.calibration).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Box aufziehen" }));
     expect(view.calibration?.mode).toBe("box");
-    expect(
-      screen.getByText(/Ziehe auf der Karte ein Quadrat über 3 × 3/),
-    ).toBeTruthy();
 
     act(() => {
       view.calibration?.onBox({ x: 130, y: 250 }, { x: 430, y: 550 });
@@ -247,18 +245,40 @@ describe("MapForge", () => {
     fireEvent.click(screen.getByRole("button", { name: "Raster verschieben" }));
     expect(view.calibration?.mode).toBe("move");
     act(() => {
-      // Two moves before the next render: neither is lost.
-      view.calibration?.onShift(10, 0);
-      view.calibration?.onShift(10, -5);
+      // A drag reports its whole way since the press; arrow keys add up step by step, also
+      // before the next render.
+      view.calibration?.onDragStart();
+      view.calibration?.onDrag(10, 0);
+      view.calibration?.onDrag(20, -5);
+      view.calibration?.onShift(1, 0);
+      view.calibration?.onShift(1, 0);
     });
     expect(
       screen.getByLabelText<HTMLInputElement>("Versatz waagerecht (Pixel)")
         .value,
-    ).toBe("20");
+    ).toBe("22");
     expect(
       screen.getByLabelText<HTMLInputElement>("Versatz senkrecht (Pixel)")
         .value,
     ).toBe("145");
+  });
+
+  test("while a grid field is invalid, moving the grid does not replace what is typed", async () => {
+    renderForge({ [SIDECAR]: sidecar({}) });
+    const cell =
+      await screen.findByLabelText<HTMLInputElement>("Zellgröße (Pixel)");
+    fireEvent.click(screen.getByRole("button", { name: "Raster verschieben" }));
+    fireEvent.change(cell, { target: { value: "" } });
+    act(() => {
+      view.calibration?.onShift(5, 0);
+      view.calibration?.onDragStart();
+      view.calibration?.onDrag(30, 0);
+    });
+    expect(cell.value).toBe("");
+    expect(
+      screen.getByLabelText<HTMLInputElement>("Versatz waagerecht (Pixel)")
+        .value,
+    ).toBe("0");
   });
 
   test("Verwerfen takes the stored grid back and ends calibrating", async () => {

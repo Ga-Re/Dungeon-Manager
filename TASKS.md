@@ -1245,6 +1245,14 @@ New tasks discovered during work are appended to the right stage with status `to
 - DM decisions (2026-11-22): the box is always square while dragged; its cell count is chosen (1–10, 3 by default); the result is a preview in the grid fields until "Kartendaten speichern", "Verwerfen" takes it back; fine adjustment by arrow keys (1 px, Shift 10 px), by dragging the grid and in the number fields.
 - **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
 
+### T-251 Pan the map while calibrating its grid
+
+- **Status:** todo · **Depends on:** T-177 · **Refs:** SPEC §2.5
+- While calibrating (T-177) the map's drag and arrow keys calibrate, so the DM reaches a far part of the map only by zooming or leaving calibration. Offer panning meanwhile, e.g. with the middle mouse button or Space+drag.
+- **Acceptance criteria**
+  - [ ] The map can be panned without leaving calibration (component test)
+- **Notes:** From the T-177 review (2026-11-22).
+
 ### T-192 Crop, rotation and image adjustment of maps
 
 - **Status:** todo · **Depends on:** T-176a · **Refs:** SPEC §2.5
