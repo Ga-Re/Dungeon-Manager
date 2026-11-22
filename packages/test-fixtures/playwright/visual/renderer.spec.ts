@@ -72,6 +72,16 @@ for (const scenario of [
   });
 }
 
+// "Sofort" without a transition (T-246): the change is complete in its first frame.
+test("fog change at Sofort switches at once", async ({ page }) => {
+  await page.goto(`${fixturePage("renderer.html")}#spread-instant`);
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true");
+  await expect(body).toHaveAttribute("data-spread-start", "open");
+  await expect(body).toHaveAttribute("data-spread-end", "open");
+  await expect(page).toHaveScreenshot("spread-instant.png");
+});
+
 // Grid lines (T-106b): over the map in the DM view, also zoomed and rotated; under the fog in
 // the player view, so hidden areas stay black, lines included.
 for (const scenario of ["grid", "grid-zoomed", "grid-rotated", "player-grid"]) {

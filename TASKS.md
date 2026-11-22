@@ -1032,8 +1032,8 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] Speed in the ribbon, Übergang in the settings dialog, both per device (component tests)
   - [ ] The benchmark scene stays within ARCHITECTURE §11, measured by the DM
 - **Notes:** From the DM interview (2026-11-22).
-- DM decisions (2026-11-22): Übergang keeps 0–3 s (0 with "Sofort" switches at once, as the fade duration 0 did); the speed is 5 cells per second by default, 0.5–40 on a logarithmic slider plus "Sofort".
-- Done in T-246: `spreadAtSpeed`, `raggedWeights` and speed timing in `fog-spread.ts`; the fade and living shaders take the spread's shares as uniforms; the speed slider sits in the Nebel ribbon (group Ausbreitung), the transition in the settings dialog. Without a speed (the harness's older scenarios) a change spreads as in T-167. The benchmark criterion stays open until the DM has measured it.
+- DM decisions (2026-11-22): Übergang keeps 0–3 s (0 with "Sofort" switches at once, as the fade duration 0 did); the speed is 5 cells per second by default, 21 steps from 0.5 to 40 plus "Sofort".
+- Done in T-246: `spreadAtSpeed`, `raggedWeights` and speed timing in `fog-spread.ts`; the fade and living shaders take the spread's shares as uniforms; the speed slider sits in the Nebel ribbon (group Ausbreitung), the transition in the settings dialog. Without a speed (the harness's older scenarios) a change spreads as in T-167. From the review: a new scene or level never spreads (the TV passes no speed then), the speed is not part of the fog's rebuild key, the travel time follows the path the ragged front actually takes, and the seed comes from the map's path. The benchmark criterion stays open until the DM has measured it.
 
 ### T-247 Lasso and ellipse fog tools
 

@@ -72,6 +72,8 @@ export interface FogOptions {
   readonly speed?: {
     readonly cellsPerSecond: number;
     readonly cellSizePx: number;
+    /** The same for the same map (e.g. from its path), so its fronts look alike; by size if none. */
+    readonly seed?: number;
   };
   /**
    * Living fog (T-245, ADR-0019): the fog drifts and its edge wobbles, only ever into revealed
@@ -501,13 +503,16 @@ export async function createRenderer(
           ),
         }
       : fogMask(previous.revealed, mapSize, maskEdge(previous.options));
+    // "Sofort" turns everything over together: no order to build.
     const order = coarseSpreadOrder(
       gridOf(from),
       gridOf(to),
-      speed && {
-        cellsPerTexel: to.texel / speed.cellSizePx,
-        seed: mapSeed(mapSize),
-      },
+      speed && spreads
+        ? {
+            cellsPerTexel: to.texel / speed.cellSizePx,
+            seed: speed.seed ?? mapSeed(mapSize),
+          }
+        : undefined,
     );
     const timing = speed
       ? spreadAtSpeed(
@@ -567,6 +572,8 @@ export async function createRenderer(
           {
             ...fogInput.options,
             fade: undefined,
+            // How fast a change travels is how to get there too (T-246).
+            speed: undefined,
             // The drift's speed is read every frame; changing it rebuilds nothing.
             living: fogInput.options.living && {
               ...fogInput.options.living,
@@ -996,7 +1003,7 @@ function fadeMix(fade: Fade, at: number): number {
   return fade.eased ? easeOut(progress) : progress;
 }
 
-/** The same seed for the same map size: a map's ragged fronts look the same every time. */
+/** A seed from the map's size, when the caller gives none. */
 function mapSeed(map: Size): number {
   return (
     (Math.imul(Math.round(map.width), 73856093) ^

@@ -155,15 +155,29 @@ export function spreadTiming(
   // below for reveals: middle first).
   for (const index of edges)
     if (!sourced.has(component[index] ?? 0)) seeds.push(index);
-  const distance = distances(width, height, component, seeds, weights);
+  const { distance, plain } = distances(
+    width,
+    height,
+    component,
+    seeds,
+    weights,
+  );
   const longest = new Map<number, number>();
+  // The texel reached last (by cost) and how long its path is in plain steps: the front travels
+  // that far in the spread's time, so the set speed holds along it.
+  let overall = 0;
+  let overallPlain = 0;
   for (let index = 0; index < count; index++) {
     if (kind[index] === UNCHANGED) continue;
     const label = component[index] ?? 0;
-    longest.set(label, Math.max(longest.get(label) ?? 0, distance[index] ?? 0));
+    const own = distance[index] ?? 0;
+    longest.set(label, Math.max(longest.get(label) ?? 0, own));
+    if (own > overall) {
+      overall = own;
+      overallPlain = plain[index] ?? 0;
+    }
   }
   // At a speed every change is timed against the longest one, so a small one finishes first.
-  const overall = Math.max(0, ...longest.values());
   const order = new Uint8Array(count);
   for (let index = 0; index < count; index++) {
     if (kind[index] === UNCHANGED) continue;
@@ -193,21 +207,8 @@ export function spreadTiming(
   }
   return {
     order: padded,
-    longest: overall / (STRAIGHT * meanWeight(weights, kind)),
+    longest: overallPlain / STRAIGHT,
   };
-}
-
-/** The mean cost of the changed texels (1 without weights): distances in plain steps. */
-function meanWeight(weights: Uint8Array | undefined, kind: Uint8Array): number {
-  if (!weights) return 1;
-  let sum = 0;
-  let count = 0;
-  for (let index = 0; index < kind.length; index++) {
-    if (kind[index] === UNCHANGED) continue;
-    sum += weights[index] ?? 1;
-    count++;
-  }
-  return count > 0 ? sum / count : 1;
 }
 
 /** Costs of the ragged front: 1 (fast) … {@link RAGGED_MAX} (slow). */
@@ -469,7 +470,9 @@ function labelComponents(
 
 /**
  * Chamfer distance from the nearest seed, walking only within each seed's own change (a
- * Dijkstra over integer steps with a bucket queue: linear in the changed texels).
+ * Dijkstra over integer steps with a bucket queue: linear in the changed texels). With
+ * `weights`, steps cost more on slow texels; `plain` is the length of each texel's path in
+ * unweighted chamfer steps.
  */
 function distances(
   width: number,
@@ -477,8 +480,9 @@ function distances(
   component: Int32Array,
   seeds: readonly number[],
   weights?: Uint8Array,
-): Int32Array {
+): { readonly distance: Int32Array; readonly plain: Int32Array } {
   const distance = new Int32Array(width * height).fill(-1);
+  const plain = new Int32Array(width * height);
   const around = new Int32Array(8);
   const steps = new Int32Array(8);
   const buckets: number[][] = [[...seeds]];
@@ -508,9 +512,10 @@ function distances(
         const known = distance[neighbour] ?? -1;
         if (known !== -1 && known <= reached) continue;
         distance[neighbour] = reached;
+        plain[neighbour] = (plain[index] ?? 0) + (steps[k] ?? 0);
         (buckets[reached] ??= []).push(neighbour);
       }
     }
   }
-  return distance;
+  return { distance, plain };
 }

@@ -59,15 +59,20 @@ export interface FogLook {
 }
 
 /**
- * The spread's speed (DM decisions, 2026-11-22): 0.5 … 40 grid cells per second on a
- * logarithmic slider whose last step is "Sofort"; 5 by default.
+ * The spread's speeds in grid cells per second (DM decisions, 2026-11-22): 0.5 … 40 in roughly
+ * even ratios, 5 by default; the slider's step after the last is "Sofort".
  */
+const SPEEDS = [
+  0.5, 0.6, 0.7, 0.8, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25,
+  30, 40,
+] as const;
+
 export const FOG_SPEED = {
-  min: 0.5,
-  max: 40,
+  min: SPEEDS[0],
+  max: SPEEDS[20],
   default: 5,
-  /** Slider steps; the last one is "Sofort". */
-  steps: 40,
+  /** The slider's last step, "Sofort". */
+  steps: SPEEDS.length,
 } as const;
 
 /** Soft edges on unless switched off on this device (DM request: no hard edges). */
@@ -214,21 +219,20 @@ function saveItem(
 /** The spread's speed for a slider position 0 … `FOG_SPEED.steps` (the last is "Sofort"). */
 export function speedOfStep(step: number): number {
   if (step >= FOG_SPEED.steps) return Infinity;
-  const share = Math.max(0, step) / (FOG_SPEED.steps - 1);
-  const speed = FOG_SPEED.min * (FOG_SPEED.max / FOG_SPEED.min) ** share;
-  // Readable values: two significant digits (0.56, 2.5, 18).
-  return Number(speed.toPrecision(2));
+  return SPEEDS[Math.max(0, Math.round(step))] ?? FOG_SPEED.default;
 }
 
-/** The slider position nearest to `speed`. */
+/** The slider position nearest to `speed` (by ratio). */
 export function stepOfSpeed(speed: number): number {
   if (!Number.isFinite(speed)) return FOG_SPEED.steps;
-  const clamped = Math.min(FOG_SPEED.max, Math.max(FOG_SPEED.min, speed));
-  return Math.round(
-    (Math.log(clamped / FOG_SPEED.min) /
-      Math.log(FOG_SPEED.max / FOG_SPEED.min)) *
-      (FOG_SPEED.steps - 1),
-  );
+  let best = 0;
+  SPEEDS.forEach((each, step) => {
+    const nearer =
+      Math.abs(Math.log(each / speed)) <
+      Math.abs(Math.log((SPEEDS[best] ?? each) / speed));
+    if (nearer) best = step;
+  });
+  return best;
 }
 
 /** The spread's speed on this device: 5 cells per second unless chosen. */
@@ -252,12 +256,31 @@ export function saveFogSpeed(
   );
 }
 
-/** The spread for a map with `cellSizePx` cells, as the renderer takes it (T-246). */
+/**
+ * The spread for the map at `mapPath` with `cellSizePx` cells, as the renderer takes it
+ * (T-246): seeded by the map's path, so a map's ragged fronts look the same in the DM window
+ * and on the TV, every time.
+ */
 export function fogSpeed(
   look: FogLook,
   cellSizePx: number,
-): { readonly cellsPerSecond: number; readonly cellSizePx: number } {
-  return { cellsPerSecond: look.speed, cellSizePx };
+  mapPath: string,
+): {
+  readonly cellsPerSecond: number;
+  readonly cellSizePx: number;
+  readonly seed: number;
+} {
+  return { cellsPerSecond: look.speed, cellSizePx, seed: seedOf(mapPath) };
+}
+
+/** FNV-1a of `text`: a stable number for a map's path. */
+function seedOf(text: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash | 0;
 }
 
 /** All settings at once. */
