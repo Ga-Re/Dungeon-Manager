@@ -959,6 +959,24 @@ button.dm-map-tile[aria-pressed="true"] {
   background: var(--dm-accent-soft);
 }
 
+/* T-176a: the Map Forge's document. */
+.dm-forge-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  margin: 0;
+  color: var(--dm-text-muted);
+}
+
+.dm-forge-details {
+  display: grid;
+  gap: var(--dm-space-4);
+}
+
+.dm-forge-details input[type="number"] {
+  width: 100%;
+}
+
 /* T-125: a catalog item's name and origin/license in the Eigenschaften panel. */
 .dm-item-info {
   display: grid;

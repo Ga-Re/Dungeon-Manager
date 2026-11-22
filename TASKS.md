@@ -1216,21 +1216,28 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Closing waits for a pending save and asks only if it fails; nothing is lost silently (component + E2E test)
 - **Notes:** From the T-223b review (2026-11-20). Proposal for the DM before building: wait for the write (usually milliseconds) instead of closing at once – this keeps "asks only after a failed save".
 
-### T-176 Map Forge: open and edit library maps
+### T-176a Map Forge: open a library map and edit its metadata
 
-- **Status:** todo · **Depends on:** T-124, T-134b, T-172a · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
-- The Map Forge opens a map from the library (data panel) as its document, without a scene. Ribbon tabs for the map's data; the browser lists levels, rooms, masks and props. First content: map metadata (name, cell size, ambient sound, transition, fog effect) in the sidecar.
+- **Status:** done · **Depends on:** T-124, T-125, T-134b, T-172a · **Refs:** SPEC §2.5, §8, ADR-0012, ADR-0017
+- The Map Forge opens a map from the library (data panel) as its document, without a scene: the map large with its grid, the browser lists its levels and rooms, the Eigenschaften panel edits its metadata in the sidecar – name and origin/license (T-125), cell size and offset, and the default fog biome (`fogEffect`, read by every scene since T-168).
 - **Acceptance criteria**
-  - [ ] The map library is organised in folders (an imported pack keeps its structure) and tags, with search
-  - [ ] Open a library map and edit its metadata; saved in its sidecar (component + E2E test)
-  - [ ] An edit reaches a scene live on the TV only after the DM confirms (ADR-0012)
-- **Notes:** From the workspace interview with the DM (2026-11-20, ADR-0017).
-- From T-168 (DM decision 2026-11-22): the map's default fog biome (`fogEffect` in the sidecar, already read by every scene) is set here; until then the DM picks the biome live per scene in the Nebel ribbon.
-- Deepening (DM interview, 2026-11-20): the first stage of the Map Forge is import and management (folders + tags), metadata, the 3×3 calibration (T-177), adding levels (T-118d), crop and image adjustment (T-192) and rooms for the fog (T-108c); walls and vision follow in stage 5.
+  - [x] Open a library map from the catalog (double-click, context menu, button in Eigenschaften); the Map Forge shows it as its document
+  - [x] Edit its metadata; saved in its sidecar (component + E2E test)
+  - [x] An edit reaches a scene live on the TV only after the DM confirms (ADR-0012, existing T-134b mechanism)
+- **Notes:** Split from T-176 (DM decision 2026-11-22). From the workspace interview with the DM (2026-11-20, ADR-0017). Deepening (DM interview, 2026-11-20): the first stage of the Map Forge is import and management (folders + tags), metadata, the 3×3 calibration (T-177), adding levels (T-118d), crop and image adjustment (T-192) and rooms for the fog (T-108c); walls and vision follow in stage 5.
+
+### T-176b Map Forge: library organisation, ambient sound and transition
+
+- **Status:** todo · **Depends on:** T-176a, T-126, T-231 · **Refs:** SPEC §2.5, §8.2
+- The map library organised in folders (an imported pack keeps its structure, T-231) and tags with search (T-126), managed in the Map Forge; the map's ambient sound (once sound exists, stage 2) and its scene transition (T-135) as metadata.
+- **Acceptance criteria**
+  - [ ] Folders and tags of the map library can be managed in the Map Forge, with search
+  - [ ] Ambient sound and transition are map metadata, used by every scene of the map
+- **Notes:** Split from T-176 (DM decision 2026-11-22).
 
 ### T-177 Two-click grid calibration with a 3×3 box
 
-- **Status:** todo · **Depends on:** T-176, T-106a · **Refs:** SPEC §2.2, §2.5
+- **Status:** todo · **Depends on:** T-176a, T-106a · **Refs:** SPEC §2.2, §2.5
 - In the Map Forge the DM drags a box over 3×3 cells of the map's printed grid; cell size and offset follow, so every map shows the same cell size on the TV.
 - **Acceptance criteria**
   - [ ] Cell size and offset from a dragged 3×3 box, also on a turned view (unit tests for the math)

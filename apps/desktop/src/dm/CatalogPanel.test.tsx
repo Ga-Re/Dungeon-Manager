@@ -12,6 +12,7 @@ import { createI18n } from "@dungeon-manager/ui";
 import { LibraryError } from "../platform/library.js";
 import type { MapViewService } from "../platform/map-images.js";
 import { CatalogPanel } from "./CatalogPanel.js";
+import { MapForgeContext } from "./map-forge-context.js";
 import { fakeLibraryService } from "./fake-library.test-data.js";
 import { renderPreview } from "./map-preview.js";
 import { MapViewContext } from "./MapView.js";
@@ -217,6 +218,13 @@ describe("CatalogPanel", () => {
     expect(JSON.parse(library.fs.files().get(path) ?? "{}")).toMatchObject({
       info: { name: "Noch ein Name" },
     });
+    // Saving again after that deliberately replaces the other change.
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    await waitFor(() => {
+      expect(JSON.parse(library.fs.files().get(path) ?? "{}")).toMatchObject({
+        info: { name: "Mein Turm" },
+      });
+    });
   });
 
   test("a second click or a deleted map gives the selection up", async () => {
@@ -249,6 +257,38 @@ describe("CatalogPanel", () => {
     library.emit(["library/maps/see.png"]);
     expect(await screen.findByTitle("library/maps/see.png")).toBeTruthy();
     expect(screen.queryByLabelText("Name")).toBeNull();
+  });
+
+  test("a map opens in the Map Forge by double-click, context menu or the Eigenschaften button (T-176a)", async () => {
+    const open = vi.fn();
+    const library = fakeLibraryService("/lib", {
+      "library/maps/turm.png": "png",
+    });
+    render(
+      <I18nextProvider i18n={createI18n("de")}>
+        <MapForgeContext value={{ open }}>
+          <CatalogPanel service={library.service} ready />
+        </MapForgeContext>
+      </I18nextProvider>,
+    );
+    const tile = within(await grid()).getByRole("button", {
+      name: /turm\.png/,
+    });
+    fireEvent.doubleClick(tile);
+    expect(open).toHaveBeenLastCalledWith("library/maps/turm.png");
+
+    tile.focus();
+    fireEvent.keyDown(tile, { key: "F10", shiftKey: true });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "In Map Forge öffnen" }),
+    );
+    expect(open).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(tile);
+    fireEvent.click(
+      screen.getByRole("button", { name: "In Map Forge öffnen" }),
+    );
+    expect(open).toHaveBeenCalledTimes(3);
   });
 
   test("an unreadable sidecar is never overwritten", async () => {

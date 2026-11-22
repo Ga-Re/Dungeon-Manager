@@ -1,5 +1,6 @@
 import type { CatalogMap } from "@dungeon-manager/storage";
-import { CircleAlert, Film, Image as ImageIcon } from "lucide-react";
+import { ContextMenu, type MenuPoint } from "@dungeon-manager/ui";
+import { CircleAlert, Film, Hammer, Image as ImageIcon } from "lucide-react";
 import { useContext, useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
@@ -165,12 +166,18 @@ export function MapCatalogGrid({
   service,
   maps,
   onPick,
+  onOpen,
   selected,
   disabled = false,
 }: {
   readonly service: LibraryService;
   readonly maps: readonly CatalogMap[];
   readonly onPick?: (map: CatalogMap) => void;
+  /**
+   * Opens a map in the Map Forge (T-176a): a double-click on its tile, or its context menu
+   * (right-click, Shift+F10, the context-menu key).
+   */
+  readonly onOpen?: ((map: CatalogMap) => void) | undefined;
   /** The selected map's path: tiles toggle like buttons (`aria-pressed`). */
   readonly selected?: string | null;
   readonly disabled?: boolean;
@@ -179,6 +186,11 @@ export function MapCatalogGrid({
   const searchId = useId();
   const [query, setQuery] = useState("");
   const shown = filterMaps(maps, query);
+  const [menu, setMenu] = useState<{
+    readonly map: CatalogMap;
+    readonly at: MenuPoint;
+    readonly tile: HTMLElement;
+  } | null>(null);
 
   return (
     <div className="dm-map-catalog">
@@ -214,6 +226,40 @@ export function MapCatalogGrid({
                   onClick={() => {
                     onPick(map);
                   }}
+                  onDoubleClick={
+                    onOpen &&
+                    (() => {
+                      onOpen(map);
+                    })
+                  }
+                  onContextMenu={
+                    onOpen &&
+                    ((event) => {
+                      event.preventDefault();
+                      setMenu({
+                        map,
+                        at: { x: event.clientX, y: event.clientY },
+                        tile: event.currentTarget,
+                      });
+                    })
+                  }
+                  onKeyDown={
+                    onOpen &&
+                    ((event) => {
+                      if (
+                        event.key !== "ContextMenu" &&
+                        !(event.key === "F10" && event.shiftKey)
+                      )
+                        return;
+                      event.preventDefault();
+                      const box = event.currentTarget.getBoundingClientRect();
+                      setMenu({
+                        map,
+                        at: { x: box.left, y: box.bottom },
+                        tile: event.currentTarget,
+                      });
+                    })
+                  }
                 >
                   <MapThumbnail
                     service={service}
@@ -235,6 +281,22 @@ export function MapCatalogGrid({
             </li>
           ))}
         </ul>
+      )}
+      {onOpen && (
+        <ContextMenu
+          at={menu?.at ?? null}
+          label={t("catalog.tileMenu")}
+          items={[
+            { id: "open", label: t("catalog.openInForge"), icon: <Hammer /> },
+          ]}
+          onSelect={() => {
+            if (menu) onOpen(menu.map);
+          }}
+          onClose={() => {
+            setMenu(null);
+          }}
+          returnFocus={menu?.tile}
+        />
       )}
     </div>
   );

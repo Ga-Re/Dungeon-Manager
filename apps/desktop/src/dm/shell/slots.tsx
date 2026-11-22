@@ -31,12 +31,16 @@ export const ShellSlotsContext = createContext<Partial<
  */
 export function ShellPortal({
   slot,
+  when = true,
   children,
 }: {
   readonly slot: ShellSlot;
+  /** `false` leaves the zone to someone else (e.g. the Map Forge's document, T-176a). */
+  readonly when?: boolean;
   readonly children: ReactNode;
 }) {
   const slots = useContext(ShellSlotsContext);
+  if (!when) return null;
   if (slots === null) return <>{children}</>;
   const target = slots[slot];
   return target ? createPortal(children, target) : null;

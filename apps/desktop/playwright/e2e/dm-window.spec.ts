@@ -258,6 +258,58 @@ test("a catalog map's name and license are edited in Eigenschaften; the browser 
   await expect(details.getByText("Szene", { exact: true })).toBeVisible();
 });
 
+test("a map opened in the Map Forge gets a new grid; the scene on the TV takes it after the DM confirms (T-176a)", async ({
+  page,
+}) => {
+  // `?tv`: a TV is connected, and what it is sent is noted on the page.
+  await page.goto(`${HARNESS}?tv`);
+  await closeWelcome(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page.getByRole("treeitem", { name: "Krypta", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  const tvGrid = () =>
+    page.evaluate(
+      () =>
+        (
+          JSON.parse(document.body.dataset["e2eTv"] ?? "null") as {
+            map?: { grid: { cellSizePx: number } };
+          } | null
+        )?.map?.grid.cellSizePx,
+    );
+  await expect.poll(tvGrid).toBe(100);
+
+  // A double-click on the catalog tile opens the map in the Map Forge.
+  await page
+    .getByRole("list", { name: "Karten" })
+    .getByRole("button", { name: /krypta\.png/ })
+    .dblclick();
+  await expect(
+    page.getByRole("group", { name: "Arbeitsbereich" }).getByRole("button"),
+  ).toHaveText("Map Forge");
+  await expect(
+    page.getByRole("group", { name: "Geöffnete Karte" }),
+  ).toContainText("krypta.png");
+  await expect(page.getByRole("tree", { name: "Karte" })).toContainText(
+    "Ebene 1",
+  );
+  const details = page.getByRole("region", { name: "Eigenschaften" });
+  await details.getByLabel("Zellgröße (Pixel)").fill("50");
+  await details.getByRole("button", { name: "Kartendaten speichern" }).click();
+  await expect(
+    details.getByText(/Gespeichert – gilt für jede Szene/),
+  ).toBeVisible();
+  // The scene on the TV keeps its grid until the DM takes the change.
+  expect(await tvGrid()).toBe(100);
+
+  const workspace = page
+    .getByRole("group", { name: "Arbeitsbereich" })
+    .getByRole("button");
+  await workspace.click();
+  await page.getByRole("menuitemradio", { name: "Game-Orchestrator" }).click();
+  await page.getByRole("button", { name: "Änderung übernehmen" }).click();
+  await expect.poll(tvGrid).toBe(50);
+});
+
 test("panels are hidden and shown from the View menu; the layout survives a restart (T-172a)", async ({
   page,
 }) => {

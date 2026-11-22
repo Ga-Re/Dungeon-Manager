@@ -58,6 +58,7 @@ import {
   type ReactNode,
 } from "react";
 import { CatalogSelectionContext } from "./catalog-selection.js";
+import { useActiveWorkspace } from "./shell/workspace.js";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import {
@@ -337,6 +338,8 @@ export function CampaignPanel({
   // anything the browser comes to show (a click, a new scene, a note opened from a link) takes
   // the panel back. `onSelect` also clears it, for a click on the item already selected here.
   const catalogSelection = useContext(CatalogSelectionContext);
+  // The Map Forge's open map fills the Eigenschaften panel there (T-176a).
+  const inForge = useActiveWorkspace() === "mapForge";
   const clearCatalogSelection = catalogSelection?.select;
   useEffect(() => {
     if (inspected !== null) clearCatalogSelection?.(null);
@@ -1335,7 +1338,7 @@ export function CampaignPanel({
           }}
         />
       ))}
-      {!catalogSelection?.selected && (
+      {!catalogSelection?.selected && !inForge && (
         <ShellPortal slot="details">
           <DetailsPanel
             details={

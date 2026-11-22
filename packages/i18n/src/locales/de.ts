@@ -236,7 +236,30 @@ export const de = {
     caseDuplicate:
       "Alte Datei {{file}} neben {{current}} – nach dem Vergleich zusammenführen oder löschen",
   },
+  forge: {
+    empty: "Keine Karte geöffnet. Doppelklicke im Katalog auf eine Karte.",
+    openMap: "Geöffnete Karte",
+    close: "{{name}} schließen",
+    tree: "Karte",
+    levels: "Ebenen",
+    rooms: "Räume",
+    noRooms: "Noch keine Räume",
+    grid: "Raster",
+    cellSizePx: "Zellgröße (Pixel)",
+    offsetXPx: "Versatz waagerecht (Pixel)",
+    offsetYPx: "Versatz senkrecht (Pixel)",
+    fog: "Nebel",
+    biome: "Standard-Biom aller Szenen",
+    biomeNone: "Keins (Bodennebel)",
+    strength: "Stärke: {{percent}} %",
+    save: "Kartendaten speichern",
+    saved:
+      "Gespeichert – gilt für jede Szene dieser Karte; eine Szene auf dem TV fragt vorher.",
+    invalid: "Die Zellgröße muss größer als 0 sein; Versätze sind Zahlen.",
+  },
   catalog: {
+    tileMenu: "Karte",
+    openInForge: "In Map Forge öffnen",
     title: "Katalog",
     noLibrary: "Wähle zuerst in den Einstellungen einen Bibliotheksordner.",
     importMap: "Karte importieren …",
@@ -250,6 +273,8 @@ export const de = {
       license: "Lizenz / Nutzungsrechte",
       save: "Speichern",
       saved: "Gespeichert – gilt in allen Kampagnen.",
+      conflict:
+        "Inzwischen woanders geändert. Die Felder zeigen weiter deine Eingaben: „Speichern“ ersetzt die andere Änderung, Schließen verwirft deine.",
     },
     close: "Schließen",
     search: "Karten suchen",
@@ -655,7 +680,8 @@ export const de = {
       campaignAtlas: "Campaign Atlas",
       gameOrchestrator: "Game-Orchestrator",
       coming: {
-        mapForge: "Hier bearbeitest du bald deine Karten.",
+        mapForge:
+          "Karte öffnen: Doppelklick auf eine Kachel im Katalog. Werkzeuge der Map Forge folgen.",
         assetVault: "Hier verwaltest du bald Requisiten, Handouts und Sounds.",
         creatures: "Hier verwaltest du bald Spielercharaktere und Kreaturen.",
         campaignAtlas: "Hier bearbeitest du bald die aktuelle Kampagne.",

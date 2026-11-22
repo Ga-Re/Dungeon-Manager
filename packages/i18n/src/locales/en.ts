@@ -234,7 +234,30 @@ export const en: Messages = {
     caseDuplicate:
       "Old file {{file}} next to {{current}} – compare, then merge or delete it",
   },
+  forge: {
+    empty: "No map open. Double-click a map in the catalogue.",
+    openMap: "Open map",
+    close: "Close {{name}}",
+    tree: "Map",
+    levels: "Levels",
+    rooms: "Rooms",
+    noRooms: "No rooms yet",
+    grid: "Grid",
+    cellSizePx: "Cell size (pixels)",
+    offsetXPx: "Horizontal offset (pixels)",
+    offsetYPx: "Vertical offset (pixels)",
+    fog: "Fog",
+    biome: "Default biome of every scene",
+    biomeNone: "None (ground fog)",
+    strength: "Strength: {{percent}} %",
+    save: "Save map data",
+    saved:
+      "Saved – applies to every scene of this map; a scene on the TV asks first.",
+    invalid: "The cell size must be greater than 0; offsets are numbers.",
+  },
   catalog: {
+    tileMenu: "Map",
+    openInForge: "Open in Map Forge",
     title: "Catalogue",
     noLibrary: "Choose a library folder in the settings first.",
     importMap: "Import map …",
@@ -248,6 +271,8 @@ export const en: Messages = {
       license: "License / usage rights",
       save: "Save",
       saved: "Saved – applies in every campaign.",
+      conflict:
+        "Changed elsewhere meanwhile. The fields still show your input: “Save” replaces the other change, closing discards yours.",
     },
     close: "Close",
     search: "Search maps",
@@ -646,7 +671,8 @@ export const en: Messages = {
       campaignAtlas: "Campaign Atlas",
       gameOrchestrator: "Game-Orchestrator",
       coming: {
-        mapForge: "Editing your maps comes here soon.",
+        mapForge:
+          "Open a map: double-click a tile in the catalogue. Map Forge tools follow.",
         assetVault: "Managing props, handouts and sounds comes here soon.",
         creatures: "Managing player characters and creatures comes here soon.",
         campaignAtlas: "Editing the current campaign comes here soon.",

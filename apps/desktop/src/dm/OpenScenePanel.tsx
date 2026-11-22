@@ -227,7 +227,10 @@ export function OpenScenePanel({
   const [tool, setTool] = useState<MapTool>("pan");
   // The scene is the Game-Orchestrator's document (T-174): undo and redo act on it only while
   // that workspace shows, and leaving it drops a fog tool back to panning.
-  const inGame = useActiveWorkspace() === "gameOrchestrator";
+  const workspace = useActiveWorkspace();
+  const inGame = workspace === "gameOrchestrator";
+  // The Map Forge shows its own document in the title bar and the map panel (T-176a).
+  const inForge = workspace === "mapForge";
   useEffect(() => {
     if (!inGame) setTool("pan");
   }, [inGame]);
@@ -746,7 +749,7 @@ export function OpenScenePanel({
       <p className="visually-hidden">
         {t("campaign.openScene", { name: scene.name })}
       </p>
-      <ShellPortal slot="titleScene">
+      <ShellPortal slot="titleScene" when={!inForge}>
         <SceneTitle
           tabs={
             tabs?.(busy) ?? (
@@ -1127,7 +1130,7 @@ export function OpenScenePanel({
               }}
             />
           </ShellPortal>
-          <ShellPortal slot="canvas">
+          <ShellPortal slot="canvas" when={!inForge}>
             <MapView
               key={`${media.kind}:${media.path}`}
               path={media.path}
