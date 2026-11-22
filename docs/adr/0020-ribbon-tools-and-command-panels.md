@@ -1,6 +1,6 @@
 # ADR-0020: Ribbon tools with command panels; settings and edits from the browser
 
-- **Status:** Proposed
+- **Status:** Accepted (DM, 2026-11-22)
 - **Date:** 2026-11-22
 - **Deciders:** DM (product owner), agent
 
@@ -22,7 +22,7 @@ Option 3, for every workspace (DM decision: "überall gleich"):
 - **Command panel.** A tool opens a small floating panel over the map – top right of the map panel, movable, **not modal** (the DM keeps working on the map), one at a time. It holds the tool's options and shows what will happen; **OK** (Enter) applies, **Abbrechen** (Escape) discards. Example: "Raum anlegen" offers rectangle, polygon, ellipse and lasso; the DM draws, adjusts and confirms; the room appears in the browser.
 - **Object settings and edits from the browser.** The open document's objects are in the browser; a double-click or the context menu (right-click, Shift+F10) opens their settings or edit command. Each map shows, under its entry at the top of the browser, **"Karteneinstellungen ⚙"**, which opens a dialog with its global settings: name, origin, license, tags, theme, grid as numbers, default fog biome. Grid calibration is a ribbon tool with its own command panel.
 - **New map.** A ribbon tool asks whether to import an image or video file or to draw an own map (drawing comes with stage 6 and is offered but not yet available); the name is set right away; the map enters the catalog and opens as the document.
-- **At the table (Game-Orchestrator).** The same principle; what is prepared is used from the browser's quick access – e.g. showing or hiding a room or area with its context menu – and spontaneous changes use the ribbon's tools. *To confirm with the DM:* a fog tool's panel stays open while the DM reveals several areas one after another, each applied at once (table speed), and OK or Escape ends the tool.
+- **At the table (Game-Orchestrator).** The same principle; what is prepared is used from the browser's quick access – e.g. showing or hiding a room or area with its context menu – and spontaneous changes use the ribbon's tools. A fog tool's panel stays open while the DM reveals or hides several areas one after another; each area applies at once (DM decision 2026-11-22: table speed), and OK or Escape ends the tool.
 - **Eigenschaften panel.** It keeps showing the selected object's facts; edits start from the browser or the ribbon.
 
 ## Consequences

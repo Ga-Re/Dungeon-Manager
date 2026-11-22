@@ -1293,8 +1293,8 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Status:** todo · **Depends on:** T-252, T-108c2 · **Refs:** ADR-0020, SPEC §2.5, §4
 - The Orchestrator's tools (fog shapes and reveal/hide, tokens, scene commands) follow ADR-0020: in the ribbon by group with quick access and drop-down; tools with options open a command panel. Prepared content is used from the browser's quick access (e.g. a room's context menu shows or hides it, T-108c2).
 - **Acceptance criteria**
-  - [ ] The fog tools open a command panel; their behaviour at the table is as the DM confirms (proposed: the panel stays open and each area applies at once; OK or Escape ends the tool)
-- **Notes:** DM decision 2026-11-22 (ADR-0020); the fog tool's confirmation behaviour is still to be confirmed by the DM.
+  - [ ] The fog tools open a command panel that stays open while the DM marks areas; each area applies at once; OK or Escape ends the tool
+- **Notes:** DM decisions 2026-11-22 (ADR-0020): fog areas apply at once while the panel stays open.
 
 ### T-256 Pin commands to the toolbar and to shortcuts; own keyboard shortcuts
 
