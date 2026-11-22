@@ -583,7 +583,8 @@ export function MapView({
         shape,
         start: point,
         end: point,
-        square: event.shiftKey,
+        // Shift makes the ellipse a circle; a rectangle stays the box the DM sees.
+        square: shape === "ellipse" && event.shiftKey,
       });
   };
   const onPointerMove = (event: PointerEvent) => {
@@ -617,7 +618,11 @@ export function MapView({
     // Touch has no hover: the outline would only sit under the finger.
     if (brushing && event.pointerType !== "touch") setPointer(point);
     if (drawing?.kind === "drag") {
-      setDrawing({ ...drawing, end: point, square: event.shiftKey });
+      setDrawing({
+        ...drawing,
+        end: point,
+        square: drawing.shape === "ellipse" && event.shiftKey,
+      });
       return;
     }
     if (drawing?.kind === "brush" || drawing?.kind === "lasso") {

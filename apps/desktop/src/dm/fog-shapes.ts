@@ -41,7 +41,8 @@ export function squareEnd(start: Point, end: Point): Point {
 /**
  * The area of a rectangle or ellipse dragged from `start` to `end` (screen pixels): the
  * rectangle between them, its corners rounded by `cornerRadius` map pixels (T-170), or the
- * ellipse filling that box (T-247). `null` for a slip.
+ * ellipse around `start` reaching to `end` on both axes (T-247: drawn from its middle, DM
+ * decision 2026-11-22, so it can be put around a token). `null` for a slip.
  */
 export function dragArea(
   shape: "rectangle" | "ellipse",
@@ -56,11 +57,16 @@ export function dragArea(
     Math.abs(end.y - start.y) < MIN_DRAG_PX
   )
     return null;
-  // The view turns in quarter turns only, so the dragged box is an axis-aligned box on the map.
-  if (shape === "ellipse")
-    return ellipseArea(toMap(camera, view, start), toMap(camera, view, end));
   // The view turns in quarter turns only, so the dragged corners are opposite corners of an
-  // axis-aligned rectangle on the map too.
+  // axis-aligned box on the map too (for the ellipse: its box around where the drag started).
+  if (shape === "ellipse")
+    return ellipseArea(
+      toMap(camera, view, {
+        x: 2 * start.x - end.x,
+        y: 2 * start.y - end.y,
+      }),
+      toMap(camera, view, end),
+    );
   if (cornerRadius > 0)
     return roundedRectArea(
       toMap(camera, view, start),

@@ -13,7 +13,7 @@ const view = { width: 800, height: 400 };
 const camera: Camera = { centerX: 800, centerY: 400, zoom: 2, rotation: 0 };
 
 describe("dragArea", () => {
-  test("an ellipse fills the dragged box, in map pixels (T-247)", () => {
+  test("an ellipse is drawn from its middle, in map pixels (T-247)", () => {
     const ellipse = dragArea(
       "ellipse",
       { x: 400, y: 200 },
@@ -21,21 +21,21 @@ describe("dragArea", () => {
       camera,
       view,
     );
-    // The box is map (800, 400) to (900, 440): centre (850, 420), radii 50 and 20.
+    // Around map (800, 400) where the drag started: radii 100 and 40.
     for (const [x, y] of ellipse?.outer ?? [])
-      expect(((x - 850) / 50) ** 2 + ((y - 420) / 20) ** 2).toBeCloseTo(1, 6);
+      expect(((x - 800) / 100) ** 2 + ((y - 400) / 40) ** 2).toBeCloseTo(1, 6);
     expect(ellipse?.outer.length).toBeGreaterThan(16);
   });
 
-  test("with Shift the ellipse is a circle on the box's longer side", () => {
+  test("with Shift the ellipse is a circle on the drag's longer side", () => {
     const end = squareEnd({ x: 400, y: 200 }, { x: 600, y: 160 });
     expect(end).toEqual({ x: 600, y: 0 });
     const circle = dragArea("ellipse", { x: 400, y: 200 }, end, camera, view);
     for (const [x, y] of circle?.outer ?? [])
-      expect(Math.hypot(x - 850, y - 350)).toBeCloseTo(50, 6);
+      expect(Math.hypot(x - 800, y - 400)).toBeCloseTo(100, 6);
   });
 
-  test("an ellipse in a turned view still fills the box on the map", () => {
+  test("an ellipse in a turned view keeps its middle and turns its radii", () => {
     const turned: Camera = { ...camera, rotation: 90 };
     const ellipse = dragArea(
       "ellipse",
@@ -44,11 +44,11 @@ describe("dragArea", () => {
       turned,
       view,
     );
-    // A quarter turn swaps the box's sides on the map: radii 20 and 50.
+    // A quarter turn swaps the radii on the map: 40 and 100.
     const xs = (ellipse?.outer ?? []).map(([x]) => x);
     const ys = (ellipse?.outer ?? []).map(([, y]) => y);
-    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(40, 6);
-    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(100, 6);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(80, 6);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(200, 6);
   });
 
   test("a rectangle spans the drag; slips mark nothing", () => {

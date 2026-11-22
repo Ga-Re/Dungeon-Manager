@@ -429,7 +429,7 @@ export const de = {
     brushSize_other: "Pinselgröße: {{cells}} Felder",
     shapeHints: {
       rectangle: "Ziehen: Rechteck aufdecken oder verdecken.",
-      ellipse: "Ziehen: Ellipse im aufgezogenen Rahmen; mit ⇧ ein Kreis.",
+      ellipse: "Ziehen: Ellipse aus der Mitte; mit ⇧ ein Kreis.",
       lasso:
         "Ziehen umrandet frei; Loslassen schließt die Form, Escape bricht ab.",
       polygon:

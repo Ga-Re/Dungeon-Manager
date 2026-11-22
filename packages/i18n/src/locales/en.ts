@@ -424,7 +424,7 @@ export const en: Messages = {
     brushSize_other: "Brush size: {{cells}} cells",
     shapeHints: {
       rectangle: "Drag: reveal or cover a rectangle.",
-      ellipse: "Drag: an ellipse in the dragged box; with ⇧ a circle.",
+      ellipse: "Drag: an ellipse from its centre; with ⇧ a circle.",
       lasso:
         "Drag to outline freely; releasing closes the shape, Escape cancels.",
       polygon:
