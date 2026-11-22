@@ -268,7 +268,6 @@ export const en: Messages = {
     close: "Close {{name}}",
     tree: "Map",
     levels: "Levels",
-    rooms: "Rooms",
     noRooms: "No rooms yet",
     grid: "Grid",
     cellSizePx: "Cell size (pixels)",

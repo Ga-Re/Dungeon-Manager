@@ -149,6 +149,15 @@ export function MapForge({
   const [shape, setShape] = useState<RoomShape | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [justDrawn, setJustDrawn] = useState(false);
+  const browser = useRef<HTMLDivElement>(null);
+  const [focusTree, setFocusTree] = useState(false);
+  useEffect(() => {
+    if (!focusTree) return;
+    setFocusTree(false);
+    browser.current
+      ?.querySelector<HTMLElement>('[role="treeitem"][aria-selected="true"]')
+      ?.focus();
+  }, [focusTree]);
   const [roomBusy, setRoomBusy] = useState(false);
   const [roomProblem, setRoomProblem] = useState("");
   // The forge's own last write and the sidecar read before it: until a newer read arrives, the
@@ -158,19 +167,6 @@ export function MapForge({
     readonly data: MapData;
     readonly before: Sidecar | null;
   } | null>(null);
-  // Alt draws a room freely, without snapping to the grid.
-  const altDown = useRef(false);
-  useEffect(() => {
-    const track = (event: KeyboardEvent) => {
-      altDown.current = event.altKey;
-    };
-    window.addEventListener("keydown", track);
-    window.addEventListener("keyup", track);
-    return () => {
-      window.removeEventListener("keydown", track);
-      window.removeEventListener("keyup", track);
-    };
-  }, []);
   useEffect(() => {
     setLevelChoice(null);
     setShape(null);
@@ -246,15 +242,19 @@ export function MapForge({
       setRoomBusy(false);
     }
   };
-  const addRoom = async (area: Polygon) => {
+  // `free`: Alt was held as the shape was finished (taken from that event, so an Alt+Tab
+  // never leaves rooms unsnapped).
+  const addRoom = async (area: Polygon, free: boolean) => {
     if (!shape || roomBusy) return;
-    const fitted = altDown.current ? area : snapArea(area, data.grid, shape);
+    // The grid the DM sees: an unsaved calibration included.
+    const fitted = free ? area : snapArea(area, preview ?? data.grid, shape);
     if (!fitted) {
       setRoomProblem(t("forgeRooms.tooSmall"));
       return;
     }
     const id = newRoomId(
       [...data.levels, ...data.rooms].map((each) => each.id),
+      Math.random,
     );
     const added = await changeRooms((rooms) => [
       ...rooms,
@@ -341,7 +341,7 @@ export function MapForge({
           fog={null}
           tool={shape && !roomBusy ? "reveal" : "pan"}
           shape={shape ?? "rectangle"}
-          onArea={(area) => void addRoom(area)}
+          onArea={(area, _tool, free) => void addRoom(area, free)}
           toolHint={
             shape
               ? t(shape === "lasso" ? "forgeRooms.hintFree" : "forgeRooms.hint")
@@ -385,7 +385,7 @@ export function MapForge({
         />
       </ShellPortal>
       <ShellPortal slot="browser">
-        <div className="dm-campaign-browser">
+        <div ref={browser} className="dm-campaign-browser">
           <TreeList
             label={t("forge.tree")}
             variant="compact"
@@ -435,7 +435,10 @@ export function MapForge({
                   }
                   onDelete={() => {
                     void editRoom(room.id, () => null).then((done) => {
-                      if (done) setSelectedRoom(null);
+                      if (!done) return;
+                      setSelectedRoom(null);
+                      // The editor goes with the room: the keyboard moves to its level.
+                      setFocusTree(true);
                     });
                   }}
                 />

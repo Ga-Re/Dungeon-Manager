@@ -16,12 +16,22 @@ export function roomsOnLevel<T extends Pick<Room, "levelId">>(
   return rooms.filter((room) => (room.levelId ?? first) === levelId);
 }
 
-/** A room id not yet taken by the map's levels or rooms: `room-1`, `room-2`, … */
-export function newRoomId(taken: readonly string[]): string {
+/**
+ * A fresh room id, `room-` and six random characters, not taken by the map's levels or rooms.
+ * Never counted up from the rooms there: a deleted room's id must not come back, as scenes keep
+ * overrides keyed by it (ADR-0012). `random` is injected (`core` is pure), e.g. `Math.random`.
+ */
+export function newRoomId(
+  taken: readonly string[],
+  random: () => number,
+): string {
   const used = new Set(taken);
-  let number = 1;
-  while (used.has(`room-${String(number)}`)) number += 1;
-  return `room-${String(number)}`;
+  for (;;) {
+    const id = `room-${Math.floor(random() * 36 ** 6)
+      .toString(36)
+      .padStart(6, "0")}`;
+    if (!used.has(id)) return id;
+  }
 }
 
 /** The nearest grid line position to `value` on one axis. */

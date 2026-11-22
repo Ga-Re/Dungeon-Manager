@@ -100,6 +100,14 @@ export function RoomEditor({
   const field = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(room.name);
   const [confirming, setConfirming] = useState(false);
+  // The keyboard follows the question: to "Behalten" while asking, back after it.
+  const keepButton = useRef<HTMLButtonElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const [asked, setAsked] = useState(false);
+  useEffect(() => {
+    if (!asked) return;
+    (confirming ? keepButton : deleteButton).current?.focus();
+  }, [asked, confirming]);
   // Another room, or this one renamed elsewhere: the field shows its name.
   const [shownFor, setShownFor] = useState(`${room.id}:${room.name}`);
   if (shownFor !== `${room.id}:${room.name}`) {
@@ -116,7 +124,9 @@ export function RoomEditor({
   const rename = (event: SyntheticEvent) => {
     event.preventDefault();
     const trimmed = name.trim();
-    if (trimmed !== "" && trimmed !== room.name) onRename(trimmed);
+    // A room needs a name: an emptied field shows the current one again.
+    if (trimmed === "") setName(room.name);
+    else if (trimmed !== room.name) onRename(trimmed);
   };
 
   return (
@@ -153,6 +163,7 @@ export function RoomEditor({
         {confirming ? (
           <>
             <button
+              ref={keepButton}
               type="button"
               disabled={busy}
               onClick={() => {
@@ -167,10 +178,12 @@ export function RoomEditor({
           </>
         ) : (
           <button
+            ref={deleteButton}
             type="button"
             disabled={busy}
             onClick={() => {
               setConfirming(true);
+              setAsked(true);
             }}
           >
             {t("forgeRooms.delete")}

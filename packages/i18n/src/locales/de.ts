@@ -271,7 +271,6 @@ export const de = {
     close: "{{name}} schließen",
     tree: "Karte",
     levels: "Ebenen",
-    rooms: "Räume",
     noRooms: "Noch keine Räume",
     grid: "Raster",
     cellSizePx: "Zellgröße (Pixel)",

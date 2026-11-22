@@ -36,9 +36,29 @@ describe("roomsOnLevel", () => {
 });
 
 describe("newRoomId", () => {
-  test("is unique among the map's levels and rooms", () => {
-    expect(newRoomId(["ground", "room-1", "room-3"])).toBe("room-2");
-    expect(newRoomId([])).toBe("room-1");
+  // A deleted room's id is never given out again: scenes keep overrides keyed by it, which
+  // must not turn onto a new, unrelated room (ADR-0012).
+  test("draws a fresh id from the random source, never one taken", () => {
+    const draws = [0.1, 0.1, 0.5];
+    const random = () => draws.shift() ?? 0.9;
+    const first = newRoomId([], () => 0.1);
+    expect(first).toMatch(/^room-[0-9a-z]{6}$/);
+    // The first draw is taken: the next one is used.
+    const second = newRoomId(["ground", first], random);
+    expect(second).not.toBe(first);
+    expect(second).toMatch(/^room-[0-9a-z]{6}$/);
+  });
+
+  test("after a room is deleted, a new room does not get its id", () => {
+    let seed = 0;
+    const random = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    const used = new Set<string>();
+    for (let i = 0; i < 50; i += 1) used.add(newRoomId([], random));
+    // Fifty rooms drawn and deleted one after another: no id twice.
+    expect(used.size).toBe(50);
   });
 });
 

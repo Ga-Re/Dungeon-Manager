@@ -209,7 +209,15 @@ export function MapView({
   /** Where hiding everything starts on a fully revealed map (T-249). */
   readonly coverFrom?: "middle" | "random";
   /** An area the DM marked with the reveal or hide tool, in map pixels. */
-  readonly onArea?: (area: Polygon, tool: Exclude<MapTool, "pan">) => void;
+  /**
+   * A marked area; `free` when Alt was held as it was finished (the Map Forge then does not snap
+   * it to the grid, T-108c1).
+   */
+  readonly onArea?: (
+    area: Polygon,
+    tool: Exclude<MapTool, "pan">,
+    free: boolean,
+  ) => void;
   readonly onMapSize?: (size: Size) => void;
   /** The map's grid (sidecar calibration); its lines can be shown in this view (T-106b). */
   readonly grid?: GridCalibration | null;
@@ -534,22 +542,22 @@ export function MapView({
     const box = event.currentTarget.getBoundingClientRect();
     return { x: event.clientX - box.left, y: event.clientY - box.top };
   };
-  const mark = (area: Polygon | null) => {
-    if (area && tool !== "pan") onArea?.(area, tool);
+  const mark = (area: Polygon | null, free: boolean) => {
+    if (area && tool !== "pan") onArea?.(area, tool, free);
   };
-  const finishPolygon = () => {
-    mark(polygonArea(corners));
+  const finishPolygon = (free: boolean) => {
+    mark(polygonArea(corners), free);
     setCorners([]);
     setHover(null);
   };
-  const addCorner = (point: Point) => {
+  const addCorner = (point: Point, free: boolean) => {
     const view = sizeNow.current;
     if (!camera || !view) return;
     const first = corners[0];
     if (first && corners.length >= 3) {
       const shown = mapToScreen(camera, view, { x: first[0], y: first[1] });
       if (Math.hypot(shown.x - point.x, shown.y - point.y) <= CLOSE_PX) {
-        finishPolygon();
+        finishPolygon(free);
         return;
       }
     }
@@ -650,7 +658,7 @@ export function MapView({
       return;
     }
     if (tool !== "pan" && shape === "polygon") {
-      addCorner(point);
+      addCorner(point, event.altKey);
       return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -777,9 +785,9 @@ export function MapView({
       const stroke = brushArea(done.points, brushRadius, camera, view);
       if (!stroke)
         console.warn("A brush stroke could not be turned into an area.");
-      mark(stroke);
+      mark(stroke, event.altKey);
     } else if (done.kind === "lasso")
-      mark(lassoArea(done.points, camera, view));
+      mark(lassoArea(done.points, camera, view), event.altKey);
     else
       mark(
         dragArea(
@@ -790,6 +798,7 @@ export function MapView({
           view,
           cornerRadius,
         ),
+        event.altKey,
       );
   };
   const onPointerCancel = () => {
@@ -842,7 +851,7 @@ export function MapView({
     }
     if (corners.length > 0 && event.key === "Enter") {
       event.preventDefault();
-      finishPolygon();
+      finishPolygon(event.altKey);
       return;
     }
     if (corners.length > 0 && event.key === "Backspace") {
@@ -921,8 +930,8 @@ export function MapView({
           setPointer(null);
         }}
         onKeyDown={onKeyDown}
-        onDoubleClick={() => {
-          if (corners.length > 0) finishPolygon();
+        onDoubleClick={(event) => {
+          if (corners.length > 0) finishPolygon(event.altKey);
         }}
         data-tool={calibration ? `calibrate-${calibration.mode}` : tool}
       >

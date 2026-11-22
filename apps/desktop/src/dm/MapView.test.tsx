@@ -389,6 +389,7 @@ describe("MapView", () => {
         holes: [],
       },
       "reveal",
+      false,
     );
     // The camera did not move: marking is not panning.
     expect(fake.camera()).toEqual({
@@ -443,6 +444,35 @@ describe("MapView", () => {
     // Rotated by 90°: screen x runs along map y, screen y against map x.
     expect([Math.min(...xs), Math.max(...xs)]).toEqual([600, 1000]);
     expect([Math.min(...ys), Math.max(...ys)]).toEqual([200, 600]);
+  });
+
+  test("an area tells whether Alt was held as it was finished (T-108c1)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const onArea = vi.fn();
+    renderView(fake.service, { tool: "reveal", onArea });
+    await waitFor(() => {
+      expect(fake.camera()).toBeDefined();
+    });
+    const drag = (altKey: boolean) => {
+      fireEvent.pointerDown(area(), {
+        button: 0,
+        clientX: 100,
+        clientY: 100,
+        pointerId: 1,
+      });
+      fireEvent.pointerMove(area(), {
+        clientX: 300,
+        clientY: 200,
+        pointerId: 1,
+      });
+      fireEvent.pointerUp(area(), { pointerId: 1, altKey });
+    };
+    drag(false);
+    drag(true);
+    expect(onArea.mock.calls.map((call) => call[2] as boolean)).toEqual([
+      false,
+      true,
+    ]);
   });
 
   test("calibration on a turned view: a square box, drags and arrow keys in map pixels (T-177)", async () => {
@@ -690,6 +720,7 @@ describe("MapView", () => {
         holes: [],
       },
       "hide",
+      false,
     );
 
     loop(2);
@@ -724,6 +755,7 @@ describe("MapView", () => {
         holes: [],
       },
       "hide",
+      false,
     ]);
 
     click(100, 100);
