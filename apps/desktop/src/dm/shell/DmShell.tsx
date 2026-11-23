@@ -56,6 +56,7 @@ import {
   hidePanel,
   isFolded,
   settleFolds,
+  settleFoldsOnLayout,
   toggleFold,
   type PanelEdge,
   readLayout,
@@ -558,6 +559,7 @@ export function DmShell({
       settleFolds(api);
       persist();
     });
+    settleFoldsOnLayout(api);
     setPanels(api);
   };
   // Tab titles follow the language.

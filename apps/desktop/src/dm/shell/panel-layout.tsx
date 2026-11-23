@@ -472,3 +472,24 @@ export function settleFolds(api: DockviewApi): boolean {
   }
   return changed;
 }
+
+/**
+ * Settles folds whenever dockview lays a group out. A resize of the window is no layout change
+ * dockview reports (`onDidLayoutChange`): it only lays the grid out again, sharing the new height
+ * out to folded groups too, and only each group's `onDidDimensionsChange` tells.
+ */
+export function settleFoldsOnLayout(api: DockviewApi): void {
+  let queued = false;
+  const queue = () => {
+    if (queued) return;
+    queued = true;
+    // Once the whole grid is laid out, not halfway through it (still before the next paint).
+    queueMicrotask(() => {
+      queued = false;
+      settleFolds(api);
+    });
+  };
+  const watch = (group: Group) => group.api.onDidDimensionsChange(queue);
+  for (const group of api.groups) watch(group);
+  api.onDidAddGroup(watch);
+}

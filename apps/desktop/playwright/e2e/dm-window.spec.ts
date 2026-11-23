@@ -1166,8 +1166,14 @@ test("a folded panel stays folded on the next start and unfolds when alone in it
   await page.reload();
   await closeWelcome(page);
   await expect.poll(height).toBeLessThan(10);
-  // A bigger window shares out height, never to a folded panel.
+  // A bigger window shares out height, never to a folded panel. dockview lays the grid out in
+  // its next frame: until the map has grown, the old layout would pass the check by itself.
+  const map = page.getByRole("tabpanel", { name: "Karte" });
+  const mapHeight = (await map.boundingBox())?.height ?? 0;
   await page.setViewportSize({ width: 1400, height: 1000 });
+  await expect
+    .poll(async () => (await map.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(mapHeight + 100);
   await expect.poll(height).toBeLessThan(10);
   await menu.click();
   await expect(
