@@ -434,7 +434,7 @@ test("a panel folded into an edge sidebar slides out and stays there on the next
   await openDmWindow(page);
   await page.getByRole("button", { name: "Panel Browser" }).click();
   await page.getByRole("menuitem", { name: "Automatisch ausblenden" }).click();
-  const bar = page.getByRole("toolbar", { name: "Rechte Seitenleiste" });
+  const bar = page.getByRole("group", { name: "Rechte Seitenleiste" });
   const tab = bar.getByRole("button", { name: "Browser" });
   await expect(tab).toBeVisible();
   await expect(page.getByRole("button", { name: "Panel Browser" })).toHaveCount(

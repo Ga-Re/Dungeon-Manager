@@ -595,8 +595,13 @@ export function DmShell({
   const onPanelsReady = (event: DockviewReadyEvent) => {
     const { api } = event;
     restoreLayout(api, readLayout(storage), titles);
-    // Panels in an edge sidebar are not in the layout (T-259).
-    for (const id of [...edges.left, ...edges.right]) hidePanel(api, id);
+    // Panels in an edge sidebar are not in the layout (T-259); nothing to announce on start.
+    quiet.current = true;
+    try {
+      for (const id of [...edges.left, ...edges.right]) hidePanel(api, id);
+    } finally {
+      quiet.current = false;
+    }
     const persist = () => {
       // Closing the window takes every panel down with it; that is no layout to keep. (A DM who
       // hides all panels gets the default back on the next start.)
@@ -984,7 +989,16 @@ export function DmShell({
     return () => {
       active = false;
     };
-  }, [appMenu, commands, t, titles, shown, namedLayouts, applyNamedLayout]);
+  }, [
+    appMenu,
+    commands,
+    t,
+    titles,
+    shown,
+    edges,
+    namedLayouts,
+    applyNamedLayout,
+  ]);
 
   const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const ids = ribbonTabs.map((tab) => tab.id);
@@ -1272,7 +1286,7 @@ export function DmShell({
                   ref={panelButton}
                   icon={<PanelLeft />}
                   label={t("shell.toggleDataPanel")}
-                  pressed={shown.has("data")}
+                  pressed={shown.has("data") || slidOut === "data"}
                   onClick={() => {
                     toggleData();
                   }}

@@ -4,6 +4,7 @@ import {
   cleanup,
   fireEvent,
   render,
+  waitFor,
   screen,
   within,
 } from "@testing-library/react";
@@ -459,7 +460,7 @@ describe("DmShell", () => {
       expect(viewItem("Karte").getAttribute("aria-disabled")).not.toBe("true");
     });
 
-    it("folds a panel into an edge sidebar that slides it out over the map (T-259)", () => {
+    it("folds a panel into an edge sidebar that slides it out over the map (T-259)", async () => {
       const storage = memoryStorage();
       setup(storage);
       const content = dataContent();
@@ -469,7 +470,7 @@ describe("DmShell", () => {
       );
       // Out of the layout, a vertical tab in the left sidebar (it was left of the map).
       expect(screen.queryByRole("button", { name: "Panel Daten" })).toBeNull();
-      const bar = screen.getByRole("toolbar", { name: "Linke Seitenleiste" });
+      const bar = screen.getByRole("group", { name: "Linke Seitenleiste" });
       const tab = within(bar).getByRole("button", { name: "Daten" });
       expect(tab.getAttribute("aria-expanded")).toBe("false");
       const sheet = () =>
@@ -488,7 +489,9 @@ describe("DmShell", () => {
           key: "Escape",
         },
       );
-      expect(sheet()?.dataset["open"]).toBeUndefined();
+      await waitFor(() => {
+        expect(sheet()?.dataset["open"]).toBeUndefined();
+      });
       expect(document.activeElement).toBe(tab);
       // A press elsewhere slides it back too.
       fireEvent.click(tab);
@@ -505,7 +508,7 @@ describe("DmShell", () => {
       fireEvent.click(tab);
       fireEvent.click(screen.getByRole("button", { name: "Daten anheften" }));
       expect(
-        screen.queryByRole("toolbar", { name: "Linke Seitenleiste" }),
+        screen.queryByRole("group", { name: "Linke Seitenleiste" }),
       ).toBeNull();
       expect(screen.getByRole("button", { name: "Panel Daten" })).toBeTruthy();
       expect(dataContent()).toBe(content);
@@ -519,7 +522,7 @@ describe("DmShell", () => {
       );
       setup(storage);
       // Only real panels, never the map.
-      const bar = screen.getByRole("toolbar", { name: "Rechte Seitenleiste" });
+      const bar = screen.getByRole("group", { name: "Rechte Seitenleiste" });
       expect(
         within(bar)
           .getAllByRole("button")

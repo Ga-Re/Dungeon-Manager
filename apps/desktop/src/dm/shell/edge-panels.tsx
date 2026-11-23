@@ -84,7 +84,17 @@ export function edgeOf(edges: EdgePanels, id: PanelId): Edge | undefined {
   return undefined;
 }
 
-/** A sidebar's vertical tabs; the open one is expanded. */
+/** Whether Escape in `node` belongs to editing (an input, a text area, rich text). */
+function editable(node: Node): boolean {
+  const element = node instanceof Element ? node : node.parentElement;
+  return (
+    element !== null &&
+    (element.closest("input, textarea, select") !== null ||
+      (element instanceof HTMLElement && element.isContentEditable))
+  );
+}
+
+/** A sidebar's vertical tabs, each a tab stop; the open one is expanded. */
 export function EdgeBar({
   edge,
   ids,
@@ -105,8 +115,7 @@ export function EdgeBar({
   if (ids.length === 0) return null;
   return (
     <div
-      role="toolbar"
-      aria-orientation="vertical"
+      role="group"
       aria-label={t(`shell.edges.${edge}`)}
       className="dm-edge-bar"
       data-edge={edge}
@@ -157,14 +166,19 @@ export function EdgeSheet({
 }) {
   const { t } = useTranslation();
   const sheet = useRef<HTMLElement>(null);
-  // A press anywhere but on the sheet or a sidebar tab slides it back.
+  // A press anywhere but on the sheet or a sidebar tab slides it back – not one in a dialog
+  // over everything (e.g. settings opened from the sheet's content).
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (sheet.current?.contains(target)) return;
-      if (target instanceof Element && target.closest(".dm-edge-tab")) return;
+      if (
+        target instanceof Element &&
+        target.closest(".dm-edge-tab, .dm-dialog-backdrop, [aria-modal='true']")
+      )
+        return;
       onClose(false);
     };
     document.addEventListener("pointerdown", onPointerDown, true);
@@ -172,20 +186,26 @@ export function EdgeSheet({
       document.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [open, onClose]);
-  // Escape slides it back. A DOM listener: the panel's content comes through a portal, so React's
-  // events bubble along another tree than the DOM's.
+  // Escape slides it back – unless something inside used it: a menu, a popover or a dialog
+  // (they prevent its default) or a field being edited (Escape there means "discard"). The
+  // content comes through portals, so React's events bubble along another tree than the DOM's:
+  // the sheet decides only once the event has gone everywhere.
   useEffect(() => {
     const own = sheet.current;
     if (!own || !open) return;
+    let pending: ReturnType<typeof setTimeout> | undefined;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
-      event.preventDefault();
-      event.stopPropagation();
-      onClose(true);
+      const target = event.target;
+      if (event.key !== "Escape" || !(target instanceof Node)) return;
+      if (!own.contains(target) || editable(target)) return;
+      pending = setTimeout(() => {
+        if (!event.defaultPrevented) onClose(true);
+      });
     };
-    own.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown);
     return () => {
-      own.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", onKeyDown);
+      clearTimeout(pending);
     };
   }, [open, onClose]);
   // Opened, the keyboard goes into it, so Tab reaches its content next.

@@ -1,4 +1,8 @@
-import { FOG_BIOMES, type MapData } from "@dungeon-manager/schema";
+import {
+  FOG_BIOMES,
+  type AssetRef,
+  type MapData,
+} from "@dungeon-manager/schema";
 import { updateItemInfo } from "@dungeon-manager/storage";
 import { Dialog } from "@dungeon-manager/ui";
 import { useId, useState, type ReactNode, type RefObject } from "react";
@@ -27,6 +31,8 @@ export function NewMapCommand({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
+  // A file imported whose name could not be written yet: OK tries the name again, not the import.
+  const [imported, setImported] = useState<AssetRef | null>(null);
   const trimmed = name.trim();
 
   const create = async () => {
@@ -34,9 +40,11 @@ export function NewMapCommand({
     setBusy(true);
     setProblem("");
     try {
-      const asset = await service.importMap(t("campaign.mapFilter"));
+      const asset =
+        imported ?? (await service.importMap(t("campaign.mapFilter")));
       // The file dialog cancelled: the panel stays, as typed.
       if (!asset) return;
+      setImported(asset);
       await updateItemInfo(service.fs, asset, { name: trimmed });
       onOpen(asset.path);
     } catch (error) {
