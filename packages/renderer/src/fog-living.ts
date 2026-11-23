@@ -1,6 +1,7 @@
 // Living fog (T-245, ADR-0019): the fog drifts and its edge wobbles. Drawn by a shader over the
 // soft fog mask; the player view keeps the exact hard fog underneath (see `drawFog`), and the
-// shader keeps every fogged texel opaque, so the animation only ever reaches into revealed area.
+// shader keeps every fogged texel opaque, so the animation only ever reaches into revealed area
+// – the fog by at most 0.45 cells, a biome's veil and particles by about a cell (T-261).
 import {
   AlphaFilter,
   type Container,
@@ -146,6 +147,13 @@ export const LIVING_EDGE_MAX = 2.5;
 const REACH_MIN_CELLS = 0.25;
 const REACH_MAX_CELLS = 0.45;
 
+/**
+ * How far the biome's veil, streaks and particles reach past the fog's edge, in grid cells
+ * (T-261, DM decision 2026-11-22: "bis ~1 Feld"): the shader's sample rings (0.85 cells) plus
+ * the soft mask's band. The fog itself still reaches no further than {@link REACH_MAX_CELLS}.
+ */
+export const LIVING_HALO_CELLS = 1;
+
 /** Octaves of noise and the share of the screen's resolution the effect renders at. */
 export const LIVING_QUALITY = {
   high: { octaves: 5, resolution: 0.75 },
@@ -270,6 +278,25 @@ float fogAt(vec2 pos) {
   float local = clamp((uMix - texture(uOrder, uv).a * uSpread) / uFront, 0.0, 1.0);
   return mix(texture(uFrom, uv).a, texture(uTo, uv).a, local);
 }
+// How near the fog is, 1 at the fog and falling to 0 about a cell away (T-261): samples of the
+// fog to be (one texture read each) on two rings of directions turned by moving noise, so the
+// fringe wavers instead of drawing a ring. The rings stay within LIVING_HALO_CELLS.
+float toAt(vec2 pos) {
+  vec2 uv = pos / uMaskSize;
+  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return 1.0;
+  return texture(uTo, uv).a;
+}
+float nearFog(vec2 pos, float turn) {
+  float inner = 0.0;
+  float outer = 0.0;
+  for (int k = 0; k < 6; k++) {
+    float angle = turn + float(k) * 1.0472;
+    vec2 dir = vec2(cos(angle), sin(angle));
+    inner = max(inner, toAt(pos + dir * uCell * 0.45));
+    outer = max(outer, toAt(pos + dir * uCell * 0.85));
+  }
+  return max(inner * 0.7, outer * 0.3);
+}
 void main() {
   vec2 p = vPos / (uCell * 4.0);
   float t = uTime;
@@ -306,11 +333,17 @@ void main() {
   // Underglow: embers or light from below in the dark parts.
   colour = mix(colour, uParticle * 0.8, uFx.w * smoothstep(0.45, 0.85, 1.0 - f) * 0.55);
   colour = mix(colour, uLight, edge * 0.3);
+  // A veil that wavers out of the fog into the revealed area and fades within about a cell
+  // (T-261): it only adds, so what the fog covers stays covered.
+  float near = max(m, nearFog(vPos, f * 6.2832 + t * 0.2));
+  float sway = fbm(p * 1.7 + r * 0.8 + vec2(t * 0.09, -t * 0.07));
+  float veil = smoothstep(0.05, 0.8, near) * smoothstep(0.45, 0.85, sway) * 0.35;
+  a = a + veil * (1.0 - a);
   float alpha = a * uOpacity;
   vec3 premultiplied = colour * alpha;
-  // Particles over the fog and in its band next to the edge (DM, 2026-11-22): they never make
-  // fog transparent, they only add.
-  float pa = clamp(particles(vPos, t) * clamp(a + m * 1.5, 0.0, 1.0) * uFx.y, 0.0, 1.0)
+  // Particles over the fog and up to about a cell past its edge, fading (DM, 2026-11-22; T-261):
+  // they never make fog transparent, they only add.
+  float pa = clamp(particles(vPos, t) * clamp(a + m * 1.5 + near, 0.0, 1.0) * uFx.y, 0.0, 1.0)
              * min(1.0, uOpacity + 0.3);
   finalColor = vec4(uParticle * pa + premultiplied * (1.0 - pa), pa + alpha * (1.0 - pa));
 }`;

@@ -592,9 +592,10 @@ function polygonsWithout(all: { outer: Ring; holes: never[] }[]) {
 }
 
 /**
- * "biome-blend" (T-168): Bodennebel changes to Schneesturm with a 1000 ms transition; frozen
- * half-way, the frame differs from both (`data-blends`), and hidden pixels look the same over
- * a black and a white map (`data-violations`).
+ * "biome-blend" (T-168, T-261): Bodennebel changes to Schneesturm while the fog's fade is 1000
+ * ms; the look blends in 300 ms whatever the fade. Frozen half-way (150 ms), the frame differs
+ * from both (`data-blends`) and hidden pixels look the same over a black and a white map
+ * (`data-violations`); at 300 ms it is the new biome alone (`data-blend-done`).
  */
 async function biomeBlendScenario() {
   const shot = async (
@@ -626,10 +627,16 @@ async function biomeBlendScenario() {
     renderer.destroy();
     return pixels;
   };
-  const before = await shot("#ffffff", ["nebel"], 500);
-  const after = await shot("#ffffff", ["schnee"], 500);
-  const half = await shot("#ffffff", ["nebel", "schnee"], 500);
-  const halfBlack = await shot("#000000", ["nebel", "schnee"], 500);
+  const before = await shot("#ffffff", ["nebel"], 150);
+  const after = await shot("#ffffff", ["schnee"], 150);
+  const half = await shot("#ffffff", ["nebel", "schnee"], 150);
+  const halfBlack = await shot("#000000", ["nebel", "schnee"], 150);
+  const done = await shot("#ffffff", ["nebel", "schnee"], 300);
+  const doneAlone = await shot("#ffffff", ["schnee"], 300);
+  let differsDone = 0;
+  for (let index = 0; index < done.length; index++)
+    if (done[index] !== doneAlone[index]) differsDone++;
+  document.body.dataset["blendDone"] = differsDone === 0 ? "yes" : "no";
   const hard = await hardCapture(REVEALED_NESTED);
   let differsBefore = 0;
   let differsAfter = 0;
@@ -649,6 +656,87 @@ async function biomeBlendScenario() {
   document.body.dataset["blends"] =
     differsBefore > 0 && differsAfter > 0 ? "yes" : "no";
   document.body.dataset["violations"] = String(violations);
+}
+
+/**
+ * "living-halo" (T-261): a biome's veil, streaks and particles reach past the fog's edge by
+ * about a cell and no further. Over a white map, zoomed in, at several moments and in two
+ * biomes: revealed pixels further than 1.2 cells from the hidden area are the map's white
+ * (`data-far` counts those that are not), and some within a cell are touched (`data-near`).
+ */
+async function haloScenario() {
+  const hard = await hardCapture(REVEALED_NESTED);
+  const camera = cameraFor("zoomed");
+  const cell = 100 * camera.zoom;
+  // Distance of each pixel to the nearest hidden one, in screen pixels (chamfer 3-4).
+  const { width, height } = view;
+  const distance = new Float32Array(width * height);
+  for (let index = 0; index < distance.length; index++)
+    distance[index] = hard[index * 4] === 0 ? 0 : 1e9;
+  const relax = (
+    x: number,
+    y: number,
+    dx: number,
+    dy: number,
+    cost: number,
+  ) => {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= width || ny >= height) return;
+    const here = y * width + x;
+    const there = distance[ny * width + nx] ?? 1e9;
+    if (there + cost < (distance[here] ?? 1e9)) distance[here] = there + cost;
+  };
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      relax(x, y, -1, 0, 3);
+      relax(x, y, 0, -1, 3);
+      relax(x, y, -1, -1, 4);
+      relax(x, y, 1, -1, 4);
+    }
+  for (let y = height - 1; y >= 0; y--)
+    for (let x = width - 1; x >= 0; x--) {
+      relax(x, y, 1, 0, 3);
+      relax(x, y, 0, 1, 3);
+      relax(x, y, 1, 1, 4);
+      relax(x, y, -1, 1, 4);
+    }
+  let far = 0;
+  let near = 0;
+  for (const biome of ["schnee", "asche"])
+    for (const at of [4_000, 12_500, 21_000]) {
+      let time = 0;
+      const canvas = document.createElement("canvas");
+      const renderer = await createRenderer({
+        canvas,
+        size: view,
+        resolution: 1,
+        now: () => time,
+      });
+      renderer.setMap(plainMap("#ffffff"));
+      renderer.setCamera(camera);
+      renderer.setFog(REVEALED_NESTED, {
+        opacity: 1,
+        living: { ...livingFog("high", 2.5), biome, strength: 1 },
+      });
+      await renderer.drawn();
+      time = at;
+      await renderer.drawn();
+      const pixels = capture(canvas);
+      renderer.destroy();
+      for (let index = 0; index < distance.length; index++) {
+        const cells = (distance[index] ?? 0) / 3 / cell;
+        if (cells === 0) continue;
+        const touched =
+          Math.abs((pixels[index * 4] ?? 0) - 255) > 2 ||
+          Math.abs((pixels[index * 4 + 1] ?? 0) - 255) > 2 ||
+          Math.abs((pixels[index * 4 + 2] ?? 0) - 255) > 2;
+        if (touched && cells > 1.2) far++;
+        if (touched && cells > 0.5 && cells <= 1) near++;
+      }
+    }
+  document.body.dataset["far"] = String(far);
+  document.body.dataset["near"] = String(near);
 }
 
 /**
@@ -752,6 +840,11 @@ async function main() {
   }
   if (scenario === "tiles") {
     await tilesScenario(canvas);
+    document.body.dataset["ready"] = "true";
+    return;
+  }
+  if (scenario === "living-halo") {
+    await haloScenario();
     document.body.dataset["ready"] = "true";
     return;
   }

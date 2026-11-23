@@ -198,7 +198,7 @@ for (const biome of [
 }
 
 // A biome change blends over (T-168): half-way it is neither the old nor the new biome, and
-// nothing hidden shows.
+// nothing hidden shows; it is done in 0.3 s (T-261).
 test("a biome change blends over without showing what is hidden", async ({
   page,
 }) => {
@@ -207,4 +207,17 @@ test("a biome change blends over without showing what is hidden", async ({
   await expect(body).toHaveAttribute("data-ready", "true", { timeout: 60_000 });
   await expect(body).toHaveAttribute("data-blends", "yes");
   await expect(body).toHaveAttribute("data-violations", "0");
+  // Done in 0.3 s, though the fog's fade is longer (T-261).
+  await expect(body).toHaveAttribute("data-blend-done", "yes");
+});
+
+// A biome reaches past the fog's edge by about a cell, fading, and no further (T-261).
+test("a biome's veil and particles reach about a cell past the fog's edge", async ({
+  page,
+}) => {
+  await page.goto(`${fixturePage("renderer.html")}#living-halo`);
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true", { timeout: 60_000 });
+  await expect(body).toHaveAttribute("data-far", "0");
+  expect(Number(await body.getAttribute("data-near"))).toBeGreaterThan(0);
 });

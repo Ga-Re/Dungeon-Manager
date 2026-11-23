@@ -1367,11 +1367,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-261 Fog biomes: soft edge and quick switch
 
-- **Status:** todo · **Depends on:** T-168 · **Refs:** ADR-0019, SPEC §4
+- **Status:** done · **Depends on:** T-168 · **Refs:** ADR-0019, SPEC §4
 - Biome particles and streaks reach up to about one grid cell past the fog edge into the revealed area and fade out softly there, with stronger "wabern" at the edge; the hidden area stays fully covered. Changing the biome cross-fades in 0.3 s instead of switching late.
 - **Acceptance criteria**
-  - [ ] Effects fade out within ~1 cell past the edge; nothing hidden becomes visible (renderer test + screenshot)
-  - [ ] A biome change completes in ≤ 0.3 s (renderer test with injected time)
+  - [x] Effects fade out within ~1 cell past the edge; nothing hidden becomes visible (renderer test + screenshot)
+  - [x] A biome change completes in ≤ 0.3 s (renderer test with injected time)
   - [ ] Benchmark scene stays within budget (`pnpm bench`, DM)
 - **Notes:** DM decisions 2026-11-22.
 

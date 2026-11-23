@@ -636,7 +636,8 @@ export async function createRenderer(
       : fogInput
         ? drawFog(fogInput.revealed, fogInput.options, mapSize, rootResolution)
         : null;
-    // Only the look changed (the same polygons on the same map): blend over (T-168).
+    // Only the look changed (the same polygons on the same map): blend over (T-168), quickly
+    // (T-261) – unless the device turned fades off, then it switches at once.
     const blend =
       !fading &&
       next !== null &&
@@ -646,7 +647,7 @@ export async function createRenderer(
       sameSize(shownFog.map, mapSize) &&
       (fogInput.options.fade ?? 0) > 0 &&
       JSON.stringify(shownFog.revealed) === JSON.stringify(fogInput.revealed);
-    if (blend) blendFog(next, fogInput?.options.fade ?? 0);
+    if (blend) blendFog(next, LOOK_BLEND_MS);
     else replaceFog(next);
     dropFade();
     fade = fading;
@@ -846,6 +847,12 @@ export async function createRenderer(
     },
   };
 }
+
+/**
+ * How long a change of the fog's look alone (a biome, its strength) blends over, in ms (T-261,
+ * DM decision 2026-11-22): quick, whatever the fog's fade takes for reveals.
+ */
+export const LOOK_BLEND_MS = 300;
 
 /** Living fog layers (T-245) by the fog layer that shows them: the frame loop moves their clock. */
 const livingLayers = new WeakMap<Container, LivingHandle>();
