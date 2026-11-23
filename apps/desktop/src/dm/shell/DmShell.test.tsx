@@ -424,6 +424,106 @@ describe("DmShell", () => {
       expect(screen.getByTestId("map")).toBe(map);
     });
 
+    it("makes the map the Map Forge's canvas: no tab, never hidden or moved (T-258)", () => {
+      setup();
+      // Hidden in the Game-Orchestrator …
+      fireEvent.click(viewItem("Karte"));
+      expect(screen.queryByTestId("map")).toBeNull();
+      fireEvent.click(workspaceMenu());
+      fireEvent.click(screen.getByRole("menuitemradio", { name: "Map Forge" }));
+      // … the Map Forge shows it again, as its canvas: no tab, no panel menu.
+      const map = screen.getByTestId("map");
+      const group = map.closest<HTMLElement>(".dv-groupview");
+      expect(group?.querySelector(".dv-tabs-and-actions-container")).toSatisfy(
+        (header: HTMLElement | null) =>
+          header === null || header.classList.contains("dv-hidden") ||
+          header.style.display === "none",
+      );
+      expect(screen.queryByRole("button", { name: "Panel Karte" })).toBeNull();
+      // The View menu cannot hide it here.
+      const item = viewItem("Karte");
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(item);
+      expect(screen.getByTestId("map")).toBe(map);
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
+
+      // Back in the Game-Orchestrator it is a panel like the others again.
+      fireEvent.click(workspaceMenu());
+      fireEvent.click(
+        screen.getByRole("menuitemradio", { name: "Game-Orchestrator" }),
+      );
+      expect(screen.getByRole("button", { name: "Panel Karte" })).toBeTruthy();
+      expect(viewItem("Karte").getAttribute("aria-disabled")).not.toBe("true");
+    });
+
+    it("folds a panel into an edge sidebar that slides it out over the map (T-259)", () => {
+      const storage = memoryStorage();
+      setup(storage);
+      const content = dataContent();
+      fireEvent.click(screen.getByRole("button", { name: "Panel Daten" }));
+      fireEvent.click(
+        screen.getByRole("menuitem", { name: "Automatisch ausblenden" }),
+      );
+      // Out of the layout, a vertical tab in the left sidebar (it was left of the map).
+      expect(screen.queryByRole("button", { name: "Panel Daten" })).toBeNull();
+      const bar = screen.getByRole("toolbar", { name: "Linke Seitenleiste" });
+      const tab = within(bar).getByRole("button", { name: "Daten" });
+      expect(tab.getAttribute("aria-expanded")).toBe("false");
+      const sheet = () =>
+        document.querySelector<HTMLElement>('.dm-edge-sheet[data-edge="left"]');
+      expect(sheet()?.dataset["open"]).toBeUndefined();
+
+      // A click slides it out, with its very content.
+      fireEvent.click(tab);
+      expect(tab.getAttribute("aria-expanded")).toBe("true");
+      expect(sheet()?.dataset["open"]).toBe("true");
+      expect(sheet()?.contains(content)).toBe(true);
+      // Escape slides it back and returns to its tab.
+      fireEvent.keyDown(within(sheet() as HTMLElement).getByText("Bibliotheksinhalt"), {
+        key: "Escape",
+      });
+      expect(sheet()?.dataset["open"]).toBeUndefined();
+      expect(document.activeElement).toBe(tab);
+      // A press elsewhere slides it back too.
+      fireEvent.click(tab);
+      fireEvent.pointerDown(screen.getByTestId("map"));
+      expect(sheet()?.dataset["open"]).toBeUndefined();
+
+      // Kept on this device.
+      expect(JSON.parse(storage.getItem("dm.edgePanels") ?? "null")).toEqual({
+        left: ["data"],
+        right: [],
+      });
+
+      // Pinned, it docks again.
+      fireEvent.click(tab);
+      fireEvent.click(screen.getByRole("button", { name: "Daten anheften" }));
+      expect(
+        screen.queryByRole("toolbar", { name: "Linke Seitenleiste" }),
+      ).toBeNull();
+      expect(screen.getByRole("button", { name: "Panel Daten" })).toBeTruthy();
+      expect(dataContent()).toBe(content);
+    });
+
+    it("keeps edge sidebars across a restart (T-259)", () => {
+      const storage = memoryStorage();
+      storage.setItem(
+        "dm.edgePanels",
+        JSON.stringify({ left: [], right: ["browser", "map", "nope"] }),
+      );
+      setup(storage);
+      // Only real panels, never the map.
+      const bar = screen.getByRole("toolbar", { name: "Rechte Seitenleiste" });
+      expect(
+        within(bar)
+          .getAllByRole("button")
+          .map((button) => button.textContent),
+      ).toEqual(["Browser"]);
+      expect(screen.queryByRole("button", { name: "Panel Browser" })).toBeNull();
+    });
+
     it("keeps the layout on this device across a restart", () => {
       const storage = memoryStorage();
       setup(storage);

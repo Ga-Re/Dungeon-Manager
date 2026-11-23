@@ -694,8 +694,11 @@ export const de = {
       fold: "Einklappen",
       unfold: "Ausklappen",
       hide: "Ausblenden",
+      autoHide: "Automatisch ausblenden",
     },
     panelMessages: {
+      autoHidden: "{{title}} in die Seitenleiste eingeklappt",
+      pinned: "{{title}} angeheftet",
       dockLeft: "{{title}} links angedockt",
       dockRight: "{{title}} rechts angedockt",
       dockBottom: "{{title}} unten angedockt",
@@ -710,6 +713,12 @@ export const de = {
       poppedOut: "{{title}} in neuem Fenster",
       close: "{{title}} ausblenden",
       closePlain: "Ausblenden",
+    },
+    edges: {
+      left: "Linke Seitenleiste",
+      right: "Rechte Seitenleiste",
+      pin: "{{title}} anheften",
+      close: "{{title}} einfahren",
     },
     panels: {
       data: "Daten",

@@ -346,6 +346,34 @@ export function dockPanel(
     });
 }
 
+/**
+ * Makes the map the canvas (T-258, ADR-0021) or a panel like the others again. As the canvas
+ * it is always shown, docked in the grid, alone in its group and without a tab bar, so it
+ * cannot be closed, moved or floated, and nothing is dropped into it as a tab; the other panels
+ * dock around it.
+ */
+export function setMapCanvas(
+  api: DockviewApi,
+  canvas: boolean,
+  title: string,
+): void {
+  if (canvas) {
+    const shown = api.getPanel("map");
+    if (shown && shown.api.location.type !== "grid") hidePanel(api, "map");
+    if (!api.getPanel("map")) showPanel(api, "map", title);
+  }
+  const map = api.getPanel("map");
+  if (!map) return;
+  const group = map.group;
+  if (canvas && group.panels.length > 1)
+    // Panels sharing its group as tabs move next to it.
+    for (const other of [...group.panels])
+      if (other.id !== "map") other.api.moveTo({ group, position: "right" });
+  // Only real changes: this runs after every layout change.
+  if (group.header.hidden !== canvas) group.header.hidden = canvas;
+  if (group.locked !== canvas) group.locked = canvas;
+}
+
 /** Lets `id` float over the others, e.g. the browser over the map (T-172b). */
 export function floatPanel(api: DockviewApi, id: PanelId): void {
   const panel = api.getPanel(id);

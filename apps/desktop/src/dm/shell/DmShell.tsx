@@ -48,6 +48,17 @@ import {
 import { AppCommandsContext, createAppCommands } from "./app-commands.js";
 import { CommandAnchorContext, CommandLayer } from "./command-layer.js";
 import {
+  EdgeBar,
+  EdgeSheet,
+  NO_EDGE_PANELS,
+  edgeOf,
+  readEdgePanels,
+  saveEdgePanels,
+  withEdgePanel,
+  withoutEdgePanel,
+  type Edge,
+} from "./edge-panels.js";
+import {
   PANELS,
   SlotHost,
   buildDefaultLayout,
@@ -63,6 +74,8 @@ import {
   readLayout,
   restoreLayout,
   saveLayout,
+  edgeSideOf,
+  setMapCanvas,
   showPanel,
   type PanelId,
 } from "./panel-layout.js";
@@ -211,7 +224,13 @@ function MapPanel() {
 
 /** What a panel's menu and tab can do (T-172b); the shell owns the layout. */
 type PanelCommand =
-  "dockLeft" | "dockRight" | "dockBottom" | "float" | "fold" | "hide";
+  | "dockLeft"
+  | "dockRight"
+  | "dockBottom"
+  | "float"
+  | "fold"
+  | "autoHide"
+  | "hide";
 
 interface PanelCommands {
   run(id: PanelId, command: PanelCommand): void;
@@ -268,6 +287,10 @@ function PanelMenu({ activePanel, containerApi }: IDockviewHeaderActionsProps) {
               : t("shell.panelMenu.fold"),
             disabled: !fold.possible && !fold.folded,
           },
+          // Into an edge sidebar (T-259); the map stays in the layout.
+          ...(id === "map"
+            ? []
+            : [{ id: "autoHide", label: t("shell.panelMenu.autoHide") }]),
           { id: "hide", label: t("shell.panelMenu.hide") },
         ]}
         onSelect={(command) => {
@@ -317,10 +340,8 @@ function PanelTab({ api }: IDockviewPanelHeaderProps) {
   );
 }
 
-const PANEL_COMPONENTS: Record<
-  PanelId,
-  (props: IDockviewPanelProps) => ReactNode
-> = {
+/** What each panel shows, in the layout or slid out of an edge sidebar (T-259). */
+const PANEL_BODIES: Record<PanelId, () => ReactNode> = {
   data: () => (
     <SlotHost
       element={usePanelHosts().dataPanel}
@@ -353,6 +374,17 @@ const PANEL_COMPONENTS: Record<
     />
   ),
 };
+
+const PANEL_COMPONENTS: Record<
+  PanelId,
+  (props: IDockviewPanelProps) => ReactNode
+> = PANEL_BODIES;
+
+/** A panel's body by its id, as a component (hooks need a component of their own). */
+function PanelBody({ id }: { readonly id: PanelId }) {
+  const Body = PANEL_BODIES[id];
+  return <Body />;
+}
 
 /** Cmd+B on macOS, Ctrl+B elsewhere; not in rich-text fields, where it means bold. */
 function isPanelShortcut(event: globalThis.KeyboardEvent): boolean {
@@ -393,6 +425,17 @@ export function DmShell({
   const { t } = useTranslation();
   const [panels, setPanels] = useState<DockviewApi | null>(null);
   const [shown, setShown] = useState<ReadonlySet<PanelId>>(new Set());
+  // Edge sidebars (T-259): the panels in each, the one slid out, and what each sheet shows
+  // (kept while it slides back).
+  const [edges, setEdges] = useState(() => readEdgePanels(storage));
+  const [openEdge, setOpenEdge] = useState<PanelId | null>(null);
+  const [sheetShows, setSheetShows] = useState<
+    Readonly<Record<Edge, PanelId | null>>
+  >({ left: null, right: null });
+  const edgeTabs = useRef(new Map<PanelId, HTMLButtonElement>());
+  useEffect(() => {
+    saveEdgePanels(storage, edges);
+  }, [storage, edges]);
   // The shown ribbon tab of each workspace, kept while another workspace shows.
   const [tabOf, setTabOf] = useState<Record<Workspace, string>>(FIRST_TAB);
   const [workspace, setWorkspace] = useState(() => readWorkspace(storage));
@@ -543,9 +586,17 @@ export function DmShell({
   // Counts folds: a fold is no layout change dockview reports, so a new command object
   // re-renders the panel menus to offer "Ausklappen".
   const [foldings, setFoldings] = useState(0);
+  // In the Map Forge the map is the canvas (T-258, ADR-0021); read by the layout's listeners.
+  const mapIsCanvas = workspace === "mapForge";
+  const canvasNow = useRef(mapIsCanvas);
+  canvasNow.current = mapIsCanvas;
+  const mapTitle = useRef(titles.map);
+  mapTitle.current = titles.map;
   const onPanelsReady = (event: DockviewReadyEvent) => {
     const { api } = event;
     restoreLayout(api, readLayout(storage), titles);
+    // Panels in an edge sidebar are not in the layout (T-259).
+    for (const id of [...edges.left, ...edges.right]) hidePanel(api, id);
     const persist = () => {
       // Closing the window takes every panel down with it; that is no layout to keep. (A DM who
       // hides all panels gets the default back on the next start.)
@@ -564,14 +615,20 @@ export function DmShell({
     update();
     api.onDidAddPanel(update);
     api.onDidRemovePanel(update);
-    // Sizes and moves; folded panels stay folded.
+    // Sizes and moves; folded panels stay folded, and in the Map Forge the map stays the canvas
+    // (also after a reset or a named layout).
     api.onDidLayoutChange(() => {
       settleFolds(api);
+      if (canvasNow.current) setMapCanvas(api, true, mapTitle.current);
       persist();
     });
     settleFoldsOnLayout(api);
     setPanels(api);
   };
+  // Entering or leaving the Map Forge makes the map its canvas or a panel again (T-258).
+  useEffect(() => {
+    if (panels) setMapCanvas(panels, mapIsCanvas, titles.map);
+  }, [panels, mapIsCanvas, titles.map]);
   // Tab titles follow the language.
   useEffect(() => {
     for (const panel of panels?.panels ?? [])
@@ -580,7 +637,14 @@ export function DmShell({
 
   const togglePanel = useCallback(
     (id: PanelId) => {
-      if (!panels) return;
+      // The Map Forge's canvas is never hidden (T-258).
+      if (!panels || (id === "map" && mapIsCanvas)) return;
+      // A panel in an edge sidebar is shown: hiding it takes it out of the sidebar (T-259).
+      if (edgeOf(edges, id)) {
+        setEdges((current) => withoutEdgePanel(current, id));
+        setOpenEdge((open) => (open === id ? null : open));
+        return;
+      }
       const panel = panels.getPanel(id);
       if (!panel) {
         showPanel(panels, id, titles[id]);
@@ -593,10 +657,13 @@ export function DmShell({
         panelButton.current?.focus();
       hidePanel(panels, id);
     },
-    [panels, titles],
+    [panels, titles, mapIsCanvas, edges],
   );
   const resetLayout = useCallback(() => {
-    if (panels) buildDefaultLayout(panels, titles);
+    if (!panels) return;
+    setEdges(NO_EDGE_PANELS);
+    setOpenEdge(null);
+    buildDefaultLayout(panels, titles);
   }, [panels, titles]);
 
   // Panel changes are announced in one polite status line (T-172b). While a command of ours
@@ -622,6 +689,22 @@ export function DmShell({
         const title = titles[id];
         if (command === "hide") {
           togglePanel(id);
+          return;
+        }
+        if (command === "autoHide") {
+          const edge = edgeSideOf(panels, id);
+          quiet.current = true;
+          try {
+            hidePanel(panels, id);
+          } finally {
+            quiet.current = false;
+          }
+          setEdges((current) => withEdgePanel(current, edge, id));
+          announce(t("shell.panelMessages.autoHidden", { title }));
+          // Its menu is gone: the keyboard goes to its tab in the sidebar.
+          requestAnimationFrame(() => {
+            edgeTabs.current.get(id)?.focus();
+          });
           return;
         }
         if (command === "fold") {
@@ -683,6 +766,71 @@ export function DmShell({
     [panels, titles, togglePanel, announce, t, foldings],
   );
 
+  // A panel docked again wins over a sidebar holding it (e.g. a named layout naming it).
+  useEffect(() => {
+    const clash = PANELS.filter((id) => shown.has(id) && edgeOf(edges, id));
+    if (clash.length > 0)
+      setEdges((current) => clash.reduce(withoutEdgePanel, current));
+  }, [shown, edges]);
+  const slidOut = openEdge !== null && edgeOf(edges, openEdge) ? openEdge : null;
+  const toggleEdge = useCallback(
+    (id: PanelId) => {
+      const edge = edgeOf(edges, id);
+      if (!edge) return;
+      setSheetShows((current) => ({ ...current, [edge]: id }));
+      setOpenEdge((open) => (open === id ? null : id));
+    },
+    [edges],
+  );
+  const closeEdge = useCallback(
+    (toTab: boolean) => {
+      const id = slidOut;
+      setOpenEdge(null);
+      if (toTab && id) edgeTabs.current.get(id)?.focus();
+    },
+    [slidOut],
+  );
+  const pinEdge = useCallback(
+    (id: PanelId) => {
+      if (!panels) return;
+      setEdges((current) => withoutEdgePanel(current, id));
+      setOpenEdge(null);
+      showPanel(panels, id, titles[id]);
+      announce(t("shell.panelMessages.pinned", { title: titles[id] }));
+    },
+    [panels, titles, announce, t],
+  );
+  /** Cmd/Ctrl+B and the title bar's button: the data panel, also out of its sidebar. */
+  const toggleData = useCallback(() => {
+    if (edgeOf(edges, "data")) toggleEdge("data");
+    else togglePanel("data");
+  }, [edges, toggleEdge, togglePanel]);
+  const edgeTab = useCallback(
+    (id: PanelId, element: HTMLButtonElement | null) => {
+      if (element) edgeTabs.current.set(id, element);
+      else edgeTabs.current.delete(id);
+    },
+    [],
+  );
+  const sheet = (edge: Edge) => {
+    const shownId = sheetShows[edge];
+    const live = shownId !== null && edgeOf(edges, shownId) === edge;
+    return (
+      <EdgeSheet
+        edge={edge}
+        shown={live ? shownId : null}
+        open={live && slidOut === shownId}
+        title={live ? titles[shownId] : ""}
+        onClose={closeEdge}
+        onPin={() => {
+          if (live) pinEdge(shownId);
+        }}
+      >
+        {live && <PanelBody id={shownId} />}
+      </EdgeSheet>
+    );
+  };
+
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       // Cmd/Ctrl+, opens the settings, as in most desktop apps (T-155).
@@ -698,7 +846,7 @@ export function DmShell({
       }
       if (!isPanelShortcut(event)) return;
       event.preventDefault();
-      togglePanel("data");
+      toggleData();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -802,7 +950,7 @@ export function DmShell({
       panels: PANELS.map((id) => ({
         command: PANEL_COMMAND[id],
         text: titles[id],
-        checked: shown.has(id),
+        checked: shown.has(id) || edgeOf(edges, id) !== undefined,
       })),
       resetLayout: t("shell.appMenu.resetLayout"),
       layouts: namedLayouts.map((entry) => ({
@@ -1125,7 +1273,7 @@ export function DmShell({
                   label={t("shell.toggleDataPanel")}
                   pressed={shown.has("data")}
                   onClick={() => {
-                    togglePanel("data");
+                    toggleData();
                   }}
                 />
                 <span className="dm-app-name">{t("app.title")}</span>
@@ -1152,8 +1300,11 @@ export function DmShell({
                       ...PANELS.map((id) => ({
                         id: PANEL_COMMAND[id],
                         label: titles[id],
-                        checked: shown.has(id),
+                        checked:
+                          shown.has(id) || edgeOf(edges, id) !== undefined,
                         toggle: true,
+                        // The Map Forge's canvas stays (T-258).
+                        disabled: id === "map" && mapIsCanvas,
                       })),
                       // Named layouts (T-172c) of this workspace.
                       ...namedLayouts.map((entry) => ({
@@ -1298,7 +1449,18 @@ export function DmShell({
                     )}
                   </div>
                 </div>
-                {/* Below the ribbon: the panels (T-172a, ADR-0017), the map one of them. */}
+                {/* Below the ribbon: the panels (T-172a, ADR-0017), the map one of them, with
+                    edge sidebars on both sides (T-259). */}
+                <div className="dm-workarea">
+                  <EdgeBar
+                    edge="left"
+                    ids={edges.left}
+                    open={slidOut}
+                    titles={titles}
+                    onToggle={toggleEdge}
+                    tabRef={edgeTab}
+                  />
+                  <div className="dm-workarea-panels">
                 <DockviewReact
                   className="dm-panels"
                   components={PANEL_COMPONENTS}
@@ -1313,6 +1475,18 @@ export function DmShell({
                     announce(event.message);
                   }}
                 />
+                    {sheet("left")}
+                    {sheet("right")}
+                  </div>
+                  <EdgeBar
+                    edge="right"
+                    ids={edges.right}
+                    open={slidOut}
+                    titles={titles}
+                    onToggle={toggleEdge}
+                    tabRef={edgeTab}
+                  />
+                </div>
                 <p role="status" className="visually-hidden">
                   {announcement}
                 </p>

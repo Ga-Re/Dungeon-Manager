@@ -684,8 +684,11 @@ export const en: Messages = {
       fold: "Fold",
       unfold: "Unfold",
       hide: "Hide",
+      autoHide: "Auto-hide",
     },
     panelMessages: {
+      autoHidden: "{{title}} folded into the sidebar",
+      pinned: "{{title}} pinned",
       dockLeft: "{{title}} docked left",
       dockRight: "{{title}} docked right",
       dockBottom: "{{title}} docked at the bottom",
@@ -700,6 +703,12 @@ export const en: Messages = {
       poppedOut: "{{title}} in a new window",
       close: "Hide {{title}}",
       closePlain: "Hide",
+    },
+    edges: {
+      left: "Left sidebar",
+      right: "Right sidebar",
+      pin: "Pin {{title}}",
+      close: "Slide {{title}} back",
     },
     panels: {
       data: "Data",
