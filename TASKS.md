@@ -1330,10 +1330,19 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Folded sidebars survive a restart (E2E test)
 - **Notes:** DM feedback 2026-11-22. dockview's own auto-hide is only in the commercial `dockview-enterprise`; see ADR-0021.
 
-### T-260 "Raum anlegen": fog-style shape tools and additive selection
+### T-262 Sidecar version 2: map "rooms" become "areas"
 
-- **Status:** todo · **Depends on:** T-254 · **Refs:** ADR-0020, T-108c1
-- The shape tools in "Raum anlegen" use the fog tools' icons and icon buttons. Shapes are additive: a shape that overlaps or touches the current selection is united with it (polygon union in core, `polyclip-ts`, holes allowed); a shape not connected to it replaces it. Alt still draws without snapping.
+- **Status:** todo · **Depends on:** T-108c1 · **Refs:** ADR-0012, SPEC §2.5
+- A map's drawn regions are areas, of which a room is one kind (DM decision 2026-11-23); later areas get a type such as room or zone. Sidecar version 2 stores them as `areas` instead of `rooms`; a version 1 sidecar is migrated step by step on reading (`migrateDocument`) and written as version 2 on the next save. Each area keeps its id, so scene overrides stay attached. Code names follow (`areaSchema`, `Area`, `areasOnLevel`, `newAreaId`); the area's polygon field stays `area`, like the scene overrides' `area`, so scene files do not change.
+- **Acceptance criteria**
+  - [ ] A version 1 sidecar with `rooms` reads as version 2 with the same `areas`, ids, levels and secret flags; unknown fields survive (schema + storage tests)
+  - [ ] A version 2 sidecar is refused by nothing in the app and written back unchanged (round-trip test)
+- **Notes:** DM decision 2026-11-23. Area types (room, zone, …) follow in their own task with a further additive field.
+
+### T-260 "Bereich anlegen": fog-style shape tools and additive selection
+
+- **Status:** todo · **Depends on:** T-254, T-262 · **Refs:** ADR-0020, T-108c1
+- The DM's word is "Bereich" (DM decision 2026-11-23): RÄUME becomes BEREICHE, the tools "Bereich anlegen / bearbeiten / löschen", the browser lists areas. The shape tools in "Bereich anlegen" use the fog tools' icons and icon buttons. Shapes are additive: a shape that overlaps or touches the current selection is united with it (polygon union in core, `polyclip-ts`, holes allowed); a shape not connected to it replaces it. Alt still draws without snapping.
 - **Acceptance criteria**
   - [ ] Union of connected shapes yields one room; an unconnected shape replaces the selection (core unit tests, property test that the result is always one polygon)
   - [ ] The panel shows the fog tool icons (component test)
