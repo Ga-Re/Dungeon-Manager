@@ -1304,6 +1304,60 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] A command can be pinned and unpinned and gets an own shortcut, kept per device (component test)
 - **Notes:** DM decision 2026-11-22: later than the ribbon itself.
 
+### T-257 Command panels above all panels
+
+- **Status:** todo · **Depends on:** T-252 · **Refs:** ADR-0020, ADR-0021
+- Command panels (e.g. "Raum anlegen") live in one window-wide layer above every panel, not inside the map panel; they still open top right of the canvas and can be dragged anywhere in the window.
+- **Acceptance criteria**
+  - [ ] A command panel can be moved over the browser and other panels and is not clipped by the map panel (component + E2E test)
+- **Notes:** DM feedback 2026-11-22.
+
+### T-258 Map Forge: the map is the canvas
+
+- **Status:** todo · **Depends on:** T-257 · **Refs:** ADR-0021, ADR-0017, ADR-0014
+- In the Map Forge the map fills the area under the ribbon as its canvas; the browser, Eigenschaften and data panels dock around or float over it. The Game-Orchestrator keeps its free layout with the map as a panel. Saved Map Forge layouts that no longer fit fall back to the default once.
+- **Acceptance criteria**
+  - [ ] The Map Forge's map cannot be closed, moved or docked; panels dock around it (component + E2E test, screenshot)
+  - [ ] The Orchestrator's layout is unchanged (E2E test)
+- **Notes:** DM decision 2026-11-22. Asset Vault, Tokens & Kreaturen and Campaign Atlas take their canvas (asset preview, token/creature preview, campaign overview) with the tasks that fill them.
+
+### T-259 Edge sidebars: fold panels into vertical tabs that slide out
+
+- **Status:** todo · **Depends on:** T-258 · **Refs:** ADR-0021, ADR-0017
+- A panel can be folded into a sidebar of vertical tabs at a window edge; a click on its tab slides it out over the canvas with a smooth animation (none under reduced motion); clicking elsewhere or Escape slides it back; a pin docks it again. Kept per workspace with the layout.
+- **Acceptance criteria**
+  - [ ] Fold, slide out, slide back and pin work with mouse and keyboard; the folded panel keeps its state (component test)
+  - [ ] Folded sidebars survive a restart (E2E test)
+- **Notes:** DM feedback 2026-11-22. dockview's own auto-hide is only in the commercial `dockview-enterprise`; see ADR-0021.
+
+### T-262 Sidecar version 2: map "rooms" become "areas"
+
+- **Status:** todo · **Depends on:** T-108c1 · **Refs:** ADR-0012, SPEC §2.5
+- A map's drawn regions are areas, of which a room is one kind (DM decision 2026-11-23); later areas get a type such as room or zone. Sidecar version 2 stores them as `areas` instead of `rooms`; a version 1 sidecar is migrated step by step on reading (`migrateDocument`) and written as version 2 on the next save. Each area keeps its id, so scene overrides stay attached. Code names follow (`areaSchema`, `Area`, `areasOnLevel`, `newAreaId`); the area's polygon field stays `area`, like the scene overrides' `area`, so scene files do not change.
+- **Acceptance criteria**
+  - [ ] A version 1 sidecar with `rooms` reads as version 2 with the same `areas`, ids, levels and secret flags; unknown fields survive (schema + storage tests)
+  - [ ] A version 2 sidecar is refused by nothing in the app and written back unchanged (round-trip test)
+- **Notes:** DM decision 2026-11-23. Area types (room, zone, …) follow in their own task with a further additive field.
+
+### T-260 "Bereich anlegen": fog-style shape tools and additive selection
+
+- **Status:** todo · **Depends on:** T-254, T-262 · **Refs:** ADR-0020, T-108c1
+- The DM's word is "Bereich" (DM decision 2026-11-23): RÄUME becomes BEREICHE, the tools "Bereich anlegen / bearbeiten / löschen", the browser lists areas. The shape tools in "Bereich anlegen" use the fog tools' icons and icon buttons. Shapes are additive: a shape that overlaps or touches the current selection is united with it (polygon union in core, `polyclip-ts`, holes allowed); a shape not connected to it replaces it. Alt still draws without snapping.
+- **Acceptance criteria**
+  - [ ] Union of connected shapes yields one room; an unconnected shape replaces the selection (core unit tests, property test that the result is always one polygon)
+  - [ ] The panel shows the fog tool icons (component test)
+- **Notes:** DM decisions 2026-11-22.
+
+### T-261 Fog biomes: soft edge and quick switch
+
+- **Status:** todo · **Depends on:** T-168 · **Refs:** ADR-0019, SPEC §4
+- Biome particles and streaks reach up to about one grid cell past the fog edge into the revealed area and fade out softly there, with stronger "wabern" at the edge; the hidden area stays fully covered. Changing the biome cross-fades in 0.3 s instead of switching late.
+- **Acceptance criteria**
+  - [ ] Effects fade out within ~1 cell past the edge; nothing hidden becomes visible (renderer test + screenshot)
+  - [ ] A biome change completes in ≤ 0.3 s (renderer test with injected time)
+  - [ ] Benchmark scene stays within budget (`pnpm bench`, DM)
+- **Notes:** DM decisions 2026-11-22.
+
 ### T-192 Crop, rotation and image adjustment of maps
 
 - **Status:** todo · **Depends on:** T-176a · **Refs:** SPEC §2.5
