@@ -183,6 +183,18 @@ label {
   min-height: 0;
 }
 
+/* Dockview's root – the panels with their floating groups and drop overlays – is a stacking
+   context of its own (T-257), below the command layer. While a menu inside a panel is open (a
+   panel's menu, a browser item's context menu), the panels rise above the command layer so the
+   menu is on top. */
+.dm-main .dv-shell {
+  isolation: isolate;
+}
+
+.dm-main .dv-shell:has(.dm-menu-list) {
+  z-index: var(--dm-z-popover);
+}
+
 .dm-dockview-theme {
   --dv-background-color: var(--dm-surface-chrome);
   --dv-group-view-background-color: var(--dm-surface-panel);
@@ -464,9 +476,10 @@ label {
   margin: 0;
 }
 
+/* No z-index of its own: its menus then rank with the window's (popover) and open above the
+   command layer (T-257); the panels below are a stacking context of their own. */
 .dm-ribbon {
   position: relative;
-  z-index: var(--dm-z-chrome);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   column-gap: var(--dm-space-3);
@@ -647,20 +660,28 @@ label {
   font-family: var(--dm-font-heading);
 }
 
-/* A ribbon tool's command panel (ADR-0020): top right over the map, below popovers. */
-.dm-stage-command {
+/* A ribbon tool's command panel (ADR-0020, ADR-0021, T-257): one layer over the whole window,
+   above every panel and below menus. The anchor sits at the map panel's top right corner
+   (top and right set by the shell). */
+.dm-command-layer {
   position: absolute;
-  top: var(--dm-space-3);
-  right: var(--dm-space-3);
-  z-index: var(--dm-z-hud);
-  display: grid;
-  justify-items: end;
-  max-width: calc(100% - 2 * var(--dm-space-3));
-  max-height: calc(100% - 2 * var(--dm-space-3));
+  inset: 0;
+  z-index: var(--dm-z-command);
   pointer-events: none;
 }
 
-.dm-stage-command > * {
+.dm-command-anchor {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: var(--dm-space-3);
+  box-sizing: border-box;
+}
+
+/* The slot's wrappers (SlotHost and the slot itself) lay out nothing: the panel is the item. */
+.dm-command-anchor > *,
+.dm-command-anchor .dm-command {
   display: contents;
 }
 

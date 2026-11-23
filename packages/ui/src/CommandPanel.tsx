@@ -28,8 +28,9 @@ const FOCUSABLE =
   'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * The panel a ribbon tool opens for its options (ADR-0020, as in CAD programs): it floats over
- * the map, is not modal – the DM keeps working on the map – and is moved by its title bar. OK
+ * The panel a ribbon tool opens for its options (ADR-0020, as in CAD programs): it floats above
+ * all panels (ADR-0021), is not modal – the DM keeps working on the map – and is moved by its
+ * title bar, never out of the window. OK
  * or Enter applies, Abbrechen or Escape discards. Focus moves into it when it opens and back to
  * where it was when it closes. The owner renders it while the command runs, one at a time.
  */
@@ -52,6 +53,13 @@ export function CommandPanel({
     readonly x: number;
     readonly y: number;
     readonly from: { readonly x: number; readonly y: number };
+    /** How far it may move each way and stay in the window; none while it has no size. */
+    readonly bounds: {
+      readonly left: number;
+      readonly right: number;
+      readonly top: number;
+      readonly bottom: number;
+    } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -69,6 +77,34 @@ export function CommandPanel({
         !previous.closest("[hidden]")
       )
         previous.focus();
+    };
+  }, []);
+
+  // The panel stays in the window (T-257): when the window shrinks, the anchor moves or it opens
+  // partly outside, it moves back in – its title bar, the only handle, first.
+  useEffect(() => {
+    const own = panel.current;
+    if (!own || typeof IntersectionObserver === "undefined") return;
+    const keepInside = () => {
+      const rect = own.getBoundingClientRect();
+      if (rect.width === 0) return;
+      const dx = Math.max(
+        -rect.left,
+        Math.min(0, window.innerWidth - rect.right),
+      );
+      const dy = Math.max(
+        -rect.top,
+        Math.min(0, window.innerHeight - rect.bottom),
+      );
+      if (dx !== 0 || dy !== 0)
+        setOffset((current) => ({ x: current.x + dx, y: current.y + dy }));
+    };
+    const watcher = new IntersectionObserver(keepInside, {
+      threshold: [0, 0.25, 0.5, 0.75, 1],
+    });
+    watcher.observe(own);
+    return () => {
+      watcher.disconnect();
     };
   }, []);
 
@@ -94,20 +130,39 @@ export function CommandPanel({
     const handle: Partial<Pick<Element, "setPointerCapture">> =
       event.currentTarget;
     handle.setPointerCapture?.(event.pointerId);
+    const rect = panel.current?.getBoundingClientRect();
     drag.current = {
       pointerId: event.pointerId,
       x: event.clientX,
       y: event.clientY,
       from: offset,
+      // Where it would stand unmoved, so the drag keeps it in the window (T-257).
+      bounds:
+        rect && rect.width > 0
+          ? {
+              left: offset.x - rect.left,
+              right: offset.x + window.innerWidth - rect.right,
+              top: offset.y - rect.top,
+              bottom: offset.y + window.innerHeight - rect.bottom,
+            }
+          : null,
     };
   };
   const onHandleMove = (event: PointerEvent) => {
     const start = drag.current;
     if (start?.pointerId !== event.pointerId) return;
-    setOffset({
-      x: start.from.x + event.clientX - start.x,
-      y: start.from.y + event.clientY - start.y,
-    });
+    const x = start.from.x + event.clientX - start.x;
+    const y = start.from.y + event.clientY - start.y;
+    const { bounds } = start;
+    setOffset(
+      bounds
+        ? {
+            // A panel larger than the window keeps its top left – the title bar – inside.
+            x: Math.max(Math.min(x, bounds.right), bounds.left),
+            y: Math.max(Math.min(y, bounds.bottom), bounds.top),
+          }
+        : { x, y },
+    );
   };
   const onHandleUp = (event: PointerEvent) => {
     if (drag.current?.pointerId === event.pointerId) drag.current = null;

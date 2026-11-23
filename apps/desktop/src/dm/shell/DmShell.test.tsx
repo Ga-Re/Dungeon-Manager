@@ -49,6 +49,9 @@ function setup(storage = memoryStorage()) {
         <ShellPortal slot="ribbonFog">
           <button type="button">Aufdecken</button>
         </ShellPortal>
+        <ShellPortal slot="command">
+          <div data-testid="command" />
+        </ShellPortal>
       </DmShell>
     </I18nextProvider>,
   );
@@ -155,6 +158,16 @@ describe("DmShell", () => {
     expect(
       screen.getByText("Hier bearbeitest du bald die aktuelle Kampagne."),
     ).toBeTruthy();
+  });
+
+  it("puts a ribbon tool's command panel above all panels, not in the map's (T-257)", () => {
+    setup();
+    const command = screen.getByTestId("command");
+    const layer = command.closest(".dm-command-layer");
+    // One layer over the whole window, outside dockview's panels.
+    expect(layer?.parentElement?.classList.contains("dm-shell")).toBe(true);
+    expect(command.closest(".dm-panels")).toBeNull();
+    expect(command.closest(".dm-stage")).toBeNull();
   });
 
   it("renders portalled parts into their zones", () => {

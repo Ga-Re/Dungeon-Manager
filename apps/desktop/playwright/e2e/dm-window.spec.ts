@@ -379,6 +379,132 @@ test("the grid is calibrated from the ribbon: a box over 3 × 3 printed cells, a
     .toBeCloseTo(calibrated, 1);
 });
 
+test("a command panel opens at the map's top right and moves over the browser, never out of the window (T-257)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Fluch der Krypta" }).click();
+  await page
+    .getByRole("list", { name: "Karten" })
+    .getByRole("button", { name: /krypta\.png/ })
+    .dblclick();
+  await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
+  await page.getByRole("tab", { name: "Bereiche" }).click();
+  await page
+    .getByRole("group", { name: "Bereiche" })
+    .getByRole("button", { name: "Bereich anlegen" })
+    .click();
+  const panel = page.getByRole("dialog", { name: "Bereich anlegen" });
+  const map = await page.locator(".dm-stage").boundingBox();
+  const opened = await panel.boundingBox();
+  if (!map || !opened) throw new Error("no map or panel");
+  // At the map's top right corner.
+  expect(opened.x + opened.width).toBeLessThanOrEqual(map.x + map.width);
+  expect(opened.x + opened.width).toBeGreaterThan(map.x + map.width - 40);
+  expect(opened.y).toBeLessThan(map.y + 40);
+
+  // Dragged by its title bar onto the browser, right of the map.
+  const handle = panel.locator(".dm-command-panel-handle");
+  const grip = await handle.boundingBox();
+  const browser = await page.getByRole("tree", { name: "Karte" }).boundingBox();
+  if (!grip || !browser) throw new Error("no handle or browser");
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(browser.x + 20, browser.y + 20, { steps: 5 });
+  await page.mouse.up();
+  const moved = await panel.boundingBox();
+  if (!moved) throw new Error("panel gone");
+  expect(moved.x).toBeGreaterThan(map.x + map.width - 40);
+  // Above the browser: what is under the panel's middle belongs to the panel.
+  const onTop = await page.evaluate(
+    ({ x, y }) =>
+      document.elementFromPoint(x, y)?.closest(".dm-command-panel") !== null,
+    { x: moved.x + moved.width / 2, y: moved.y + moved.height / 2 },
+  );
+  expect(onTop).toBe(true);
+
+  // The ribbon's menus open above it: here BEREICHE's caption menu, over the panel moved there.
+  const caption = page
+    .getByRole("group", { name: "Bereiche" })
+    .getByRole("button", { name: "Bereiche" });
+  const captionBox = await caption.boundingBox();
+  const grip2 = await handle.boundingBox();
+  if (!captionBox || !grip2) throw new Error("no caption or handle");
+  await page.mouse.move(grip2.x + grip2.width / 2, grip2.y + grip2.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(captionBox.x + 10, captionBox.y + 30, { steps: 5 });
+  await page.mouse.up();
+  await caption.click();
+  const menu = page.getByRole("menu", { name: "Bereiche" });
+  const menuBox = await menu.boundingBox();
+  if (!menuBox) throw new Error("no menu");
+  const menuOnTop = await page.evaluate(
+    ({ x, y }) =>
+      document.elementFromPoint(x, y)?.closest('[role="menu"]') !== null,
+    { x: menuBox.x + menuBox.width / 2, y: menuBox.y + menuBox.height / 2 },
+  );
+  expect(menuOnTop).toBe(true);
+  await page.keyboard.press("Escape");
+
+  // Above a floating panel too: the browser, floated.
+  await page.getByRole("button", { name: "Panel Browser" }).click();
+  await page.getByRole("menuitem", { name: "Schwebend" }).click();
+  const floated = await page.getByRole("tree", { name: "Karte" }).boundingBox();
+  const grip3 = await handle.boundingBox();
+  if (!floated || !grip3) throw new Error("no floated browser or handle");
+  await page.mouse.move(grip3.x + grip3.width / 2, grip3.y + grip3.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(floated.x + 10, floated.y + 10, { steps: 5 });
+  await page.mouse.up();
+  const overFloat = await panel.boundingBox();
+  if (!overFloat) throw new Error("panel gone");
+  const aboveFloat = await page.evaluate(
+    ({ x, y }) =>
+      document.elementFromPoint(x, y)?.closest(".dm-command-panel") !== null,
+    { x: overFloat.x + 20, y: overFloat.y + 20 },
+  );
+  expect(aboveFloat).toBe(true);
+  // A menu inside a panel opens above the command panel all the same.
+  await page.getByRole("button", { name: "Panel Browser" }).focus();
+  await page.keyboard.press("Enter");
+  const panelMenu = page.getByRole("menu", { name: "Panel Browser" });
+  const panelMenuBox = await panelMenu.boundingBox();
+  if (!panelMenuBox) throw new Error("no panel menu");
+  const panelMenuOnTop = await page.evaluate(
+    ({ x, y }) =>
+      document.elementFromPoint(x, y)?.closest('[role="menu"]') !== null,
+    {
+      x: panelMenuBox.x + panelMenuBox.width / 2,
+      y: panelMenuBox.y + panelMenuBox.height / 2,
+    },
+  );
+  expect(panelMenuOnTop).toBe(true);
+  await page.keyboard.press("Escape");
+
+  // Far past the window's bottom right corner: it stays inside.
+  const again = await handle.boundingBox();
+  if (!again) throw new Error("no handle");
+  await page.mouse.move(again.x + again.width / 2, again.y + again.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(5000, 5000, { steps: 5 });
+  await page.mouse.up();
+  const kept = await panel.boundingBox();
+  const window = page.viewportSize();
+  if (!kept || !window) throw new Error("panel gone");
+  expect(kept.x + kept.width).toBeLessThanOrEqual(window.width + 1);
+  expect(kept.y + kept.height).toBeLessThanOrEqual(window.height + 1);
+
+  // A smaller window brings it back in, title bar first.
+  await page.setViewportSize({ width: 700, height: 500 });
+  await expect(async () => {
+    const small = await panel.boundingBox();
+    if (!small) throw new Error("panel gone");
+    expect(small.x).toBeGreaterThanOrEqual(-1);
+    expect(small.y).toBeGreaterThanOrEqual(-1);
+    expect(small.x + small.width).toBeLessThanOrEqual(701);
+  }).toPass();
+});
+
 test("an area is added from the ribbon, named, confirmed and shows in every scene of the map (T-108c1, T-254, T-260)", async ({
   page,
 }) => {

@@ -37,6 +37,7 @@ Dungeon Manager combines two distinct paradigms:
    - `10`: Canvas overlays (`FogPreview`, measurement guides)
    - `20`: Floating HUD elements (Scene Browser, Bottom Navigation Dock)
    - `30`: Top Ribbon Toolbar & Collapsible Data Panel
+   - `35`: Command panels of ribbon tools, one layer above every panel (ADR-0021)
    - `40`: Context / Radial Menus & Popovers
    - `50`: Modals & Critical Prompts (`MapChangeChoice`, error dialogs)
 3. **Strict Architectural Boundaries:**

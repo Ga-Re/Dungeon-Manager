@@ -155,11 +155,13 @@ const SHARED: Record<string, string> = {
   "radius-lg": "4px",
   "radius-pill": "999px",
   "focus-width": "2px",
-  // Layering contract (ADR-0011): canvas · overlays · HUD · ribbon/data panel · popovers · modals.
+  // Layering contract (ADR-0011): canvas · overlays · HUD · ribbon/data panel · command panels
+  // (above every panel, ADR-0021) · popovers · modals.
   "z-canvas": "0",
   "z-overlay": "10",
   "z-hud": "20",
   "z-chrome": "30",
+  "z-command": "35",
   "z-popover": "40",
   "z-modal": "50",
   // Behind a modal dialog, in both themes.

@@ -1323,10 +1323,10 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-257 Command panels above all panels
 
-- **Status:** todo · **Depends on:** T-252 · **Refs:** ADR-0020, ADR-0021
+- **Status:** done · **Depends on:** T-252 · **Refs:** ADR-0020, ADR-0021
 - Command panels (e.g. "Raum anlegen") live in one window-wide layer above every panel, not inside the map panel; they still open top right of the canvas and can be dragged anywhere in the window.
 - **Acceptance criteria**
-  - [ ] A command panel can be moved over the browser and other panels and is not clipped by the map panel (component + E2E test)
+  - [x] A command panel can be moved over the browser and other panels and is not clipped by the map panel (component + E2E test)
 - **Notes:** DM feedback 2026-11-22.
 
 ### T-258 Map Forge: the map is the canvas
