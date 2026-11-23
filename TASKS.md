@@ -1375,6 +1375,16 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Benchmark scene stays within budget (`pnpm bench`, DM)
 - **Notes:** DM decisions 2026-11-22.
 
+### T-263 Each workspace keeps its own panel layout and edge sidebars
+
+- **Status:** todo · **Depends on:** T-258, T-259 · **Refs:** ADR-0022, ADR-0017, ADR-0021
+- Each workspace has its own dockview layout and its own edge sidebars in device storage (`dm.layout.<workspace>`, `dm.edgePanels.<workspace>`); switching the workspace switches them. Today's `dm.layout` and `dm.edgePanels` become the Game-Orchestrator's once; the other workspaces start from their default layout. "Layout zurücksetzen" and named layouts act on the shown workspace.
+- **Acceptance criteria**
+  - [ ] A visit to the Map Forge leaves the Game-Orchestrator's layout exactly as it was, also a hidden, floating or tabbed map (component + E2E test)
+  - [ ] Sidebars are kept per workspace and across a restart (E2E test)
+  - [ ] The layout stored before T-263 becomes the Game-Orchestrator's (unit test)
+- **Notes:** DM decision 2026-11-23 (ADR-0022, PR #143 review).
+
 ### T-192 Crop, rotation and image adjustment of maps
 
 - **Status:** todo · **Depends on:** T-176a · **Refs:** SPEC §2.5
