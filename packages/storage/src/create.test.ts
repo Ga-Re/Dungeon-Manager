@@ -128,13 +128,13 @@ describe("createScene", () => {
     expect(await loadSidecar(fs, asset.path)).toEqual({
       status: "ok",
       value: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         original: { hash: asset.hash },
         map: {
           grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
           // The id the DM window plays a map without data with, so its fog still fits.
           levels: [{ id: DEFAULT_LEVEL_ID, name: "Erdgeschoss" }],
-          rooms: [],
+          areas: [],
         },
       },
     });
@@ -159,11 +159,11 @@ describe("createScene", () => {
     const calibrated = {
       grid: { cellSizePx: 70, offsetXPx: 5, offsetYPx: 0 },
       levels: [{ id: "ground", name: "Höhle" }],
-      rooms: [],
+      areas: [],
     };
     const fs = createMemoryFileSystem();
     await saveSidecar(fs, asset.path, {
-      schemaVersion: 1,
+      schemaVersion: 2,
       original: { hash: asset.hash },
       map: calibrated,
     });
@@ -240,7 +240,7 @@ describe("mapDataForChange", () => {
       { id: "ground", name: "Unten" },
       { id: "top", name: "Oben" },
     ],
-    rooms: [],
+    areas: [],
   };
 
   test("a new map takes the old map's grid and levels, so fog and tokens fit", () => {
@@ -258,7 +258,7 @@ describe("mapDataForChange", () => {
     expect(mapDataForChange(null, level)).toEqual({
       grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
       levels: [{ id: DEFAULT_LEVEL_ID, name: "Neu" }],
-      rooms: [],
+      areas: [],
     });
   });
 });
@@ -482,7 +482,7 @@ describe("updateMapData (T-118d)", () => {
   const defaults: MapData = {
     grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
     levels: [{ id: DEFAULT_LEVEL_ID, name: "Erdgeschoss" }],
-    rooms: [],
+    areas: [],
   };
   const addCellar = (data: MapData): MapData => ({
     ...data,
@@ -492,7 +492,7 @@ describe("updateMapData (T-118d)", () => {
   test("a map without data starts from the defaults, keeping other sidecar fields", async () => {
     const fs = createMemoryFileSystem();
     await saveSidecar(fs, asset.path, {
-      schemaVersion: 1,
+      schemaVersion: 2,
       original: { hash: asset.hash },
       tags: ["Turm"],
     });
@@ -507,7 +507,7 @@ describe("updateMapData (T-118d)", () => {
   test("nothing is written when the map's data changed elsewhere meanwhile", async () => {
     const fs = createMemoryFileSystem();
     await saveSidecar(fs, asset.path, {
-      schemaVersion: 1,
+      schemaVersion: 2,
       original: { hash: asset.hash },
       map: {
         ...defaults,

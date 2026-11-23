@@ -18,12 +18,12 @@ const hash = `sha256:${"e".repeat(64)}`;
 const other = `sha256:${"f".repeat(64)}`;
 const grid = { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 };
 const sidecar: Sidecar = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   original: { hash },
   map: {
     grid,
     levels: [{ id: "ground", name: "Erdgeschoss" }],
-    rooms: [],
+    areas: [],
   },
 };
 
@@ -72,6 +72,38 @@ describe("sidecar files", () => {
       status: "ok",
       value: withBiome,
     });
+  });
+
+  test("a version 1 sidecar is read with its rooms as areas and saved as version 2 (T-262)", async () => {
+    const room = {
+      id: "room-a1b2c3",
+      name: "Wachraum",
+      area: {
+        outer: [
+          [0, 0],
+          [70, 0],
+          [70, 70],
+        ],
+        holes: [],
+      },
+      secret: true,
+    };
+    const fs = createMemoryFileSystem({
+      "library/maps/turm.png.dm.json": JSON.stringify({
+        schemaVersion: 1,
+        original: { hash },
+        map: { grid, levels: sidecar.map?.levels, rooms: [room] },
+      }),
+    });
+    const loaded = await loadSidecar(fs, "library/maps/turm.png");
+    if (loaded.status !== "ok") throw new Error("version 1 not read");
+    expect(loaded.value.map?.areas).toEqual([room]);
+    await saveSidecar(fs, "library/maps/turm.png", loaded.value);
+    const written = JSON.parse(
+      fs.files().get("library/maps/turm.png.dm.json") ?? "",
+    ) as Record<string, unknown>;
+    expect(written).toMatchObject({ schemaVersion: 2, map: { areas: [room] } });
+    expect(written["map"]).not.toHaveProperty("rooms");
   });
 
   test("a missing sidecar is reported as missing, so the caller uses defaults", async () => {
@@ -167,7 +199,7 @@ describe("adopting a version 2 scene's map (ADR-0012 migration)", () => {
   });
 
   test("adds map data to a sidecar that has none yet", () => {
-    const bare: Sidecar = { schemaVersion: 1, original: { hash }, tags: ["x"] };
+    const bare: Sidecar = { schemaVersion: 2, original: { hash }, tags: ["x"] };
     expect(adoptLegacyMap(bare, legacy, hash)).toEqual({
       kind: "seed",
       sidecar: { ...sidecar, tags: ["x"] },

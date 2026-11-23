@@ -1,5 +1,5 @@
 import {
-  roomsOnLevel,
+  areasOnLevel,
   tableLevels,
   type ResolvedMap,
 } from "@dungeon-manager/core";
@@ -52,7 +52,7 @@ export function sceneContentNodes(
             children: (map?.levels ?? []).map((level) => {
               // The level's rooms (T-108c1), drawn in the Map Forge for every scene of the map.
               const rooms = map
-                ? roomsOnLevel(map.rooms, map.levels, level.id)
+                ? areasOnLevel(map.areas, map.levels, level.id)
                 : [];
               return {
                 id: `${CONTENT}level-${level.id}`,

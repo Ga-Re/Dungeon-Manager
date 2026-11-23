@@ -70,7 +70,7 @@ const HASH = `sha256:${"b".repeat(64)}`;
 
 const sidecar = (map: object, info?: object) =>
   JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     original: { hash: HASH },
     map: {
       grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },
@@ -78,7 +78,7 @@ const sidecar = (map: object, info?: object) =>
         { id: "ground", name: "Erdgeschoss" },
         { id: "cellar", name: "Keller" },
       ],
-      rooms: [],
+      areas: [],
       ...map,
     },
     ...(info && { info }),
@@ -131,7 +131,7 @@ const saved = (library: ReturnType<typeof fakeLibraryService>) =>
       grid: object;
       fogEffect?: object;
       levels: object[];
-      rooms: object[];
+      areas: object[];
     };
     info?: object;
   };
@@ -457,13 +457,13 @@ describe("MapForge", () => {
       within(panel).getByRole("checkbox", { name: /Geheimraum/ }),
     );
     // A preview only until OK.
-    expect(saved(library).map?.rooms).toEqual([]);
+    expect(saved(library).map?.areas).toEqual([]);
     fireEvent.click(ok);
     await waitFor(() => {
-      expect(saved(library).map?.rooms).toEqual([
+      expect(saved(library).map?.areas).toEqual([
         {
           // A fresh random id, never one a deleted room had (ADR-0012 overrides).
-          id: expect.stringMatching(/^room-[0-9a-z]{6}$/) as unknown,
+          id: expect.stringMatching(/^area-[0-9a-z]{6}$/) as unknown,
           name: "Gruft",
           levelId: "ground",
           secret: true,
@@ -503,7 +503,7 @@ describe("MapForge", () => {
     });
     fireEvent.click(within(panel).getByRole("button", { name: "OK" }));
     await waitFor(() => {
-      expect(saved(library).map?.rooms).toEqual([
+      expect(saved(library).map?.areas).toEqual([
         expect.objectContaining({ area: small }),
       ]);
     });
@@ -536,7 +536,7 @@ describe("MapForge", () => {
           { id: "ground", name: "Erdgeschoss" },
           { id: "cellar", name: "Keller" },
         ],
-        rooms: [
+        areas: [
           {
             id: "hall",
             name: "Halle",
@@ -569,7 +569,7 @@ describe("MapForge", () => {
     rerenderIn("gameOrchestrator");
     rerenderIn("mapForge");
     expect(screen.queryByRole("dialog", { name: "Raum anlegen" })).toBeNull();
-    expect(saved(library).map?.rooms).toHaveLength(1);
+    expect(saved(library).map?.areas).toHaveLength(1);
   });
 
   test("Abbrechen discards a drawn room", async () => {
@@ -581,14 +581,14 @@ describe("MapForge", () => {
     fireEvent.click(within(panel).getByRole("button", { name: "Abbrechen" }));
     expect(view.outlines).toEqual([]);
     expect(view.tool).toBe("pan");
-    expect(saved(library).map?.rooms).toEqual([]);
+    expect(saved(library).map?.areas).toEqual([]);
   });
 
   test("a room is edited by double-click and deleted from its context menu", async () => {
     const area = square(0, 0, 70);
     const { library } = renderForge({
       [SIDECAR]: sidecar({
-        rooms: [{ id: "hall", name: "Halle", area, levelId: "ground" }],
+        areas: [{ id: "hall", name: "Halle", area, levelId: "ground" }],
       }),
     });
     const tree = await screen.findByRole("tree", { name: "Karte" });
@@ -600,7 +600,7 @@ describe("MapForge", () => {
     fireEvent.click(within(edit).getByRole("checkbox", { name: /Geheimraum/ }));
     fireEvent.click(within(edit).getByRole("button", { name: "OK" }));
     await waitFor(() => {
-      expect(saved(library).map?.rooms).toEqual([
+      expect(saved(library).map?.areas).toEqual([
         {
           id: "hall",
           name: "Thronsaal",
@@ -622,7 +622,7 @@ describe("MapForge", () => {
     expect(within(confirm).getByText(/„Thronsaal“ löschen/)).toBeTruthy();
     fireEvent.click(within(confirm).getByRole("button", { name: "OK" }));
     await waitFor(() => {
-      expect(saved(library).map?.rooms).toEqual([]);
+      expect(saved(library).map?.areas).toEqual([]);
     });
     // The keyboard goes to the room's level.
     await waitFor(() => {
@@ -633,7 +633,7 @@ describe("MapForge", () => {
   test("the RÄUME caption menu edits and deletes the selected room", async () => {
     renderForge({
       [SIDECAR]: sidecar({
-        rooms: [
+        areas: [
           {
             id: "hall",
             name: "Halle",
@@ -665,7 +665,7 @@ describe("MapForge", () => {
     const area = square(0, 0, 70);
     const { library } = renderForge({
       [SIDECAR]: sidecar({
-        rooms: [{ id: "hall", name: "Halle", area, levelId: "ground" }],
+        areas: [{ id: "hall", name: "Halle", area, levelId: "ground" }],
       }),
     });
     const tree = await screen.findByRole("tree", { name: "Karte" });
@@ -694,7 +694,7 @@ describe("MapForge", () => {
     });
     fireEvent.click(within(edit).getByRole("button", { name: "OK" }));
     await waitFor(() => {
-      expect(saved(library).map?.rooms).toEqual([
+      expect(saved(library).map?.areas).toEqual([
         expect.objectContaining({ name: "Thronsaal" }),
       ]);
     });
@@ -703,7 +703,7 @@ describe("MapForge", () => {
     fireEvent.click(within(edit).getByRole("checkbox", { name: /Geheimraum/ }));
     fireEvent.click(within(edit).getByRole("button", { name: "OK" }));
     await waitFor(() => {
-      expect(saved(library).map?.rooms).toEqual([
+      expect(saved(library).map?.areas).toEqual([
         expect.objectContaining({ name: "Thronsaal", secret: true }),
       ]);
     });
@@ -727,7 +727,7 @@ describe("MapForge", () => {
             asset: { path: "library/maps/keller.png", hash: HASH },
           },
         ],
-        rooms: [
+        areas: [
           { id: "hall", name: "Halle", area },
           { id: "vault", name: "Gewölbe", area, levelId: "cellar" },
         ],
@@ -753,9 +753,9 @@ describe("MapForge", () => {
     });
     fireEvent.click(within(panel).getByRole("button", { name: "OK" }));
     await waitFor(() => {
-      expect(saved(library).map?.rooms).toHaveLength(3);
+      expect(saved(library).map?.areas).toHaveLength(3);
     });
-    expect(saved(library).map?.rooms[2]).toMatchObject({ levelId: "ground" });
+    expect(saved(library).map?.areas[2]).toMatchObject({ levelId: "ground" });
   });
 
   test("an invalid cell size cannot be saved", async () => {

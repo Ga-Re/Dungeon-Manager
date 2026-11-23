@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { newRoomId, roomsOnLevel, snapArea } from "./index.js";
+import { newAreaId, areasOnLevel, snapArea } from "./index.js";
 
-// Rooms of a map (T-108c1, DM decisions 2026-11-22): drawn per level, corners snap to the grid.
+// Areas of a map (T-108c1, T-262, DM decisions 2026-11-22/23): drawn per level, corners snap to the grid.
 
 const square = (x: number, y: number, size: number) => ({
   outer: [
@@ -14,9 +14,9 @@ const square = (x: number, y: number, size: number) => ({
 });
 const levels = [{ id: "ground" }, { id: "cellar" }];
 
-describe("roomsOnLevel", () => {
-  test("a room without a level belongs to the map's first level", () => {
-    const rooms = [
+describe("areasOnLevel", () => {
+  test("a area without a level belongs to the map's first level", () => {
+    const areas = [
       { id: "hall", name: "Halle", area: square(0, 0, 10) },
       {
         id: "vault",
@@ -26,38 +26,38 @@ describe("roomsOnLevel", () => {
       },
       { id: "lost", name: "Weg", area: square(0, 0, 10), levelId: "gone" },
     ];
-    expect(roomsOnLevel(rooms, levels, "ground").map((r) => r.id)).toEqual([
+    expect(areasOnLevel(areas, levels, "ground").map((r) => r.id)).toEqual([
       "hall",
     ]);
-    expect(roomsOnLevel(rooms, levels, "cellar").map((r) => r.id)).toEqual([
+    expect(areasOnLevel(areas, levels, "cellar").map((r) => r.id)).toEqual([
       "vault",
     ]);
   });
 });
 
-describe("newRoomId", () => {
-  // A deleted room's id is never given out again: scenes keep overrides keyed by it, which
-  // must not turn onto a new, unrelated room (ADR-0012).
+describe("newAreaId", () => {
+  // A deleted area's id is never given out again: scenes keep overrides keyed by it, which
+  // must not turn onto a new, unrelated area (ADR-0012).
   test("draws a fresh id from the random source, never one taken", () => {
     const draws = [0.1, 0.1, 0.5];
     const random = () => draws.shift() ?? 0.9;
-    const first = newRoomId([], () => 0.1);
-    expect(first).toMatch(/^room-[0-9a-z]{6}$/);
+    const first = newAreaId([], () => 0.1);
+    expect(first).toMatch(/^area-[0-9a-z]{6}$/);
     // The first draw is taken: the next one is used.
-    const second = newRoomId(["ground", first], random);
+    const second = newAreaId(["ground", first], random);
     expect(second).not.toBe(first);
-    expect(second).toMatch(/^room-[0-9a-z]{6}$/);
+    expect(second).toMatch(/^area-[0-9a-z]{6}$/);
   });
 
-  test("after a room is deleted, a new room does not get its id", () => {
+  test("after a area is deleted, a new area does not get its id", () => {
     let seed = 0;
     const random = () => {
       seed = (seed * 9301 + 49297) % 233280;
       return seed / 233280;
     };
     const used = new Set<string>();
-    for (let i = 0; i < 50; i += 1) used.add(newRoomId([], random));
-    // Fifty rooms drawn and deleted one after another: no id twice.
+    for (let i = 0; i < 50; i += 1) used.add(newAreaId([], random));
+    // Fifty areas drawn and deleted one after another: no id twice.
     expect(used.size).toBe(50);
   });
 });

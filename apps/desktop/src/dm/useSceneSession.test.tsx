@@ -86,12 +86,12 @@ const hash = `sha256:${"a".repeat(64)}`;
 const HOEHLE = "library/maps/hoehle.png";
 /** The cave map's sidecar: its grid and its one level (ADR-0012). */
 const hoehleSidecar = JSON.stringify({
-  schemaVersion: 1,
+  schemaVersion: 2,
   original: { hash },
   map: {
     grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
     levels: [{ id: "ground", name: "Erdgeschoss" }],
-    rooms: [],
+    areas: [],
   },
 });
 

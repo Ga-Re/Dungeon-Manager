@@ -1,33 +1,34 @@
-import type { Grid, Polygon, Room } from "@dungeon-manager/schema";
+import type { Grid, Polygon, Area } from "@dungeon-manager/schema";
 
-// Rooms of a map (T-108c1, SPEC 4, ADR-0012; DM decisions 2026-11-22): drawn once per level
-// in the map's sidecar, so every scene of the map has them.
+// Areas of a map – rooms, parts of a cave, far places (T-108c1, T-262, SPEC 4, ADR-0012; DM
+// decisions 2026-11-22/23): drawn once per level in the map's sidecar, so every scene has them.
 
-/** The shapes a room is drawn with; a lasso is free-hand and never snaps. */
-export type RoomShape = "rectangle" | "polygon" | "ellipse" | "lasso";
+/** The shapes an area is drawn with; a lasso is free-hand and never snaps. */
+export type AreaShape = "rectangle" | "polygon" | "ellipse" | "lasso";
 
-/** The rooms on `levelId`; a room without a level lies on the map's first level. */
-export function roomsOnLevel<T extends Pick<Room, "levelId">>(
-  rooms: readonly T[],
+/** The areas on `levelId`; an area without a level lies on the map's first level. */
+export function areasOnLevel<T extends Pick<Area, "levelId">>(
+  areas: readonly T[],
   levels: readonly { readonly id: string }[],
   levelId: string,
 ): T[] {
   const first = levels[0]?.id;
-  return rooms.filter((room) => (room.levelId ?? first) === levelId);
+  return areas.filter((area) => (area.levelId ?? first) === levelId);
 }
 
 /**
- * A fresh room id, `room-` and six random characters, not taken by the map's levels or rooms.
- * Never counted up from the rooms there: a deleted room's id must not come back, as scenes keep
- * overrides keyed by it (ADR-0012). `random` is injected (`core` is pure), e.g. `Math.random`.
+ * A fresh area id, `area-` and six random characters, not taken by the map's levels or areas.
+ * Never counted up from the areas there: a deleted area's id must not come back, as scenes keep
+ * overrides keyed by it (ADR-0012). Areas drawn before T-262 keep their `room-` ids.
+ * `random` is injected (`core` is pure), e.g. `Math.random`.
  */
-export function newRoomId(
+export function newAreaId(
   taken: readonly string[],
   random: () => number,
 ): string {
   const used = new Set(taken);
   for (;;) {
-    const id = `room-${Math.floor(random() * 36 ** 6)
+    const id = `area-${Math.floor(random() * 36 ** 6)
       .toString(36)
       .padStart(6, "0")}`;
     if (!used.has(id)) return id;
@@ -39,7 +40,7 @@ function snap(value: number, cell: number, offset: number): number {
   return Math.round((value - offset) / cell) * cell + offset;
 }
 
-/** Whether a ring encloses some area, so a snapped room is not a line or a point. */
+/** Whether a ring encloses some area, so a snapped area is not a line or a point. */
 function hasArea(ring: readonly (readonly [number, number])[]): boolean {
   let twice = 0;
   for (let i = 0; i < ring.length; i += 1) {
@@ -51,14 +52,14 @@ function hasArea(ring: readonly (readonly [number, number])[]): boolean {
 }
 
 /**
- * A drawn room snapped to the grid (DM decision): a rectangle's or polygon's corners move to the
+ * A drawn area snapped to the grid (DM decision): a rectangle's or polygon's corners move to the
  * nearest grid points, an ellipse is fitted into its bounding box snapped to the grid, a lasso
  * stays as drawn. `null` when it snaps to nothing (narrower than half a cell).
  */
 export function snapArea(
   area: Polygon,
   grid: Grid,
-  shape: RoomShape,
+  shape: AreaShape,
 ): Polygon | null {
   if (shape === "lasso") return area;
   const { cellSizePx: cell, offsetXPx: ox, offsetYPx: oy } = grid;

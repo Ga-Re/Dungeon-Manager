@@ -1,10 +1,10 @@
-import type { RoomShape } from "@dungeon-manager/core";
-import type { Room, SidecarLevel } from "@dungeon-manager/schema";
+import type { AreaShape } from "@dungeon-manager/core";
+import type { Area, SidecarLevel } from "@dungeon-manager/schema";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ToolCommand } from "./ToolCommand.js";
 
-const SHAPES: readonly RoomShape[] = [
+const SHAPES: readonly AreaShape[] = [
   "rectangle",
   "polygon",
   "ellipse",
@@ -76,8 +76,8 @@ export function AddRoomCommand({
   readonly levels: readonly SidecarLevel[];
   readonly levelId: string;
   readonly onLevel: (levelId: string) => void;
-  readonly shape: RoomShape;
-  readonly onShape: (shape: RoomShape) => void;
+  readonly shape: AreaShape;
+  readonly onShape: (shape: AreaShape) => void;
   /** A room has been drawn on the map, so OK can create it. */
   readonly drawn: boolean;
   readonly facts: RoomFacts;
@@ -149,7 +149,7 @@ export function EditRoomCommand({
   onOk,
   onCancel,
 }: {
-  readonly room: Room;
+  readonly room: Area;
   readonly busy: boolean;
   readonly problem: string;
   readonly onOk: (facts: RoomFacts) => void;
@@ -183,7 +183,7 @@ export function DeleteRoomCommand({
   onOk,
   onCancel,
 }: {
-  readonly room: Room;
+  readonly room: Area;
   readonly busy: boolean;
   readonly problem: string;
   readonly onOk: () => void;

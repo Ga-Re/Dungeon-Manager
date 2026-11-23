@@ -114,7 +114,7 @@ export function useMapData(
         // Its own copy is safe to play; only a real difference is the DM's to decide.
         return {
           status: "ready",
-          data: { grid: legacy.grid, levels: legacy.levels, rooms: [] },
+          data: { grid: legacy.grid, levels: legacy.levels, areas: [] },
           legacy: outcome === "differs",
         };
       }

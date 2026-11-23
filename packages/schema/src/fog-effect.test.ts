@@ -18,7 +18,7 @@ const scene = {
 const map = {
   grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
   levels: [{ id: "level-1", name: "Ebene 1" }],
-  rooms: [],
+  areas: [],
 };
 
 describe("fog effect (T-168)", () => {

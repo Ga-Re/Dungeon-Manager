@@ -15,7 +15,7 @@ export const legacyMapSchema = z.looseObject({
 
 /**
  * A scene's map since version 3 (ADR-0012): the map file and the scene's overrides of its
- * elements. Grid, levels and rooms belong to the map's sidecar.
+ * elements. Grid, levels and areas belong to the map's sidecar.
  */
 export const sceneMapSchema = z.looseObject({
   kind: mapKindSchema,

@@ -6,7 +6,7 @@ import type {
   MapData,
   MapKind,
   MapOverrides,
-  Room,
+  Area,
   Scene,
   SidecarLevel,
 } from "@dungeon-manager/schema";
@@ -21,8 +21,8 @@ export interface ResolvedMap {
   readonly grid: Grid;
   /** All levels, archived ones included: scenes may still refer to them. */
   readonly levels: readonly SidecarLevel[];
-  /** The rooms of this scene: hidden ones are left out. */
-  readonly rooms: readonly Room[];
+  /** The areas of this scene: hidden ones are left out. */
+  readonly areas: readonly Area[];
   /** The fog's biome for every scene of this map (T-168), if the map has one. */
   readonly fogEffect?: FogEffect;
 }
@@ -42,7 +42,7 @@ export interface MapSource {
 const PLACEHOLDER_GRID: Grid = { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 };
 
 /**
- * Applies a scene's overrides to its map's global data. Only rooms can be overridden so far
+ * Applies a scene's overrides to its map's global data. Only areas can be overridden so far
  * (walls, doors and lights follow in stage 5); grid and levels never are, so minis always fit.
  * An override whose element is gone, or that names a level, stays inactive and is reported so
  * the DM can clean it up. The input is not changed.
@@ -55,16 +55,16 @@ export function resolveMap(source: MapSource): {
   const data: MapData = source.data ?? {
     grid: PLACEHOLDER_GRID,
     levels: [source.defaultLevel],
-    rooms: [],
+    areas: [],
   };
-  const roomIds = new Set(data.rooms.map((room) => room.id));
-  const rooms = data.rooms.flatMap((room): Room[] => {
-    const override = source.overrides[room.id];
-    if (!override) return [room];
+  const areaIds = new Set(data.areas.map((area) => area.id));
+  const areas = data.areas.flatMap((area): Area[] => {
+    const override = source.overrides[area.id];
+    if (!override) return [area];
     if (override.hidden === true) return [];
     return [
       {
-        ...room,
+        ...area,
         ...(override.name !== undefined && { name: override.name }),
         ...(override.area !== undefined && { area: override.area }),
       },
@@ -76,11 +76,11 @@ export function resolveMap(source: MapSource): {
       asset: source.asset,
       grid: data.grid,
       levels: data.levels,
-      rooms,
+      areas,
       ...(data.fogEffect && { fogEffect: data.fogEffect }),
     },
     orphanedOverrides: Object.keys(source.overrides)
-      .filter((id) => !roomIds.has(id))
+      .filter((id) => !areaIds.has(id))
       .sort(),
   };
 }
@@ -151,7 +151,7 @@ export function removeLevel(
  */
 export function addLevel(data: MapData, level: Level): MapData | null {
   const name = level.name.trim();
-  const ids = [...data.levels, ...data.rooms].map((element) => element.id);
+  const ids = [...data.levels, ...data.areas].map((element) => element.id);
   if (name === "" || ids.includes(level.id)) return null;
   return { ...data, levels: [...data.levels, { ...level, name }] };
 }

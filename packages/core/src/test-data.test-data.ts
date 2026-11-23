@@ -36,7 +36,7 @@ export const caveMap: MapData = {
     { id: "ground", name: "Erdgeschoss" },
     { id: "cellar", name: "Keller" },
   ],
-  rooms: [],
+  areas: [],
 };
 
 export const scene: Scene = {

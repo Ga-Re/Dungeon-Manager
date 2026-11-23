@@ -6,15 +6,17 @@ import {
   polygonSchema,
 } from "./common.js";
 import { gridSchema, levelSchema } from "./entities.js";
-import type { DocumentType } from "./migrate.js";
+import type { DocumentType, Migration } from "./migrate.js";
 
 // Sidecar files `<file>.dm.json` next to a library file (ADR-0012, T-134; format agreed with the
 // DM, 2026-11-20): the data that belongs to the map or asset in every campaign. Scenes refer to
 // the file and keep only their overrides, keyed by element id. Tags, walls, doors, lights and
 // asset data follow in later tasks; loose schemas keep them when an older app saves.
+// Version 2 (T-262, DM decision 2026-11-23): a map's drawn regions are `areas`, of which a room
+// is one kind; version 1 called them `rooms`.
 
 /** Current version of a sidecar file. */
-export const SIDECAR_VERSION = 1;
+export const SIDECAR_VERSION = 2;
 
 /**
  * A level of a map. An archived level is hidden from new scenes but stays resolvable, because
@@ -24,8 +26,11 @@ export const sidecarLevelSchema = levelSchema.extend({
   archived: z.boolean().optional(),
 });
 
-/** A room or area of a map, e.g. for revealing it at once (T-108c). */
-export const roomSchema = z.looseObject({
+/**
+ * An area of a map – a room, a part of a cave, a far place the players see – e.g. for revealing
+ * it at once (T-108c). Kinds of area (room, zone, …) follow in a later task.
+ */
+export const areaSchema = z.looseObject({
   id: idSchema,
   name: z.string().min(1),
   area: polygonSchema,
@@ -34,22 +39,22 @@ export const roomSchema = z.looseObject({
    * level. One naming a level the map no longer has is simply not shown.
    */
   levelId: idSchema.optional(),
-  /** A secret room stays hidden until the DM reveals it on purpose (SPEC 4, T-108c2). */
+  /** A secret area stays hidden until the DM reveals it on purpose (SPEC 4, T-108c2). */
   secret: z.boolean().optional(),
 });
 
-/** What a sidecar knows about a map: its grid, its levels and its rooms. */
+/** What a sidecar knows about a map: its grid, its levels and its areas. */
 export const mapDataSchema = z
   .looseObject({
     grid: gridSchema,
     levels: z.array(sidecarLevelSchema).min(1),
-    rooms: z.array(roomSchema),
+    areas: z.array(areaSchema),
     /** The fog's biome for every scene of this map (T-168); optional and additive. */
     fogEffect: fogEffectSchema.optional(),
   })
   .refine(
     (map) => {
-      const ids = [...map.levels, ...map.rooms].map((element) => element.id);
+      const ids = [...map.levels, ...map.areas].map((element) => element.id);
       return new Set(ids).size === ids.length;
     },
     { message: "element ids must be unique", path: ["levels"] },
@@ -98,16 +103,34 @@ export const elementOverrideSchema = z.looseObject({
 export const mapOverridesSchema = z.record(idSchema, elementOverrideSchema);
 
 export type SidecarLevel = z.infer<typeof sidecarLevelSchema>;
-export type Room = z.infer<typeof roomSchema>;
+export type Area = z.infer<typeof areaSchema>;
 export type MapData = z.infer<typeof mapDataSchema>;
 export type Sidecar = z.infer<typeof sidecarSchema>;
 export type ItemInfo = z.infer<typeof itemInfoSchema>;
 export type ElementOverride = z.infer<typeof elementOverrideSchema>;
 export type MapOverrides = z.infer<typeof mapOverridesSchema>;
 
+/**
+ * Sidecar v1 → v2: the map's `rooms` become its `areas`, each with its id, so scene overrides
+ * stay attached. A map without `rooms` is left for validation to refuse, as version 1 did.
+ */
+export const sidecarToVersion2: Migration = {
+  from: 1,
+  migrate: (sidecar) => {
+    const map = sidecar["map"];
+    if (typeof map !== "object" || map === null || Array.isArray(map))
+      return { ...sidecar, schemaVersion: 2 };
+    const { rooms, ...rest } = map as Record<string, unknown>;
+    // A map that has `areas` already (hand edit) keeps both lists: nothing is dropped unseen.
+    if (rooms === undefined || "areas" in rest)
+      return { ...sidecar, schemaVersion: 2 };
+    return { ...sidecar, schemaVersion: 2, map: { ...rest, areas: rooms } };
+  },
+};
+
 /** Reading a sidecar file: migrations from older versions, then validation. */
 export const sidecarDocument: DocumentType<Sidecar> = {
   schema: sidecarSchema,
   latestVersion: SIDECAR_VERSION,
-  migrations: [],
+  migrations: [sidecarToVersion2],
 };
