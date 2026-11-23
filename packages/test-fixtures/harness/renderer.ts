@@ -2,6 +2,7 @@
 // `@dungeon-manager/renderer` with the camera named in the URL hash, then sets
 // `document.body.dataset.ready`. Built to a classic script so it runs from file:// URLs.
 import {
+  LIVING_HALO_CELLS,
   createRenderer,
   fitCamera,
   mapToScreen,
@@ -238,15 +239,16 @@ async function livingFailClosedScenario(canvas: HTMLCanvasElement) {
   document.body.dataset["living"] = String(living);
 }
 
-/** The hard fog `revealed` over a white map, zoomed in (black = hidden). */
+/** The hard fog `revealed` over a white map, zoomed in unless told (black = hidden). */
 async function hardCapture(
   revealed: typeof REVEALED,
+  camera: Camera = cameraFor("zoomed"),
 ): Promise<Uint8ClampedArray> {
   const canvas = document.createElement("canvas");
   const renderer = await createRenderer({ canvas, size: view, resolution: 1 });
   renderer.setFog(revealed, { opacity: 1 });
   renderer.setMap(plainMap("#ffffff"));
-  renderer.setCamera(cameraFor("zoomed"));
+  renderer.setCamera(camera);
   await renderer.drawn();
   const pixels = capture(canvas);
   renderer.destroy();
@@ -658,21 +660,13 @@ async function biomeBlendScenario() {
   document.body.dataset["violations"] = String(violations);
 }
 
-/**
- * "living-halo" (T-261): a biome's veil, streaks and particles reach past the fog's edge by
- * about a cell and no further. Over a white map, zoomed in, at several moments and in two
- * biomes: revealed pixels further than 1.2 cells from the hidden area are the map's white
- * (`data-far` counts those that are not), and some within a cell are touched (`data-near`).
- */
-async function haloScenario() {
-  const hard = await hardCapture(REVEALED_NESTED);
-  const camera = cameraFor("zoomed");
-  const cell = 100 * camera.zoom;
-  // Distance of each pixel to the nearest hidden one, in screen pixels (chamfer 3-4).
+/** Distance of each pixel to the nearest black (hidden) one of `hard`, in screen pixels. */
+function hiddenDistance(hard: Uint8ClampedArray): Float32Array {
   const { width, height } = view;
   const distance = new Float32Array(width * height);
   for (let index = 0; index < distance.length; index++)
     distance[index] = hard[index * 4] === 0 ? 0 : 1e9;
+  // Chamfer 3-4, two passes; divided by 3 at the end.
   const relax = (
     x: number,
     y: number,
@@ -701,42 +695,108 @@ async function haloScenario() {
       relax(x, y, 1, 1, 4);
       relax(x, y, -1, 1, 4);
     }
+  for (let index = 0; index < distance.length; index++)
+    distance[index] = (distance[index] ?? 0) / 3;
+  return distance;
+}
+
+/** Whether a pixel differs from the grey map underneath by more than rounding. */
+const touched = (pixels: Uint8ClampedArray, index: number) =>
+  Math.abs((pixels[index * 4] ?? 0) - 128) > 3 ||
+  Math.abs((pixels[index * 4 + 1] ?? 0) - 128) > 3 ||
+  Math.abs((pixels[index * 4 + 2] ?? 0) - 128) > 3;
+
+/**
+ * "living-halo" (T-261): a biome's veil and particles reach past the fog's edge by about
+ * LIVING_HALO_CELLS and no further, and follow a spread's front.
+ * - Over a mid-grey map, the whole map in view, at several moments and in two biomes: revealed pixels
+ *   further than 1.2 halos from the hidden area are the map's grey (`data-far` counts those
+ *   that are not); of those 0.6–1 cells away, a share is touched (`data-near`, per mille).
+ * - Still (no drift), a slow hide of the right room just begun: away from the old fog's edge
+ *   the room looks as before (`data-ahead` counts pixels past 1.5 halos that differ).
+ */
+async function haloScenario() {
+  // The whole map: its rooms are several cells wide, so pixels far from the fog exist.
+  const camera = cameraFor("fit");
+  const cell = 100 * camera.zoom;
+  const draw = async (
+    steps: readonly {
+      readonly revealed: typeof REVEALED;
+      readonly speed?: boolean;
+    }[],
+    biome: string,
+    at: number,
+    motion: number,
+  ) => {
+    let time = 0;
+    const canvas = document.createElement("canvas");
+    const renderer = await createRenderer({
+      canvas,
+      size: view,
+      resolution: 1,
+      now: () => time,
+    });
+    renderer.setMap(plainMap("#808080"));
+    renderer.setCamera(camera);
+    for (const step of steps) {
+      renderer.setFog(step.revealed, {
+        opacity: 1,
+        living: { ...livingFog("high", 2.5), motion, biome, strength: 1 },
+        ...(step.speed && {
+          fade: 1000,
+          speed: { cellsPerSecond: 2, cellSizePx: 100 },
+        }),
+      });
+      await renderer.drawn();
+    }
+    time = at;
+    await renderer.drawn();
+    const pixels = capture(canvas);
+    renderer.destroy();
+    return pixels;
+  };
+
+  const distance = hiddenDistance(await hardCapture(REVEALED_NESTED, camera));
   let far = 0;
+  let band = 0;
   let near = 0;
   for (const biome of ["schnee", "asche"])
     for (const at of [4_000, 12_500, 21_000]) {
-      let time = 0;
-      const canvas = document.createElement("canvas");
-      const renderer = await createRenderer({
-        canvas,
-        size: view,
-        resolution: 1,
-        now: () => time,
-      });
-      renderer.setMap(plainMap("#ffffff"));
-      renderer.setCamera(camera);
-      renderer.setFog(REVEALED_NESTED, {
-        opacity: 1,
-        living: { ...livingFog("high", 2.5), biome, strength: 1 },
-      });
-      await renderer.drawn();
-      time = at;
-      await renderer.drawn();
-      const pixels = capture(canvas);
-      renderer.destroy();
+      const pixels = await draw([{ revealed: REVEALED_NESTED }], biome, at, 1);
       for (let index = 0; index < distance.length; index++) {
-        const cells = (distance[index] ?? 0) / 3 / cell;
+        const cells = (distance[index] ?? 0) / cell;
         if (cells === 0) continue;
-        const touched =
-          Math.abs((pixels[index * 4] ?? 0) - 255) > 2 ||
-          Math.abs((pixels[index * 4 + 1] ?? 0) - 255) > 2 ||
-          Math.abs((pixels[index * 4 + 2] ?? 0) - 255) > 2;
-        if (touched && cells > 1.2) far++;
-        if (touched && cells > 0.5 && cells <= 1) near++;
+        if (cells > LIVING_HALO_CELLS * 1.2 && touched(pixels, index)) far++;
+        if (cells >= 0.6 && cells <= 1) {
+          band++;
+          if (touched(pixels, index)) near++;
+        }
       }
     }
   document.body.dataset["far"] = String(far);
-  document.body.dataset["near"] = String(near);
+  document.body.dataset["near"] = String(Math.round((near / band) * 1000));
+
+  // The right room hidden slowly from the walls in: just begun, its middle must not be veiled.
+  const hidden = REVEALED.slice(0, 2);
+  const wasDistance = hiddenDistance(await hardCapture(REVEALED, camera));
+  const still = await draw([{ revealed: REVEALED }], "schnee", 100, 0);
+  const spreading = await draw(
+    [{ revealed: REVEALED }, { revealed: hidden, speed: true }],
+    "schnee",
+    100,
+    0,
+  );
+  let ahead = 0;
+  for (let index = 0; index < wasDistance.length; index++) {
+    if ((wasDistance[index] ?? 0) / cell <= LIVING_HALO_CELLS * 1.5) continue;
+    if (
+      still[index * 4] !== spreading[index * 4] ||
+      still[index * 4 + 1] !== spreading[index * 4 + 1] ||
+      still[index * 4 + 2] !== spreading[index * 4 + 2]
+    )
+      ahead++;
+  }
+  document.body.dataset["ahead"] = String(ahead);
 }
 
 /**

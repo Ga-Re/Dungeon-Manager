@@ -90,7 +90,7 @@ export interface FogOptions {
 }
 
 export type { LivingFog } from "./fog-living.js";
-export { LIVING_EDGE_MAX } from "./fog-living.js";
+export { LIVING_EDGE_MAX, LIVING_HALO_CELLS } from "./fog-living.js";
 
 export interface RendererOptions {
   /** The canvas to draw into; it is sized by the caller (CSS) and by `resize`. */
