@@ -662,7 +662,8 @@
   display: flex;
   flex-direction: column;
   width: min(18rem, 100%);
-  max-height: 100%;
+  /* Never taller than the window: the body scrolls instead (T-257). */
+  max-height: calc(100vh - 2 * var(--dm-space-3));
   background: var(--dm-surface-panel);
   color: var(--dm-text-primary);
   border: 1px solid var(--dm-border-strong);

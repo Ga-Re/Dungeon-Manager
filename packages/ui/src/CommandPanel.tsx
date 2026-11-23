@@ -80,6 +80,34 @@ export function CommandPanel({
     };
   }, []);
 
+  // The panel stays in the window (T-257): when the window shrinks, the anchor moves or it opens
+  // partly outside, it moves back in – its title bar, the only handle, first.
+  useEffect(() => {
+    const own = panel.current;
+    if (!own || typeof IntersectionObserver === "undefined") return;
+    const keepInside = () => {
+      const rect = own.getBoundingClientRect();
+      if (rect.width === 0) return;
+      const dx = Math.max(
+        -rect.left,
+        Math.min(0, window.innerWidth - rect.right),
+      );
+      const dy = Math.max(
+        -rect.top,
+        Math.min(0, window.innerHeight - rect.bottom),
+      );
+      if (dx !== 0 || dy !== 0)
+        setOffset((current) => ({ x: current.x + dx, y: current.y + dy }));
+    };
+    const watcher = new IntersectionObserver(keepInside, {
+      threshold: [0, 0.25, 0.5, 0.75, 1],
+    });
+    watcher.observe(own);
+    return () => {
+      watcher.disconnect();
+    };
+  }, []);
+
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -129,8 +157,9 @@ export function CommandPanel({
     setOffset(
       bounds
         ? {
-            x: Math.min(Math.max(x, bounds.left), bounds.right),
-            y: Math.min(Math.max(y, bounds.top), bounds.bottom),
+            // A panel larger than the window keeps its top left – the title bar – inside.
+            x: Math.max(Math.min(x, bounds.right), bounds.left),
+            y: Math.max(Math.min(y, bounds.bottom), bounds.top),
           }
         : { x, y },
     );

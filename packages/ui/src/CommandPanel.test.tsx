@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CommandPanel } from "./CommandPanel.js";
@@ -154,5 +154,48 @@ describe("CommandPanel", () => {
       pointerId: 1,
     });
     expect(panel.style.transform).toBe("translate(-700px, -50px)");
+  });
+
+  it("comes back into the window when the window shrinks or it opens partly outside (T-257)", () => {
+    // jsdom has no IntersectionObserver: a stand-in that reports when asked.
+    let report: (() => void) | null = null;
+    const original = globalThis.IntersectionObserver;
+    globalThis.IntersectionObserver = class {
+      constructor(callback: () => void) {
+        report = callback;
+      }
+      observe() {}
+      disconnect() {}
+    } as unknown as typeof IntersectionObserver;
+    try {
+      render(<Harness onOk={vi.fn()} onCancel={vi.fn()} />);
+      const panel = open();
+      // Past the right and bottom edges of the 1024 × 768 window.
+      panel.getBoundingClientRect = () =>
+        ({
+          left: 900,
+          right: 1100,
+          top: 600,
+          bottom: 900,
+          width: 200,
+          height: 300,
+        }) as DOMRect;
+      act(() => report?.());
+      expect(panel.style.transform).toBe("translate(-76px, -132px)");
+      // Taller than the window: the title bar stays reachable at the top.
+      panel.getBoundingClientRect = () =>
+        ({
+          left: 0,
+          right: 200,
+          top: -50,
+          bottom: 950,
+          width: 200,
+          height: 1000,
+        }) as DOMRect;
+      act(() => report?.());
+      expect(panel.style.transform).toBe("translate(-76px, -82px)");
+    } finally {
+      globalThis.IntersectionObserver = original;
+    }
   });
 });

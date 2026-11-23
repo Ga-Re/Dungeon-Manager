@@ -183,6 +183,18 @@ label {
   min-height: 0;
 }
 
+/* Dockview's root – the panels with their floating groups and drop overlays – is a stacking
+   context of its own (T-257), below the command layer. While a menu inside a panel is open (a
+   panel's menu, a browser item's context menu), the panels rise above the command layer so the
+   menu is on top. */
+.dm-main .dv-shell {
+  isolation: isolate;
+}
+
+.dm-main .dv-shell:has(.dm-menu-list) {
+  z-index: var(--dm-z-popover);
+}
+
 .dm-dockview-theme {
   --dv-background-color: var(--dm-surface-chrome);
   --dv-group-view-background-color: var(--dm-surface-panel);
@@ -464,9 +476,10 @@ label {
   margin: 0;
 }
 
+/* No z-index of its own: its menus then rank with the window's (popover) and open above the
+   command layer (T-257); the panels below are a stacking context of their own. */
 .dm-ribbon {
   position: relative;
-  z-index: var(--dm-z-chrome);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   column-gap: var(--dm-space-3);

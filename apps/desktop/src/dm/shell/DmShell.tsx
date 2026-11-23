@@ -422,6 +422,13 @@ export function DmShell({
   const toolCommands = useMemo(createCommandRegistry, []);
   // The map panel's element: command panels open at its top right (T-257).
   const [mapStage, setMapStage] = useState<HTMLElement | null>(null);
+  // A map panel's element, or its going: a late `null` from an old map panel does not drop a
+  // new one that is already there (e.g. while dockview swaps layouts).
+  const anchorCommands = useCallback((element: HTMLElement | null) => {
+    setMapStage(
+      (current) => element ?? (current?.isConnected === true ? current : null),
+    );
+  }, []);
   // With a menu service, whether it shows a menu bar is open until it says so: no menu button
   // flashes up on macOS before the menu bar is there.
   const [nativeMenu, setNativeMenu] = useState<boolean | "pending">(
@@ -1109,7 +1116,7 @@ export function DmShell({
     <ShellSlotsContext value={allSlots}>
       <PanelHostsContext value={hosts}>
         <PanelCommandsContext value={panelCommands}>
-          <CommandAnchorContext value={setMapStage}>
+          <CommandAnchorContext value={anchorCommands}>
             <div className="dm-shell dm-ui">
               <header className="dm-titlebar">
                 <IconButton
