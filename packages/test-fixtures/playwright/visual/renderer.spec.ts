@@ -198,7 +198,7 @@ for (const biome of [
 }
 
 // A biome change blends over (T-168): half-way it is neither the old nor the new biome, and
-// nothing hidden shows.
+// nothing hidden shows; it is done in 0.3 s (T-261).
 test("a biome change blends over without showing what is hidden", async ({
   page,
 }) => {
@@ -207,4 +207,25 @@ test("a biome change blends over without showing what is hidden", async ({
   await expect(body).toHaveAttribute("data-ready", "true", { timeout: 60_000 });
   await expect(body).toHaveAttribute("data-blends", "yes");
   await expect(body).toHaveAttribute("data-violations", "0");
+  // Done in 0.3 s, though the fog's fade is longer (T-261).
+  await expect(body).toHaveAttribute("data-blend-done", "yes");
+});
+
+// A biome reaches past the fog's edge by about a cell, fading, and no further (T-261). Measured
+// on the fixture: about 6 % of the pixels 0.6–1 cells out are touched, 0.3 % at 1–1.2 cells.
+const NEAR_MIN = 20;
+// A biome reaches past the fog's edge by about a cell, fading, and no further (T-261).
+test("a biome's veil and particles reach about a cell past the fog's edge", async ({
+  page,
+}) => {
+  await page.goto(`${fixturePage("renderer.html")}#living-halo`);
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-ready", "true", { timeout: 60_000 });
+  await expect(body).toHaveAttribute("data-far", "0");
+  // A real share of the band 0.6–1 cells out is touched (per mille).
+  expect(Number(await body.getAttribute("data-near"))).toBeGreaterThan(
+    NEAR_MIN,
+  );
+  // A hide just begun: nothing changes ahead of its front.
+  await expect(body).toHaveAttribute("data-ahead", "0");
 });
