@@ -39,7 +39,8 @@ describe("updateItemInfo", () => {
       [`${asset.path}.dm.json`]: JSON.stringify({
         schemaVersion: 1,
         original: { hash: asset.hash },
-        map: { grid, levels: [{ id: "ground", name: "Unten" }], areas: [] },
+        // A version 1 file: it is written back as version 2 (T-262).
+        map: { grid, levels: [{ id: "ground", name: "Unten" }], rooms: [] },
         info: { name: "Alt", origin: "Pack" },
         future: "kept",
       }),
@@ -50,6 +51,11 @@ describe("updateItemInfo", () => {
       license: "",
     });
     const loaded = await loadSidecar(fs, asset.path);
+    const written = JSON.parse(
+      fs.files().get(`${asset.path}.dm.json`) ?? "",
+    ) as Record<string, unknown>;
+    expect(written).toMatchObject({ schemaVersion: 2, map: { areas: [] } });
+    expect(written["map"]).not.toHaveProperty("rooms");
     expect(loaded).toMatchObject({
       status: "ok",
       value: {

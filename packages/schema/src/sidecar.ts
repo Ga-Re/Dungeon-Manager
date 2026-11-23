@@ -121,11 +121,10 @@ export const sidecarToVersion2: Migration = {
     if (typeof map !== "object" || map === null || Array.isArray(map))
       return { ...sidecar, schemaVersion: 2 };
     const { rooms, ...rest } = map as Record<string, unknown>;
-    return {
-      ...sidecar,
-      schemaVersion: 2,
-      map: rooms === undefined ? rest : { ...rest, areas: rooms },
-    };
+    // A map that has `areas` already (hand edit) keeps both lists: nothing is dropped unseen.
+    if (rooms === undefined || "areas" in rest)
+      return { ...sidecar, schemaVersion: 2 };
+    return { ...sidecar, schemaVersion: 2, map: { ...rest, areas: rooms } };
   },
 };
 

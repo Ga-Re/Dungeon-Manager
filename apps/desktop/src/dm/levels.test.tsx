@@ -50,7 +50,7 @@ const tower: Scene = {
 /** The tower's sidecar: grid and levels belong to the map (ADR-0012). */
 const sidecarOf = (levels: readonly Level[]) =>
   JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     original: { hash },
     map: {
       grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },

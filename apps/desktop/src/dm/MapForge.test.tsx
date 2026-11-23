@@ -70,7 +70,7 @@ const HASH = `sha256:${"b".repeat(64)}`;
 
 const sidecar = (map: object, info?: object) =>
   JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     original: { hash: HASH },
     map: {
       grid: { cellSizePx: 70, offsetXPx: 0, offsetYPx: 0 },

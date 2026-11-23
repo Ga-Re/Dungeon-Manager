@@ -216,6 +216,20 @@ describe("sidecar version 1 → 2", () => {
     ).toEqual({ schemaVersion: 2, original: { hash }, info: { name: "Fass" } });
   });
 
+  test("keeps both lists of a map that has areas already, dropping nothing", () => {
+    const both = {
+      ...version1,
+      map: { ...version1.map, areas: [tower.map.areas[0]] },
+    };
+    expect(migrateDocument(both, sidecarDocument).map).toEqual(both.map);
+  });
+
+  test("leaves a map that is no object to validation", () => {
+    expect(() =>
+      migrateDocument({ ...version1, map: null }, sidecarDocument),
+    ).toThrow();
+  });
+
   test("a version 1 sidecar without rooms is refused, as it was before", () => {
     const withoutRooms = { grid: tower.map.grid, levels: tower.map.levels };
     expect(() =>

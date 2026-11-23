@@ -19,7 +19,8 @@ export function areasOnLevel<T extends Pick<Area, "levelId">>(
 /**
  * A fresh area id, `area-` and six random characters, not taken by the map's levels or areas.
  * Never counted up from the areas there: a deleted area's id must not come back, as scenes keep
- * overrides keyed by it (ADR-0012). Areas drawn before T-262 keep their `room-` ids. `random` is injected (`core` is pure), e.g. `Math.random`.
+ * overrides keyed by it (ADR-0012). Areas drawn before T-262 keep their `room-` ids.
+ * `random` is injected (`core` is pure), e.g. `Math.random`.
  */
 export function newAreaId(
   taken: readonly string[],
