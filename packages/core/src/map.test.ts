@@ -21,7 +21,7 @@ const tower: MapData = deepFreeze({
     { id: "cellar", name: "Keller", archived: true },
     { id: "attic", name: "Dachboden" },
   ],
-  rooms: [
+  areas: [
     { id: "hall", name: "Halle", area: square(0, 0, 100) },
     { id: "guards", name: "Wachraum", area: square(100, 0, 100) },
   ],
@@ -55,7 +55,7 @@ describe("resolveMap", () => {
       asset,
       grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
       levels: [defaultLevel],
-      rooms: [],
+      areas: [],
     });
   });
 
@@ -71,12 +71,12 @@ describe("resolveMap", () => {
       },
       defaultLevel,
     });
-    expect(map.rooms).toEqual([
+    expect(map.areas).toEqual([
       { id: "hall", name: "Thronsaal", area: smaller },
     ]);
     expect(orphanedOverrides).toEqual([]);
     // The global data is unchanged.
-    expect(tower.rooms[0]?.name).toBe("Halle");
+    expect(tower.areas[0]?.name).toBe("Halle");
   });
 
   test("overrides of missing elements are kept inactive and reported", () => {

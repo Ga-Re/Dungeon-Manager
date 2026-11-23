@@ -31,7 +31,7 @@ const scene = (levels: number, table?: Scene["table"]) => ({
       { id: "cellar", name: "Keller" },
       { id: "roof", name: "Dach" },
     ].slice(0, levels),
-    rooms: [],
+    areas: [],
   } satisfies ResolvedMap,
 });
 

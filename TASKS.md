@@ -1332,11 +1332,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-262 Sidecar version 2: map "rooms" become "areas"
 
-- **Status:** todo · **Depends on:** T-108c1 · **Refs:** ADR-0012, SPEC §2.5
+- **Status:** done · **Depends on:** T-108c1 · **Refs:** ADR-0012, SPEC §2.5
 - A map's drawn regions are areas, of which a room is one kind (DM decision 2026-11-23); later areas get a type such as room or zone. Sidecar version 2 stores them as `areas` instead of `rooms`; a version 1 sidecar is migrated step by step on reading (`migrateDocument`) and written as version 2 on the next save. Each area keeps its id, so scene overrides stay attached. Code names follow (`areaSchema`, `Area`, `areasOnLevel`, `newAreaId`); the area's polygon field stays `area`, like the scene overrides' `area`, so scene files do not change.
 - **Acceptance criteria**
-  - [ ] A version 1 sidecar with `rooms` reads as version 2 with the same `areas`, ids, levels and secret flags; unknown fields survive (schema + storage tests)
-  - [ ] A version 2 sidecar is refused by nothing in the app and written back unchanged (round-trip test)
+  - [x] A version 1 sidecar with `rooms` reads as version 2 with the same `areas`, ids, levels and secret flags; unknown fields survive (schema + storage tests)
+  - [x] A version 2 sidecar is refused by nothing in the app and written back unchanged (round-trip test)
 - **Notes:** DM decision 2026-11-23. Area types (room, zone, …) follow in their own task with a further additive field.
 
 ### T-260 "Bereich anlegen": fog-style shape tools and additive selection

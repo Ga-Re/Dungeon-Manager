@@ -39,7 +39,7 @@ describe("updateItemInfo", () => {
       [`${asset.path}.dm.json`]: JSON.stringify({
         schemaVersion: 1,
         original: { hash: asset.hash },
-        map: { grid, levels: [{ id: "ground", name: "Unten" }], rooms: [] },
+        map: { grid, levels: [{ id: "ground", name: "Unten" }], areas: [] },
         info: { name: "Alt", origin: "Pack" },
         future: "kept",
       }),

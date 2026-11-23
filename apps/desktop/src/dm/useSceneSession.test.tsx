@@ -91,7 +91,7 @@ const hoehleSidecar = JSON.stringify({
   map: {
     grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
     levels: [{ id: "ground", name: "Erdgeschoss" }],
-    rooms: [],
+    areas: [],
   },
 });
 

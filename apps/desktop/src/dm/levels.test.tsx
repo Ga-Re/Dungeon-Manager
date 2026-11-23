@@ -55,7 +55,7 @@ const sidecarOf = (levels: readonly Level[]) =>
     map: {
       grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
       levels,
-      rooms: [],
+      areas: [],
     },
   });
 

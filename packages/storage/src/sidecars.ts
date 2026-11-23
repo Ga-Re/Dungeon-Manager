@@ -1,9 +1,10 @@
-import type {
-  Grid,
-  LegacyMap,
-  Level,
-  Scene,
-  Sidecar,
+import {
+  SIDECAR_VERSION,
+  type Grid,
+  type LegacyMap,
+  type Level,
+  type Scene,
+  type Sidecar,
 } from "@dungeon-manager/schema";
 import { findConflictCopies, type ConflictCopy } from "./conflicts.js";
 import { loadSidecar, saveSidecar } from "./documents.js";
@@ -61,12 +62,16 @@ export function adoptLegacyMap(
   const seeded = {
     grid: legacy.grid,
     levels: [...legacy.levels],
-    rooms: [],
+    areas: [],
   };
   if (!sidecar)
     return {
       kind: "seed",
-      sidecar: { schemaVersion: 1, original: { hash }, map: seeded },
+      sidecar: {
+        schemaVersion: SIDECAR_VERSION,
+        original: { hash },
+        map: seeded,
+      },
     };
   if (!sidecar.map)
     return { kind: "seed", sidecar: { ...sidecar, map: seeded } };

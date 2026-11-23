@@ -1,17 +1,17 @@
 import {
   CALIBRATION_CELLS,
   gridFromBox,
-  newRoomId,
-  roomsOnLevel,
+  newAreaId,
+  areasOnLevel,
   shiftGrid,
   snapArea,
-  type RoomShape,
+  type AreaShape,
 } from "@dungeon-manager/core";
 import type {
   Grid,
   MapData,
   Polygon,
-  Room,
+  Area,
   Sidecar,
 } from "@dungeon-manager/schema";
 import {
@@ -193,7 +193,7 @@ export function MapForge({
     | { readonly kind: "edit" | "delete"; readonly id: string }
     | null
   >(null);
-  const [roomShape, setRoomShape] = useState<RoomShape>("rectangle");
+  const [roomShape, setRoomShape] = useState<AreaShape>("rectangle");
   const [drawn, setDrawn] = useState<Polygon | null>(null);
   const [facts, setFacts] = useState<RoomFacts>({ name: "", secret: false });
   const [roomMenu, setRoomMenu] = useState<{
@@ -270,9 +270,9 @@ export function MapForge({
   // A level with its own file shows that file (ADR-0012: same size, one calibration).
   const shownPath = level?.asset?.path ?? path;
   const kind = mapKind(shownPath);
-  const levelRooms = roomsOnLevel(data.rooms, data.levels, levelId);
-  const room = data.rooms.find((each) => each.id === selectedRoom) ?? null;
-  const roomOf = (id: string) => data.rooms.find((each) => each.id === id);
+  const levelRooms = areasOnLevel(data.areas, data.levels, levelId);
+  const room = data.areas.find((each) => each.id === selectedRoom) ?? null;
+  const roomOf = (id: string) => data.areas.find((each) => each.id === id);
   const commandRoom =
     roomCommand && roomCommand.kind !== "add"
       ? roomOf(roomCommand.id)
@@ -330,12 +330,12 @@ export function MapForge({
       return false;
     }
   };
-  const changeRooms = async (change: (rooms: readonly Room[]) => Room[]) => {
+  const changeRooms = async (change: (areas: readonly Area[]) => Area[]) => {
     setRoomBusy(true);
     setRoomProblem("");
     try {
       return await changeData(
-        (current) => ({ ...current, rooms: change(current.rooms) }),
+        (current) => ({ ...current, areas: change(current.areas) }),
         setRoomProblem,
       );
     } finally {
@@ -373,12 +373,12 @@ export function MapForge({
   };
   const addRoom = async () => {
     if (!drawn || roomBusy) return;
-    const id = newRoomId(
-      [...data.levels, ...data.rooms].map((each) => each.id),
+    const id = newAreaId(
+      [...data.levels, ...data.areas].map((each) => each.id),
       Math.random,
     );
-    const added = await changeRooms((rooms) => [
-      ...rooms,
+    const added = await changeRooms((areas) => [
+      ...areas,
       {
         id,
         name: facts.name.trim(),
@@ -393,7 +393,7 @@ export function MapForge({
     setSelectedRoom(id);
     setFocusTree(true);
   };
-  const editRoom = (id: string, edit: (room: Room) => Room | null) =>
+  const editRoom = (id: string, edit: (room: Area) => Area | null) =>
     changeRooms((rooms) =>
       rooms.flatMap((each) => {
         if (each.id !== id) return [each];
@@ -403,7 +403,7 @@ export function MapForge({
     );
   const saveFacts = async (id: string, next: RoomFacts) => {
     const saved = await editRoom(id, (each) => {
-      const changed: Room = { ...each, name: next.name };
+      const changed: Area = { ...each, name: next.name };
       if (next.secret) changed.secret = true;
       else delete changed.secret;
       return changed;
@@ -431,7 +431,7 @@ export function MapForge({
         label: t("forge.levels"),
         icon: <Folder />,
         children: levels.map((each) => {
-          const rooms = roomsOnLevel(data.rooms, data.levels, each.id);
+          const rooms = areasOnLevel(data.areas, data.levels, each.id);
           return {
             id: `forge:level:${each.id}`,
             label: each.name,

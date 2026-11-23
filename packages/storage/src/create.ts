@@ -2,6 +2,7 @@ import {
   CAMPAIGN_VERSION,
   SCENE_VERSION,
   SESSION_VERSION,
+  SIDECAR_VERSION,
   itemInfoSchema,
   type AssetRef,
   type ItemInfo,
@@ -10,6 +11,7 @@ import {
   type MapKind,
   type Scene,
   type SceneMap,
+  type Sidecar,
   type SidecarLevel,
   type Session,
 } from "@dungeon-manager/schema";
@@ -179,7 +181,7 @@ export function mapDataForChange(
   return {
     grid: reset.grid === true ? placeholderGrid() : current.grid,
     levels: [...current.levels],
-    rooms: [],
+    areas: [],
   };
 }
 
@@ -243,7 +245,7 @@ export function newMapData(levelName: string): MapData {
   return {
     grid: placeholderGrid(),
     levels: [{ id: DEFAULT_LEVEL_ID, name: levelName }],
-    rooms: [],
+    areas: [],
   };
 }
 
@@ -273,7 +275,7 @@ export async function ensureMapData(
   await saveSidecar(fs, asset.path, {
     ...(loaded.status === "ok"
       ? loaded.value
-      : { schemaVersion: 1, original: { hash: asset.hash } }),
+      : { schemaVersion: SIDECAR_VERSION, original: { hash: asset.hash } }),
     map: data,
   });
   return data;
@@ -399,10 +401,10 @@ export async function updateMapData(
   const loaded = await loadSidecar(fs, asset.path);
   if (loaded.status !== "ok" && loaded.status !== "missing")
     throw new MapDataUnavailableError(asset.path);
-  const sidecar =
+  const sidecar: Sidecar =
     loaded.status === "ok"
       ? loaded.value
-      : { schemaVersion: 1 as const, original: { hash: asset.hash } };
+      : { schemaVersion: SIDECAR_VERSION, original: { hash: asset.hash } };
   const current = sidecar.map ?? defaults;
   if (expected && JSON.stringify(current) !== JSON.stringify(expected))
     throw new MapDataChangedError(asset.path);
@@ -437,10 +439,10 @@ export async function updateItemInfo(
   const loaded = await loadSidecar(fs, asset.path);
   if (loaded.status !== "ok" && loaded.status !== "missing")
     throw new MapDataUnavailableError(asset.path);
-  const sidecar =
+  const sidecar: Sidecar =
     loaded.status === "ok"
       ? loaded.value
-      : { schemaVersion: 1 as const, original: { hash: asset.hash } };
+      : { schemaVersion: SIDECAR_VERSION, original: { hash: asset.hash } };
   if (expected && editedFields(sidecar.info ?? {}) !== editedFields(expected))
     throw new MapDataChangedError(asset.path);
   // Fields this app does not know yet (loose schema) stay as they are; the three it edits are

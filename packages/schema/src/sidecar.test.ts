@@ -22,7 +22,7 @@ const square = {
 };
 
 const tower = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   original: { hash },
   map: {
     grid: { cellSizePx: 100, offsetXPx: 0, offsetYPx: 0 },
@@ -35,12 +35,12 @@ const tower = {
         archived: true,
       },
     ],
-    rooms: [{ id: "guard-room", name: "Wachraum", area: square }],
+    areas: [{ id: "guard-room", name: "Wachraum", area: square }],
   },
 };
 
 describe("sidecar files", () => {
-  test("hold a map's grid, levels and rooms and round-trip unchanged", () => {
+  test("hold a map's grid, levels and areas and round-trip unchanged", () => {
     const parsed = migrateDocument(tower, sidecarDocument);
     expect(parsed).toEqual(tower);
     expect(sidecarSchema.parse(JSON.parse(JSON.stringify(parsed)))).toEqual(
@@ -59,16 +59,16 @@ describe("sidecar files", () => {
 
   test("may describe a file that is no map (assets, T-125)", () => {
     expect(
-      sidecarSchema.safeParse({ schemaVersion: 1, original: { hash } }).success,
+      sidecarSchema.safeParse({ schemaVersion: 2, original: { hash } }).success,
     ).toBe(true);
   });
 
-  test("every element id is unique across levels and rooms", () => {
+  test("every element id is unique across levels and areas", () => {
     const clash = {
       ...tower,
       map: {
         ...tower.map,
-        rooms: [{ id: "ground", name: "Halle", area: square }],
+        areas: [{ id: "ground", name: "Halle", area: square }],
       },
     };
     expect(sidecarSchema.safeParse(clash).success).toBe(false);
@@ -132,15 +132,15 @@ describe("item info", () => {
   });
 });
 
-// T-108c1 (DM decision 2026-11-22): rooms are drawn per level and may be secret; both fields
+// T-108c1 (DM decision 2026-11-22): areas are drawn per level and may be secret; both fields
 // are additive, so older sidecars stay valid.
-describe("rooms per level", () => {
-  test("a room may name its level and be secret", () => {
+describe("areas per level", () => {
+  test("an area may name its level and be secret", () => {
     const parsed = sidecarSchema.parse({
       ...tower,
       map: {
         ...tower.map,
-        rooms: [
+        areas: [
           {
             id: "vault",
             name: "Schatzkammer",
@@ -151,22 +151,75 @@ describe("rooms per level", () => {
         ],
       },
     });
-    expect(parsed.map?.rooms[0]).toMatchObject({
+    expect(parsed.map?.areas[0]).toMatchObject({
       levelId: "cellar",
       secret: true,
     });
   });
 
-  test("a room on a level the map no longer has stays readable", () => {
+  test("an area on a level the map no longer has stays readable", () => {
     // It is simply not shown; the map's grid and levels must not get lost over it.
     expect(
       sidecarSchema.safeParse({
         ...tower,
         map: {
           ...tower.map,
-          rooms: [{ id: "x", name: "X", area: square, levelId: "gone" }],
+          areas: [{ id: "x", name: "X", area: square, levelId: "gone" }],
         },
       }).success,
     ).toBe(true);
+  });
+});
+
+// T-262 (DM decision 2026-11-23): a map's regions are areas, of which a room is one kind.
+// Version 2 stores them as `areas`; version 1 called them `rooms`.
+describe("sidecar version 1 → 2", () => {
+  const vault = {
+    id: "vault",
+    name: "Schatzkammer",
+    area: square,
+    levelId: "cellar",
+    secret: true,
+    color: "gold",
+  };
+  const version1 = {
+    schemaVersion: 1,
+    original: { hash },
+    map: {
+      grid: tower.map.grid,
+      levels: tower.map.levels,
+      rooms: [tower.map.areas[0], vault],
+    },
+    tags: ["Turm"],
+  };
+
+  test("moves the rooms to areas with their ids, levels, secrets and unknown fields", () => {
+    const parsed = migrateDocument(version1, sidecarDocument);
+    expect(parsed).toEqual({
+      ...version1,
+      schemaVersion: 2,
+      map: {
+        grid: tower.map.grid,
+        levels: tower.map.levels,
+        areas: [tower.map.areas[0], vault],
+      },
+    });
+    expect(parsed.map).not.toHaveProperty("rooms");
+  });
+
+  test("keeps a sidecar without map data as it is", () => {
+    expect(
+      migrateDocument(
+        { schemaVersion: 1, original: { hash }, info: { name: "Fass" } },
+        sidecarDocument,
+      ),
+    ).toEqual({ schemaVersion: 2, original: { hash }, info: { name: "Fass" } });
+  });
+
+  test("a version 1 sidecar without rooms is refused, as it was before", () => {
+    const withoutRooms = { grid: tower.map.grid, levels: tower.map.levels };
+    expect(() =>
+      migrateDocument({ ...version1, map: withoutRooms }, sidecarDocument),
+    ).toThrow();
   });
 });
