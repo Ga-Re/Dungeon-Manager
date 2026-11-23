@@ -1,5 +1,6 @@
 import type { Area, Grid, Polygon } from "@dungeon-manager/schema";
 import { union } from "polyclip-ts";
+import { isInside } from "./fog.js";
 import { asGeom, fromClip } from "./polygon-clip.js";
 
 // Areas of a map – rooms, parts of a cave, far places (T-108c1, T-262, SPEC 4, ADR-0012; DM
@@ -129,4 +130,47 @@ export function addToArea(current: Polygon | null, shape: Polygon): Polygon {
   const joined = fromClip(union(asGeom([current]), asGeom([shape])));
   const [only] = joined;
   return joined.length === 1 && only ? only : shape;
+}
+
+/** Where the edges of `rings` cross the line at height `y`, sorted (each edge half-open). */
+function crossings(
+  rings: readonly (readonly (readonly [number, number])[])[],
+  y: number,
+): number[] {
+  const xs: number[] = [];
+  for (const ring of rings)
+    for (let i = 0; i < ring.length; i += 1) {
+      const [x1, y1] = ring[i] ?? [0, 0];
+      const [x2, y2] = ring[(i + 1) % ring.length] ?? [0, 0];
+      if (y1 <= y !== y2 <= y) xs.push(x1 + ((y - y1) / (y2 - y1)) * (x2 - x1));
+    }
+  return xs.sort((a, b) => a - b);
+}
+
+/**
+ * Where an area's name stands (T-260): the middle of its corners if that lies inside the area,
+ * else the middle of the widest stretch of the area on a line across it – never in a hole of a
+ * closed frame or outside an L. In map pixels.
+ */
+export function labelPoint(area: Polygon): [number, number] {
+  const n = area.outer.length;
+  const mx = area.outer.reduce((sum, [x]) => sum + x / n, 0);
+  const my = area.outer.reduce((sum, [, y]) => sum + y / n, 0);
+  if (isInside([area], [mx, my])) return [mx, my];
+  const ys = area.outer.map(([, y]) => y);
+  const top = Math.min(...ys);
+  const height = Math.max(...ys) - top;
+  const rings = [area.outer, ...area.holes];
+  for (const share of [0.5, 0.25, 0.75, 0.125, 0.375, 0.625, 0.875]) {
+    const y = top + height * share;
+    const xs = crossings(rings, y);
+    let best: [number, number] | null = null;
+    for (let i = 0; i + 1 < xs.length; i += 2) {
+      const [from = 0, to = 0] = [xs[i], xs[i + 1]];
+      if (!best || to - from > best[1] - best[0]) best = [from, to];
+    }
+    if (best && best[1] > best[0]) return [(best[0] + best[1]) / 2, y];
+  }
+  const [first = [mx, my]] = area.outer;
+  return [first[0], first[1]];
 }

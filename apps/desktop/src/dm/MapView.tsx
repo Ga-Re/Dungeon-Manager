@@ -1,3 +1,4 @@
+import { labelPoint } from "@dungeon-manager/core";
 import {
   fitCamera,
   panBy,
@@ -234,7 +235,7 @@ export function MapView({
   readonly calibration?: MapCalibration | null;
   /** Areas shown as outlines over the map (the Map Forge, T-108c1). */
   readonly outlines?: readonly MapOutline[];
-  /** What the drawing tool does, instead of the fog's hint (e.g. drawing a room, T-108c1). */
+  /** What the drawing tool does, instead of the fog's hint (e.g. drawing an area, T-108c1). */
   readonly toolHint?: string | undefined;
 }) {
   const { t } = useTranslation();
@@ -1114,7 +1115,10 @@ function CalibrationBox({
 
 const NO_OUTLINES: readonly MapOutline[] = [];
 
-/** Area outlines with their names at their middle, in view pixels (T-108c1). */
+/**
+ * Area outlines with their names, in view pixels (T-108c1). One path per area, with its holes
+ * as subpaths filled even-odd (T-260): a closed frame shows its middle open, as it is saved.
+ */
 function AreaOutlines({
   outlines,
   toScreen,
@@ -1122,31 +1126,31 @@ function AreaOutlines({
   readonly outlines: readonly MapOutline[];
   readonly toScreen: (x: number, y: number) => Point;
 }) {
+  const ring = (points: readonly (readonly [number, number])[]) =>
+    `M${points
+      .map(([x, y]) => {
+        const at = toScreen(x, y);
+        return `${String(at.x)},${String(at.y)}`;
+      })
+      .join("L")}Z`;
   return (
     <svg className="map-view-areas" aria-hidden="true">
-      {outlines.map((room) => {
-        const points = room.area.outer.map(([x, y]) => toScreen(x, y));
-        const middle = points.reduce(
-          (sum, point) => ({
-            x: sum.x + point.x / points.length,
-            y: sum.y + point.y / points.length,
-          }),
-          { x: 0, y: 0 },
-        );
+      {outlines.map((outline) => {
+        const [lx, ly] = labelPoint(outline.area);
+        const label = toScreen(lx, ly);
         return (
           <g
-            key={room.id}
+            key={outline.id}
             className="map-view-area"
-            data-selected={room.selected === true ? "true" : undefined}
-            data-secret={room.secret === true ? "true" : undefined}
+            data-selected={outline.selected === true ? "true" : undefined}
+            data-secret={outline.secret === true ? "true" : undefined}
           >
-            <polygon
-              points={points
-                .map(({ x, y }) => `${String(x)},${String(y)}`)
-                .join(" ")}
+            <path
+              fillRule="evenodd"
+              d={[outline.area.outer, ...outline.area.holes].map(ring).join("")}
             />
-            <text x={middle.x} y={middle.y}>
-              {room.label}
+            <text x={label.x} y={label.y}>
+              {outline.label}
             </text>
           </g>
         );

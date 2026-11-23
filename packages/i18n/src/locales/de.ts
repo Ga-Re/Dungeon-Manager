@@ -258,7 +258,8 @@ export const de = {
     delete: "Bereich löschen",
     deleteQuestion: "„{{name}}“ löschen – für jede Szene dieser Karte?",
     drawFirst: "Zeichne den Bereich auf der Karte.",
-    drawMore: "Berührende Formen kommen dazu, getrennte ersetzen ihn.",
+    drawMore:
+      "Formen, die überlappen oder eine Kante teilen, kommen dazu; getrennte ersetzen ihn.",
     secretLabel: "Geheim",
     yes: "ja",
     tooSmall:

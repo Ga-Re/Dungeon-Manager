@@ -243,6 +243,38 @@ describe("MapView", () => {
     expect(fake.view.setGrid).toHaveBeenLastCalledWith(grid);
   });
 
+  test("outlines an area with its hole left open, its name not in the hole (T-260)", async () => {
+    const fake = fakeMapService(() => Promise.resolve(image));
+    const frame: Polygon = {
+      outer: [
+        [0, 0],
+        [300, 0],
+        [300, 300],
+        [0, 300],
+      ],
+      holes: [
+        [
+          [100, 100],
+          [200, 100],
+          [200, 200],
+          [100, 200],
+        ],
+      ],
+    };
+    const { container } = renderView(fake.service, {
+      outlines: [{ id: "frame", label: "Rahmen", area: frame }],
+    });
+    const path = await waitFor(() => {
+      const found = container.querySelector(".map-view-area path");
+      if (!found) throw new Error("no outline yet");
+      return found;
+    });
+    // The outer ring and the hole, as two subpaths filled even-odd.
+    expect(path.getAttribute("fill-rule")).toBe("evenodd");
+    expect(path.getAttribute("d")?.match(/M/g)).toHaveLength(2);
+    expect(screen.getByText("Rahmen")).toBeTruthy();
+  });
+
   test("shows the drawing tool's instructions while it is active (T-131)", () => {
     const fake = fakeMapService(() => Promise.resolve(image));
     renderView(fake.service, { tool: "reveal", shape: "polygon" });

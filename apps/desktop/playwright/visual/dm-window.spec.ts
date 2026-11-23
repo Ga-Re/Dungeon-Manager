@@ -132,7 +132,7 @@ test("an area being added in the Map Forge, before OK (T-108c1, T-254, T-260)", 
   await expect(page.locator(".map-view-area")).toHaveCount(1);
   await page.evaluate(() => document.fonts.ready);
 
-  await expect(page).toHaveScreenshot("dm-window-forge-room.png");
+  await expect(page).toHaveScreenshot("dm-window-forge-area.png");
 });
 
 test("a ribbon tool's command panel over the map (T-252)", async ({ page }) => {

@@ -1363,7 +1363,7 @@ New tasks discovered during work are appended to the right stage with status `to
 - **Acceptance criteria**
   - [x] Union of connected shapes yields one area; an unconnected shape replaces the selection (core unit tests, property test that the result is always one polygon)
   - [x] The panel shows the fog tool icons (component test)
-- **Notes:** DM decisions 2026-11-22.
+- **Notes:** DM decisions 2026-11-23.
 
 ### T-261 Fog biomes: soft edge and quick switch
 

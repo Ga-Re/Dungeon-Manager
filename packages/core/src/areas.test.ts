@@ -1,8 +1,10 @@
 import fc from "fast-check";
 import { describe, expect, test } from "vitest";
+import { isInside } from "./fog.js";
 import {
   addToArea,
   areasOnLevel,
+  labelPoint,
   newAreaId,
   ringArea,
   snapArea,
@@ -191,5 +193,49 @@ describe("addToArea", () => {
         }
       }),
     );
+  });
+});
+
+// Where an area's name stands on the map (T-260): inside the area, never in one of its holes.
+describe("labelPoint", () => {
+  test("the middle of a simple area", () => {
+    expect(labelPoint(square(0, 0, 100))).toEqual([50, 50]);
+  });
+
+  test("inside a frame, not in its hole", () => {
+    const frame = {
+      outer: [
+        [0, 0],
+        [300, 0],
+        [300, 300],
+        [0, 300],
+      ] as [number, number][],
+      holes: [
+        [
+          [100, 100],
+          [200, 100],
+          [200, 200],
+          [100, 200],
+        ] as [number, number][],
+      ],
+    };
+    const point = labelPoint(frame);
+    expect(isInside([frame], point)).toBe(true);
+  });
+
+  test("inside an L whose middle lies outside", () => {
+    const l = {
+      outer: [
+        [0, 0],
+        [300, 0],
+        [300, 20],
+        [20, 20],
+        [20, 300],
+        [0, 300],
+      ] as [number, number][],
+      holes: [],
+    };
+    const point = labelPoint(l);
+    expect(isInside([l], point)).toBe(true);
   });
 });

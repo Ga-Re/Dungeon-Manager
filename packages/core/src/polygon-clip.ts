@@ -7,10 +7,10 @@ import type { Geom } from "polyclip-ts";
 // ([outer, ...holes] per polygon) but closes rings by repeating the first point.
 
 /** A polygon as polyclip-ts takes and returns it. */
-export type ClipPolygon = [number, number][][];
+type ClipPolygon = [number, number][][];
 
 /** Polygons as polyclip-ts takes them. */
-export function toClip(polygons: readonly Polygon[]): ClipPolygon[] {
+function toClip(polygons: readonly Polygon[]): ClipPolygon[] {
   return polygons.map((polygon) =>
     [polygon.outer, ...polygon.holes].map((ring) =>
       ring.map(([x, y]) => [x, y]),

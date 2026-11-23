@@ -255,7 +255,8 @@ export const en: Messages = {
     delete: "Delete area",
     deleteQuestion: "Delete “{{name}}” – for every scene of this map?",
     drawFirst: "Draw the area on the map.",
-    drawMore: "Touching shapes join it, separate ones replace it.",
+    drawMore:
+      "Shapes that overlap or share an edge join it; separate ones replace it.",
     secretLabel: "Secret",
     yes: "yes",
     tooSmall:
