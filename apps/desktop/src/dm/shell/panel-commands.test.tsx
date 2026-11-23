@@ -9,6 +9,7 @@ import {
   isFolded,
   restoreLayout,
   settleFolds,
+  settleFoldsOnLayout,
   toggleFold,
 } from "./panel-layout.js";
 
@@ -74,6 +75,17 @@ describe("folding a panel to its title (T-172b)", () => {
     const folded = heightOf(api, "browser");
     api.layout(1600, 1000);
     settleFolds(api);
+    expect(heightOf(api, "browser")).toBe(folded);
+  });
+
+  it("is settled by itself when the window grows (T-263)", async () => {
+    // A resize reports no layout change in dockview; only the groups' new dimensions tell.
+    const api = defaultPanels();
+    settleFoldsOnLayout(api);
+    toggleFold(api, "browser");
+    const folded = heightOf(api, "browser");
+    api.layout(1600, 1000);
+    await Promise.resolve();
     expect(heightOf(api, "browser")).toBe(folded);
   });
 

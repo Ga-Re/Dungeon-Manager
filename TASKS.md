@@ -1156,6 +1156,14 @@ New tasks discovered during work are appended to the right stage with status `to
   - [x] The E2E test waits until the grid is laid out at the new window size before it checks the folded height, and passes 30 times in a row (`--repeat-each 30`)
 - **Notes:** Found on PR #137 (CI flake, 2026-11-23). dockview 8.9.1 fires `onDidLayoutChange` only for sash drags, size requests and structure changes; a container resize reaches a group only as `api.onDidDimensionsChange`.
 
+### T-264 Folding every panel of a column must not hang the window
+
+- **Status:** todo · **Depends on:** T-172b · **Refs:** ADR-0017
+- `canFold` only checks that a group is lower than the window, so Browser, Eigenschaften and Initiative can all be folded one after the other. Then one of them has to take the rest of the column, `settleFolds` keeps resizing it back, and every resize settles again: an endless microtask loop that freezes the window.
+- **Acceptance criteria**
+  - [ ] The last unfolded group of a column cannot fold ("Einklappen" disabled), and `settleFolds` never fights for a height the column cannot give (unit test that folds every group of a column)
+- **Notes:** From the T-263 review (2026-11-23); reproduced on a jsdom dockview with only the old `onDidLayoutChange` hook too, so older than T-263.
+
 ### T-172c Named layouts
 
 - **Status:** done · **Depends on:** T-172a · **Refs:** ADR-0017
