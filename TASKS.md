@@ -1147,6 +1147,15 @@ New tasks discovered during work are appended to the right stage with status `to
   - [ ] Delete/Backspace on a focused tab and a middle click on a tab hide the panel the way its ✕ does (width kept, focus to the title bar), or are switched off (E2E test)
 - **Notes:** From the T-172b review (2026-11-20). dockview's tab list closes a panel on Delete/Backspace itself; our own tab dropped its middle click.
 
+### T-263 A folded panel stays folded when the window grows
+
+- **Status:** done · **Depends on:** T-172b · **Refs:** ADR-0017
+- Resizing the window lays dockview's grid out again without an `onDidLayoutChange`, so `settleFolds` never ran and a folded panel kept the extra height it was given (the T-172b E2E test "a folded panel stays folded on the next start …" was flaky: it only passed when it checked the height before dockview's next frame).
+- **Acceptance criteria**
+  - [x] Folded panels are settled again whenever dockview lays a group out, also after a plain window resize
+  - [x] The E2E test waits until the grid is laid out at the new window size before it checks the folded height, and passes 30 times in a row (`--repeat-each 30`)
+- **Notes:** Found on PR #137 (CI flake, 2026-11-23). dockview 8.9.1 fires `onDidLayoutChange` only for sash drags, size requests and structure changes; a container resize reaches a group only as `api.onDidDimensionsChange`.
+
 ### T-172c Named layouts
 
 - **Status:** done · **Depends on:** T-172a · **Refs:** ADR-0017
