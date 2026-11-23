@@ -1,6 +1,6 @@
 # ADR-0021: A fixed canvas per workspace; panels dock around it and fold into edge sidebars
 
-- **Status:** Proposed
+- **Status:** Accepted (DM, 2026-11-23)
 - **Date:** 2026-11-22
 - **Deciders:** DM (product owner), agent
 - **Amends:** ADR-0017 ("every workspace consists of panels, including the map") and ADR-0020 (command panels float "over the map panel"). Everything else in both stays in force.
@@ -43,7 +43,7 @@ c. **Own edge sidebars in `@dungeon-manager/ui` (recommended).** A strip of vert
 
 ## Decision
 
-Option 3 with sidebars as in **c**, unless the DM prefers to buy **a**. The canvas of an editing workspace is a slot under the ribbon; the dockview layout is placed over it, its centre left empty and click-through. Command panels move to a window-wide layer above all panels (between `--dm-z-overlay` and `--dm-z-popover`), still starting top right of the canvas.
+Option 3 with sidebars as in **c** (DM, 2026-11-23: build them ourselves, no enterprise licence). The canvas of an editing workspace is a slot under the ribbon; the dockview layout is placed over it, its centre left empty and click-through. Command panels move to a window-wide layer above all panels (between `--dm-z-overlay` and `--dm-z-popover`), still starting top right of the canvas.
 
 ## Consequences
 

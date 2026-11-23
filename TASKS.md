@@ -1314,7 +1314,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-258 Map Forge: the map is the canvas
 
-- **Status:** todo · **Depends on:** T-257, ADR-0021 accepted · **Refs:** ADR-0021, ADR-0017, ADR-0014
+- **Status:** todo · **Depends on:** T-257 · **Refs:** ADR-0021, ADR-0017, ADR-0014
 - In the Map Forge the map fills the area under the ribbon as its canvas; the browser, Eigenschaften and data panels dock around or float over it. The Game-Orchestrator keeps its free layout with the map as a panel. Saved Map Forge layouts that no longer fit fall back to the default once.
 - **Acceptance criteria**
   - [ ] The Map Forge's map cannot be closed, moved or docked; panels dock around it (component + E2E test, screenshot)
@@ -1323,7 +1323,7 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-259 Edge sidebars: fold panels into vertical tabs that slide out
 
-- **Status:** todo · **Depends on:** T-258, ADR-0021 accepted · **Refs:** ADR-0021, ADR-0017
+- **Status:** todo · **Depends on:** T-258 · **Refs:** ADR-0021, ADR-0017
 - A panel can be folded into a sidebar of vertical tabs at a window edge; a click on its tab slides it out over the canvas with a smooth animation (none under reduced motion); clicking elsewhere or Escape slides it back; a pin docks it again. Kept per workspace with the layout.
 - **Acceptance criteria**
   - [ ] Fold, slide out, slide back and pin work with mouse and keyboard; the folded panel keeps its state (component test)
