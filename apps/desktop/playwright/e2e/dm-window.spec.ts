@@ -292,12 +292,18 @@ test("a map opened in the Map Forge gets a new grid; the scene on the TV takes i
   await expect(page.getByRole("tree", { name: "Karte" })).toContainText(
     "Ebene 1",
   );
-  const details = page.getByRole("region", { name: "Eigenschaften" });
+  // The map's settings open from the browser (T-253).
+  await page
+    .getByRole("tree", { name: "Karte" })
+    .getByText("Karteneinstellungen")
+    .dblclick();
+  const details = page.getByRole("dialog", { name: "Karteneinstellungen" });
   await details.getByLabel("Zellgröße (Pixel)").fill("50");
   await details.getByRole("button", { name: "Kartendaten speichern" }).click();
   await expect(
     details.getByText(/Gespeichert – gilt für jede Szene/),
   ).toBeVisible();
+  await page.keyboard.press("Escape");
   // The scene on the TV keeps its grid until the DM takes the change.
   expect(await tvGrid()).toBe(100);
 
@@ -370,13 +376,85 @@ test("the grid is calibrated from the ribbon: a box over 3 × 3 printed cells, a
 
   await panel.getByRole("button", { name: "OK" }).click();
   await expect(panel).toBeHidden();
-  // Saved for every scene of the map: the map's data shows it.
-  const details = page.getByRole("region", { name: "Eigenschaften" });
+  // Saved for every scene of the map: the map's settings show it (T-253).
+  await page
+    .getByRole("tree", { name: "Karte" })
+    .getByText("Karteneinstellungen")
+    .dblclick();
+  const details = page.getByRole("dialog", { name: "Karteneinstellungen" });
   await expect
     .poll(async () =>
       Number(await details.getByLabel("Zellgröße (Pixel)").inputValue()),
     )
     .toBeCloseTo(calibrated, 1);
+});
+
+test("Neue Karte imports a named map into the Map Forge, whose map is its canvas; its settings open from the browser (T-253, T-258)", async ({
+  page,
+}) => {
+  await page.goto(`${HARNESS}?levelFiles`);
+  await closeWelcome(page);
+  await page
+    .getByRole("group", { name: "Arbeitsbereich" })
+    .getByRole("button")
+    .click();
+  await page.getByRole("menuitemradio", { name: "Map Forge" }).click();
+  // The map is the canvas: no tab, no panel menu.
+  await expect(page.getByRole("button", { name: "Panel Karte" })).toHaveCount(
+    0,
+  );
+
+  await page.getByRole("button", { name: "Neue Karte" }).click();
+  const panel = page.getByRole("dialog", { name: "Neue Karte" });
+  await panel.getByLabel("Name").fill("Kleine Höhle");
+  await panel.getByRole("button", { name: "OK" }).click();
+  await expect(panel).toBeHidden();
+  const tree = page.getByRole("tree", { name: "Karte" });
+  await expect(tree.getByText("Kleine Höhle")).toBeVisible();
+
+  // Its settings, right under it in the browser.
+  await tree.getByText("Karteneinstellungen").dblclick();
+  const settings = page.getByRole("dialog", { name: "Karteneinstellungen" });
+  await expect(settings.getByLabel("Zellgröße (Pixel)")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(settings).toBeHidden();
+
+  // Back in the Game-Orchestrator the map is a panel again.
+  await page
+    .getByRole("group", { name: "Arbeitsbereich" })
+    .getByRole("button")
+    .click();
+  await page.getByRole("menuitemradio", { name: "Game-Orchestrator" }).click();
+  await expect(page.getByRole("button", { name: "Panel Karte" })).toBeVisible();
+});
+
+test("a panel folded into an edge sidebar slides out and stays there on the next start (T-259)", async ({
+  page,
+}) => {
+  await openDmWindow(page);
+  await page.getByRole("button", { name: "Panel Browser" }).click();
+  await page.getByRole("menuitem", { name: "Automatisch ausblenden" }).click();
+  const bar = page.getByRole("toolbar", { name: "Rechte Seitenleiste" });
+  const tab = bar.getByRole("button", { name: "Browser" });
+  await expect(tab).toBeVisible();
+  await expect(page.getByRole("button", { name: "Panel Browser" })).toHaveCount(
+    0,
+  );
+
+  await page.reload();
+  await closeWelcome(page);
+  await expect(tab).toBeVisible();
+  const sheet = page.locator('.dm-edge-sheet[data-edge="right"]');
+  await expect(sheet).not.toHaveAttribute("data-open", "true");
+  await tab.click();
+  await expect(sheet).toHaveAttribute("data-open", "true");
+  // It slides over the panels: its content is there and usable.
+  await expect(
+    sheet.getByRole("button", { name: "Fluch der Krypta" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).not.toHaveAttribute("data-open", "true");
+  await expect(tab).toBeFocused();
 });
 
 test("a command panel opens at the map's top right and moves over the browser, never out of the window (T-257)", async ({
@@ -1234,9 +1312,9 @@ test("panels are folded, docked and hidden with the keyboard only (T-172b)", asy
   const choose = async (item: string) => {
     await menu.focus();
     await page.keyboard.press("Enter");
-    const entry = page.getByRole("menuitem", { name: item });
+    const entry = page.getByRole("menuitem", { name: item, exact: true });
     // Down from the first entry until the wanted one has the focus.
-    for (let step = 0; step < 6; step++) {
+    for (let step = 0; step < 8; step++) {
       if (await entry.evaluate((element) => element === document.activeElement))
         break;
       await page.keyboard.press("ArrowDown");

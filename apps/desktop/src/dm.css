@@ -192,7 +192,9 @@ label {
   min-height: 0;
 }
 
+/* Fixed columns: without a sidebar on the left, the panels must not slip into its column. */
 .dm-workarea-panels {
+  grid-column: 2;
   position: relative;
   display: grid;
   min-width: 0;
@@ -215,7 +217,12 @@ label {
   border-right: 1px solid var(--dm-border-subtle);
 }
 
+.dm-edge-bar[data-edge="left"] {
+  grid-column: 1;
+}
+
 .dm-edge-bar[data-edge="right"] {
+  grid-column: 3;
   border-right: 0;
   border-left: 1px solid var(--dm-border-subtle);
 }
@@ -2048,4 +2055,23 @@ button.dm-welcome-campaign:hover {
 
 .dm-tv-preview {
   border: 1px solid var(--dm-border-subtle);
+}
+
+/* "Neue Karte" (T-253): where the map comes from. */
+.dm-forge-source {
+  display: grid;
+  gap: var(--dm-space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.dm-forge-source legend {
+  margin-bottom: var(--dm-space-1);
+  font-size: var(--dm-font-size-sm);
+}
+
+/* "Karteneinstellungen" (T-253): the map's editors one under the other. */
+.dm-forge-settings .dm-dialog-body {
+  width: min(28rem, 90vw);
 }

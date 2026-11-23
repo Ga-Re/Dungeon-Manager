@@ -266,6 +266,24 @@ export const de = {
       "Zu klein für einen Bereich: am Raster wäre er keine Fläche. Mit Alt zeichnest du frei.",
   },
   forge: {
+    mapGroup: "Karte",
+    newMap: "Neue Karte",
+    newMapSource: "Woher kommt die Karte?",
+    newMapImport: "Bilddatei importieren",
+    newMapDraw: "Selbst zeichnen (kommt später)",
+    newMapHint:
+      "OK wählt die Datei, legt sie mit diesem Namen im Katalog ab und öffnet sie hier.",
+    settings: "Karteneinstellungen",
+    settingsOpen: "Karteneinstellungen …",
+    facts: {
+      name: "Name",
+      file: "Datei",
+      grid: "Raster",
+      gridValue: "{{size}} px pro Feld",
+      levels: "Ebenen",
+      areas: "Bereiche",
+      biome: "Standard-Biom",
+    },
     changedMeanwhile:
       "Die Kartendaten wurden inzwischen woanders geändert; die Karte zeigt jetzt den neuen Stand. Versuche es erneut.",
     empty: "Keine Karte geöffnet. Doppelklicke im Katalog auf eine Karte.",

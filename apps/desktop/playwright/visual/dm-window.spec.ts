@@ -96,13 +96,14 @@ test("a catalog map's details in Eigenschaften (T-125)", async ({ page }) => {
   await expect(page).toHaveScreenshot("dm-window-item-info.png");
 });
 
-test("a map open in the Map Forge (T-176a)", async ({ page }) => {
+test("a map open in the Map Forge (T-176a, T-253, T-258)", async ({ page }) => {
   await openHarness(page);
   await page
     .getByRole("list", { name: "Karten" })
     .getByRole("button", { name: /krypta\.png/ })
     .dblclick();
-  await expect(page.getByLabel("Zellgröße (Pixel)")).toBeVisible();
+  // Eigenschaften shows the map's facts (T-253); the map is the canvas (T-258).
+  await expect(page.getByText("100 px pro Feld")).toBeVisible();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
   await page.evaluate(() => document.fonts.ready);
 

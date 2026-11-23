@@ -91,16 +91,22 @@ function renderForge(
 ) {
   const library = fakeLibraryService("/lib", { [MAP]: "png", ...files });
   const onClose = vi.fn();
+  const onOpen = vi.fn();
   render(
     <I18nextProvider i18n={createI18n("de")}>
       <ActiveWorkspaceContext value={workspace}>
         <CommandRegistryContext value={createCommandRegistry()}>
-          <MapForge service={library.service} path={path} onClose={onClose} />
+          <MapForge
+            service={library.service}
+            path={path}
+            onOpen={onOpen}
+            onClose={onClose}
+          />
         </CommandRegistryContext>
       </ActiveWorkspaceContext>
     </I18nextProvider>,
   );
-  return { library, onClose };
+  return { library, onClose, onOpen };
 }
 
 /** Like `renderForge`, and can show another workspace and come back. */
@@ -136,6 +142,12 @@ const saved = (library: ReturnType<typeof fakeLibraryService>) =>
     info?: object;
   };
 
+/** Opens "Karteneinstellungen" from the browser by double-click, as the DM does (T-253). */
+async function openSettings() {
+  fireEvent.doubleClick(await screen.findByText("Karteneinstellungen"));
+  return screen.getByRole("dialog", { name: "Karteneinstellungen" });
+}
+
 describe("MapForge", () => {
   test("shows the open map's name, its levels and areas; closing asks the owner", async () => {
     const { onClose } = renderForge({
@@ -155,6 +167,7 @@ describe("MapForge", () => {
 
   test("edits the grid and the default biome in the sidecar, keeping the rest", async () => {
     const { library } = renderForge({ [SIDECAR]: sidecar({}) });
+    await openSettings();
     const cell =
       await screen.findByLabelText<HTMLInputElement>("Zellgröße (Pixel)");
     expect(cell.value).toBe("70");
@@ -198,6 +211,7 @@ describe("MapForge", () => {
         fogEffect: { biome: "schnee", strength: 0.333, wind: 3 },
       }),
     });
+    await openSettings();
     fireEvent.change(await screen.findByLabelText("Zellgröße (Pixel)"), {
       target: { value: "80" },
     });
@@ -228,6 +242,7 @@ describe("MapForge", () => {
 
   test("a map without a sidecar gets one with the edited data", async () => {
     const { library } = renderForge({});
+    await openSettings();
     fireEvent.change(await screen.findByLabelText("Zellgröße (Pixel)"), {
       target: { value: "50" },
     });
@@ -804,6 +819,7 @@ describe("MapForge", () => {
 
   test("an invalid cell size cannot be saved", async () => {
     renderForge({ [SIDECAR]: sidecar({}) });
+    await openSettings();
     fireEvent.change(await screen.findByLabelText("Zellgröße (Pixel)"), {
       target: { value: "0" },
     });
@@ -817,6 +833,7 @@ describe("MapForge", () => {
 
   test("a change on disk shows while untouched and is not overwritten under edits", async () => {
     const { library } = renderForge({ [SIDECAR]: sidecar({}) });
+    await openSettings();
     const cell =
       await screen.findByLabelText<HTMLInputElement>("Zellgröße (Pixel)");
     await library.fs.writeAtomic(
@@ -856,6 +873,95 @@ describe("MapForge", () => {
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(screen.queryByLabelText("Zellgröße (Pixel)")).toBeNull();
     expect(library.fs.files().get(SIDECAR)).toBe("{ broken");
+  });
+
+  test("Neue Karte imports an image file with its name and opens it, also without an open map (T-253)", async () => {
+    const { library, onOpen } = renderForge({}, null);
+    fireEvent.click(screen.getByRole("button", { name: "Neue Karte" }));
+    const panel = screen.getByRole("dialog", { name: "Neue Karte" });
+    // Importing is the way for now; drawing comes later.
+    expect(
+      within(panel).getByRole<HTMLInputElement>("radio", {
+        name: "Bilddatei importieren",
+      }).checked,
+    ).toBe(true);
+    expect(
+      within(panel).getByRole<HTMLInputElement>("radio", {
+        name: /Selbst zeichnen/,
+      }).disabled,
+    ).toBe(true);
+    const ok = within(panel).getByRole<HTMLButtonElement>("button", {
+      name: "OK",
+    });
+    // The name comes first.
+    expect(ok.disabled).toBe(true);
+    fireEvent.change(within(panel).getByLabelText("Name"), {
+      target: { value: "  Höhle der Echos " },
+    });
+    // The file dialog cancelled: nothing happens, the panel stays.
+    fireEvent.click(ok);
+    await waitFor(() => {
+      expect(library.service.importMap).toHaveBeenCalledTimes(1);
+    });
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Neue Karte" })).toBeTruthy();
+
+    library.service.importMap.mockResolvedValueOnce({
+      path: "library/maps/hoehle.png",
+      hash: HASH,
+    });
+    fireEvent.click(ok);
+    await waitFor(() => {
+      expect(onOpen).toHaveBeenCalledWith("library/maps/hoehle.png");
+    });
+    expect(
+      JSON.parse(
+        library.fs.files().get("library/maps/hoehle.png.dm.json") ?? "{}",
+      ),
+    ).toMatchObject({ info: { name: "Höhle der Echos" } });
+    expect(screen.queryByRole("dialog", { name: "Neue Karte" })).toBeNull();
+  });
+
+  test("Karteneinstellungen sits under the map and opens by double-click, keyboard and context menu; Eigenschaften shows the facts (T-253)", async () => {
+    renderForge({ [SIDECAR]: sidecar({}, { name: "Turm der Magier" }) });
+    const tree = await screen.findByRole("tree", { name: "Karte" });
+    const items = within(tree)
+      .getAllByRole("treeitem")
+      .map((item) => item.querySelector(".dm-tree-label")?.textContent ?? "");
+    // The map first, its settings right under it.
+    expect(items.slice(0, 2)).toEqual([
+      "Turm der Magier",
+      "Karteneinstellungen",
+    ]);
+    // Eigenschaften: facts, no forms.
+    expect(screen.getByText("70 px pro Feld")).toBeTruthy();
+    expect(screen.queryByLabelText("Zellgröße (Pixel)")).toBeNull();
+
+    // Keyboard: Enter on the settings item.
+    const settings = within(tree).getByRole("treeitem", {
+      name: "Karteneinstellungen",
+    });
+    settings.focus();
+    fireEvent.keyDown(settings, { key: "Enter" });
+    let dialog = screen.getByRole("dialog", { name: "Karteneinstellungen" });
+    expect(within(dialog).getByLabelText("Zellgröße (Pixel)")).toBeTruthy();
+    expect(
+      within(dialog).getByLabelText("Standard-Biom aller Szenen"),
+    ).toBeTruthy();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(
+      screen.queryByRole("dialog", { name: "Karteneinstellungen" }),
+    ).toBeNull();
+
+    // The map's context menu.
+    fireEvent.contextMenu(
+      within(tree).getByRole("treeitem", { name: "Turm der Magier" }),
+    );
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: "Karteneinstellungen …" }),
+    );
+    dialog = screen.getByRole("dialog", { name: "Karteneinstellungen" });
+    expect(within(dialog).getByLabelText("Name")).toBeTruthy();
   });
 
   test("without an open map it shows how to open one", () => {

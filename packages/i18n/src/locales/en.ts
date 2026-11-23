@@ -263,6 +263,24 @@ export const en: Messages = {
       "Too small for an area: on the grid it would have no surface. Hold Alt to draw freely.",
   },
   forge: {
+    mapGroup: "Map",
+    newMap: "New map",
+    newMapSource: "Where does the map come from?",
+    newMapImport: "Import an image file",
+    newMapDraw: "Draw it yourself (coming later)",
+    newMapHint:
+      "OK picks the file, puts it into the catalogue with this name and opens it here.",
+    settings: "Map settings",
+    settingsOpen: "Map settings …",
+    facts: {
+      name: "Name",
+      file: "File",
+      grid: "Grid",
+      gridValue: "{{size}} px per cell",
+      levels: "Levels",
+      areas: "Areas",
+      biome: "Default biome",
+    },
     changedMeanwhile:
       "The map data was changed elsewhere meanwhile; the map now shows the new state. Try again.",
     empty: "No map open. Double-click a map in the catalogue.",

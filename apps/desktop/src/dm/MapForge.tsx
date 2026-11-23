@@ -33,11 +33,13 @@ import {
 } from "@dungeon-manager/ui";
 import {
   DoorOpen,
+  FilePlus,
   Folder,
   Grid3x3,
   Layers,
   Map as MapIcon,
   Pencil,
+  Settings,
   SquarePlus,
   Trash2,
   X,
@@ -46,6 +48,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LibraryService } from "../platform/library.js";
 import { fileName } from "./file-name.js";
+import { MapFacts, MapSettingsDialog, NewMapCommand } from "./ForgeMap.js";
 import { ItemInfoEditor } from "./ItemInfoEditor.js";
 import { MapDataEditor } from "./MapDataEditor.js";
 import {
@@ -130,15 +133,33 @@ function useSidecar(
 export function MapForge({
   service,
   path,
+  onOpen,
   onClose,
 }: {
   readonly service: LibraryService;
   /** The open map (`library/…`), or `null`. */
   readonly path: string | null;
+  /** Opens another map, e.g. one just made with "Neue Karte" (T-253). */
+  readonly onOpen?: ((path: string) => void) | undefined;
   readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
   const shown = useActiveWorkspace() === "mapForge";
+  // "Neue Karte" (T-253), a ribbon tool with its command panel, also without an open map; and
+  // the map's settings dialog, opened from the browser.
+  const [newMap, setNewMap] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mapMenu, setMapMenu] = useState<{
+    readonly at: MenuPoint;
+    readonly item: HTMLElement;
+  } | null>(null);
+  useEffect(() => {
+    if (!shown) setNewMap(false);
+  }, [shown]);
+  useEffect(() => {
+    setSettingsOpen(false);
+    setMapMenu(null);
+  }, [path]);
   const loaded = useSidecar(service, path);
   // Grid calibration (T-177), a ribbon tool with its command panel (ADR-0020): whether it runs,
   // how the DM calibrates, the last grid calibrated on the map and the grid shown until OK.
@@ -243,9 +264,50 @@ export function MapForge({
   };
 
   if (!shown) return null;
+  // KARTE › KARTE (T-253): "Neue Karte" as the quick tool and in the caption's menu.
+  const newMapTools = (
+    <>
+      <ShellPortal slot="ribbonForgeMap">
+        <RibbonGroup
+          caption={t("forge.mapGroup")}
+          menu={{
+            items: [
+              { id: "newMap", label: t("forge.newMap"), icon: <FilePlus /> },
+            ],
+            onSelect: (id) => {
+              if (id === "newMap") setNewMap(true);
+            },
+          }}
+        >
+          <IconButton
+            showLabel
+            icon={<FilePlus />}
+            label={t("forge.newMap")}
+            pressed={newMap}
+            onClick={() => {
+              setNewMap((open) => !open);
+            }}
+          />
+        </RibbonGroup>
+      </ShellPortal>
+      {newMap && (
+        <NewMapCommand
+          service={service}
+          onOpen={(made) => {
+            setNewMap(false);
+            onOpen?.(made);
+          }}
+          onCancel={() => {
+            setNewMap(false);
+          }}
+        />
+      )}
+    </>
+  );
   if (path === null)
     return (
       <>
+        {newMapTools}
         <ShellPortal slot="canvas">
           <p className="dm-forge-empty">{t("forge.empty")}</p>
         </ShellPortal>
@@ -427,6 +489,12 @@ export function MapForge({
     label: name,
     icon: <MapIcon />,
     children: [
+      // Under the map: its settings (T-253, ADR-0020).
+      {
+        id: "forge:settings",
+        label: t("forge.settings"),
+        icon: <Settings />,
+      },
       {
         id: "forge:levels",
         label: t("forge.levels"),
@@ -455,8 +523,10 @@ export function MapForge({
     ],
   };
 
+  const isMap = (id: string) => id === "forge:map" || id === "forge:settings";
   return (
     <>
+      {newMapTools}
       {/* KARTE › RASTER (ADR-0020): the quick tool, and every command in the caption's menu. */}
       <ShellPortal slot="ribbonForgeMap">
         <RibbonGroup
@@ -692,14 +762,35 @@ export function MapForge({
               }
             }}
             // An area opens its edit command by double-click or its context menu (ADR-0020).
+            // The map and its settings item open the settings the same way (T-253).
             onItemActivate={(id) => {
-              if (id.startsWith("forge:area:"))
+              if (isMap(id)) setSettingsOpen(true);
+              else if (id.startsWith("forge:area:"))
                 startOnArea("edit", id.slice("forge:area:".length));
             }}
             onItemContextMenu={(id, at, item) => {
-              if (id.startsWith("forge:area:"))
+              if (isMap(id)) setMapMenu({ at, item });
+              else if (id.startsWith("forge:area:"))
                 setAreaMenu({ id: id.slice("forge:area:".length), at, item });
             }}
+          />
+          <ContextMenu
+            at={mapMenu?.at ?? null}
+            label={t("forge.tree")}
+            items={[
+              {
+                id: "settings",
+                label: t("forge.settingsOpen"),
+                icon: <Settings />,
+              },
+            ]}
+            onSelect={(choice) => {
+              if (choice === "settings") setSettingsOpen(true);
+            }}
+            onClose={() => {
+              setMapMenu(null);
+            }}
+            returnFocus={mapMenu?.item}
           />
           <ContextMenu
             at={areaMenu?.at ?? null}
@@ -740,6 +831,20 @@ export function MapForge({
                   )}
                 </dl>
               )}
+              <MapFacts name={name} path={path} data={data} />
+            </>
+          )}
+        </div>
+      </ShellPortal>
+      <MapSettingsDialog
+        open={settingsOpen && loaded.status === "ok"}
+        onClose={() => {
+          setSettingsOpen(false);
+        }}
+      >
+        <div className="dm-forge-details">
+          {loaded.status === "ok" && (
+            <>
               <ItemInfoEditor
                 key={`info:${path}`}
                 service={service}
@@ -762,7 +867,7 @@ export function MapForge({
             </>
           )}
         </div>
-      </ShellPortal>
+      </MapSettingsDialog>
     </>
   );
 }

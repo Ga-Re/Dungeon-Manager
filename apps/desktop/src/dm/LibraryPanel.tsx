@@ -414,6 +414,7 @@ export function LibraryPanel({
             <MapForge
               service={service}
               path={forgePath}
+              onOpen={setForgePath}
               onClose={() => {
                 setForgePath(null);
               }}

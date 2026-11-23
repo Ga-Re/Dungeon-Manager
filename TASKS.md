@@ -1289,11 +1289,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-253 Map Forge: new map, map at the top of the browser, "Karteneinstellungen" dialog
 
-- **Status:** todo · **Depends on:** T-252 · **Refs:** ADR-0020, SPEC §2.5, §8.2
+- **Status:** done · **Depends on:** T-252 · **Refs:** ADR-0020, SPEC §2.5, §8.2
 - Ribbon tool "Neue Karte": asks whether to import a file or draw an own map (drawing offered as "kommt später", stage 6); the name is set right away; the file enters the catalog and opens as the document. In the browser the open map is at the top with "Karteneinstellungen ⚙" under it; a double-click or its context menu opens a dialog with name, origin, license, tags and theme (with T-126), grid as numbers and the default fog biome. The forms in the Eigenschaften panel go; it shows the map's facts.
 - **Acceptance criteria**
-  - [ ] A new map is imported with its name and opens in the Map Forge (component + E2E test)
-  - [ ] "Karteneinstellungen" opens from the browser (double-click, context menu, keyboard) and saves in the sidecar
+  - [x] A new map is imported with its name and opens in the Map Forge (component + E2E test)
+  - [x] "Karteneinstellungen" opens from the browser (double-click, context menu, keyboard) and saves in the sidecar
 - **Notes:** DM decision 2026-11-22 (ADR-0020). Tags and theme follow T-126 if it is not done first.
 
 ### T-254 Map Forge: grid calibration and rooms as ribbon tools with command panels
@@ -1331,20 +1331,20 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-258 Map Forge: the map is the canvas
 
-- **Status:** todo · **Depends on:** T-257 · **Refs:** ADR-0021, ADR-0017, ADR-0014
+- **Status:** done · **Depends on:** T-257 · **Refs:** ADR-0021, ADR-0017, ADR-0014
 - In the Map Forge the map fills the area under the ribbon as its canvas; the browser, Eigenschaften and data panels dock around or float over it. The Game-Orchestrator keeps its free layout with the map as a panel. Saved Map Forge layouts that no longer fit fall back to the default once.
 - **Acceptance criteria**
-  - [ ] The Map Forge's map cannot be closed, moved or docked; panels dock around it (component + E2E test, screenshot)
-  - [ ] The Orchestrator's layout is unchanged (E2E test)
+  - [x] The Map Forge's map cannot be closed, moved or docked; panels dock around it (component + E2E test, screenshot)
+  - [x] The Orchestrator's layout is unchanged (E2E test)
 - **Notes:** DM decision 2026-11-22. Asset Vault, Tokens & Kreaturen and Campaign Atlas take their canvas (asset preview, token/creature preview, campaign overview) with the tasks that fill them.
 
 ### T-259 Edge sidebars: fold panels into vertical tabs that slide out
 
-- **Status:** todo · **Depends on:** T-258 · **Refs:** ADR-0021, ADR-0017
+- **Status:** done · **Depends on:** T-258 · **Refs:** ADR-0021, ADR-0017
 - A panel can be folded into a sidebar of vertical tabs at a window edge; a click on its tab slides it out over the canvas with a smooth animation (none under reduced motion); clicking elsewhere or Escape slides it back; a pin docks it again. Kept per workspace with the layout.
 - **Acceptance criteria**
-  - [ ] Fold, slide out, slide back and pin work with mouse and keyboard; the folded panel keeps its state (component test)
-  - [ ] Folded sidebars survive a restart (E2E test)
+  - [x] Fold, slide out, slide back and pin work with mouse and keyboard; the folded panel keeps its state (component test)
+  - [x] Folded sidebars survive a restart (E2E test)
 - **Notes:** DM feedback 2026-11-22. dockview's own auto-hide is only in the commercial `dockview-enterprise`; see ADR-0021.
 
 ### T-262 Sidecar version 2: map "rooms" become "areas"
