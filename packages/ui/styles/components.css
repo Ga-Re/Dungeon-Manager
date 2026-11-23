@@ -671,6 +671,14 @@
   pointer-events: auto;
 }
 
+/* A command panel's tool choice, e.g. the shapes of "Bereich anlegen": the ribbon's icon
+   buttons, in a row that wraps. */
+.dm-command-panel-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dm-space-1);
+}
+
 .dm-command-panel-head {
   display: flex;
   align-items: center;

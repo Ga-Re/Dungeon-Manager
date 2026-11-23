@@ -1,36 +1,25 @@
 import { FOG_BIOMES, type FogEffect } from "@dungeon-manager/schema";
 import { IconButton, Menu, RibbonGroup } from "@dungeon-manager/ui";
 import { useState } from "react";
-import {
-  Brush,
-  Circle,
-  CloudFog,
-  CloudOff,
-  Lasso,
-  Eye,
-  EyeOff,
-  Hand,
-  Pentagon,
-  ScanEye,
-  Square,
-} from "lucide-react";
+import { CloudFog, CloudOff, Eye, EyeOff, Hand, ScanEye } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { FOG_SPEED, speedOfStep, stepOfSpeed } from "../fog-settings.js";
 import { SHAPE_KEYS, type FogShape } from "./fog-shapes.js";
 import type { MapTool } from "./MapView.js";
+import { SHAPE_ICONS } from "./shape-icons.js";
 
 const TOOLS: readonly { id: MapTool; icon: ReactNode }[] = [
   { id: "pan", icon: <Hand /> },
   { id: "reveal", icon: <Eye /> },
   { id: "hide", icon: <EyeOff /> },
 ];
-const SHAPES: readonly { id: FogShape; icon: ReactNode }[] = [
-  { id: "rectangle", icon: <Square /> },
-  { id: "ellipse", icon: <Circle /> },
-  { id: "polygon", icon: <Pentagon /> },
-  { id: "lasso", icon: <Lasso /> },
-  { id: "brush", icon: <Brush /> },
+const SHAPES: readonly FogShape[] = [
+  "rectangle",
+  "ellipse",
+  "polygon",
+  "lasso",
+  "brush",
 ];
 
 /**
@@ -101,15 +90,15 @@ export function FogToolbar({
       <RibbonGroup caption={t("fog.shape")}>
         {SHAPES.map((each) => (
           <IconButton
-            key={each.id}
+            key={each}
             showLabel
-            icon={each.icon}
-            label={t(`fog.shapes.${each.id}`)}
-            aria-keyshortcuts={SHAPE_KEYS[each.id]}
-            pressed={shape === each.id}
+            icon={SHAPE_ICONS[each]}
+            label={t(`fog.shapes.${each}`)}
+            aria-keyshortcuts={SHAPE_KEYS[each]}
+            pressed={shape === each}
             disabled={disabled || tool === "pan"}
             onClick={() => {
-              onShape(each.id);
+              onShape(each);
             }}
           />
         ))}

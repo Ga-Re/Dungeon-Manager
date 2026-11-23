@@ -1,36 +1,39 @@
 import type { AreaShape } from "@dungeon-manager/core";
 import type { Area, SidecarLevel } from "@dungeon-manager/schema";
+import { IconButton } from "@dungeon-manager/ui";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { SHAPE_ICONS } from "./shape-icons.js";
 import { ToolCommand } from "./ToolCommand.js";
 
+/** In the fog toolbar's order, with its icons and names (T-260). */
 const SHAPES: readonly AreaShape[] = [
   "rectangle",
-  "polygon",
   "ellipse",
+  "polygon",
   "lasso",
 ];
 
-/** A room's name and whether it is secret, as the command panels edit them. */
-export interface RoomFacts {
+/** An area's name and whether it is secret, as the command panels edit them. */
+export interface AreaFacts {
   readonly name: string;
   readonly secret: boolean;
 }
 
-/** Name and secret fields, shared by "Raum anlegen" and "Raum bearbeiten". */
+/** Name and secret fields, shared by "Bereich anlegen" and "Bereich bearbeiten". */
 function FactsFields({
   facts,
   onFacts,
 }: {
-  readonly facts: RoomFacts;
-  readonly onFacts: (facts: RoomFacts) => void;
+  readonly facts: AreaFacts;
+  readonly onFacts: (facts: AreaFacts) => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
   return (
     <>
       <div className="dm-item-info-field">
-        <label htmlFor={`${id}-name`}>{t("forgeRooms.name")}</label>
+        <label htmlFor={`${id}-name`}>{t("forgeAreas.name")}</label>
         <input
           id={`${id}-name`}
           value={facts.name}
@@ -48,18 +51,19 @@ function FactsFields({
             onFacts({ ...facts, secret: event.target.checked });
           }}
         />
-        {t("forgeRooms.secret")}
+        {t("forgeAreas.secret")}
       </label>
     </>
   );
 }
 
 /**
- * "Raum anlegen" (T-254, ADR-0020): the DM picks the level and a shape and draws the room on
- * the map – again, until it fits – names it and confirms with OK. Corners snap to the grid; Alt
- * draws freely.
+ * "Bereich anlegen" (T-254, T-260, ADR-0020): the DM picks the level and a shape and draws the
+ * area on the map. Shapes add up – one overlapping or sharing an edge joins the area, one apart
+ * from it starts anew (`addToArea`) – until the DM names it and confirms with OK. Corners snap to
+ * the grid; Alt draws freely.
  */
-export function AddRoomCommand({
+export function AddAreaCommand({
   levels,
   levelId,
   onLevel,
@@ -78,10 +82,10 @@ export function AddRoomCommand({
   readonly onLevel: (levelId: string) => void;
   readonly shape: AreaShape;
   readonly onShape: (shape: AreaShape) => void;
-  /** A room has been drawn on the map, so OK can create it. */
+  /** An area has been drawn on the map, so OK can create it. */
   readonly drawn: boolean;
-  readonly facts: RoomFacts;
-  readonly onFacts: (facts: RoomFacts) => void;
+  readonly facts: AreaFacts;
+  readonly onFacts: (facts: AreaFacts) => void;
   readonly busy: boolean;
   readonly problem: string;
   readonly onOk: () => void;
@@ -91,14 +95,14 @@ export function AddRoomCommand({
   const id = useId();
   return (
     <ToolCommand
-      title={t("forgeRooms.add")}
+      title={t("forgeAreas.add")}
       okDisabled={busy || !drawn || facts.name.trim() === ""}
       onOk={onOk}
       onCancel={onCancel}
     >
       {levels.length > 1 && (
         <div className="dm-item-info-field">
-          <label htmlFor={`${id}-level`}>{t("forgeRooms.level")}</label>
+          <label htmlFor={`${id}-level`}>{t("forgeAreas.level")}</label>
           <select
             id={`${id}-level`}
             value={levelId}
@@ -116,53 +120,53 @@ export function AddRoomCommand({
       )}
       <div
         role="group"
-        aria-label={t("forgeRooms.draw")}
-        className="dm-forge-calibration"
+        aria-label={t("forgeAreas.draw")}
+        className="dm-command-panel-tools"
       >
         {SHAPES.map((each) => (
-          <button
+          <IconButton
             key={each}
-            type="button"
-            aria-pressed={shape === each}
+            showLabel
+            icon={SHAPE_ICONS[each]}
+            label={t(`fog.shapes.${each}`)}
+            pressed={shape === each}
             onClick={() => {
               onShape(each);
             }}
-          >
-            {t(`forgeRooms.shapes.${each}`)}
-          </button>
+          />
         ))}
       </div>
       <FactsFields facts={facts} onFacts={onFacts} />
-      {!drawn && (
-        <p className="dm-catalog-notice">{t("forgeRooms.drawFirst")}</p>
-      )}
+      <p className="dm-catalog-notice">
+        {t(drawn ? "forgeAreas.drawMore" : "forgeAreas.drawFirst")}
+      </p>
       {problem && <p role="alert">{problem}</p>}
     </ToolCommand>
   );
 }
 
-/** "Raum bearbeiten" (T-254): a room's name and whether it is secret; OK saves both. */
-export function EditRoomCommand({
-  room,
+/** "Bereich bearbeiten" (T-254): an area's name and whether it is secret; OK saves both. */
+export function EditAreaCommand({
+  area,
   busy,
   problem,
   onOk,
   onCancel,
 }: {
-  readonly room: Area;
+  readonly area: Area;
   readonly busy: boolean;
   readonly problem: string;
-  readonly onOk: (facts: RoomFacts) => void;
+  readonly onOk: (facts: AreaFacts) => void;
   readonly onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const [facts, setFacts] = useState<RoomFacts>({
-    name: room.name,
-    secret: room.secret === true,
+  const [facts, setFacts] = useState<AreaFacts>({
+    name: area.name,
+    secret: area.secret === true,
   });
   return (
     <ToolCommand
-      title={t("forgeRooms.edit")}
+      title={t("forgeAreas.edit")}
       okDisabled={busy || facts.name.trim() === ""}
       onOk={() => {
         onOk({ ...facts, name: facts.name.trim() });
@@ -175,15 +179,15 @@ export function EditRoomCommand({
   );
 }
 
-/** "Raum löschen" (T-254): asks first; OK deletes the room for every scene of the map. */
-export function DeleteRoomCommand({
-  room,
+/** "Bereich löschen" (T-254): asks first; OK deletes the area for every scene of the map. */
+export function DeleteAreaCommand({
+  area,
   busy,
   problem,
   onOk,
   onCancel,
 }: {
-  readonly room: Area;
+  readonly area: Area;
   readonly busy: boolean;
   readonly problem: string;
   readonly onOk: () => void;
@@ -192,12 +196,12 @@ export function DeleteRoomCommand({
   const { t } = useTranslation();
   return (
     <ToolCommand
-      title={t("forgeRooms.delete")}
+      title={t("forgeAreas.delete")}
       okDisabled={busy}
       onOk={onOk}
       onCancel={onCancel}
     >
-      <p>{t("forgeRooms.deleteQuestion", { name: room.name })}</p>
+      <p>{t("forgeAreas.deleteQuestion", { name: area.name })}</p>
       {problem && <p role="alert">{problem}</p>}
     </ToolCommand>
   );
