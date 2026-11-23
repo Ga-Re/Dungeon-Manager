@@ -436,7 +436,8 @@ describe("DmShell", () => {
       const group = map.closest<HTMLElement>(".dv-groupview");
       expect(group?.querySelector(".dv-tabs-and-actions-container")).toSatisfy(
         (header: HTMLElement | null) =>
-          header === null || header.classList.contains("dv-hidden") ||
+          header === null ||
+          header.classList.contains("dv-hidden") ||
           header.style.display === "none",
       );
       expect(screen.queryByRole("button", { name: "Panel Karte" })).toBeNull();
@@ -481,9 +482,12 @@ describe("DmShell", () => {
       expect(sheet()?.dataset["open"]).toBe("true");
       expect(sheet()?.contains(content)).toBe(true);
       // Escape slides it back and returns to its tab.
-      fireEvent.keyDown(within(sheet() as HTMLElement).getByText("Bibliotheksinhalt"), {
-        key: "Escape",
-      });
+      fireEvent.keyDown(
+        within(sheet() as HTMLElement).getByText("Bibliotheksinhalt"),
+        {
+          key: "Escape",
+        },
+      );
       expect(sheet()?.dataset["open"]).toBeUndefined();
       expect(document.activeElement).toBe(tab);
       // A press elsewhere slides it back too.
@@ -521,7 +525,9 @@ describe("DmShell", () => {
           .getAllByRole("button")
           .map((button) => button.textContent),
       ).toEqual(["Browser"]);
-      expect(screen.queryByRole("button", { name: "Panel Browser" })).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Panel Browser" }),
+      ).toBeNull();
     });
 
     it("keeps the layout on this device across a restart", () => {

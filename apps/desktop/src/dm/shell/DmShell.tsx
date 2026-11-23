@@ -772,7 +772,8 @@ export function DmShell({
     if (clash.length > 0)
       setEdges((current) => clash.reduce(withoutEdgePanel, current));
   }, [shown, edges]);
-  const slidOut = openEdge !== null && edgeOf(edges, openEdge) ? openEdge : null;
+  const slidOut =
+    openEdge !== null && edgeOf(edges, openEdge) ? openEdge : null;
   const toggleEdge = useCallback(
     (id: PanelId) => {
       const edge = edgeOf(edges, id);
@@ -1461,20 +1462,20 @@ export function DmShell({
                     tabRef={edgeTab}
                   />
                   <div className="dm-workarea-panels">
-                <DockviewReact
-                  className="dm-panels"
-                  components={PANEL_COMPONENTS}
-                  onReady={onPanelsReady}
-                  // Our own theme class carries the design tokens (both themes, ADR-0015).
-                  theme={PANEL_THEME}
-                  messages={panelMessages}
-                  defaultTabComponent={PanelTab}
-                  rightHeaderActionsComponent={PanelMenu}
-                  getAnnouncement={getAnnouncement}
-                  announcer={(event) => {
-                    announce(event.message);
-                  }}
-                />
+                    <DockviewReact
+                      className="dm-panels"
+                      components={PANEL_COMPONENTS}
+                      onReady={onPanelsReady}
+                      // Our own theme class carries the design tokens (both themes, ADR-0015).
+                      theme={PANEL_THEME}
+                      messages={panelMessages}
+                      defaultTabComponent={PanelTab}
+                      rightHeaderActionsComponent={PanelMenu}
+                      getAnnouncement={getAnnouncement}
+                      announcer={(event) => {
+                        announce(event.message);
+                      }}
+                    />
                     {sheet("left")}
                     {sheet("right")}
                   </div>

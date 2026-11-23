@@ -172,6 +172,26 @@ export function EdgeSheet({
       document.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [open, onClose]);
+  // Escape slides it back. A DOM listener: the panel's content comes through a portal, so React's
+  // events bubble along another tree than the DOM's.
+  useEffect(() => {
+    const own = sheet.current;
+    if (!own || !open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onClose(true);
+    };
+    own.addEventListener("keydown", onKeyDown);
+    return () => {
+      own.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, onClose]);
+  // Opened, the keyboard goes into it, so Tab reaches its content next.
+  useEffect(() => {
+    if (open) sheet.current?.focus({ preventScroll: true });
+  }, [open]);
   return (
     <aside
       ref={sheet}
@@ -180,13 +200,8 @@ export function EdgeSheet({
       data-edge={edge}
       data-open={open ? "true" : undefined}
       aria-label={title}
+      tabIndex={-1}
       inert={!open}
-      onKeyDown={(event) => {
-        if (event.key !== "Escape") return;
-        event.preventDefault();
-        event.stopPropagation();
-        onClose(true);
-      }}
     >
       {shown !== null && (
         <>

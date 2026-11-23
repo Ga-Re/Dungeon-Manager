@@ -374,6 +374,20 @@ export function setMapCanvas(
   if (group.locked !== canvas) group.locked = canvas;
 }
 
+/**
+ * The edge sidebar `id` folds into (T-259): the side of the map it lies on. Without a measured
+ * layout (or a map), the side of the default layout: Daten left, the rest right.
+ */
+export function edgeSideOf(api: DockviewApi, id: PanelId): "left" | "right" {
+  const own = api.getPanel(id)?.group.element.getBoundingClientRect();
+  const map = api.getPanel("map")?.group.element.getBoundingClientRect();
+  if (own && map && own.width > 0 && map.width > 0)
+    return own.left + own.width / 2 < map.left + map.width / 2
+      ? "left"
+      : "right";
+  return id === "data" ? "left" : "right";
+}
+
 /** Lets `id` float over the others, e.g. the browser over the map (T-172b). */
 export function floatPanel(api: DockviewApi, id: PanelId): void {
   const panel = api.getPanel(id);
