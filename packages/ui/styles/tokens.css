@@ -21,6 +21,8 @@
   --dm-radius-lg: 4px;
   --dm-radius-pill: 999px;
   --dm-focus-width: 2px;
+  --dm-duration-slide: 180ms;
+  --dm-ease-out: cubic-bezier(0.2, 0, 0, 1);
   --dm-z-canvas: 0;
   --dm-z-overlay: 10;
   --dm-z-hud: 20;

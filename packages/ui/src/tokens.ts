@@ -155,6 +155,9 @@ const SHARED: Record<string, string> = {
   "radius-lg": "4px",
   "radius-pill": "999px",
   "focus-width": "2px",
+  // Motion (T-259): panels sliding out of an edge sidebar. None under "reduce motion".
+  "duration-slide": "180ms",
+  "ease-out": "cubic-bezier(0.2, 0, 0, 1)",
   // Layering contract (ADR-0011): canvas · overlays · HUD · ribbon/data panel · command panels
   // (above every panel, ADR-0021) · popovers · modals.
   "z-canvas": "0",

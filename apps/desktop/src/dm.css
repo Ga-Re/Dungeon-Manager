@@ -183,6 +183,151 @@ label {
   min-height: 0;
 }
 
+/* Below the ribbon (T-259): the edge sidebars and the panels between them. A sheet slides out
+   of its sidebar over the panels: above them, below the command layer. */
+.dm-workarea {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Fixed columns: without a sidebar on the left, the panels must not slip into its column. */
+.dm-workarea-panels {
+  grid-column: 2;
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dm-workarea-panels > :first-child {
+  grid-area: 1 / 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dm-edge-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-1);
+  padding: var(--dm-space-1) 0;
+  background: var(--dm-surface-chrome);
+  border-right: 1px solid var(--dm-border-subtle);
+}
+
+.dm-edge-bar[data-edge="left"] {
+  grid-column: 1;
+}
+
+.dm-edge-bar[data-edge="right"] {
+  grid-column: 3;
+  border-right: 0;
+  border-left: 1px solid var(--dm-border-subtle);
+}
+
+/* Vertical tabs, read from bottom to top on the left and top to bottom on the right. */
+.dm-edge-tab {
+  writing-mode: vertical-rl;
+  padding: var(--dm-space-2) var(--dm-space-1);
+  border: 1px solid transparent;
+  border-radius: var(--dm-radius-sm);
+  background: transparent;
+  color: var(--dm-text-secondary);
+  font-size: var(--dm-font-size-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--dm-duration-slide) var(--dm-ease-out);
+}
+
+.dm-edge-bar[data-edge="left"] .dm-edge-tab {
+  transform: rotate(180deg);
+}
+
+.dm-edge-tab:hover {
+  background: var(--dm-surface-raised);
+  color: var(--dm-text-primary);
+}
+
+.dm-edge-tab[aria-expanded="true"] {
+  border-color: var(--dm-accent);
+  color: var(--dm-text-primary);
+}
+
+.dm-edge-sheet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: var(--dm-z-hud);
+  display: flex;
+  flex-direction: column;
+  width: min(20rem, 90%);
+  background: var(--dm-surface-panel);
+  border: 1px solid var(--dm-border-strong);
+  box-shadow: var(--dm-shadow-panel);
+  visibility: hidden;
+  transition:
+    transform var(--dm-duration-slide) var(--dm-ease-out),
+    visibility 0s linear var(--dm-duration-slide);
+}
+
+.dm-edge-sheet[data-edge="left"] {
+  left: 0;
+  transform: translateX(-100%);
+}
+
+.dm-edge-sheet[data-edge="right"] {
+  right: 0;
+  transform: translateX(100%);
+}
+
+.dm-edge-sheet[data-open="true"] {
+  visibility: visible;
+  transform: none;
+  transition:
+    transform var(--dm-duration-slide) var(--dm-ease-out),
+    visibility 0s;
+}
+
+/* A menu inside the sheet opens above the command layer, as one in a panel does (T-257). */
+.dm-edge-sheet:has(.dm-menu-list) {
+  z-index: var(--dm-z-popover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-edge-sheet,
+  .dm-edge-sheet[data-open="true"],
+  .dm-edge-tab {
+    transition: none;
+  }
+}
+
+.dm-edge-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dm-space-2);
+  padding: var(--dm-space-1) var(--dm-space-2);
+  border-bottom: 1px solid var(--dm-border-subtle);
+  background: var(--dm-surface-chrome);
+}
+
+.dm-edge-sheet-title {
+  font-size: var(--dm-font-size-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dm-text-secondary);
+}
+
+.dm-edge-sheet-body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
 /* Dockview's root – the panels with their floating groups and drop overlays – is a stacking
    context of its own (T-257), below the command layer. While a menu inside a panel is open (a
    panel's menu, a browser item's context menu), the panels rise above the command layer so the
@@ -1910,4 +2055,23 @@ button.dm-welcome-campaign:hover {
 
 .dm-tv-preview {
   border: 1px solid var(--dm-border-subtle);
+}
+
+/* "Neue Karte" (T-253): where the map comes from. */
+.dm-forge-source {
+  display: grid;
+  gap: var(--dm-space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.dm-forge-source legend {
+  margin-bottom: var(--dm-space-1);
+  font-size: var(--dm-font-size-sm);
+}
+
+/* "Karteneinstellungen" (T-253): the map's editors one under the other. */
+.dm-forge-settings .dm-dialog-body {
+  width: min(28rem, 90vw);
 }

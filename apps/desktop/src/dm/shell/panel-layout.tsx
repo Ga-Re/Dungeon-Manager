@@ -346,6 +346,48 @@ export function dockPanel(
     });
 }
 
+/**
+ * Makes the map the canvas (T-258, ADR-0021) or a panel like the others again. As the canvas
+ * it is always shown, docked in the grid, alone in its group and without a tab bar, so it
+ * cannot be closed, moved or floated, and nothing is dropped into it as a tab; the other panels
+ * dock around it.
+ */
+export function setMapCanvas(
+  api: DockviewApi,
+  canvas: boolean,
+  title: string,
+): void {
+  if (canvas) {
+    const shown = api.getPanel("map");
+    if (shown && shown.api.location.type !== "grid") hidePanel(api, "map");
+    if (!api.getPanel("map")) showPanel(api, "map", title);
+  }
+  const map = api.getPanel("map");
+  if (!map) return;
+  const group = map.group;
+  if (canvas && group.panels.length > 1)
+    // Panels sharing its group as tabs move next to it.
+    for (const other of [...group.panels])
+      if (other.id !== "map") other.api.moveTo({ group, position: "right" });
+  // Only real changes: this runs after every layout change.
+  if (group.header.hidden !== canvas) group.header.hidden = canvas;
+  if (group.locked !== canvas) group.locked = canvas;
+}
+
+/**
+ * The edge sidebar `id` folds into (T-259): the side of the map it lies on. Without a measured
+ * layout (or a map), the side of the default layout: Daten left, the rest right.
+ */
+export function edgeSideOf(api: DockviewApi, id: PanelId): "left" | "right" {
+  const own = api.getPanel(id)?.group.element.getBoundingClientRect();
+  const map = api.getPanel("map")?.group.element.getBoundingClientRect();
+  if (own && map && own.width > 0 && map.width > 0)
+    return own.left + own.width / 2 < map.left + map.width / 2
+      ? "left"
+      : "right";
+  return id === "data" ? "left" : "right";
+}
+
 /** Lets `id` float over the others, e.g. the browser over the map (T-172b). */
 export function floatPanel(api: DockviewApi, id: PanelId): void {
   const panel = api.getPanel(id);

@@ -263,6 +263,24 @@ export const en: Messages = {
       "Too small for an area: on the grid it would have no surface. Hold Alt to draw freely.",
   },
   forge: {
+    mapGroup: "Map",
+    newMap: "New map",
+    newMapSource: "Where does the map come from?",
+    newMapImport: "Import an image file",
+    newMapDraw: "Draw it yourself (coming later)",
+    newMapHint:
+      "OK picks the file, puts it into the catalogue with this name and opens it here.",
+    settings: "Map settings",
+    settingsOpen: "Map settings …",
+    facts: {
+      name: "Name",
+      file: "File",
+      grid: "Grid",
+      gridValue: "{{size}} px per cell",
+      levels: "Levels",
+      areas: "Areas",
+      biome: "Default biome",
+    },
     changedMeanwhile:
       "The map data was changed elsewhere meanwhile; the map now shows the new state. Try again.",
     empty: "No map open. Double-click a map in the catalogue.",
@@ -684,8 +702,11 @@ export const en: Messages = {
       fold: "Fold",
       unfold: "Unfold",
       hide: "Hide",
+      autoHide: "Auto-hide",
     },
     panelMessages: {
+      autoHidden: "{{title}} folded into the sidebar",
+      pinned: "{{title}} pinned",
       dockLeft: "{{title}} docked left",
       dockRight: "{{title}} docked right",
       dockBottom: "{{title}} docked at the bottom",
@@ -700,6 +721,12 @@ export const en: Messages = {
       poppedOut: "{{title}} in a new window",
       close: "Hide {{title}}",
       closePlain: "Hide",
+    },
+    edges: {
+      left: "Left sidebar",
+      right: "Right sidebar",
+      pin: "Pin {{title}}",
+      close: "Slide {{title}} back",
     },
     panels: {
       data: "Data",

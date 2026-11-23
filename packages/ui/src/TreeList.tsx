@@ -97,8 +97,8 @@ function visibleIds(
 
 /**
  * Outline tree with connector lines, junction dots and toggle boxes (ADR-0011).
- * Keyboard support follows the WAI-ARIA tree pattern: arrow keys, Home/End, Enter/Space,
- * with a single (roving) tab stop.
+ * Keyboard support follows the WAI-ARIA tree pattern: arrow keys, Home/End, Space to select,
+ * Enter to select and open (as a double-click does), with a single (roving) tab stop.
  */
 export function TreeList({
   label,
@@ -221,7 +221,12 @@ export function TreeList({
         if (isOpen) setExpanded(node.id, false);
         else next = tree.parent.get(node.id) ?? undefined;
         break;
+      // Enter selects and opens (its default action, as a double-click does, ADR-0020); Space
+      // only selects.
       case "Enter":
+        onSelect?.(node.id);
+        onItemActivate?.(node.id);
+        break;
       case " ":
         onSelect?.(node.id);
         break;

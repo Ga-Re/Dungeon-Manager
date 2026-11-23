@@ -173,6 +173,24 @@ describe("TreeList", () => {
     expect(onItemActivate).toHaveBeenCalledTimes(1);
   });
 
+  it("opens the focused item with Enter too; Space only selects it (T-253)", () => {
+    const onItemActivate = vi.fn();
+    const onSelect = vi.fn();
+    render(
+      <TreeList
+        label="Szene"
+        nodes={nodes}
+        onSelect={onSelect}
+        onItemActivate={onItemActivate}
+      />,
+    );
+    fireEvent.keyDown(item("Grabkammer"), { key: " " });
+    expect(onSelect).toHaveBeenLastCalledWith("chamber");
+    expect(onItemActivate).not.toHaveBeenCalled();
+    fireEvent.keyDown(item("Grabkammer"), { key: "Enter" });
+    expect(onItemActivate).toHaveBeenLastCalledWith("chamber");
+  });
+
   it("opens the context menu beside a narrow row and swallows the key's own contextmenu", () => {
     const onItemContextMenu =
       vi.fn<NonNullable<TreeListProps["onItemContextMenu"]>>();
