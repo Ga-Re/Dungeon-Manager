@@ -99,7 +99,7 @@ describe("DmShell", () => {
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Map Forge" }));
 
     expect(workspaceMenu().textContent).toBe("Map Forge");
-    // The Map Forge has its own ribbon tabs (ADR-0020, T-252, T-254): KARTE and RÄUME.
+    // The Map Forge has its own ribbon tabs (ADR-0020, T-252, T-254): KARTE and BEREICHE.
     const forgeTabs = screen.getByRole("tablist", { name: "Werkzeugleisten" });
     expect(
       within(forgeTabs)
@@ -107,7 +107,7 @@ describe("DmShell", () => {
         .map((tab) => [tab.textContent, tab.getAttribute("aria-selected")]),
     ).toEqual([
       ["Karte", "true"],
-      ["Räume", "false"],
+      ["Bereiche", "false"],
     ]);
     expect(screen.queryByRole("button", { name: "Aufdecken" })).toBeNull();
     expect(storage.getItem("dm.workspace")).toBe("mapForge");

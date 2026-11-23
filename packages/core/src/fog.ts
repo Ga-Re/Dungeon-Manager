@@ -1,40 +1,8 @@
 import type { LevelFog, Point, Polygon, Ring } from "@dungeon-manager/schema";
-import { difference, intersection, union, type Geom } from "polyclip-ts";
+import { difference, intersection, union } from "polyclip-ts";
+import { asGeom, fromClip } from "./polygon-clip.js";
 
-// Never call polyclip-ts's setPrecision: it is module-level state and would make core impure.
-
-// Fog regions are lists of polygons with holes (schema v1). polyclip-ts works on the same model
-// ([outer, ...holes] per polygon) but closes rings by repeating the first point.
-
-type ClipPolygon = [number, number][][];
-
-function toClip(polygons: readonly Polygon[]): ClipPolygon[] {
-  return polygons.map((polygon) =>
-    [polygon.outer, ...polygon.holes].map((ring) =>
-      ring.map(([x, y]) => [x, y]),
-    ),
-  );
-}
-
-function fromClip(result: ClipPolygon[]): Polygon[] {
-  return result.map(([outer = [], ...holes]) => ({
-    outer: openRing(outer),
-    holes: holes.map(openRing),
-  }));
-}
-
-function openRing(ring: [number, number][]): Ring {
-  const [first] = ring;
-  const last = ring.at(-1);
-  const closed =
-    first !== undefined &&
-    last !== undefined &&
-    first[0] === last[0] &&
-    first[1] === last[1];
-  return closed ? ring.slice(0, -1) : ring;
-}
-
-const asGeom = (polygons: readonly Polygon[]): Geom => toClip(polygons);
+// Fog regions are lists of polygons with holes (schema v1), clipped with polyclip-ts.
 
 /** Reveals `area`: it becomes visible and is no longer memory fog. */
 export function revealArea(fog: LevelFog, area: Polygon): LevelFog {

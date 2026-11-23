@@ -109,7 +109,7 @@ test("a map open in the Map Forge (T-176a)", async ({ page }) => {
   await expect(page).toHaveScreenshot("dm-window-map-forge.png");
 });
 
-test("a room being added in the Map Forge, before OK (T-108c1, T-254)", async ({
+test("an area being added in the Map Forge, before OK (T-108c1, T-254, T-260)", async ({
   page,
 }) => {
   await openHarness(page);
@@ -118,10 +118,10 @@ test("a room being added in the Map Forge, before OK (T-108c1, T-254)", async ({
     .getByRole("button", { name: /krypta\.png/ })
     .dblclick();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
-  await page.getByRole("tab", { name: "Räume" }).click();
+  await page.getByRole("tab", { name: "Bereiche" }).click();
   await page
-    .getByRole("group", { name: "Räume" })
-    .getByRole("button", { name: "Raum anlegen" })
+    .getByRole("group", { name: "Bereiche" })
+    .getByRole("button", { name: "Bereich anlegen" })
     .click();
   const box = await page.locator(".map-view-canvas").boundingBox();
   if (!box) throw new Error("no map view");
@@ -129,7 +129,7 @@ test("a room being added in the Map Forge, before OK (T-108c1, T-254)", async ({
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6);
   await page.mouse.up();
-  await expect(page.locator(".map-view-room")).toHaveCount(1);
+  await expect(page.locator(".map-view-area")).toHaveCount(1);
   await page.evaluate(() => document.fonts.ready);
 
   await expect(page).toHaveScreenshot("dm-window-forge-room.png");

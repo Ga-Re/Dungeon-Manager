@@ -132,7 +132,7 @@ const RIBBON_TABS: Record<
 > = {
   mapForge: [
     { id: "forgeMap", slot: "ribbonForgeMap" },
-    { id: "forgeRooms", slot: "ribbonForgeRooms" },
+    { id: "forgeAreas", slot: "ribbonForgeAreas" },
   ],
   assetVault: [],
   creatures: [],
@@ -451,7 +451,7 @@ export function DmShell({
       "ribbonFog",
       "ribbonDisplay",
       "ribbonForgeMap",
-      "ribbonForgeRooms",
+      "ribbonForgeAreas",
       "settings",
       "settingsTv",
       "settingsCampaign",

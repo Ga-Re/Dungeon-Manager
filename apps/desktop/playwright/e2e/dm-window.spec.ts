@@ -379,7 +379,7 @@ test("the grid is calibrated from the ribbon: a box over 3 × 3 printed cells, a
     .toBeCloseTo(calibrated, 1);
 });
 
-test("a room is added from the ribbon, named, confirmed and shows in every scene of the map (T-108c1, T-254)", async ({
+test("an area is added from the ribbon, named, confirmed and shows in every scene of the map (T-108c1, T-254, T-260)", async ({
   page,
 }) => {
   await openDmWindow(page);
@@ -389,13 +389,13 @@ test("a room is added from the ribbon, named, confirmed and shows in every scene
     .getByRole("button", { name: /krypta\.png/ })
     .dblclick();
   await expect(page.getByRole("button", { name: "Einpassen" })).toBeEnabled();
-  // RÄUME › Raum anlegen opens its command panel (ADR-0020).
-  await page.getByRole("tab", { name: "Räume" }).click();
+  // BEREICHE › Bereich anlegen opens its command panel (ADR-0020).
+  await page.getByRole("tab", { name: "Bereiche" }).click();
   await page
-    .getByRole("group", { name: "Räume" })
-    .getByRole("button", { name: "Raum anlegen" })
+    .getByRole("group", { name: "Bereiche" })
+    .getByRole("button", { name: "Bereich anlegen" })
     .click();
-  const panel = page.getByRole("dialog", { name: "Raum anlegen" });
+  const panel = page.getByRole("dialog", { name: "Bereich anlegen" });
   await expect(panel.getByRole("button", { name: "Rechteck" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -404,14 +404,15 @@ test("a room is added from the ribbon, named, confirmed and shows in every scene
   const canvas = page.locator(".map-view-canvas");
   const box = await canvas.boundingBox();
   if (!box) throw new Error("no map view");
-  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3);
+  // Below the command panel, which floats over the map's top corner.
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.6);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.45, box.y + box.height * 0.45);
-  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6);
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.7);
+  await page.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.85);
   await page.mouse.up();
 
   const name = panel.getByLabel("Name");
-  await expect(name).toHaveValue("Raum 1");
+  await expect(name).toHaveValue("Bereich 1");
   await name.fill("Gruft");
   // Enter in the panel confirms, as OK does.
   await name.press("Enter");
@@ -419,9 +420,9 @@ test("a room is added from the ribbon, named, confirmed and shows in every scene
   const forgeTree = page.getByRole("tree", { name: "Karte" });
   await expect(forgeTree.getByText("Gruft")).toBeVisible();
 
-  // A double-click in the browser opens "Raum bearbeiten".
+  // A double-click in the browser opens "Bereich bearbeiten".
   await forgeTree.getByText("Gruft").dblclick();
-  const edit = page.getByRole("dialog", { name: "Raum bearbeiten" });
+  const edit = page.getByRole("dialog", { name: "Bereich bearbeiten" });
   await expect(edit.getByLabel("Name")).toHaveValue("Gruft");
   await page.keyboard.press("Escape");
   await expect(edit).toBeHidden();

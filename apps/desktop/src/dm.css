@@ -1014,8 +1014,8 @@ button.dm-map-tile[aria-pressed="true"] {
   background: var(--dm-accent-soft);
 }
 
-/* Rooms over the map in the Map Forge (T-108c1). */
-.map-view-rooms {
+/* Areas over the map in the Map Forge (T-108c1, T-260). */
+.map-view-areas {
   position: absolute;
   inset: 0;
   z-index: var(--dm-z-overlay);
@@ -1025,22 +1025,22 @@ button.dm-map-tile[aria-pressed="true"] {
   pointer-events: none;
 }
 
-.map-view-room polygon {
+.map-view-area polygon {
   fill: var(--dm-overlay-reveal-fill);
   stroke: var(--dm-overlay-reveal-stroke);
   stroke-width: 2;
 }
 
-.map-view-room[data-secret="true"] polygon {
+.map-view-area[data-secret="true"] polygon {
   stroke-dasharray: 6 4;
 }
 
-.map-view-room[data-selected="true"] polygon {
+.map-view-area[data-selected="true"] polygon {
   stroke: var(--dm-accent);
   stroke-width: 3;
 }
 
-.map-view-room text {
+.map-view-area text {
   fill: var(--dm-text-on-chrome);
   font-family: var(--dm-font-ui);
   font-size: var(--dm-font-size-sm);

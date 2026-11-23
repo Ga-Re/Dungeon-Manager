@@ -6,14 +6,14 @@ describe("createCommandRegistry", () => {
   test("starting a command cancels the one running; a released one is not cancelled", () => {
     const registry = createCommandRegistry();
     const calibrate = vi.fn();
-    const drawRoom = vi.fn();
+    const drawArea = vi.fn();
     registry.claim(calibrate);
-    const release = registry.claim(drawRoom);
+    const release = registry.claim(drawArea);
     expect(calibrate).toHaveBeenCalledTimes(1);
-    expect(drawRoom).not.toHaveBeenCalled();
+    expect(drawArea).not.toHaveBeenCalled();
     release();
     registry.claim(vi.fn());
-    expect(drawRoom).not.toHaveBeenCalled();
+    expect(drawArea).not.toHaveBeenCalled();
   });
 
   test("a stale release never frees the command that came after it", () => {

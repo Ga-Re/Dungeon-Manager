@@ -50,21 +50,21 @@ export function sceneContentNodes(
             label: t("shell.browser.levels"),
             icon: <Layers />,
             children: (map?.levels ?? []).map((level) => {
-              // The level's rooms (T-108c1), drawn in the Map Forge for every scene of the map.
-              const rooms = map
+              // The level's areas (T-108c1), drawn in the Map Forge for every scene of the map.
+              const areas = map
                 ? areasOnLevel(map.areas, map.levels, level.id)
                 : [];
               return {
                 id: `${CONTENT}level-${level.id}`,
                 label: level.name,
                 meta: levelMeta(level.id),
-                ...(rooms.length > 0 && {
-                  children: rooms.map((room) => ({
-                    id: `${CONTENT}room-${room.id}`,
-                    label: room.name,
+                ...(areas.length > 0 && {
+                  children: areas.map((area) => ({
+                    id: `${CONTENT}area-${area.id}`,
+                    label: area.name,
                     icon: <DoorOpen />,
-                    ...(room.secret === true && {
-                      meta: t("forgeRooms.secretMeta"),
+                    ...(area.secret === true && {
+                      meta: t("forgeAreas.secretMeta"),
                     }),
                   })),
                 }),

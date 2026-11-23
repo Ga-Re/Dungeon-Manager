@@ -1358,11 +1358,11 @@ New tasks discovered during work are appended to the right stage with status `to
 
 ### T-260 "Bereich anlegen": fog-style shape tools and additive selection
 
-- **Status:** todo · **Depends on:** T-254, T-262 · **Refs:** ADR-0020, T-108c1
+- **Status:** done · **Depends on:** T-254, T-262 · **Refs:** ADR-0020, T-108c1
 - The DM's word is "Bereich" (DM decision 2026-11-23): RÄUME becomes BEREICHE, the tools "Bereich anlegen / bearbeiten / löschen", the browser lists areas. The shape tools in "Bereich anlegen" use the fog tools' icons and icon buttons. Shapes are additive: a shape that overlaps or touches the current selection is united with it (polygon union in core, `polyclip-ts`, holes allowed); a shape not connected to it replaces it. Alt still draws without snapping.
 - **Acceptance criteria**
-  - [ ] Union of connected shapes yields one room; an unconnected shape replaces the selection (core unit tests, property test that the result is always one polygon)
-  - [ ] The panel shows the fog tool icons (component test)
+  - [x] Union of connected shapes yields one area; an unconnected shape replaces the selection (core unit tests, property test that the result is always one polygon)
+  - [x] The panel shows the fog tool icons (component test)
 - **Notes:** DM decisions 2026-11-22.
 
 ### T-261 Fog biomes: soft edge and quick switch

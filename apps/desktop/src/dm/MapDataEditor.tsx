@@ -70,7 +70,7 @@ export function MapDataEditor({
       setValues(valuesOf(data));
     } else if (
       rebasing ||
-      // Only rooms or levels changed (e.g. a room drawn meanwhile): what the fields edit is
+      // Only areas or levels changed (e.g. an area drawn meanwhile): what the fields edit is
       // the same, so the next save need not ask.
       JSON.stringify(valuesOf(data)) === JSON.stringify(valuesOf(base))
     )

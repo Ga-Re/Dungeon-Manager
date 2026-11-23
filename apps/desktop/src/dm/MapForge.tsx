@@ -1,6 +1,7 @@
 import {
   CALIBRATION_CELLS,
   gridFromBox,
+  addToArea,
   newAreaId,
   areasOnLevel,
   shiftGrid,
@@ -54,11 +55,11 @@ import {
 import { MapView } from "./MapView.js";
 import { describeLibraryError } from "./describe-error.js";
 import {
-  AddRoomCommand,
-  DeleteRoomCommand,
-  EditRoomCommand,
-  type RoomFacts,
-} from "./ForgeRooms.js";
+  AddAreaCommand,
+  DeleteAreaCommand,
+  EditAreaCommand,
+  type AreaFacts,
+} from "./ForgeAreas.js";
 import { catalogAsset } from "./map-catalog.js";
 import { ShellPortal } from "./shell/slots.js";
 import { useActiveWorkspace } from "./shell/workspace.js";
@@ -123,7 +124,7 @@ function useSidecar(
 /**
  * The Map Forge's document (T-176a, ADR-0017): a library map opened without a scene. While the
  * Map Forge shows, it fills the title bar's tab, the map panel (the map with its grid, no fog),
- * the browser (its levels and rooms) and the Eigenschaften panel (its metadata, stored in its
+ * the browser (its levels and areas) and the Eigenschaften panel (its metadata, stored in its
  * sidecar for every scene, ADR-0012).
  */
 export function MapForge({
@@ -183,20 +184,20 @@ export function MapForge({
     if (grid) setPreview(grid);
   }, []);
 
-  // Rooms (T-108c1, T-254): the level shown and drawn on, the selected room, and the room
-  // command running – "Raum anlegen" with its shape, drawn area and facts, or editing or
-  // deleting a room – each a ribbon tool with its command panel (ADR-0020).
+  // Areas (T-108c1, T-254, T-260): the level shown and drawn on, the selected area, and the area
+  // command running – "Bereich anlegen" with its shape, drawn area and facts, or editing or
+  // deleting an area – each a ribbon tool with its command panel (ADR-0020).
   const [levelChoice, setLevelChoice] = useState<string | null>(null);
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
-  const [roomCommand, setRoomCommand] = useState<
+  const [selectedArea, setSelectedArea] = useState<string | null>(null);
+  const [areaCommand, setAreaCommand] = useState<
     | { readonly kind: "add" }
     | { readonly kind: "edit" | "delete"; readonly id: string }
     | null
   >(null);
-  const [roomShape, setRoomShape] = useState<AreaShape>("rectangle");
+  const [areaShape, setAreaShape] = useState<AreaShape>("rectangle");
   const [drawn, setDrawn] = useState<Polygon | null>(null);
-  const [facts, setFacts] = useState<RoomFacts>({ name: "", secret: false });
-  const [roomMenu, setRoomMenu] = useState<{
+  const [facts, setFacts] = useState<AreaFacts>({ name: "", secret: false });
+  const [areaMenu, setAreaMenu] = useState<{
     readonly id: string;
     readonly at: MenuPoint;
     readonly item: HTMLElement;
@@ -213,8 +214,8 @@ export function MapForge({
       ) ?? browser.current?.querySelector<HTMLElement>('[role="treeitem"]')
     )?.focus();
   }, [focusTree]);
-  const [roomBusy, setRoomBusy] = useState(false);
-  const [roomProblem, setRoomProblem] = useState("");
+  const [areaBusy, setAreaBusy] = useState(false);
+  const [areaProblem, setAreaProblem] = useState("");
   // The forge's own last write and the sidecar read before it: until a newer read arrives, the
   // map shows (and the next change starts from) what was written, so changes in quick
   // succession never take the forge's own write for a change from elsewhere.
@@ -222,20 +223,20 @@ export function MapForge({
     readonly data: MapData;
     readonly before: Sidecar | null;
   } | null>(null);
-  const endRoomCommand = useCallback(() => {
-    setRoomCommand(null);
+  const endAreaCommand = useCallback(() => {
+    setAreaCommand(null);
     setDrawn(null);
-    setRoomProblem("");
-    setRoomMenu(null);
+    setAreaProblem("");
+    setAreaMenu(null);
   }, []);
   useEffect(() => {
     setLevelChoice(null);
-    setSelectedRoom(null);
-    endRoomCommand();
-  }, [path, endRoomCommand]);
+    setSelectedArea(null);
+    endAreaCommand();
+  }, [path, endAreaCommand]);
   useEffect(() => {
-    if (!shown) endRoomCommand();
-  }, [shown, endRoomCommand]);
+    if (!shown) endAreaCommand();
+  }, [shown, endAreaCommand]);
   // One command at a time: the registry cancels the one running when another starts.
   const startCalibration = () => {
     setCalibrating(true);
@@ -270,35 +271,35 @@ export function MapForge({
   // A level with its own file shows that file (ADR-0012: same size, one calibration).
   const shownPath = level?.asset?.path ?? path;
   const kind = mapKind(shownPath);
-  const levelRooms = areasOnLevel(data.areas, data.levels, levelId);
-  const room = data.areas.find((each) => each.id === selectedRoom) ?? null;
-  const roomOf = (id: string) => data.areas.find((each) => each.id === id);
-  const commandRoom =
-    roomCommand && roomCommand.kind !== "add"
-      ? roomOf(roomCommand.id)
+  const levelAreas = areasOnLevel(data.areas, data.levels, levelId);
+  const chosen = data.areas.find((each) => each.id === selectedArea) ?? null;
+  const areaOf = (id: string) => data.areas.find((each) => each.id === id);
+  const commandArea =
+    areaCommand && areaCommand.kind !== "add"
+      ? areaOf(areaCommand.id)
       : undefined;
   // Another level: nothing of the old one stays selected or drawn.
   const showLevel = (next: string) => {
     setLevelChoice(next);
-    setSelectedRoom(null);
+    setSelectedArea(null);
     setDrawn(null);
   };
-  // A room being edited or deleted that is gone (e.g. on another device): its command ends.
-  if (roomCommand && roomCommand.kind !== "add" && !commandRoom)
-    setRoomCommand(null);
-  const startAddRoom = () => {
+  // An area being edited or deleted that is gone (e.g. on another device): its command ends.
+  if (areaCommand && areaCommand.kind !== "add" && !commandArea)
+    setAreaCommand(null);
+  const startAddArea = () => {
     setDrawn(null);
-    setRoomProblem("");
+    setAreaProblem("");
     setFacts({
-      name: t("forgeRooms.defaultName", { number: levelRooms.length + 1 }),
+      name: t("forgeAreas.defaultName", { number: levelAreas.length + 1 }),
       secret: false,
     });
-    setRoomCommand({ kind: "add" });
+    setAreaCommand({ kind: "add" });
   };
-  const startOnRoom = (kind: "edit" | "delete", id: string) => {
-    setRoomProblem("");
-    setSelectedRoom(id);
-    setRoomCommand({ kind, id });
+  const startOnArea = (kind: "edit" | "delete", id: string) => {
+    setAreaProblem("");
+    setSelectedArea(id);
+    setAreaCommand({ kind, id });
   };
 
   /**
@@ -330,16 +331,16 @@ export function MapForge({
       return false;
     }
   };
-  const changeRooms = async (change: (areas: readonly Area[]) => Area[]) => {
-    setRoomBusy(true);
-    setRoomProblem("");
+  const changeAreas = async (change: (areas: readonly Area[]) => Area[]) => {
+    setAreaBusy(true);
+    setAreaProblem("");
     try {
       return await changeData(
         (current) => ({ ...current, areas: change(current.areas) }),
-        setRoomProblem,
+        setAreaProblem,
       );
     } finally {
-      setRoomBusy(false);
+      setAreaBusy(false);
     }
   };
   const saveGrid = async (grid: Grid) => {
@@ -364,20 +365,20 @@ export function MapForge({
       setGridBusy(false);
     }
   };
-  // A drawn area becomes the room to create (redrawing replaces it). `free`: Alt was held as
-  // it was finished (taken from that event, so an Alt+Tab never leaves rooms unsnapped).
-  const drawRoom = (area: Polygon, free: boolean) => {
-    const fitted = free ? area : snapArea(area, data.grid, roomShape);
-    setRoomProblem(fitted ? "" : t("forgeRooms.tooSmall"));
-    if (fitted) setDrawn(fitted);
+  // A drawn shape adds to the area to create (`addToArea`). `free`: Alt was held as it was
+  // finished (taken from that event, so an Alt+Tab never leaves shapes unsnapped).
+  const drawArea = (area: Polygon, free: boolean) => {
+    const fitted = free ? area : snapArea(area, data.grid, areaShape);
+    setAreaProblem(fitted ? "" : t("forgeAreas.tooSmall"));
+    if (fitted) setDrawn((current) => addToArea(current, fitted));
   };
-  const addRoom = async () => {
-    if (!drawn || roomBusy) return;
+  const addArea = async () => {
+    if (!drawn || areaBusy) return;
     const id = newAreaId(
       [...data.levels, ...data.areas].map((each) => each.id),
       Math.random,
     );
-    const added = await changeRooms((areas) => [
+    const added = await changeAreas((areas) => [
       ...areas,
       {
         id,
@@ -388,36 +389,36 @@ export function MapForge({
       },
     ]);
     if (!added) return;
-    endRoomCommand();
-    // The new room is selected in the browser, with the keyboard on it.
-    setSelectedRoom(id);
+    endAreaCommand();
+    // The new area is selected in the browser, with the keyboard on it.
+    setSelectedArea(id);
     setFocusTree(true);
   };
-  const editRoom = (id: string, edit: (room: Area) => Area | null) =>
-    changeRooms((rooms) =>
-      rooms.flatMap((each) => {
+  const editArea = (id: string, edit: (each: Area) => Area | null) =>
+    changeAreas((areas) =>
+      areas.flatMap((each) => {
         if (each.id !== id) return [each];
         const next = edit(each);
         return next ? [next] : [];
       }),
     );
-  const saveFacts = async (id: string, next: RoomFacts) => {
-    const saved = await editRoom(id, (each) => {
+  const saveFacts = async (id: string, next: AreaFacts) => {
+    const saved = await editArea(id, (each) => {
       const changed: Area = { ...each, name: next.name };
       if (next.secret) changed.secret = true;
       else delete changed.secret;
       return changed;
     });
     if (saved) {
-      endRoomCommand();
+      endAreaCommand();
       setFocusTree(true);
     }
   };
-  const deleteRoom = async (id: string) => {
-    if (!(await editRoom(id, () => null))) return;
-    endRoomCommand();
-    setSelectedRoom(null);
-    // The room is gone: the keyboard moves to its level.
+  const deleteArea = async (id: string) => {
+    if (!(await editArea(id, () => null))) return;
+    endAreaCommand();
+    setSelectedArea(null);
+    // The area is gone: the keyboard moves to its level.
     setFocusTree(true);
   };
 
@@ -431,23 +432,23 @@ export function MapForge({
         label: t("forge.levels"),
         icon: <Folder />,
         children: levels.map((each) => {
-          const rooms = areasOnLevel(data.areas, data.levels, each.id);
+          const onLevel = areasOnLevel(data.areas, data.levels, each.id);
           return {
             id: `forge:level:${each.id}`,
             label: each.name,
             icon: <Layers />,
-            ...(rooms.length > 0
+            ...(onLevel.length > 0
               ? {
-                  children: rooms.map((each) => ({
-                    id: `forge:room:${each.id}`,
+                  children: onLevel.map((each) => ({
+                    id: `forge:area:${each.id}`,
                     label: each.name,
                     icon: <DoorOpen />,
                     ...(each.secret === true && {
-                      meta: t("forgeRooms.secretMeta"),
+                      meta: t("forgeAreas.secretMeta"),
                     }),
                   })),
                 }
-              : { meta: t("forge.noRooms") }),
+              : { meta: t("forge.noAreas") }),
           };
         }),
       },
@@ -487,85 +488,85 @@ export function MapForge({
           />
         </RibbonGroup>
       </ShellPortal>
-      {/* RÄUME (ADR-0020, T-254): "Raum anlegen" as the quick tool; all room commands in
+      {/* BEREICHE (ADR-0020, T-254): "Bereich anlegen" as the quick tool; all area commands in
           the caption's menu. */}
-      <ShellPortal slot="ribbonForgeRooms">
+      <ShellPortal slot="ribbonForgeAreas">
         <RibbonGroup
-          caption={t("forgeRooms.title")}
+          caption={t("forgeAreas.title")}
           menu={{
             items: [
               {
                 id: "add",
-                label: t("forgeRooms.add"),
+                label: t("forgeAreas.add"),
                 icon: <SquarePlus />,
                 disabled: loaded.status !== "ok",
               },
               {
                 id: "edit",
-                label: t("forgeRooms.edit"),
+                label: t("forgeAreas.edit"),
                 icon: <Pencil />,
-                disabled: !room,
+                disabled: !chosen,
               },
               {
                 id: "delete",
-                label: t("forgeRooms.delete"),
+                label: t("forgeAreas.delete"),
                 icon: <Trash2 />,
-                disabled: !room,
+                disabled: !chosen,
               },
             ],
             onSelect: (id) => {
-              if (id === "add") startAddRoom();
-              else if (room && (id === "edit" || id === "delete"))
-                startOnRoom(id, room.id);
+              if (id === "add") startAddArea();
+              else if (chosen && (id === "edit" || id === "delete"))
+                startOnArea(id, chosen.id);
             },
           }}
         >
           <IconButton
             showLabel
             icon={<SquarePlus />}
-            label={t("forgeRooms.add")}
+            label={t("forgeAreas.add")}
             disabled={loaded.status !== "ok"}
-            pressed={roomCommand?.kind === "add"}
+            pressed={areaCommand?.kind === "add"}
             onClick={() => {
-              if (roomCommand?.kind === "add") endRoomCommand();
-              else startAddRoom();
+              if (areaCommand?.kind === "add") endAreaCommand();
+              else startAddArea();
             }}
           />
         </RibbonGroup>
       </ShellPortal>
-      {roomCommand?.kind === "add" && loaded.status === "ok" && (
-        <AddRoomCommand
+      {areaCommand?.kind === "add" && loaded.status === "ok" && (
+        <AddAreaCommand
           levels={levels}
           levelId={levelId}
           onLevel={showLevel}
-          shape={roomShape}
-          onShape={setRoomShape}
+          shape={areaShape}
+          onShape={setAreaShape}
           drawn={drawn !== null}
           facts={facts}
           onFacts={setFacts}
-          busy={roomBusy}
-          problem={roomProblem}
-          onOk={() => void addRoom()}
-          onCancel={endRoomCommand}
+          busy={areaBusy}
+          problem={areaProblem}
+          onOk={() => void addArea()}
+          onCancel={endAreaCommand}
         />
       )}
-      {roomCommand?.kind === "edit" && commandRoom && (
-        <EditRoomCommand
-          key={commandRoom.id}
-          room={commandRoom}
-          busy={roomBusy}
-          problem={roomProblem}
-          onOk={(next) => void saveFacts(commandRoom.id, next)}
-          onCancel={endRoomCommand}
+      {areaCommand?.kind === "edit" && commandArea && (
+        <EditAreaCommand
+          key={commandArea.id}
+          area={commandArea}
+          busy={areaBusy}
+          problem={areaProblem}
+          onOk={(next) => void saveFacts(commandArea.id, next)}
+          onCancel={endAreaCommand}
         />
       )}
-      {roomCommand?.kind === "delete" && commandRoom && (
-        <DeleteRoomCommand
-          room={commandRoom}
-          busy={roomBusy}
-          problem={roomProblem}
-          onOk={() => void deleteRoom(commandRoom.id)}
-          onCancel={endRoomCommand}
+      {areaCommand?.kind === "delete" && commandArea && (
+        <DeleteAreaCommand
+          area={commandArea}
+          busy={areaBusy}
+          problem={areaProblem}
+          onOk={() => void deleteArea(commandArea.id)}
+          onCancel={endAreaCommand}
         />
       )}
       {calibrating && loaded.status === "ok" && (
@@ -606,33 +607,33 @@ export function MapForge({
           kind={kind}
           label={name}
           fog={null}
-          tool={roomCommand?.kind === "add" && !roomBusy ? "reveal" : "pan"}
-          shape={roomShape}
+          tool={areaCommand?.kind === "add" && !areaBusy ? "reveal" : "pan"}
+          shape={areaShape}
           onArea={(area, _tool, free) => {
-            drawRoom(area, free);
+            drawArea(area, free);
           }}
           toolHint={
-            roomCommand?.kind === "add"
+            areaCommand?.kind === "add"
               ? t(
-                  roomShape === "lasso"
-                    ? "forgeRooms.hintFree"
-                    : "forgeRooms.hint",
+                  areaShape === "lasso"
+                    ? "forgeAreas.hintFree"
+                    : "forgeAreas.hint",
                 )
               : undefined
           }
           outlines={[
-            ...levelRooms.map((each) => ({
+            ...levelAreas.map((each) => ({
               id: each.id,
               label: each.name,
               area: each.area,
-              selected: each.id === selectedRoom,
+              selected: each.id === selectedArea,
               secret: each.secret === true,
             })),
-            // The room being created, until OK.
-            ...(roomCommand?.kind === "add" && drawn
+            // The area being created, until OK.
+            ...(areaCommand?.kind === "add" && drawn
               ? [
                   {
-                    id: "forge:new-room",
+                    id: "forge:new-area",
                     label: facts.name,
                     area: drawn,
                     selected: true,
@@ -678,43 +679,43 @@ export function MapForge({
             variant="compact"
             nodes={[tree]}
             selectedId={
-              room ? `forge:room:${room.id}` : `forge:level:${levelId}`
+              chosen ? `forge:area:${chosen.id}` : `forge:level:${levelId}`
             }
             onSelect={(id) => {
               if (id.startsWith("forge:level:")) {
                 showLevel(id.slice("forge:level:".length));
-              } else if (id.startsWith("forge:room:")) {
-                const picked = roomOf(id.slice("forge:room:".length));
+              } else if (id.startsWith("forge:area:")) {
+                const picked = areaOf(id.slice("forge:area:".length));
                 if (!picked) return;
-                setSelectedRoom(picked.id);
+                setSelectedArea(picked.id);
                 setLevelChoice(picked.levelId ?? data.levels[0]?.id ?? null);
               }
             }}
-            // A room opens its edit command by double-click or its context menu (ADR-0020).
+            // An area opens its edit command by double-click or its context menu (ADR-0020).
             onItemActivate={(id) => {
-              if (id.startsWith("forge:room:"))
-                startOnRoom("edit", id.slice("forge:room:".length));
+              if (id.startsWith("forge:area:"))
+                startOnArea("edit", id.slice("forge:area:".length));
             }}
             onItemContextMenu={(id, at, item) => {
-              if (id.startsWith("forge:room:"))
-                setRoomMenu({ id: id.slice("forge:room:".length), at, item });
+              if (id.startsWith("forge:area:"))
+                setAreaMenu({ id: id.slice("forge:area:".length), at, item });
             }}
           />
           <ContextMenu
-            at={roomMenu?.at ?? null}
-            label={t("forgeRooms.kind")}
+            at={areaMenu?.at ?? null}
+            label={t("forgeAreas.kind")}
             items={[
-              { id: "edit", label: t("forgeRooms.edit"), icon: <Pencil /> },
-              { id: "delete", label: t("forgeRooms.delete"), icon: <Trash2 /> },
+              { id: "edit", label: t("forgeAreas.edit"), icon: <Pencil /> },
+              { id: "delete", label: t("forgeAreas.delete"), icon: <Trash2 /> },
             ]}
             onSelect={(choice) => {
-              if (roomMenu && (choice === "edit" || choice === "delete"))
-                startOnRoom(choice, roomMenu.id);
+              if (areaMenu && (choice === "edit" || choice === "delete"))
+                startOnArea(choice, areaMenu.id);
             }}
             onClose={() => {
-              setRoomMenu(null);
+              setAreaMenu(null);
             }}
-            returnFocus={roomMenu?.item}
+            returnFocus={areaMenu?.item}
           />
         </div>
       </ShellPortal>
@@ -725,16 +726,16 @@ export function MapForge({
           )}
           {loaded.status === "ok" && (
             <>
-              {room && (
+              {chosen && (
                 <dl className="dm-details-rows">
                   <div className="dm-details-row">
-                    <dt>{t("forgeRooms.kind")}</dt>
-                    <dd>{room.name}</dd>
+                    <dt>{t("forgeAreas.kind")}</dt>
+                    <dd>{chosen.name}</dd>
                   </div>
-                  {room.secret === true && (
+                  {chosen.secret === true && (
                     <div className="dm-details-row">
-                      <dt>{t("forgeRooms.secretLabel")}</dt>
-                      <dd>{t("forgeRooms.yes")}</dd>
+                      <dt>{t("forgeAreas.secretLabel")}</dt>
+                      <dd>{t("forgeAreas.yes")}</dd>
                     </div>
                   )}
                 </dl>

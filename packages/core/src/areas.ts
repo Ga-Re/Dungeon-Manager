@@ -1,4 +1,6 @@
-import type { Grid, Polygon, Area } from "@dungeon-manager/schema";
+import type { Area, Grid, Polygon } from "@dungeon-manager/schema";
+import { union } from "polyclip-ts";
+import { asGeom, fromClip } from "./polygon-clip.js";
 
 // Areas of a map – rooms, parts of a cave, far places (T-108c1, T-262, SPEC 4, ADR-0012; DM
 // decisions 2026-11-22/23): drawn once per level in the map's sidecar, so every scene has them.
@@ -114,4 +116,17 @@ export function snapArea(
   )
     outer.pop();
   return outer.length >= 3 && hasArea(outer) ? { outer, holes: [] } : null;
+}
+
+/**
+ * Adds a drawn shape to the area drawn so far (T-260, DM decision 2026-11-23): a shape that
+ * overlaps it or shares an edge with it joins it into one area (a closed frame leaves a hole);
+ * a shape apart from it – also one meeting it at a single corner – starts the area anew.
+ * `current` `null`: the shape is the area.
+ */
+export function addToArea(current: Polygon | null, shape: Polygon): Polygon {
+  if (!current) return shape;
+  const joined = fromClip(union(asGeom([current]), asGeom([shape])));
+  const [only] = joined;
+  return joined.length === 1 && only ? only : shape;
 }

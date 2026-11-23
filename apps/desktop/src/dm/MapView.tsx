@@ -63,7 +63,7 @@ type LoadState = "loading" | "ready" | "error";
 /** What dragging on the map does: move it, or mark an area to reveal or hide. */
 export type MapTool = "pan" | "reveal" | "hide";
 
-/** A room drawn on the map (T-108c1): its outline and name, highlighted when selected. */
+/** An area drawn on the map (T-108c1): its outline and name, highlighted when selected. */
 export interface MapOutline {
   readonly id: string;
   readonly label: string;
@@ -232,7 +232,7 @@ export function MapView({
     readonly onMove: (center: Point) => void;
   } | null;
   readonly calibration?: MapCalibration | null;
-  /** Rooms shown as outlines over the map (the Map Forge, T-108c1). */
+  /** Areas shown as outlines over the map (the Map Forge, T-108c1). */
   readonly outlines?: readonly MapOutline[];
   /** What the drawing tool does, instead of the fog's hint (e.g. drawing a room, T-108c1). */
   readonly toolHint?: string | undefined;
@@ -939,7 +939,7 @@ export function MapView({
         data-tool={calibration ? `calibrate-${calibration.mode}` : tool}
       >
         {camera && sizeNow.current && outlines.length > 0 && (
-          <RoomOutlines
+          <AreaOutlines
             outlines={outlines}
             toScreen={(x, y) =>
               mapToScreen(camera, sizeNow.current ?? { width: 0, height: 0 }, {
@@ -1114,8 +1114,8 @@ function CalibrationBox({
 
 const NO_OUTLINES: readonly MapOutline[] = [];
 
-/** Room outlines with their names at their middle, in view pixels (T-108c1). */
-function RoomOutlines({
+/** Area outlines with their names at their middle, in view pixels (T-108c1). */
+function AreaOutlines({
   outlines,
   toScreen,
 }: {
@@ -1123,7 +1123,7 @@ function RoomOutlines({
   readonly toScreen: (x: number, y: number) => Point;
 }) {
   return (
-    <svg className="map-view-rooms" aria-hidden="true">
+    <svg className="map-view-areas" aria-hidden="true">
       {outlines.map((room) => {
         const points = room.area.outer.map(([x, y]) => toScreen(x, y));
         const middle = points.reduce(
@@ -1136,7 +1136,7 @@ function RoomOutlines({
         return (
           <g
             key={room.id}
-            className="map-view-room"
+            className="map-view-area"
             data-selected={room.selected === true ? "true" : undefined}
             data-secret={room.secret === true ? "true" : undefined}
           >
