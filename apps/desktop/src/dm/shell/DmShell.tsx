@@ -46,6 +46,7 @@ import {
   type AppMenuService,
 } from "../../platform/app-menu.js";
 import { AppCommandsContext, createAppCommands } from "./app-commands.js";
+import { CommandAnchorContext, CommandLayer } from "./command-layer.js";
 import {
   PANELS,
   SlotHost,
@@ -190,16 +191,16 @@ function usePanelHosts(): PanelHosts {
   return hosts;
 }
 
-/** The map panel: the canvas fills it; notices and the dock float at its bottom (ADR-0014). */
+/**
+ * The map panel: the canvas fills it; notices and the dock float at its bottom (ADR-0014). A
+ * ribbon tool's command panel opens at its top right, in the shell's own layer (T-257).
+ */
 function MapPanel() {
   const hosts = usePanelHosts();
+  const anchor = useContext(CommandAnchorContext);
   return (
-    <div className="dm-stage">
+    <div className="dm-stage" ref={anchor}>
       <SlotHost element={hosts.canvas} />
-      {/* A ribbon tool's command panel floats at the top right (ADR-0020). */}
-      <div className="dm-stage-command">
-        <SlotHost element={hosts.command} />
-      </div>
       <div className="dm-stage-bottom">
         <SlotHost element={hosts.notices} />
         <SlotHost element={hosts.dock} />
@@ -419,6 +420,8 @@ export function DmShell({
   const commands = useMemo(createAppCommands, []);
   // One ribbon command at a time (ADR-0020).
   const toolCommands = useMemo(createCommandRegistry, []);
+  // The map panel's element: command panels open at its top right (T-257).
+  const [mapStage, setMapStage] = useState<HTMLElement | null>(null);
   // With a menu service, whether it shows a menu bar is open until it says so: no menu button
   // flashes up on macOS before the menu bar is there.
   const [nativeMenu, setNativeMenu] = useState<boolean | "pending">(
@@ -1106,228 +1109,231 @@ export function DmShell({
     <ShellSlotsContext value={allSlots}>
       <PanelHostsContext value={hosts}>
         <PanelCommandsContext value={panelCommands}>
-          <div className="dm-shell dm-ui">
-            <header className="dm-titlebar">
-              <IconButton
-                ref={panelButton}
-                icon={<PanelLeft />}
-                label={t("shell.toggleDataPanel")}
-                pressed={shown.has("data")}
-                onClick={() => {
-                  togglePanel("data");
-                }}
-              />
-              <span className="dm-app-name">{t("app.title")}</span>
-              {nativeMenu === false && (
-                <Menu
-                  label={t("shell.appMenu.button")}
-                  items={[
-                    {
-                      id: "newCampaign",
-                      label: t("shell.appMenu.newCampaign"),
-                      icon: <FolderPlus />,
-                    },
-                    {
-                      id: "welcome",
-                      label: t("shell.appMenu.welcome"),
-                      icon: <BookOpen />,
-                    },
-                    {
-                      id: "settings",
-                      label: t("shell.appMenu.settings"),
-                      icon: <Settings />,
-                    },
-                    // The View menu's commands (T-172a): panels on and off, the default layout.
-                    ...PANELS.map((id) => ({
-                      id: PANEL_COMMAND[id],
-                      label: titles[id],
-                      checked: shown.has(id),
-                      toggle: true,
-                    })),
-                    // Named layouts (T-172c) of this workspace.
-                    ...namedLayouts.map((entry) => ({
-                      id: `layout:${entry.id}`,
-                      label: t("shell.namedLayouts.menuItem", {
-                        name: entry.name,
-                      }),
-                    })),
-                    {
-                      id: "saveLayout",
-                      label: t("shell.appMenu.saveLayout"),
-                    },
-                    {
-                      id: "resetLayout",
-                      label: t("shell.appMenu.resetLayout"),
-                      icon: <LayoutPanelLeft />,
-                    },
-                  ]}
-                  onSelect={(id) => {
-                    if (isAppCommand(id)) commands.run(id);
-                    else if (id.startsWith("layout:"))
-                      applyNamedLayout(id.slice("layout:".length));
-                  }}
-                  className="dm-app-menu"
-                />
-              )}
-              <div ref={slotRefs.titleScene} className="dm-titlebar-scene" />
-              <div className="dm-settings">
+          <CommandAnchorContext value={setMapStage}>
+            <div className="dm-shell dm-ui">
+              <header className="dm-titlebar">
                 <IconButton
-                  ref={settingsButton}
-                  icon={<Settings />}
-                  label={t("shell.settings")}
-                  aria-haspopup="dialog"
+                  ref={panelButton}
+                  icon={<PanelLeft />}
+                  label={t("shell.toggleDataPanel")}
+                  pressed={shown.has("data")}
                   onClick={() => {
-                    setSettingsOpen((open) => !open);
+                    togglePanel("data");
                   }}
                 />
-                <SettingsDialog
-                  open={settingsOpen}
-                  onClose={() => {
-                    setSettingsOpen(false);
-                  }}
-                  returnFocus={settingsButton}
-                  categories={settingsCategories}
-                />
-                <SaveLayoutDialog
-                  open={saveLayoutOpen}
-                  onClose={() => {
-                    setSaveLayoutOpen(false);
-                  }}
-                  layouts={namedLayouts}
-                  onSave={saveCurrentLayout}
-                />
-              </div>
-            </header>
-            <div className="dm-main">
-              <div className="dm-ribbon">
-                {/* Each workspace has its own tabs (T-156); the Game-Orchestrator has today's tools. */}
-                <div
-                  role="group"
-                  aria-labelledby={`${idPrefix}-workspace`}
-                  className="dm-workspace"
-                >
-                  <span
-                    id={`${idPrefix}-workspace`}
-                    className="dm-workspace-caption"
-                  >
-                    {t("shell.workspace.label")}
-                  </span>
+                <span className="dm-app-name">{t("app.title")}</span>
+                {nativeMenu === false && (
                   <Menu
-                    label={t(`shell.workspace.${workspace}`)}
-                    menuLabel={t("shell.workspace.label")}
-                    items={WORKSPACES.map((each) => ({
-                      id: each,
-                      label: t(`shell.workspace.${each}`),
-                      icon: WORKSPACE_ICON[each],
-                      checked: each === workspace,
-                    }))}
-                    onSelect={chooseWorkspace}
-                    className="dm-workspace-menu"
+                    label={t("shell.appMenu.button")}
+                    items={[
+                      {
+                        id: "newCampaign",
+                        label: t("shell.appMenu.newCampaign"),
+                        icon: <FolderPlus />,
+                      },
+                      {
+                        id: "welcome",
+                        label: t("shell.appMenu.welcome"),
+                        icon: <BookOpen />,
+                      },
+                      {
+                        id: "settings",
+                        label: t("shell.appMenu.settings"),
+                        icon: <Settings />,
+                      },
+                      // The View menu's commands (T-172a): panels on and off, the default layout.
+                      ...PANELS.map((id) => ({
+                        id: PANEL_COMMAND[id],
+                        label: titles[id],
+                        checked: shown.has(id),
+                        toggle: true,
+                      })),
+                      // Named layouts (T-172c) of this workspace.
+                      ...namedLayouts.map((entry) => ({
+                        id: `layout:${entry.id}`,
+                        label: t("shell.namedLayouts.menuItem", {
+                          name: entry.name,
+                        }),
+                      })),
+                      {
+                        id: "saveLayout",
+                        label: t("shell.appMenu.saveLayout"),
+                      },
+                      {
+                        id: "resetLayout",
+                        label: t("shell.appMenu.resetLayout"),
+                        icon: <LayoutPanelLeft />,
+                      },
+                    ]}
+                    onSelect={(id) => {
+                      if (isAppCommand(id)) commands.run(id);
+                      else if (id.startsWith("layout:"))
+                        applyNamedLayout(id.slice("layout:".length));
+                    }}
+                    className="dm-app-menu"
+                  />
+                )}
+                <div ref={slotRefs.titleScene} className="dm-titlebar-scene" />
+                <div className="dm-settings">
+                  <IconButton
+                    ref={settingsButton}
+                    icon={<Settings />}
+                    label={t("shell.settings")}
+                    aria-haspopup="dialog"
+                    onClick={() => {
+                      setSettingsOpen((open) => !open);
+                    }}
+                  />
+                  <SettingsDialog
+                    open={settingsOpen}
+                    onClose={() => {
+                      setSettingsOpen(false);
+                    }}
+                    returnFocus={settingsButton}
+                    categories={settingsCategories}
+                  />
+                  <SaveLayoutDialog
+                    open={saveLayoutOpen}
+                    onClose={() => {
+                      setSaveLayoutOpen(false);
+                    }}
+                    layouts={namedLayouts}
+                    onSave={saveCurrentLayout}
                   />
                 </div>
-                <div className="dm-ribbon-body">
-                  {ribbonTabs.length > 0 ? (
-                    <div
-                      role="tablist"
-                      aria-label={t("shell.modes")}
-                      className="dm-ribbon-tabs"
+              </header>
+              <div className="dm-main">
+                <div className="dm-ribbon">
+                  {/* Each workspace has its own tabs (T-156); the Game-Orchestrator has today's tools. */}
+                  <div
+                    role="group"
+                    aria-labelledby={`${idPrefix}-workspace`}
+                    className="dm-workspace"
+                  >
+                    <span
+                      id={`${idPrefix}-workspace`}
+                      className="dm-workspace-caption"
                     >
-                      {ribbonTabs.map(({ id: each }) => (
-                        <button
-                          key={each}
-                          ref={(element) => {
-                            if (element) tabs.current.set(each, element);
-                            else tabs.current.delete(each);
-                          }}
-                          type="button"
-                          role="tab"
-                          id={`${idPrefix}-tab-${each}`}
-                          aria-selected={mode === each}
-                          aria-controls={`${idPrefix}-mode-${each}`}
-                          tabIndex={mode === each ? 0 : -1}
-                          className="dm-ribbon-tab"
-                          onClick={() => {
-                            setMode(each);
-                          }}
-                          onKeyDown={onTabKeyDown}
-                        >
-                          {t(`shell.mode.${each}`)}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="dm-ribbon-tabs" />
-                  )}
-                  {/* Always mounted, only hidden: the tools portaled here keep their state. */}
-                  {ALL_TABS.map((each) => {
-                    const shownHere = each.workspace === workspace;
-                    return (
+                      {t("shell.workspace.label")}
+                    </span>
+                    <Menu
+                      label={t(`shell.workspace.${workspace}`)}
+                      menuLabel={t("shell.workspace.label")}
+                      items={WORKSPACES.map((each) => ({
+                        id: each,
+                        label: t(`shell.workspace.${each}`),
+                        icon: WORKSPACE_ICON[each],
+                        checked: each === workspace,
+                      }))}
+                      onSelect={chooseWorkspace}
+                      className="dm-workspace-menu"
+                    />
+                  </div>
+                  <div className="dm-ribbon-body">
+                    {ribbonTabs.length > 0 ? (
                       <div
-                        key={each.id}
-                        ref={slotRefs[each.slot]}
-                        id={`${idPrefix}-mode-${each.id}`}
-                        role={shownHere ? "tabpanel" : undefined}
-                        aria-labelledby={
-                          shownHere ? `${idPrefix}-tab-${each.id}` : undefined
-                        }
-                        hidden={!shownHere || mode !== each.id}
-                        className="dm-ribbon-panel"
-                        data-empty={t(
-                          each.workspace === "mapForge"
-                            ? "forge.noMap"
-                            : "shell.noScene",
-                        )}
-                      />
-                    );
-                  })}
-                  {ribbonTabs.length === 0 && (
-                    <p className="dm-ribbon-panel dm-ribbon-coming">
-                      {t(`shell.workspace.coming.${workspace}`)}
-                    </p>
-                  )}
+                        role="tablist"
+                        aria-label={t("shell.modes")}
+                        className="dm-ribbon-tabs"
+                      >
+                        {ribbonTabs.map(({ id: each }) => (
+                          <button
+                            key={each}
+                            ref={(element) => {
+                              if (element) tabs.current.set(each, element);
+                              else tabs.current.delete(each);
+                            }}
+                            type="button"
+                            role="tab"
+                            id={`${idPrefix}-tab-${each}`}
+                            aria-selected={mode === each}
+                            aria-controls={`${idPrefix}-mode-${each}`}
+                            tabIndex={mode === each ? 0 : -1}
+                            className="dm-ribbon-tab"
+                            onClick={() => {
+                              setMode(each);
+                            }}
+                            onKeyDown={onTabKeyDown}
+                          >
+                            {t(`shell.mode.${each}`)}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="dm-ribbon-tabs" />
+                    )}
+                    {/* Always mounted, only hidden: the tools portaled here keep their state. */}
+                    {ALL_TABS.map((each) => {
+                      const shownHere = each.workspace === workspace;
+                      return (
+                        <div
+                          key={each.id}
+                          ref={slotRefs[each.slot]}
+                          id={`${idPrefix}-mode-${each.id}`}
+                          role={shownHere ? "tabpanel" : undefined}
+                          aria-labelledby={
+                            shownHere ? `${idPrefix}-tab-${each.id}` : undefined
+                          }
+                          hidden={!shownHere || mode !== each.id}
+                          className="dm-ribbon-panel"
+                          data-empty={t(
+                            each.workspace === "mapForge"
+                              ? "forge.noMap"
+                              : "shell.noScene",
+                          )}
+                        />
+                      );
+                    })}
+                    {ribbonTabs.length === 0 && (
+                      <p className="dm-ribbon-panel dm-ribbon-coming">
+                        {t(`shell.workspace.coming.${workspace}`)}
+                      </p>
+                    )}
+                  </div>
                 </div>
+                {/* Below the ribbon: the panels (T-172a, ADR-0017), the map one of them. */}
+                <DockviewReact
+                  className="dm-panels"
+                  components={PANEL_COMPONENTS}
+                  onReady={onPanelsReady}
+                  // Our own theme class carries the design tokens (both themes, ADR-0015).
+                  theme={PANEL_THEME}
+                  messages={panelMessages}
+                  defaultTabComponent={PanelTab}
+                  rightHeaderActionsComponent={PanelMenu}
+                  getAnnouncement={getAnnouncement}
+                  announcer={(event) => {
+                    announce(event.message);
+                  }}
+                />
+                <p role="status" className="visually-hidden">
+                  {announcement}
+                </p>
               </div>
-              {/* Below the ribbon: the panels (T-172a, ADR-0017), the map one of them. */}
-              <DockviewReact
-                className="dm-panels"
-                components={PANEL_COMPONENTS}
-                onReady={onPanelsReady}
-                // Our own theme class carries the design tokens (both themes, ADR-0015).
-                theme={PANEL_THEME}
-                messages={panelMessages}
-                defaultTabComponent={PanelTab}
-                rightHeaderActionsComponent={PanelMenu}
-                getAnnouncement={getAnnouncement}
-                announcer={(event) => {
-                  announce(event.message);
-                }}
-              />
-              <p role="status" className="visually-hidden">
-                {announcement}
-              </p>
+              {createPortal(
+                <p className="dm-canvas-empty">{t("shell.noScene")}</p>,
+                hosts.canvas,
+              )}
+              {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
+              <div className="dm-shell-content">
+                {/* Context passes through portals: what the children render gets it too. */}
+                <AppCommandsContext value={commands}>
+                  <FogLookContext value={fogLook}>
+                    <SetFogSpeedContext value={setFogSpeed}>
+                      <ActiveWorkspaceContext value={workspace}>
+                        <ChooseWorkspaceContext value={chooseWorkspace}>
+                          <CommandRegistryContext value={toolCommands}>
+                            {children}
+                          </CommandRegistryContext>
+                        </ChooseWorkspaceContext>
+                      </ActiveWorkspaceContext>
+                    </SetFogSpeedContext>
+                  </FogLookContext>
+                </AppCommandsContext>
+              </div>
+              <CommandLayer host={hosts.command} anchor={mapStage} />
             </div>
-            {createPortal(
-              <p className="dm-canvas-empty">{t("shell.noScene")}</p>,
-              hosts.canvas,
-            )}
-            {/* Children only portal into slots; `display: contents` keeps them out of the grid. */}
-            <div className="dm-shell-content">
-              {/* Context passes through portals: what the children render gets it too. */}
-              <AppCommandsContext value={commands}>
-                <FogLookContext value={fogLook}>
-                  <SetFogSpeedContext value={setFogSpeed}>
-                    <ActiveWorkspaceContext value={workspace}>
-                      <ChooseWorkspaceContext value={chooseWorkspace}>
-                        <CommandRegistryContext value={toolCommands}>
-                          {children}
-                        </CommandRegistryContext>
-                      </ChooseWorkspaceContext>
-                    </ActiveWorkspaceContext>
-                  </SetFogSpeedContext>
-                </FogLookContext>
-              </AppCommandsContext>
-            </div>
-          </div>
+          </CommandAnchorContext>
         </PanelCommandsContext>
       </PanelHostsContext>
     </ShellSlotsContext>

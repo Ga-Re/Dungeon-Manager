@@ -73,6 +73,7 @@ describe("tokensToCss", () => {
     expect(css).toContain("--dm-z-overlay: 10;");
     expect(css).toContain("--dm-z-hud: 20;");
     expect(css).toContain("--dm-z-chrome: 30;");
+    expect(css).toContain("--dm-z-command: 35;");
     expect(css).toContain("--dm-z-popover: 40;");
     expect(css).toContain("--dm-z-modal: 50;");
   });

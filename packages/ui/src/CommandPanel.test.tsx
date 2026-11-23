@@ -124,4 +124,35 @@ describe("CommandPanel", () => {
     fireEvent.pointerUp(handle, { clientX: 70, clientY: 140, pointerId: 1 });
     expect(panel.style.transform).toBe("translate(-30px, 40px)");
   });
+
+  it("stays in the window however far it is dragged (T-257)", () => {
+    render(<Harness onOk={vi.fn()} onCancel={vi.fn()} />);
+    const panel = open();
+    // Where the panel stands before the drag: near the window's right edge.
+    panel.getBoundingClientRect = () =>
+      ({
+        left: 700,
+        right: 900,
+        top: 50,
+        bottom: 350,
+        width: 200,
+        height: 300,
+      }) as DOMRect;
+    const handle = screen.getByTitle("Verschieben");
+    fireEvent.pointerDown(handle, { clientX: 800, clientY: 60, pointerId: 1 });
+    // Far past the right and bottom edges of the window (1024 × 768 in jsdom).
+    fireEvent.pointerMove(handle, {
+      clientX: 2000,
+      clientY: 2000,
+      pointerId: 1,
+    });
+    expect(panel.style.transform).toBe("translate(124px, 418px)");
+    // And past the top-left corner.
+    fireEvent.pointerMove(handle, {
+      clientX: -2000,
+      clientY: -2000,
+      pointerId: 1,
+    });
+    expect(panel.style.transform).toBe("translate(-700px, -50px)");
+  });
 });

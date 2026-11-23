@@ -25,6 +25,7 @@
   --dm-z-overlay: 10;
   --dm-z-hud: 20;
   --dm-z-chrome: 30;
+  --dm-z-command: 35;
   --dm-z-popover: 40;
   --dm-z-modal: 50;
   --dm-backdrop: rgb(0 0 0 / 0.5);
